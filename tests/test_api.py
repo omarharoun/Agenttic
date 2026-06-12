@@ -231,3 +231,24 @@ class TestResources:
     def test_monitor_endpoint(self, client):
         r = client.get("/api/monitor/ref-agent").json()
         assert r == {"agent_id": "ref-agent", "reeval_requests": []}
+
+
+class TestImportDryRun:
+    def test_dry_run_validates_without_saving(self, client):
+        wf = eval_workflow("pilot-support-triage").model_dump()
+        wf["workflow_id"] = "imported-wf"
+        wf["nodes"][0]["type"] = "nonsense"  # broken import
+        r = client.post("/api/workflows?dry_run=true", json=wf).json()
+        assert r["saved"] is False
+        assert any("unknown node type" in p for p in r["problems"])
+        # nothing persisted
+        assert client.get("/api/workflows/imported-wf").status_code == 404
+
+    def test_valid_import_then_real_save(self, client):
+        wf = eval_workflow("pilot-support-triage").model_dump()
+        wf["workflow_id"] = "imported-wf"
+        assert client.post("/api/workflows?dry_run=true",
+                           json=wf).json()["problems"] == []
+        r = client.post("/api/workflows", json=wf).json()
+        assert r["saved"] is True
+        assert client.get("/api/workflows/imported-wf").status_code == 200
