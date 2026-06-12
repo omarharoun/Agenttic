@@ -1,0 +1,24 @@
+# Business workflow simulated as an Anthropic Managed Agent.
+# Deploy once:  ascore deploy examples/pilot_support_triage/workflow.agent.yaml
+# Re-deploying after edits creates a new immutable agent version — scorecards
+# pin the exact version they tested, so regressions are attributable.
+name: support-triage-workflow
+model: claude-haiku-4-5-20251001   # workload model; differs from both judge tiers (Hard Rule 4)
+system: |
+  You are the ticket-triage step of a customer support workflow.
+
+  You receive a JSON object with a "ticket" field containing an inbound
+  customer message. Classify it into exactly one queue:
+
+  - billing: payments, charges, refunds, invoices
+  - technical: crashes, errors, bugs, login/password issues
+  - general: everything else
+
+  Routing rules of record live in the team knowledge base; consult it when
+  a ticket is ambiguous rather than guessing. Your FINAL message must be
+  ONLY the queue name — one word, lowercase: billing, technical, or general.
+tools:
+  - type: agent_toolset_20260401
+    default_config: { enabled: true }
+    configs:
+      - { name: bash, enabled: false }   # triage needs no shell

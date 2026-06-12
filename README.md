@@ -77,6 +77,39 @@ A complete hand-written example lives in `examples/pilot_support_triage/`
 `tests/test_e2e_pipeline.py` runs the entire pipeline on it with mocked
 model calls.
 
+## Simulating business workflows with Managed Agents (beta)
+
+Anthropic's [Managed Agents](https://platform.claude.com/docs/en/managed-agents/overview)
+hosts the agent loop and a sandboxed container per session — which means you
+can stand up a candidate business workflow internally, with zero agent
+infrastructure, and immediately benchmark it:
+
+```bash
+# 1. Describe the workflow step as a version-controlled agent YAML
+#    (see examples/pilot_support_triage/workflow.agent.yaml)
+# 2. Deploy it (creates the agent once; re-deploys bump the immutable version)
+ascore deploy examples/pilot_support_triage/workflow.agent.yaml
+
+# 3. Benchmark it like any other agent — one session per test case
+ascore run --agent triage-wf --suite pilot-support-triage \
+           --managed-agent-id agent_01... --environment-id env_01...
+```
+
+The `ManagedAgentAdapter` converts the session's live event stream into a
+standard glass-box Trace: model requests become `llm_call` spans (with token
+usage from `span.model_request_end`), tool use/result pairs become
+`tool_call` spans, `session.error` becomes an error span — so the **full
+rubric applies**, unlike black-box HTTP agents. The adapter pins the exact
+agent version it tested (via `GET /v1/agents/{id}`) into the trace's config
+hash, so a regression after a prompt tweak is attributable to that version
+bump, and the agent's model feeds Hard Rule 4 judge selection automatically.
+
+This makes the loop for a client engagement: draft the workflow as an agent
+YAML → `ascore generate` a suite from their business doc → human-approve →
+`ascore deploy` → `ascore run` → iterate on the YAML and `ascore regress`
+until the scorecard clears the bar — all before a line of production agent
+code exists.
+
 ## Layout
 
 ```
