@@ -110,6 +110,30 @@ YAML → `ascore generate` a suite from their business doc → human-approve →
 until the scorecard clears the bar — all before a line of production agent
 code exists.
 
+## Visual workflow builder (n8n-style UI)
+
+```bash
+npm --prefix ui install && npm --prefix ui run build   # once
+uv run ascore ui                                       # http://127.0.0.1:8700
+```
+
+An n8n-style canvas over the whole platform: drag nodes from the palette
+(business doc → generator → human gate; agent → run suite → score →
+scorecard → report; live monitor), wire typed ports (mismatched kinds
+refuse to connect), configure nodes in the side panel (forms are generated
+from each node's pydantic schema), then **Run**. Nodes animate live over
+SSE — the run node shows `7/10 cases`, the gate node parks the execution
+with an ✋ **Approve** button (durable across server restarts), failures
+mark downstream nodes skipped. Other pages: executions history with node
+outputs, and resource browsers for suites (review + approve), scorecards
+(rendered reports), and traces (span drill-down).
+
+Dev mode: `uv run ascore ui` + `npm --prefix ui run dev` (Vite on :5173,
+proxies `/api`). The engine is headless-first: workflows are documents
+(`POST /api/workflows`), executions stream `GET
+/api/executions/{id}/events`, so CI can run the same graphs without the
+canvas.
+
 ## Layout
 
 ```
@@ -122,7 +146,10 @@ src/ascore/
 ├── generator/     # Step 8 — business doc -> draft suite (human gate)
 ├── live/          # Step 9 — sampled production scoring + drift detection
 ├── reporting/     # Step 10 — client scorecard reports (Markdown)
-└── cli.py         # ascore command surface
+├── ops.py         # shared pipeline ops (CLI and UI both call these)
+├── server/        # workflow engine + FastAPI/SSE API for the UI
+└── cli.py         # ascore command surface (incl. `ascore ui`)
+ui/                # React + React Flow canvas (Vite, dark n8n-style theme)
 ```
 
 ## Design rules the code enforces

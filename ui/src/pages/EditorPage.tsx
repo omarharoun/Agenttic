@@ -1,0 +1,124 @@
+import { ReactFlowProvider } from "@xyflow/react";
+import { useEffect, useState } from "react";
+import { api } from "../api";
+import { Canvas } from "../canvas/Canvas";
+import { ConfigPanel } from "../panels/ConfigPanel";
+import { Palette } from "../panels/Palette";
+import { useExecutionEvents } from "../sse";
+import {
+  emptyExec,
+  fromWorkflowDoc,
+  toWorkflowDoc,
+  useFlowStore,
+} from "../store";
+
+/** Canonical starter pipeline shown when no workflow exists yet. */
+const STARTER = {
+  workflow_id: "my-workflow",
+  name: "Benchmark pipeline",
+  nodes: [
+    { node_id: "agent", type: "agent", label: "", position: { x: 40, y: 230 },
+      config: { variant: "reference", agent_id: "agent-under-test" } },
+    { node_id: "run", type: "run_suite", label: "", position: { x: 300, y: 140 },
+      config: { suite_id: "pilot-support-triage" } },
+    { node_id: "score", type: "score", label: "", position: { x: 540, y: 140 },
+      config: {} },
+    { node_id: "card", type: "scorecard", label: "", position: { x: 760, y: 140 },
+      config: {} },
+    { node_id: "rpt", type: "report", label: "", position: { x: 960, y: 140 },
+      config: {} },
+  ],
+  edges: [
+    { edge_id: "e1", source: "agent", source_port: "agent", target: "run", target_port: "agent" },
+    { edge_id: "e2", source: "run", source_port: "run", target: "score", target_port: "run" },
+    { edge_id: "e3", source: "score", source_port: "scored", target: "card", target_port: "scored" },
+    { edge_id: "e4", source: "card", source_port: "scorecard", target: "rpt", target_port: "scorecard" },
+  ],
+};
+
+export function EditorPage() {
+  const store = useFlowStore();
+  const [problems, setProblems] = useState<string[]>([]);
+  useExecutionEvents(store.exec.executionId);
+
+  useEffect(() => {
+    (async () => {
+      store.setCatalog(await api.nodeTypes());
+      const existing = await api.listWorkflows();
+      const doc = existing.length
+        ? (await api.getWorkflow(existing[0].workflow_id)).workflow
+        : STARTER;
+      const { nodes, edges } = fromWorkflowDoc(doc as any);
+      store.setWorkflowMeta(doc.workflow_id, doc.name);
+      store.setGraph(nodes, edges);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const save = async () => {
+    const doc = toWorkflowDoc(store.workflowId, store.workflowName,
+                              store.nodes, store.edges);
+    const r = await api.saveWorkflow(doc);
+    setProblems(r.problems);
+    store.markDirty(false);
+    return r.problems;
+  };
+
+  const run = async () => {
+    const probs = await save();
+    if (probs.length) return;
+    store.setExec(emptyExec());
+    try {
+      const { execution_id } = await api.startExecution(store.workflowId);
+      store.setExec({ ...emptyExec(), executionId: execution_id, status: "running" });
+    } catch (e: any) {
+      setProblems([String(e.message ?? e)]);
+    }
+  };
+
+  const running = ["running", "waiting_approval"].includes(store.exec.status);
+
+  return (
+    <div className="page">
+      <div className="topbar">
+        <input className="wfname" value={store.workflowName}
+               onChange={(e) => store.setWorkflowMeta(store.workflowId, e.target.value)} />
+        {store.dirty && <span style={{ color: "var(--muted)" }}>●</span>}
+        <span className="spacer" />
+        {problems.length > 0 && (
+          <span style={{ color: "var(--fail)", fontSize: 12 }}
+                title={problems.join("\n")}>
+            {problems.length} problem{problems.length > 1 ? "s" : ""}
+          </span>
+        )}
+        {store.exec.status !== "idle" && (
+          <span className={`status-chip ${store.exec.status}`}>
+            {store.exec.status.replace("_", " ")}
+          </span>
+        )}
+        {store.exec.status === "waiting_approval" && store.exec.executionId && (
+          <button className="approve"
+                  onClick={() => api.approve(store.exec.executionId!)}>
+            ✋ Approve
+          </button>
+        )}
+        <button onClick={save}>Save</button>
+        {running ? (
+          <button onClick={() => store.exec.executionId &&
+                  api.cancel(store.exec.executionId)}>
+            Stop
+          </button>
+        ) : (
+          <button className="primary" onClick={run}>▶ Run</button>
+        )}
+      </div>
+      <div className="editor-body">
+        <Palette />
+        <ReactFlowProvider>
+          <Canvas />
+        </ReactFlowProvider>
+        <ConfigPanel />
+      </div>
+    </div>
+  );
+}
