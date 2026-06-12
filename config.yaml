@@ -23,3 +23,7 @@ paths:
   registry_db: ascore.db
   review_dir: review/
   calibration_dir: calibration/
+ui:
+  host: 127.0.0.1
+  port: 8700
+  uploads_dir: uploads/
