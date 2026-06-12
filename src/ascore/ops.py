@@ -101,6 +101,7 @@ async def score_op(
     agent_model: str,
     on_progress: ProgressFn | None = None,
     judge_client=None,
+    pass_threshold: float = 0.7,
 ) -> list[RunScore]:
     """Scoring step: deterministic checks + LLM judge, one RunScore per trace."""
     judge = make_judge(cfg, agent_model, client=judge_client)
@@ -108,7 +109,8 @@ async def score_op(
     total = len(cases)
     for i, (trace, case) in enumerate(zip(traces, cases)):
         rs = await asyncio.to_thread(
-            score_run, trace, case, reg.get_rubric(case.rubric_id), judge)
+            score_run, trace, case, reg.get_rubric(case.rubric_id), judge,
+            pass_threshold=pass_threshold)
         runs.append(rs)
         if on_progress:
             on_progress("case_scored", {
