@@ -1,0 +1,61 @@
+{
+  "rubric_id": "r-triage",
+  "version": 1,
+  "criteria": [
+    {
+      "criterion_id": "routing",
+      "description": "Ticket routed to the correct queue (billing, technical, or general)",
+      "scorer": "code",
+      "scale": "binary",
+      "check_ref": "final_output_matches_expected",
+      "anchors": {},
+      "tags": []
+    },
+    {
+      "criterion_id": "used_kb",
+      "description": "Agent consulted the routing rules in the knowledge base",
+      "scorer": "code",
+      "scale": "binary",
+      "check_ref": "required_tool_called",
+      "anchors": {},
+      "tags": []
+    },
+    {
+      "criterion_id": "step_budget",
+      "description": "Run completed within the step budget",
+      "scorer": "code",
+      "scale": "binary",
+      "check_ref": "steps_under_limit",
+      "anchors": {},
+      "tags": []
+    },
+    {
+      "criterion_id": "cost_budget",
+      "description": "Run completed within the cost budget",
+      "scorer": "code",
+      "scale": "binary",
+      "check_ref": "cost_under_limit",
+      "anchors": {},
+      "tags": []
+    },
+    {
+      "criterion_id": "tone",
+      "description": "Routing decision communicated in a professional, neutral register",
+      "scorer": "judge",
+      "scale": "three_point",
+      "check_ref": null,
+      "anchors": {
+        "pass": "States the queue plainly, e.g. 'billing'. No editorializing about the customer.",
+        "fail": "Mocks the customer or pads the answer with irrelevant chatter."
+      },
+      "tags": []
+    }
+  ],
+  "weights": {
+    "routing": 3.0,
+    "used_kb": 1.0,
+    "step_budget": 1.0,
+    "cost_budget": 1.0,
+    "tone": 1.0
+  }
+}

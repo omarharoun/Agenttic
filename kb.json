@@ -1,0 +1,4 @@
+{
+  "routing_rules": "billing: payments, charges, refunds, invoices. technical: crashes, errors, bugs, login/password issues. general: everything else.",
+  "refund_policy": "Full refund within 30 days of purchase."
+}
