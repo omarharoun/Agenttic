@@ -19,8 +19,11 @@ const STATE_ICON: Record<string, string> = {
 
 export function AscoreNode({ id, data }: { id: string; data: any }) {
   const spec = useFlowStore((s) => s.catalog[data.ntype]);
-  const state = useFlowStore((s) => s.exec.nodeStates[id] ?? "idle");
-  const progress = useFlowStore((s) => s.exec.progress[id]);
+  const liveState = useFlowStore((s) => s.exec.nodeStates[id] ?? "idle");
+  const liveProgress = useFlowStore((s) => s.exec.progress[id]);
+  // replay canvases embed final states in node data; editor uses live store
+  const state = (data.runState as string) ?? liveState;
+  const progress = data.runState ? undefined : liveProgress;
   if (!spec) return <div className="ascore-node">{data.ntype}?</div>;
 
   const inPorts = Object.keys(spec.inputs);

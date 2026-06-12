@@ -114,8 +114,13 @@ code exists.
 
 ```bash
 npm --prefix ui install && npm --prefix ui run build   # once
+uv run ascore pilot                                    # seed the demo suite (DRAFT)
 uv run ascore ui                                       # http://127.0.0.1:8700
 ```
+
+First run: hit **▶ Run** on the starter pipeline — it stops at nothing
+until you approve the pilot suite (Resources → suites → review → approve,
+or wire a Human Gate node and approve right on the canvas).
 
 An n8n-style canvas over the whole platform: drag nodes from the palette
 (business doc → generator → human gate; agent → run suite → score →
