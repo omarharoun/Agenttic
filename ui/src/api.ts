@@ -55,8 +55,8 @@ export const api = {
       json<{ workflow: WorkflowDoc; problems: string[] }>(r)),
   deleteWorkflow: (id: string) =>
     fetch(`/api/workflows/${id}`, { method: "DELETE" }),
-  saveWorkflow: (wf: WorkflowDoc) =>
-    fetch("/api/workflows", {
+  saveWorkflow: (wf: WorkflowDoc, dryRun = false) =>
+    fetch(`/api/workflows${dryRun ? "?dry_run=true" : ""}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(wf),

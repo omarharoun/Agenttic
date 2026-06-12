@@ -28,10 +28,14 @@ def list_workflows(request: Request):
 
 
 @router.post("/workflows")
-def save_workflow(wf: Workflow, request: Request):
+def save_workflow(wf: Workflow, request: Request, dry_run: bool = False):
+    """Persist a workflow document (or just validate it with ?dry_run=true —
+    used by the UI to check imports before anything is saved)."""
     problems = validate_workflow(wf)
-    request.app.state.store.save_workflow(wf)
-    return {"workflow_id": wf.workflow_id, "problems": problems}
+    if not dry_run:
+        request.app.state.store.save_workflow(wf)
+    return {"workflow_id": wf.workflow_id, "problems": problems,
+            "saved": not dry_run}
 
 
 @router.get("/workflows/{workflow_id}")

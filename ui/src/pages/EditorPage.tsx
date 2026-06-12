@@ -1,5 +1,5 @@
 import { ReactFlowProvider } from "@xyflow/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { Canvas } from "../canvas/Canvas";
 import { ConfigPanel } from "../panels/ConfigPanel";
@@ -113,6 +113,45 @@ export function EditorPage() {
     load({ workflow_id: id, name, nodes: [], edges: [] });
   };
 
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const exportWorkflow = () => {
+    const doc = toWorkflowDoc(store.workflowId, store.workflowName,
+                              store.nodes, store.edges);
+    const blob = new Blob([JSON.stringify(doc, null, 2)],
+                          { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${doc.workflow_id}.workflow.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const importWorkflow = async (file: File) => {
+    let doc: any;
+    try {
+      doc = JSON.parse(await file.text());
+    } catch {
+      setProblems([`${file.name}: not valid JSON`]);
+      return;
+    }
+    if (!doc?.workflow_id || !Array.isArray(doc.nodes) || !Array.isArray(doc.edges)) {
+      setProblems([`${file.name}: not a workflow document ` +
+                   "(needs workflow_id, nodes[], edges[])"]);
+      return;
+    }
+    if (workflows.some((w) => w.workflow_id === doc.workflow_id)) {
+      doc.workflow_id = `${doc.workflow_id}-imported-${Date.now() % 1000}`;
+    }
+    load(doc);
+    store.markDirty(true); // imported, not yet saved — Save persists it
+    try { // server-side validation without persisting
+      setProblems((await api.saveWorkflow(doc, true)).problems);
+    } catch (e: any) {
+      setProblems([String(e.message ?? e)]);
+    }
+  };
+
   const deleteWorkflow = async () => {
     if (!window.confirm(`Delete workflow "${store.workflowName}"? Past ` +
                         "executions keep their frozen snapshots.")) return;
@@ -177,6 +216,17 @@ export function EditorPage() {
                   store.markDirty(true);
                 }}>⊞ Template</button>
         <button onClick={deleteWorkflow} title="Delete workflow">🗑</button>
+        <button onClick={exportWorkflow}
+                title="Export this workflow as JSON">⤓</button>
+        <button onClick={() => fileInput.current?.click()}
+                title="Import a workflow JSON file">⤒</button>
+        <input ref={fileInput} type="file" accept=".json,application/json"
+               style={{ display: "none" }}
+               onChange={(e) => {
+                 const f = e.target.files?.[0];
+                 if (f) importWorkflow(f);
+                 e.target.value = "";
+               }} />
         <input className="wfname" value={store.workflowName}
                onChange={(e) => {
                  store.setWorkflowMeta(store.workflowId, e.target.value);
