@@ -164,6 +164,38 @@ def monitor(action: str, agent: str = "", config: str = "config.yaml"):
 
 
 @app.command()
+def pilot(config: str = "config.yaml",
+          approve_suite: bool = typer.Option(False, "--approve")):
+    """Seed the registry with the example pilot suite (support-ticket triage,
+    10 cases + rubric) so the UI's starter workflow runs out of the box."""
+    import json
+
+    from ascore.registry.sqlite_store import DuplicateVersionError
+    from ascore.schema.rubric import Rubric
+    from ascore.schema.testcase import TestCase, TestSuite
+
+    pilot_dir = Path(__file__).resolve().parents[2] / "examples" / "pilot_support_triage"
+    _, reg = _ctx(config)
+    rubric = Rubric.model_validate_json((pilot_dir / "rubric.json").read_text())
+    suite = TestSuite.model_validate_json((pilot_dir / "suite.json").read_text())
+    cases = [TestCase.model_validate(c)
+             for c in json.loads((pilot_dir / "cases.json").read_text())]
+    try:
+        reg.save_rubric(rubric)
+        reg.save_suite(suite, cases)
+        console.print(f"Seeded suite [bold]{suite.suite_id}[/] v{suite.version} "
+                      f"({len(cases)} cases) + rubric {rubric.rubric_id}.")
+    except DuplicateVersionError:
+        console.print(f"Suite {suite.suite_id} v{suite.version} already seeded.")
+    if approve_suite:
+        reg.approve_suite(suite.suite_id, suite.version)
+        console.print("[green]Approved[/] — runnable immediately.")
+    else:
+        console.print("Still DRAFT: approve in the UI (Resources → suites) or "
+                      f"`ascore approve {suite.suite_id}`.")
+
+
+@app.command()
 def ui(host: str = "127.0.0.1", port: int = 8700, config: str = "config.yaml"):
     """Launch the visual workflow builder (FastAPI + the React canvas)."""
     import uvicorn

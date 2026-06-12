@@ -53,6 +53,8 @@ export const api = {
   getWorkflow: (id: string) =>
     fetch(`/api/workflows/${id}`).then((r) =>
       json<{ workflow: WorkflowDoc; problems: string[] }>(r)),
+  deleteWorkflow: (id: string) =>
+    fetch(`/api/workflows/${id}`, { method: "DELETE" }),
   saveWorkflow: (wf: WorkflowDoc) =>
     fetch("/api/workflows", {
       method: "POST",

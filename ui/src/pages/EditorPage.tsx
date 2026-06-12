@@ -36,24 +36,58 @@ const STARTER = {
   ],
 };
 
+const slug = (s: string) =>
+  s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "workflow";
+
 export function EditorPage() {
   const store = useFlowStore();
   const [problems, setProblems] = useState<string[]>([]);
+  const [workflows, setWorkflows] = useState<any[]>([]);
   useExecutionEvents(store.exec.executionId);
+
+  const load = (doc: any) => {
+    const { nodes, edges } = fromWorkflowDoc(doc);
+    store.setWorkflowMeta(doc.workflow_id, doc.name);
+    store.setGraph(nodes, edges);
+    store.setExec(emptyExec());
+    store.select(null);
+    store.markDirty(false);
+    setProblems([]);
+  };
+
+  const openWorkflow = async (id: string) =>
+    load((await api.getWorkflow(id)).workflow);
 
   useEffect(() => {
     (async () => {
       store.setCatalog(await api.nodeTypes());
       const existing = await api.listWorkflows();
-      const doc = existing.length
+      setWorkflows(existing);
+      load(existing.length
         ? (await api.getWorkflow(existing[0].workflow_id)).workflow
-        : STARTER;
-      const { nodes, edges } = fromWorkflowDoc(doc as any);
-      store.setWorkflowMeta(doc.workflow_id, doc.name);
-      store.setGraph(nodes, edges);
+        : STARTER);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const newWorkflow = () => {
+    const name = window.prompt("Name for the new workflow:", "New benchmark");
+    if (!name) return;
+    let id = slug(name);
+    if (workflows.some((w) => w.workflow_id === id)) id = `${id}-${Date.now() % 1000}`;
+    load({ workflow_id: id, name, nodes: [], edges: [] });
+  };
+
+  const deleteWorkflow = async () => {
+    if (!window.confirm(`Delete workflow "${store.workflowName}"? Past ` +
+                        "executions keep their frozen snapshots.")) return;
+    await api.deleteWorkflow(store.workflowId);
+    const existing = await api.listWorkflows();
+    setWorkflows(existing);
+    load(existing.length
+      ? (await api.getWorkflow(existing[0].workflow_id)).workflow
+      : STARTER);
+  };
 
   const save = async () => {
     const doc = toWorkflowDoc(store.workflowId, store.workflowName,
@@ -61,6 +95,7 @@ export function EditorPage() {
     const r = await api.saveWorkflow(doc);
     setProblems(r.problems);
     store.markDirty(false);
+    setWorkflows(await api.listWorkflows());
     return r.problems;
   };
 
@@ -81,8 +116,29 @@ export function EditorPage() {
   return (
     <div className="page">
       <div className="topbar">
+        <select
+          value={workflows.some((w) => w.workflow_id === store.workflowId)
+            ? store.workflowId : ""}
+          onChange={(e) => e.target.value && openWorkflow(e.target.value)}
+          style={{ background: "var(--panel-2)", color: "var(--text)",
+                   border: "1px solid var(--border)", borderRadius: 7,
+                   padding: "5px 8px", maxWidth: 180 }}>
+          {!workflows.some((w) => w.workflow_id === store.workflowId) && (
+            <option value="">(unsaved) {store.workflowId}</option>
+          )}
+          {workflows.map((w) => (
+            <option key={w.workflow_id} value={w.workflow_id}>
+              {w.name} · {w.n_nodes} nodes
+            </option>
+          ))}
+        </select>
+        <button onClick={newWorkflow} title="New workflow">＋</button>
+        <button onClick={deleteWorkflow} title="Delete workflow">🗑</button>
         <input className="wfname" value={store.workflowName}
-               onChange={(e) => store.setWorkflowMeta(store.workflowId, e.target.value)} />
+               onChange={(e) => {
+                 store.setWorkflowMeta(store.workflowId, e.target.value);
+                 store.markDirty(true);
+               }} />
         {store.dirty && <span style={{ color: "var(--muted)" }}>●</span>}
         <span className="spacer" />
         {problems.length > 0 && (

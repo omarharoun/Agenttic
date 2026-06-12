@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { ReplayCanvas } from "../canvas/ReplayCanvas";
+import { useFlowStore } from "../store";
 
 const STATE_COLOR: Record<string, string> = {
   succeeded: "var(--ok)", failed: "var(--fail)", cancelled: "var(--fail)",
@@ -10,12 +12,16 @@ const STATE_COLOR: Record<string, string> = {
 export function ExecutionsPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [detail, setDetail] = useState<any | null>(null);
+  const catalog = useFlowStore((s) => s.catalog);
+  const setCatalog = useFlowStore((s) => s.setCatalog);
 
   const refresh = () => api.listExecutions().then(setRows);
   useEffect(() => {
+    if (!Object.keys(catalog).length) api.nodeTypes().then(setCatalog);
     refresh();
     const t = setInterval(refresh, 3000);
     return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -55,8 +61,11 @@ export function ExecutionsPage() {
         {detail && (
           <>
             <h2 style={{ marginTop: 22 }}>
-              {detail.execution_id} — node outputs
+              {detail.execution_id} <span style={{
+                color: STATE_COLOR[detail.status] }}>({detail.status})</span>
             </h2>
+            <ReplayCanvas execution={detail} />
+            <h2 style={{ marginTop: 18 }}>node outputs</h2>
             <pre className="doc">{JSON.stringify(detail.node_outputs, null, 2)}</pre>
           </>
         )}
