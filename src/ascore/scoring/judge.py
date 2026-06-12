@@ -9,6 +9,13 @@ Design rules (SPEC.md Step 5):
 * Judge model must differ from the agent-under-test model (Hard Rule 4).
 * Output is strict JSON ``{"score": <allowed value>, "rationale": "..."}``;
   one retry on parse/validation failure, then ``JudgeError``.
+
+Tiered judging (advisor tool, beta ``advisor-tool-2026-03-01``):
+* When ``advisor_model`` is set, the judge runs on a cheaper executor model
+  and may consult the stronger advisor model mid-generation for borderline
+  judgments only. Both the executor AND the advisor must differ from the
+  agent-under-test model (Hard Rule 4 applies to every model that shapes a
+  score). Use :func:`make_judge` to pick the right configuration per run.
 """
 
 from __future__ import annotations
@@ -32,6 +39,18 @@ SYSTEM_PROMPT = (
     "Judge ONLY the single criterion given. Respond with ONLY a JSON object "
     '{"score": <number>, "rationale": "<one or two sentences>"} and nothing else.'
 )
+
+ADVISOR_SYSTEM_PROMPT = (
+    "You are a strict, consistent evaluation judge for AI agent outputs. "
+    "Judge ONLY the single criterion given. If and only if the judgment is "
+    "genuinely borderline against the anchors, consult the `advisor` tool "
+    "once before deciding; for clear-cut cases decide directly. Your final "
+    'message must be ONLY a JSON object {"score": <number>, "rationale": '
+    '"<one or two sentences>"} and nothing else.'
+)
+
+ADVISOR_BETA = "advisor-tool-2026-03-01"
+_MAX_PAUSE_CONTINUATIONS = 5
 
 _TRUNC = 400  # max chars per span field in compressed trajectories
 
@@ -82,10 +101,18 @@ class LLMJudge:
         client=None,
         max_retries: int = 1,
         max_tokens: int = 300,
+        advisor_model: str | None = None,
+        advisor_max_tokens: int = 2048,
+        advisor_max_uses: int = 1,
     ):
         if model == agent_model:
             raise ValueError(
                 f"judge model must differ from agent model ({model!r}) — Hard Rule 4"
+            )
+        if advisor_model is not None and advisor_model == agent_model:
+            raise ValueError(
+                f"advisor model must differ from agent model ({advisor_model!r})"
+                " — Hard Rule 4 applies to every model that shapes a score"
             )
         if client is None:
             import anthropic
@@ -94,6 +121,9 @@ class LLMJudge:
         self.model = model
         self.max_retries = max_retries
         self.max_tokens = max_tokens
+        self.advisor_model = advisor_model
+        self.advisor_max_tokens = advisor_max_tokens
+        self.advisor_max_uses = advisor_max_uses
 
     def score_criterion(
         self, criterion: Criterion, trace: Trace, tc: TestCase
@@ -103,15 +133,13 @@ class LLMJudge:
         prompt = build_judge_prompt(criterion, trace, tc)
         last_err = "no attempts made"
         for _ in range(self.max_retries + 1):
-            resp = self.client.messages.create(
-                model=self.model,
-                max_tokens=self.max_tokens,
-                system=SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            raw = "".join(
+            resp = self._create(prompt)
+            texts = [
                 b.text for b in resp.content if getattr(b, "type", "") == "text"
-            )
+            ]
+            # Advisor mode: the executor may emit preamble text before the
+            # advisor call; only the final text block holds the JSON verdict.
+            raw = (texts[-1] if texts else "") if self.advisor_model else "".join(texts)
             try:
                 score, rationale = self._parse(raw, criterion.scale)
             except (json.JSONDecodeError, KeyError, ValueError) as exc:
@@ -128,6 +156,39 @@ class LLMJudge:
             f"no valid judge output after {self.max_retries + 1} attempts ({last_err})"
         )
 
+    def _create(self, prompt: str):
+        if self.advisor_model is None:
+            return self.client.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        messages = [{"role": "user", "content": prompt}]
+        for _ in range(_MAX_PAUSE_CONTINUATIONS + 1):
+            resp = self.client.beta.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                system=ADVISOR_SYSTEM_PROMPT,
+                messages=messages,
+                betas=[ADVISOR_BETA],
+                tools=[{
+                    "type": "advisor_20260301",
+                    "name": "advisor",
+                    "model": self.advisor_model,
+                    "max_uses": self.advisor_max_uses,
+                    "max_tokens": self.advisor_max_tokens,
+                }],
+            )
+            if getattr(resp, "stop_reason", None) != "pause_turn":
+                return resp
+            # dangling advisor call: re-send so the server resumes it
+            messages = messages + [{"role": "assistant", "content": resp.content}]
+        raise JudgeError(
+            f"advisor call did not complete after {_MAX_PAUSE_CONTINUATIONS} "
+            "pause_turn continuations"
+        )
+
     @staticmethod
     def _parse(raw: str, scale: str) -> tuple[float, str]:
         data = json.loads(raw.strip())
@@ -137,3 +198,24 @@ class LLMJudge:
                 f"score {score} not in allowed {scale} values {ALLOWED_SCORES[scale]}"
             )
         return score, str(data.get("rationale", ""))
+
+
+def make_judge(cfg: dict, agent_model: str, client=None) -> LLMJudge:
+    """Pick the judge configuration for one run, respecting Hard Rule 4.
+
+    Preferred: tiered judge — ``judge_executor`` (cheap) consulting
+    ``judge_strong`` as an advisor on borderline calls. Falls back to a plain
+    ``judge_strong`` judge whenever the executor or advisor would coincide
+    with the agent-under-test model (e.g. the Sonnet reference agent).
+    """
+    executor = cfg["models"].get("judge_executor")
+    strong = cfg["models"]["judge_strong"]
+    if executor and executor != agent_model and strong != agent_model:
+        return LLMJudge(
+            model=executor,
+            agent_model=agent_model,
+            client=client,
+            advisor_model=strong,
+            advisor_max_tokens=cfg.get("scoring", {}).get("advisor_max_tokens", 2048),
+        )
+    return LLMJudge(model=strong, agent_model=agent_model, client=client)
