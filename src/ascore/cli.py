@@ -195,11 +195,38 @@ def pilot(config: str = "config.yaml",
                       f"`ascore approve {suite.suite_id}`.")
 
 
+def _resolve_ui_binding(cfg: dict, host: str, port: int, lan: bool) -> tuple[str, int]:
+    """Precedence: --lan > --host/--port flags > config.yaml ui section >
+    loopback defaults."""
+    ui_cfg = cfg.get("ui", {}) or {}
+    resolved_host = "0.0.0.0" if lan else (host or str(ui_cfg.get("host", "127.0.0.1")))
+    resolved_port = port or int(ui_cfg.get("port", 8700))
+    return resolved_host, resolved_port
+
+
+def _lan_ip() -> str | None:
+    """Best-effort primary LAN address (no packets actually sent)."""
+    import socket
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("10.255.255.255", 1))
+            return s.getsockname()[0]
+    except OSError:
+        return None
+
+
 @app.command()
-def ui(host: str = "127.0.0.1", port: int = 8700, config: str = "config.yaml"):
+def ui(host: str = "", port: int = 0,
+       lan: bool = typer.Option(False, "--lan",
+                                help="Bind 0.0.0.0 so other devices on your "
+                                     "network can reach the UI."),
+       config: str = "config.yaml"):
     """Launch the visual workflow builder (FastAPI + the React canvas)."""
     import uvicorn
     from ascore.server.app import UI_DIST, create_app
+
+    cfg = load_config(config)
+    host, port = _resolve_ui_binding(cfg, host, port, lan)
 
     if not UI_DIST.is_dir():
         console.print(
@@ -208,6 +235,15 @@ def ui(host: str = "127.0.0.1", port: int = 8700, config: str = "config.yaml"):
             "build`, or develop with `npm --prefix ui run dev` (proxies /api "
             f"to http://{host}:{port}).")
     console.print(f"Agenttic UI on [bold]http://{host}:{port}[/]")
+    if host != "127.0.0.1":
+        ip = _lan_ip()
+        if ip:
+            console.print(f"LAN: [bold]http://{ip}:{port}[/]")
+        console.print(
+            "[yellow]Warning:[/] the API has no authentication — anyone on "
+            "this network can edit workflows, approve suites, and trigger "
+            "runs that spend your Anthropic credits. Use only on a trusted "
+            "network.")
     uvicorn.run(create_app(config), host=host, port=port, log_level="info")
 
 

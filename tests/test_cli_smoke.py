@@ -25,3 +25,14 @@ def test_pilot_seed_command(tmp_path):
     # idempotent re-run
     again = CliRunner().invoke(app, ["pilot", "--config", str(cfg)])
     assert again.exit_code == 0 and "already seeded" in again.output
+
+
+def test_ui_binding_resolution():
+    from ascore.cli import _resolve_ui_binding
+    cfg = {"ui": {"host": "127.0.0.1", "port": 8700}}
+    assert _resolve_ui_binding(cfg, "", 0, lan=False) == ("127.0.0.1", 8700)
+    assert _resolve_ui_binding(cfg, "", 0, lan=True) == ("0.0.0.0", 8700)
+    assert _resolve_ui_binding(cfg, "192.168.1.5", 9000, lan=False) == ("192.168.1.5", 9000)
+    assert _resolve_ui_binding({}, "", 0, lan=False) == ("127.0.0.1", 8700)  # no ui section
+    cfg_lan = {"ui": {"host": "0.0.0.0", "port": 8800}}  # persistent via config
+    assert _resolve_ui_binding(cfg_lan, "", 0, lan=False) == ("0.0.0.0", 8800)
