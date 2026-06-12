@@ -163,5 +163,21 @@ def monitor(action: str, agent: str = "", config: str = "config.yaml"):
     console.print("No drift on record." if not reg.reeval_requests(agent) else "")
 
 
+@app.command()
+def ui(host: str = "127.0.0.1", port: int = 8700, config: str = "config.yaml"):
+    """Launch the visual workflow builder (FastAPI + the React canvas)."""
+    import uvicorn
+    from ascore.server.app import UI_DIST, create_app
+
+    if not UI_DIST.is_dir():
+        console.print(
+            "[yellow]ui/dist not found — running API-only.[/] Build the "
+            "frontend with `npm --prefix ui install && npm --prefix ui run "
+            "build`, or develop with `npm --prefix ui run dev` (proxies /api "
+            f"to http://{host}:{port}).")
+    console.print(f"Agenttic UI on [bold]http://{host}:{port}[/]")
+    uvicorn.run(create_app(config), host=host, port=port, log_level="info")
+
+
 if __name__ == "__main__":
     app()
