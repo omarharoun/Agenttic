@@ -64,6 +64,7 @@ class HumanGateConfig(BaseModel):
 class AgentConfig(BaseModel):
     variant: Literal["reference", "blackbox", "managed"] = "reference"
     agent_id: str = "agent-under-test"
+    system_prompt: str = ""     # reference variant: the DUT's task instructions
     url: str = ""
     managed_agent_id: str = ""
     environment_id: str = ""
@@ -163,7 +164,8 @@ async def _run_run_suite(ctx: NodeContext, cfg: RunSuiteConfig,
         url=agent_ref.get("url", ""),
         managed_agent_id=agent_ref.get("managed_agent_id", ""),
         environment_id=agent_ref.get("environment_id", ""),
-        client=ctx.clients.get("agent"))
+        client=ctx.clients.get("agent"),
+        system_prompt=agent_ref.get("system_prompt", ""))
     from ascore.harness.runner import SuiteNotApprovedError
     try:
         suite, cases, traces = await ops.run_suite_op(

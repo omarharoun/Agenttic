@@ -50,16 +50,18 @@ def approve(suite_id: str, version: int = 1, config: str = "config.yaml"):
 @app.command()
 def run(agent: str, suite: str, url: str = "",
         managed_agent_id: str = "", environment_id: str = "",
-        config: str = "config.yaml"):
-    """Run a suite against an agent: the reference agent, --url for
-    black-box HTTP, or --managed-agent-id/--environment-id for a deployed
-    Anthropic Managed Agent (see `ascore deploy`)."""
+        system_prompt: str = "", config: str = "config.yaml"):
+    """Run a suite against an agent: the reference agent (--system-prompt to
+    set its task instructions), --url for black-box HTTP, or
+    --managed-agent-id/--environment-id for a deployed Anthropic Managed
+    Agent (see `ascore deploy`)."""
     cfg, reg = _ctx(config)
     variant = "managed" if managed_agent_id else ("blackbox" if url else "reference")
     try:
         adapter = ops.build_adapter(cfg, variant=variant, agent_id=agent, url=url,
                                     managed_agent_id=managed_agent_id,
-                                    environment_id=environment_id)
+                                    environment_id=environment_id,
+                                    system_prompt=system_prompt)
     except ValueError as exc:
         raise typer.BadParameter(str(exc))
     sc = asyncio.run(ops.run_and_score_op(cfg, reg, adapter, suite))

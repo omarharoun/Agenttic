@@ -89,6 +89,7 @@ class AnthropicSimpleAgent(AgentAdapter):
         pricing_per_mtok: dict | None = None,
         client=None,
         agent_id: str = "anthropic-simple-ref",
+        system_prompt: str | None = None,
     ):
         if client is None:  # real client only constructed when not injected (tests inject a fake)
             import anthropic
@@ -99,6 +100,10 @@ class AnthropicSimpleAgent(AgentAdapter):
         self.max_steps = max_steps
         self.pricing = pricing_per_mtok or {"input": 3.0, "output": 15.0}
         self.agent_id = agent_id
+        # The DUT's task instructions ARE part of the configuration under
+        # test — they flow into describe()/config_hash so a prompt tweak is
+        # attributable across scorecards.
+        self.system_prompt = system_prompt or SYSTEM_PROMPT
 
     # -- AgentAdapter interface -------------------------------------------
 
@@ -106,7 +111,7 @@ class AnthropicSimpleAgent(AgentAdapter):
         return {
             "adapter": "AnthropicSimpleAgent",
             "model": self.model,
-            "system_prompt": SYSTEM_PROMPT,
+            "system_prompt": self.system_prompt,
             "tools": [t["name"] for t in TOOLS],
             "max_steps": self.max_steps,
         }
@@ -122,7 +127,7 @@ class AnthropicSimpleAgent(AgentAdapter):
             resp = self.client.messages.create(
                 model=self.model,
                 max_tokens=1024,
-                system=SYSTEM_PROMPT,
+                system=self.system_prompt,
                 tools=TOOLS,
                 messages=list(messages),
             )

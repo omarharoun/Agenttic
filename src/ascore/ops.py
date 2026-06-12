@@ -45,8 +45,11 @@ def build_adapter(
     managed_agent_id: str = "",
     environment_id: str = "",
     client=None,
+    system_prompt: str = "",
 ) -> AgentAdapter:
-    """Instantiate the adapter for one agent under test."""
+    """Instantiate the adapter for one agent under test. ``system_prompt``
+    overrides the reference agent's task instructions (it is part of the
+    configuration under test and feeds the trace config hash)."""
     if variant == "managed":
         if not environment_id:
             environment_id = cfg.get("managed", {}).get("environment_id", "")
@@ -63,7 +66,8 @@ def build_adapter(
     kw = {"client": client} if client is not None else {}
     return AnthropicSimpleAgent(model=cfg["models"]["agent_default"],
                                 kb_path="kb.json", agent_id=agent_id,
-                                max_steps=cfg["harness"]["max_steps"], **kw)
+                                max_steps=cfg["harness"]["max_steps"],
+                                system_prompt=system_prompt or None, **kw)
 
 
 def agent_model_of(adapter: AgentAdapter) -> str:
