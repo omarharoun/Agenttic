@@ -168,7 +168,8 @@ class BenchmarkGenerator:
         lines = [
             f"# Review: suite `{suite.suite_id}` v{suite.version}",
             "",
-            f"Status: **DRAFT — not runnable** until `ascore approve {suite.suite_id}`.",
+            f"Status: **DRAFT — not runnable** until approved — UI: Resources → suites "
+            f"→ approve, or CLI: `uv run ascore approve {suite.suite_id}`.",
             "",
             f"## Tasks ({len(tasks)})",
         ]

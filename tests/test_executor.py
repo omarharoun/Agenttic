@@ -270,3 +270,20 @@ class TestEventBusReplay:
             tail = [e async for e in bus2.subscribe(eid, after=seen[-3]["seq"])]
             assert len(tail) == 2
         asyncio.run(main())
+
+
+class TestUnapprovedSuiteHint:
+    def test_run_suite_node_fails_with_canvas_hint(self, tmp_path):
+        async def main():
+            reg, store, mgr = make_manager(tmp_path)
+            suite_id = load_pilot(reg, approved=False)
+            eid = mgr.start(eval_workflow(suite_id))  # no gate wired
+            await mgr._handles[eid].task
+            ex = store.get_execution(eid)
+            assert ex["status"] == "failed"
+            failed = [e for e in store.events_after(eid)
+                      if e["type"] == "node_failed"][0]
+            msg = failed["data"]["error"]
+            assert "Human Gate" in msg and "Resources" in msg
+            assert "ascore approve" not in msg  # no CLI hint in the UI
+        asyncio.run(main())

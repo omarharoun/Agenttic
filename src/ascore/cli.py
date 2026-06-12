@@ -36,7 +36,7 @@ def generate(business_doc: Path, suite_id: str, config: str = "config.yaml"):
     console.print(f"[yellow]DRAFT[/] suite {suite.suite_id} v{suite.version} "
                   f"({len(suite.test_ids)} cases). Review "
                   f"{cfg['paths']['review_dir']}/{suite_id}.md then run "
-                  f"`ascore approve {suite_id}`.")
+                  f"`uv run ascore approve {suite_id}`.")
 
 
 @app.command()
@@ -84,7 +84,7 @@ def deploy(workflow: Path, env_name: str = "ascore-workflows",
                   f"[bold]{result['agent_id']}[/] v{result['version']} "
                   f"({result['name']}) in env {result['environment_id']}")
     console.print(
-        f"Run a suite against it:\n  ascore run --agent {result['name']} "
+        f"Run a suite against it:\n  uv run ascore run --agent {result['name']} "
         f"--suite <suite_id> --managed-agent-id {result['agent_id']} "
         f"--environment-id {result['environment_id']}")
 
@@ -192,7 +192,7 @@ def pilot(config: str = "config.yaml",
         console.print("[green]Approved[/] — runnable immediately.")
     else:
         console.print("Still DRAFT: approve in the UI (Resources → suites) or "
-                      f"`ascore approve {suite.suite_id}`.")
+                      f"`uv run ascore approve {suite.suite_id}`.")
 
 
 def _resolve_ui_binding(cfg: dict, host: str, port: int, lan: bool) -> tuple[str, int]:
