@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { ReplayCanvas } from "../canvas/ReplayCanvas";
+import { ResultsPanel } from "../panels/ResultsPanel";
 import { useFlowStore } from "../store";
 
 const STATE_COLOR: Record<string, string> = {
@@ -12,6 +13,12 @@ const STATE_COLOR: Record<string, string> = {
 export function ExecutionsPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [detail, setDetail] = useState<any | null>(null);
+  const [results, setResults] = useState<any | null>(null);
+
+  const inspect = (executionId: string) => {
+    api.getExecution(executionId).then(setDetail);
+    api.executionResults(executionId).then(setResults).catch(() => setResults(null));
+  };
   const catalog = useFlowStore((s) => s.catalog);
   const setCatalog = useFlowStore((s) => s.setCatalog);
 
@@ -43,8 +50,7 @@ export function ExecutionsPage() {
                 <td>{Object.entries(r.node_states as Record<string, string>)
                   .map(([n, s]) => `${n}:${s}`).join("  ")}</td>
                 <td>
-                  <button onClick={() =>
-                    api.getExecution(r.execution_id).then(setDetail)}>
+                  <button onClick={() => inspect(r.execution_id)}>
                     inspect
                   </button>
                   {r.status === "waiting_approval" && (
@@ -65,6 +71,11 @@ export function ExecutionsPage() {
                 color: STATE_COLOR[detail.status] }}>({detail.status})</span>
             </h2>
             <ReplayCanvas execution={detail} />
+            {results && (results.cases?.length || results.scorecards?.length) ? (
+              <div style={{ maxWidth: 760, marginTop: 14 }}>
+                <ResultsPanel results={results} />
+              </div>
+            ) : null}
             <h2 style={{ marginTop: 18 }}>node outputs</h2>
             <pre className="doc">{JSON.stringify(detail.node_outputs, null, 2)}</pre>
           </>

@@ -1,19 +1,21 @@
 import { api } from "../api";
 import { useFlowStore } from "../store";
 import { ExecutionLog } from "./ExecutionLog";
+import { ResultsPanel } from "./ResultsPanel";
 import { SchemaForm } from "./SchemaForm";
 
-export function ConfigPanel() {
+export function ConfigPanel({ results }: { results?: any }) {
   const { selectedNodeId, nodes, catalog, updateConfig, exec, setGraph,
           markDirty } = useFlowStore();
   const node = nodes.find((n) => n.id === selectedNodeId);
   const spec = node ? catalog[(node.data as any).ntype] : null;
   const nodeState = node ? exec.nodeStates[node.id] : undefined;
+  const hasResults = results && (results.cases?.length || results.scorecards?.length);
 
   return (
     <div className="side-panel">
       <div className="panel-head">
-        {spec ? spec.title : "Workflow"}
+        {spec ? spec.title : hasResults && !node ? "Results" : "Workflow"}
         {node && (
           <button onClick={() => {
             const s = useFlowStore.getState();
@@ -24,11 +26,12 @@ export function ConfigPanel() {
         )}
       </div>
       <div className="panel-body">
-        {!node && (
+        {!node && hasResults && <ResultsPanel results={results} />}
+        {!node && !hasResults && (
           <p style={{ color: "var(--muted)" }}>
             Drag nodes from the palette onto the canvas, wire matching ports
             (kinds must agree), then hit <b>Run</b>. Select a node to
-            configure it.
+            configure it — results appear here when the run finishes.
           </p>
         )}
         {node && spec && (

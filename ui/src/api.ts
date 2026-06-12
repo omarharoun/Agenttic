@@ -66,6 +66,8 @@ export const api = {
       (r) => json<{ execution_id: string }>(r)),
   getExecution: (id: string) =>
     fetch(`/api/executions/${id}`).then((r) => json<any>(r)),
+  executionResults: (id: string) =>
+    fetch(`/api/executions/${id}/results`).then((r) => json<any>(r)),
   listExecutions: () => fetch("/api/executions").then((r) => json<any[]>(r)),
   approve: (executionId: string) =>
     fetch(`/api/executions/${executionId}/approve`, { method: "POST" }).then(

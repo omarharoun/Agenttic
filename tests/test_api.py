@@ -252,3 +252,44 @@ class TestImportDryRun:
         r = client.post("/api/workflows", json=wf).json()
         assert r["saved"] is True
         assert client.get("/api/workflows/imported-wf").status_code == 200
+
+
+class TestExecutionResults:
+    def test_joined_scoreboard_with_predictions(self, client):
+        wf = eval_workflow("pilot-support-triage").model_dump()
+        client.post("/api/workflows", json=wf)
+        eid = client.post("/api/workflows/wf-eval/executions").json()["execution_id"]
+        poll(client, eid, "succeeded")
+        r = client.get(f"/api/executions/{eid}/results").json()
+        assert r["status"] == "succeeded"
+        (sc,) = r["scorecards"]
+        assert sc["task_success_rate"] == pytest.approx(0.8)
+        assert "tone" in sc["per_criterion_means"]
+        cases = r["cases"]
+        assert len(cases) == 10
+        by_id = {c["test_id"]: c for c in cases}
+        # prediction (agent's actual answer) and expected ground truth present
+        assert by_id["triage-000"]["prediction"] == "billing"
+        assert by_id["triage-000"]["expected"]["final_output"] == "billing"
+        assert by_id["triage-000"]["passed"] is True
+        # the adversarial WRONGCASE misroutes: prediction != expected, failed
+        wrong = by_id["triage-008"]
+        assert wrong["passed"] is False
+        assert wrong["prediction"] != wrong["expected"]["final_output"]
+        # per-criterion detail with judge rationale
+        tone = next(c for c in cases[0]["criteria"] if c["criterion_id"] == "tone")
+        assert tone["scorer"] == "judge" and tone["rationale"]
+
+    def test_results_for_unscored_execution_is_empty(self, client):
+        _make_unapproved_suite(client.reg, "gated")
+        wf = eval_workflow("gated", with_gate=True)
+        for n in wf.nodes:
+            if n.node_id == "src":
+                n.config["value"] = {"suite_id": "gated", "version": 1,
+                                     "approved": False}
+        client.post("/api/workflows", json=wf.model_dump())
+        eid = client.post("/api/workflows/wf-eval/executions").json()["execution_id"]
+        poll(client, eid, "waiting_approval")
+        r = client.get(f"/api/executions/{eid}/results").json()
+        assert r == {"status": "waiting_approval", "scorecards": [], "cases": []}
+        client.post(f"/api/executions/{eid}/cancel")

@@ -78,7 +78,19 @@ export function EditorPage() {
   const store = useFlowStore();
   const [problems, setProblems] = useState<string[]>([]);
   const [workflows, setWorkflows] = useState<any[]>([]);
+  const [results, setResults] = useState<any | null>(null);
   useExecutionEvents(store.exec.executionId);
+
+  // fetch the joined scoreboard once the run reaches a terminal state
+  useEffect(() => {
+    const terminal = ["succeeded", "failed", "cancelled"];
+    if (store.exec.executionId && terminal.includes(store.exec.status)) {
+      api.executionResults(store.exec.executionId).then(setResults)
+        .catch(() => setResults(null));
+      store.select(null); // surface the results panel
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store.exec.status, store.exec.executionId]);
 
   const load = (doc: any) => {
     const { nodes, edges } = fromWorkflowDoc(doc);
@@ -88,6 +100,7 @@ export function EditorPage() {
     store.select(null);
     store.markDirty(false);
     setProblems([]);
+    setResults(null);
   };
 
   const openWorkflow = async (id: string) =>
@@ -177,6 +190,7 @@ export function EditorPage() {
     const probs = await save();
     if (probs.length) return;
     store.setExec(emptyExec());
+    setResults(null);
     try {
       const { execution_id } = await api.startExecution(store.workflowId);
       store.setExec({ ...emptyExec(), executionId: execution_id, status: "running" });
@@ -266,7 +280,7 @@ export function EditorPage() {
         <ReactFlowProvider>
           <Canvas />
         </ReactFlowProvider>
-        <ConfigPanel />
+        <ConfigPanel results={results} />
       </div>
     </div>
   );
