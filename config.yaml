@@ -1,0 +1,21 @@
+# All model names, thresholds, sample rates live here (Hard Rule 7)
+models:
+  agent_default: claude-sonnet-4-6        # reference agent (Step 2)
+  judge_strong: claude-opus-4-8           # batch judge (Step 5) — must differ from agent
+  judge_light: claude-haiku-4-5-20251001  # live-path judge (Step 9)
+  generator: claude-opus-4-8              # benchmark generator (Step 8)
+harness:
+  timeout_seconds: 120
+  max_steps: 10
+  max_parallel: 5
+  transport_retries: 2
+scoring:
+  calibration_threshold: 0.8
+live:
+  sample_rate: 0.05
+  drift_threshold: 0.15
+  drift_window_runs: 50
+paths:
+  registry_db: ascore.db
+  review_dir: review/
+  calibration_dir: calibration/

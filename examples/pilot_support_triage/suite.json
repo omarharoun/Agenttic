@@ -1,0 +1,18 @@
+{
+  "suite_id": "pilot-support-triage",
+  "version": 1,
+  "business_context": "Support Operations: triage inbound tickets to billing, technical, or general using KB routing rules.",
+  "test_ids": [
+    "triage-000",
+    "triage-001",
+    "triage-002",
+    "triage-003",
+    "triage-004",
+    "triage-005",
+    "triage-006",
+    "triage-007",
+    "triage-008",
+    "triage-009"
+  ],
+  "approved": false
+}
