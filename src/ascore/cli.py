@@ -24,7 +24,7 @@ from ascore.reporting.scorecard_report import render_markdown
 from ascore.schema.scorecard import Scorecard
 from ascore.scoring.calibration import calibration_report, load_labels
 from ascore.scoring.engine import score_run
-from ascore.scoring.judge import LLMJudge
+from ascore.scoring.judge import make_judge
 
 app = typer.Typer(help="Agentic scoring & benchmarking platform")
 console = Console()
@@ -65,8 +65,11 @@ def _run_and_score(cfg, reg, adapter, suite_id, version=None) -> Scorecard:
                       max_parallel=h["max_parallel"],
                       transport_retries=h["transport_retries"])))
     rubric = reg.get_rubric(cases[0].rubric_id)
-    judge = LLMJudge(model=cfg["models"]["judge_strong"],
-                     agent_model=cfg["models"]["agent_default"])
+    # Black-box adapters expose no model; the tiered (advisor) judge always
+    # applies to them. Glass-box adapters report theirs so Hard Rule 4 can
+    # force the fallback to a plain judge_strong judge.
+    agent_model = getattr(adapter, "model", None) or f"blackbox:{adapter.agent_id}"
+    judge = make_judge(cfg, agent_model)
     runs = [score_run(t, c, reg.get_rubric(c.rubric_id), judge)
             for t, c in zip(traces, cases)]
     sc = Scorecard.aggregate(
