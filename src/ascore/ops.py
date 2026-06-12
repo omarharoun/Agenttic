@@ -159,12 +159,15 @@ async def run_and_score_op(
 
 
 def generate_op(cfg: dict, reg: Registry, business_doc: str, suite_id: str,
-                client=None) -> TestSuite:
+                client=None, on_progress: ProgressFn | None = None,
+                cases_per_task: int = 5) -> TestSuite:
     """Generator step: business doc → DRAFT suite + review file (human gate)."""
     kw = {"client": client} if client is not None else {}
     gen = BenchmarkGenerator(model=cfg["models"]["generator"], **kw)
     return gen.generate_suite(business_doc, suite_id=suite_id, registry=reg,
-                              review_dir=cfg["paths"]["review_dir"])
+                              review_dir=cfg["paths"]["review_dir"],
+                              on_progress=on_progress,
+                              cases_per_task=cases_per_task)
 
 
 def deploy_op(spec: dict, env_name: str = "ascore-workflows", client=None) -> dict:

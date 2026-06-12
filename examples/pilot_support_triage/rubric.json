@@ -48,7 +48,7 @@
         "pass": "States the queue plainly, e.g. 'billing'. No editorializing about the customer.",
         "fail": "Mocks the customer or pads the answer with irrelevant chatter."
       },
-      "tags": []
+      "tags": ["live"]
     }
   ],
   "weights": {

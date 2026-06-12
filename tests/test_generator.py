@@ -120,3 +120,20 @@ class TestApprovalGateEndToEnd:
         reg.approve_suite("support-v1", 1)
         suite, _ = reg.get_suite("support-v1")
         assert suite.approved is True
+
+
+class TestGeneratorProgress:
+    def test_stage_events_emitted_in_order(self, tmp_path):
+        reg = Registry(tmp_path / "db.sqlite")
+        events = []
+        make_generator(SCRIPT).generate_suite(
+            JOB_DOC, suite_id="support-v1", registry=reg,
+            review_dir=tmp_path / "review",
+            on_progress=lambda t, d: events.append((t, d)))
+        types = [t for t, _ in events]
+        assert types == ["tasks_extracted",
+                         "criteria_defined", "cases_generated",
+                         "criteria_defined", "cases_generated"]
+        assert events[0][1]["tasks"] == ["triage", "policy_qa"]
+        assert events[2][1] == {"index": 0, "total": 2, "task": "triage",
+                                "n_cases": 5}

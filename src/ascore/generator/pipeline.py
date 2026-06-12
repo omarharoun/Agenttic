@@ -128,18 +128,30 @@ class BenchmarkGenerator:
         registry: Registry,
         review_dir: str | Path = "review",
         cases_per_task: int = 5,
+        on_progress=None,
     ) -> TestSuite:
         """Run all stages, persist the DRAFT suite (approved=False), and write
-        the human-review file. The suite cannot run until `ascore approve`."""
+        the human-review file. The suite cannot run until `ascore approve`.
+        ``on_progress(event_type, data)`` reports each LLM stage as it lands."""
+        emit = on_progress or (lambda t, d: None)
         tasks = self.extract_tasks(business_doc)
+        emit("tasks_extracted", {"total": len(tasks),
+                                 "tasks": [t["slug"] for t in tasks]})
         all_cases: list[TestCase] = []
         rubrics: list[Rubric] = []
-        for task in tasks:
+        for i, task in enumerate(tasks):
             rubric = self.define_criteria(task, rubric_id=f"{suite_id}-{task['slug']}")
             registry.save_rubric(rubric)
             rubrics.append(rubric)
-            all_cases += self.generate_cases(task, suite_id=suite_id,
-                                             rubric=rubric, n=cases_per_task)
+            emit("criteria_defined", {"index": i, "total": len(tasks),
+                                      "task": task["slug"],
+                                      "n_criteria": len(rubric.criteria)})
+            new_cases = self.generate_cases(task, suite_id=suite_id,
+                                            rubric=rubric, n=cases_per_task)
+            all_cases += new_cases
+            emit("cases_generated", {"index": i, "total": len(tasks),
+                                     "task": task["slug"],
+                                     "n_cases": len(new_cases)})
         suite = TestSuite(
             suite_id=suite_id, version=1,
             business_context=business_doc[:500],

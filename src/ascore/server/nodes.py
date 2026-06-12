@@ -108,9 +108,19 @@ async def _run_business_doc(ctx: NodeContext, cfg: BusinessDocConfig,
 
 async def _run_generator(ctx: NodeContext, cfg: GeneratorConfig,
                          inputs: dict) -> dict:
+    def progress(t: str, d: dict) -> None:  # runs in the worker thread; emit is thread-safe
+        msgs = {
+            "tasks_extracted": f"extracted {d.get('total')} tasks",
+            "criteria_defined": f"criteria for {d.get('task')} "
+                                f"({d.get('n_criteria')} criteria)",
+            "cases_generated": f"{d.get('n_cases')} cases for {d.get('task')} "
+                               f"[{d.get('index', 0) + 1}/{d.get('total')}]",
+        }
+        ctx.emit("node_progress", {"event": t, "message": msgs.get(t, t), **d})
+
     suite = await asyncio.to_thread(
         ops.generate_op, ctx.cfg, ctx.reg, inputs["doc"], cfg.suite_id,
-        ctx.clients.get("generator"))
+        ctx.clients.get("generator"), progress, cfg.cases_per_task)
     ctx.emit("node_progress", {"message": f"draft suite {suite.suite_id} "
                                           f"v{suite.version}: {len(suite.test_ids)} cases"})
     return {"suite": {"suite_id": suite.suite_id, "version": suite.version,
