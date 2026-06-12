@@ -17,7 +17,7 @@ import asyncio
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Protocol
+from typing import Callable, Protocol
 
 from ascore.adapters.base import AgentAdapter
 from ascore.schema.testcase import TestCase, TestSuite
@@ -70,8 +70,13 @@ async def run_suite(
     store: TraceStore,
     config: HarnessConfig = HarnessConfig(),
     transport_errors: tuple[type[Exception], ...] = (ConnectionError, OSError),
+    on_event: Callable[[str, dict], None] | None = None,
 ) -> list[Trace]:
-    """Run every test case; return traces in test-case order."""
+    """Run every test case; return traces in test-case order.
+
+    ``on_event(event_type, data)`` is called from the event loop (never from
+    worker threads) with ``case_started`` / ``case_finished`` events so a UI
+    can show live progress. It must be fast and must not raise."""
     if not suite.approved:
         raise SuiteNotApprovedError(
             f"suite {suite.suite_id} v{suite.version} is not approved; "
@@ -82,9 +87,13 @@ async def run_suite(
         raise ValueError(f"test cases not in suite {suite.suite_id}: {unknown}")
 
     sem = asyncio.Semaphore(config.max_parallel)
+    total = len(test_cases)
 
-    async def one(tc: TestCase) -> Trace:
+    async def one(index: int, tc: TestCase) -> Trace:
         async with sem:
+            if on_event:
+                on_event("case_started",
+                         {"index": index, "total": total, "test_id": tc.test_id})
             trace: Trace | None = None
             for attempt in range(config.transport_retries + 1):
                 try:
@@ -112,6 +121,13 @@ async def run_suite(
                 break
             assert trace is not None
             store.save_trace(trace)
+            if on_event:
+                on_event("case_finished", {
+                    "index": index, "total": total, "test_id": tc.test_id,
+                    "trace_id": trace.trace_id,
+                    "ok": not any(s.kind == "error" for s in trace.spans),
+                })
             return trace
 
-    return list(await asyncio.gather(*(one(tc) for tc in test_cases)))
+    return list(await asyncio.gather(
+        *(one(i, tc) for i, tc in enumerate(test_cases))))
