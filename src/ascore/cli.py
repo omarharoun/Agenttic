@@ -17,6 +17,7 @@ from rich.table import Table
 from ascore.config import load_config
 from ascore.adapters.anthropic_simple import AnthropicSimpleAgent
 from ascore.adapters.blackbox_http import BlackBoxHTTPAgent
+from ascore.adapters.managed_agent import ManagedAgentAdapter
 from ascore.generator.pipeline import BenchmarkGenerator
 from ascore.harness.runner import HarnessConfig, run_suite
 from ascore.registry.sqlite_store import Registry
@@ -82,16 +83,79 @@ def _run_and_score(cfg, reg, adapter, suite_id, version=None) -> Scorecard:
 
 
 @app.command()
-def run(agent: str, suite: str, url: str = "", config: str = "config.yaml"):
-    """Run a suite against an agent (reference agent, or --url for black-box)."""
+def run(agent: str, suite: str, url: str = "",
+        managed_agent_id: str = "", environment_id: str = "",
+        config: str = "config.yaml"):
+    """Run a suite against an agent: the reference agent, --url for
+    black-box HTTP, or --managed-agent-id/--environment-id for a deployed
+    Anthropic Managed Agent (see `ascore deploy`)."""
     cfg, reg = _ctx(config)
-    adapter = (BlackBoxHTTPAgent(agent_id=agent, url=url) if url else
-               AnthropicSimpleAgent(model=cfg["models"]["agent_default"],
-                                    kb_path="kb.json", agent_id=agent,
-                                    max_steps=cfg["harness"]["max_steps"]))
+    if managed_agent_id:
+        if not environment_id:
+            environment_id = cfg.get("managed", {}).get("environment_id", "")
+        if not environment_id:
+            raise typer.BadParameter(
+                "--environment-id required (or set managed.environment_id in config)")
+        adapter = ManagedAgentAdapter(
+            managed_agent_id=managed_agent_id, environment_id=environment_id,
+            agent_id=agent)
+    elif url:
+        adapter = BlackBoxHTTPAgent(agent_id=agent, url=url)
+    else:
+        adapter = AnthropicSimpleAgent(model=cfg["models"]["agent_default"],
+                                       kb_path="kb.json", agent_id=agent,
+                                       max_steps=cfg["harness"]["max_steps"])
     sc = _run_and_score(cfg, reg, adapter, suite)
     console.print(f"Scorecard [bold]{sc.scorecard_id}[/]: success "
                   f"{sc.task_success_rate:.0%}, mean cost ${sc.mean_cost_usd:.4f}")
+
+
+@app.command()
+def deploy(workflow: Path, env_name: str = "ascore-workflows",
+           config: str = "config.yaml"):
+    """Deploy a business-workflow agent to Anthropic Managed Agents (beta).
+
+    WORKFLOW is a version-controlled YAML: name, model, system, optional
+    tools/skills. The agent is created ONCE and versioned server-side —
+    re-deploying the same name updates it (new immutable version) instead of
+    creating a duplicate. The environment is reused by name across deploys.
+    """
+    import anthropic
+    import yaml
+
+    spec = yaml.safe_load(workflow.read_text())
+    client = anthropic.Anthropic()
+
+    env = next((e for e in client.beta.environments.list()
+                if getattr(e, "name", "") == env_name), None)
+    if env is None:
+        env = client.beta.environments.create(
+            name=env_name,
+            config={"type": "cloud", "networking": {"type": "unrestricted"}})
+
+    existing = next((a for a in client.beta.agents.list()
+                     if getattr(a, "name", "") == spec["name"]), None)
+    body = dict(
+        name=spec["name"],
+        model=spec["model"],
+        system=spec.get("system", ""),
+        tools=spec.get("tools", [{"type": "agent_toolset_20260401"}]),
+    )
+    if spec.get("skills"):
+        body["skills"] = spec["skills"]
+    if existing is None:
+        agent = client.beta.agents.create(**body)
+        action = "Created"
+    else:
+        agent = client.beta.agents.update(existing.id, **body)
+        action = "Updated"
+
+    console.print(f"[green]{action}[/] agent [bold]{agent.id}[/] "
+                  f"v{agent.version} ({spec['name']}) in env {env.id}")
+    console.print(
+        f"Run a suite against it:\n  ascore run --agent {spec['name']} "
+        f"--suite <suite_id> --managed-agent-id {agent.id} "
+        f"--environment-id {env.id}")
 
 
 @app.command()
