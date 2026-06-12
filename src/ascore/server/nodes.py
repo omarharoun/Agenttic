@@ -164,9 +164,17 @@ async def _run_run_suite(ctx: NodeContext, cfg: RunSuiteConfig,
         managed_agent_id=agent_ref.get("managed_agent_id", ""),
         environment_id=agent_ref.get("environment_id", ""),
         client=ctx.clients.get("agent"))
-    suite, cases, traces = await ops.run_suite_op(
-        ctx.cfg, ctx.reg, adapter, suite_id, version,
-        on_progress=lambda t, d: ctx.emit("node_progress", {"event": t, **d}))
+    from ascore.harness.runner import SuiteNotApprovedError
+    try:
+        suite, cases, traces = await ops.run_suite_op(
+            ctx.cfg, ctx.reg, adapter, suite_id, version,
+            on_progress=lambda t, d: ctx.emit("node_progress", {"event": t, **d}))
+    except SuiteNotApprovedError:
+        # UI-appropriate hint — canvas users approve in the UI, not the CLI
+        raise RuntimeError(
+            f"suite {suite_id!r} is not approved (Step 8 human gate). Wire a "
+            "Human Gate node before Run Suite to approve from the canvas, or "
+            "approve it under Resources → suites, then run again.")
     return {"run": {
         "suite_id": suite.suite_id, "suite_version": suite.version,
         "trace_ids": [t.trace_id for t in traces],

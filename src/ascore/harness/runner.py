@@ -80,7 +80,7 @@ async def run_suite(
     if not suite.approved:
         raise SuiteNotApprovedError(
             f"suite {suite.suite_id} v{suite.version} is not approved; "
-            "run `ascore approve` first (Step 8 human gate)"
+            "run `uv run ascore approve` first (Step 8 human gate)"
         )
     unknown = [tc.test_id for tc in test_cases if tc.suite_id != suite.suite_id]
     if unknown:
