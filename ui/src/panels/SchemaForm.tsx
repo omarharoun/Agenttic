@@ -56,7 +56,7 @@ export function SchemaForm({
             </div>
           );
         }
-        if (key === "text") { // business doc body gets a textarea
+        if (key === "text" || key === "system_prompt") { // long-text fields
           return (
             <div key={key}>
               <label>{label}</label>

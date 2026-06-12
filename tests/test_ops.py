@@ -134,3 +134,35 @@ class TestHarnessProgressHook:
                               on_event=lambda t, d: events.append((t, d))))
         finished = [d for t, d in events if t == "case_finished"]
         assert finished[0]["ok"] is False
+
+
+class TestSystemPromptOverride:
+    def test_reference_adapter_uses_and_hashes_override(self):
+        client = RoutingFakeClient()
+        plain = ops.build_adapter(CFG, variant="reference", agent_id="x",
+                                  client=client)
+        triage = ops.build_adapter(CFG, variant="reference", agent_id="x",
+                                   client=client,
+                                   system_prompt="Reply ONLY the queue name.")
+        assert triage.system_prompt == "Reply ONLY the queue name."
+        assert triage.describe()["system_prompt"] == "Reply ONLY the queue name."
+        # a prompt change is a config change — attributable across scorecards
+        assert triage.config_hash() != plain.config_hash()
+
+    def test_adapter_sends_override_to_the_model(self):
+        class CaptureClient:
+            def __init__(self):
+                from types import SimpleNamespace as NS
+                self.calls = []
+                self.messages = NS(create=self._create)
+            def _create(self, **kw):
+                from types import SimpleNamespace as NS
+                self.calls.append(kw)
+                return NS(stop_reason="end_turn",
+                          usage=NS(input_tokens=1, output_tokens=1),
+                          content=[NS(type="text", text="billing")])
+        cap = CaptureClient()
+        adapter = ops.build_adapter(CFG, variant="reference", agent_id="x",
+                                    client=cap, system_prompt="ONLY the queue.")
+        adapter.run({"ticket": "refund"})
+        assert cap.calls[0]["system"] == "ONLY the queue."

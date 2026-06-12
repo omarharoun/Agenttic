@@ -18,7 +18,20 @@ const STARTER = {
   name: "Benchmark pipeline",
   nodes: [
     { node_id: "agent", type: "agent", label: "", position: { x: 40, y: 230 },
-      config: { variant: "reference", agent_id: "agent-under-test" } },
+      config: {
+        variant: "reference", agent_id: "agent-under-test",
+        // task instructions ARE the configuration under test — edit and
+        // re-run to see the scorecard move
+        system_prompt:
+          "You are the ticket-triage step of a support workflow. You receive " +
+          "a JSON object with a \"ticket\" field. Classify it into exactly one " +
+          "queue: billing (payments, charges, refunds, invoices), technical " +
+          "(crashes, errors, bugs, login/password issues), or general " +
+          "(everything else). Consult the knowledge base routing_rules with " +
+          "lookup_kb when a ticket is ambiguous. Your FINAL message must be " +
+          "ONLY the queue name — one lowercase word: billing, technical, or " +
+          "general.",
+      } },
     { node_id: "run", type: "run_suite", label: "", position: { x: 300, y: 140 },
       config: { suite_id: "pilot-support-triage" } },
     { node_id: "score", type: "score", label: "", position: { x: 540, y: 140 },
