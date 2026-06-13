@@ -106,21 +106,46 @@ async def score_op(
     on_progress: ProgressFn | None = None,
     judge_client=None,
     pass_threshold: float = 0.7,
+    rubric_override: Rubric | None = None,
+    fi_evaluator=None,
+    fi_evaluate_fn=None,
 ) -> list[RunScore]:
-    """Scoring step: deterministic checks + LLM judge, one RunScore per trace."""
+    """Scoring step: deterministic checks + LLM judge (+ FI), one RunScore per
+    trace. Partial batch scoring: a case that fails to score becomes an errored
+    RunScore (kept, surfaced, excluded from quality aggregates) rather than
+    aborting the whole batch — mirroring the harness's per-case resilience."""
     judge = make_judge(cfg, agent_model, client=judge_client)
+    if fi_evaluator is None:
+        from ascore.scoring.fi_eval import FiEvaluator
+        fi_evaluator = FiEvaluator(
+            threshold=cfg.get("scoring", {}).get("fi_threshold", 0.5),
+            evaluate_fn=fi_evaluate_fn)
     runs: list[RunScore] = []
     total = len(cases)
     for i, (trace, case) in enumerate(zip(traces, cases)):
-        rs = await asyncio.to_thread(
-            score_run, trace, case, reg.get_rubric(case.rubric_id), judge,
-            pass_threshold=pass_threshold)
-        runs.append(rs)
-        if on_progress:
-            on_progress("case_scored", {
-                "index": i, "total": total, "test_id": case.test_id,
-                "passed": rs.passed,
-            })
+        rubric = rubric_override or reg.get_rubric(case.rubric_id)
+        try:
+            rs = await asyncio.to_thread(
+                score_run, trace, case, rubric, judge,
+                pass_threshold=pass_threshold, fi_evaluator=fi_evaluator)
+            runs.append(rs)
+            if on_progress:
+                on_progress("case_scored", {
+                    "index": i, "total": total, "test_id": case.test_id,
+                    "passed": rs.passed,
+                })
+        except Exception as exc:  # noqa: BLE001 — scoring failure is data, not fatal
+            err = f"{type(exc).__name__}: {exc}"
+            runs.append(RunScore(
+                trace_id=trace.trace_id, test_id=case.test_id,
+                criterion_scores=[], passed=False,
+                cost_usd=trace.total_cost_usd, latency_ms=trace.total_latency_ms,
+                steps=trace.total_steps, scoring_error=err))
+            if on_progress:
+                on_progress("case_error", {
+                    "index": i, "total": total, "test_id": case.test_id,
+                    "error": err,
+                })
     return runs
 
 

@@ -16,9 +16,10 @@ class Criterion(BaseModel):
 
     criterion_id: str
     description: str
-    scorer: Literal["code", "judge"]
+    scorer: Literal["code", "judge", "fi"]
     scale: Literal["binary", "three_point"]
     check_ref: str | None = None  # required when scorer == "code"
+    fi_metric: str | None = None  # required when scorer == "fi" (a Future AGI metric)
     anchors: dict = Field(default_factory=dict)  # required keys for judge: "pass", "fail"
     tags: list[str] = Field(default_factory=list)  # e.g. "trajectory", "live"
 
@@ -34,6 +35,10 @@ class Criterion(BaseModel):
         if self.scorer == "code" and not self.check_ref:
             raise ValueError(
                 f"criterion {self.criterion_id}: code criteria require check_ref"
+            )
+        if self.scorer == "fi" and not self.fi_metric:
+            raise ValueError(
+                f"criterion {self.criterion_id}: fi criteria require fi_metric"
             )
         return self
 

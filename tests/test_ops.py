@@ -166,3 +166,83 @@ class TestSystemPromptOverride:
                                     client=cap, system_prompt="ONLY the queue.")
         adapter.run({"ticket": "refund"})
         assert cap.calls[0]["system"] == "ONLY the queue."
+
+
+class TestPartialBatchScoring:
+    def test_one_case_errors_others_still_scored(self, pilot_registry):
+        reg, suite_id = pilot_registry
+
+        class FlakyJudgeClient:
+            """Raises on the WRONGCASE adversarial cases, scores 1 otherwise."""
+            def __init__(self):
+                from types import SimpleNamespace as NS
+                import json
+                self._json = json
+                self.messages = NS(create=self._create)
+            def _create(self, **kw):
+                from types import SimpleNamespace as NS
+                text = str(kw.get("messages"))
+                if "WRONGCASE" in text or "wrongcase" in text:
+                    raise RuntimeError("judge API timeout")
+                return NS(content=[NS(type="text",
+                          text=self._json.dumps({"score": 1, "rationale": "ok"}))])
+
+        adapter = AnthropicSimpleAgent(model="agent-model",
+                                       kb_path=PILOT / "kb.json",
+                                       client=RoutingFakeClient(),
+                                       agent_id="ref-agent")
+        events = []
+        sc = asyncio.run(ops.run_and_score_op(
+            CFG, reg, adapter, suite_id,
+            on_progress=lambda t, d: events.append((t, d)),
+            judge_client=FlakyJudgeClient()))
+
+        # the two WRONGCASE cases error during scoring; the batch survives
+        assert set(sc.errored_test_ids) == {"triage-008", "triage-009"}
+        scored = [r for r in sc.run_scores if r.scoring_error is None]
+        assert len(scored) == 8
+        # success rate is over the SCORED subset (8), not 10
+        assert sc.task_success_rate == 1.0
+        # errored cases are kept, marked, excluded from criterion means
+        errored = [r for r in sc.run_scores if r.scoring_error]
+        assert len(errored) == 2 and all("judge API timeout" in r.scoring_error
+                                         for r in errored)
+        assert "routing" in sc.per_criterion_means  # computed over scored only
+        # cost still counts all 10 runs (the agent ran regardless)
+        assert sc.mean_cost_usd > 0
+        case_errors = [d for t, d in events if t == "case_error"]
+        assert len(case_errors) == 2
+
+
+class TestAggregatePartial:
+    def _run(self, test_id, passed, error=None):
+        from ascore.schema.scorecard import CriterionScore, RunScore
+        crits = [] if error else [CriterionScore(
+            criterion_id="x", score=1.0 if passed else 0.0, scorer="code")]
+        return RunScore(trace_id=f"t-{test_id}", test_id=test_id,
+                        criterion_scores=crits, passed=passed,
+                        cost_usd=0.01, latency_ms=100.0, scoring_error=error)
+
+    def test_rates_exclude_errored_cost_includes_all(self):
+        from ascore.schema.scorecard import Scorecard
+        runs = [self._run("a", True), self._run("b", False),
+                self._run("c", False, error="JudgeError: boom")]
+        sc = Scorecard.aggregate(
+            scorecard_id="s", agent_id="ag", suite_id="su", suite_version=1,
+            rubric_id="r", rubric_version=1, run_scores=runs,
+            visibility_tier="glass_box")
+        assert sc.errored_test_ids == ["c"]
+        assert sc.task_success_rate == 0.5          # 1 of 2 scored
+        assert sc.per_criterion_means == {"x": 0.5}  # over scored only
+        assert sc.mean_cost_usd == pytest.approx(0.01)  # all 3 runs
+        assert len(sc.run_scores) == 3              # errored kept
+
+    def test_all_errored_does_not_crash(self):
+        from ascore.schema.scorecard import Scorecard
+        runs = [self._run("a", False, error="x"), self._run("b", False, error="y")]
+        sc = Scorecard.aggregate(
+            scorecard_id="s", agent_id="ag", suite_id="su", suite_version=1,
+            rubric_id="r", rubric_version=1, run_scores=runs,
+            visibility_tier="glass_box")
+        assert sc.task_success_rate == 0.0 and sc.per_criterion_means == {}
+        assert set(sc.errored_test_ids) == {"a", "b"}

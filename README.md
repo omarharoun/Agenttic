@@ -157,6 +157,27 @@ src/ascore/
 ui/                # React + React Flow canvas (Vite, dark n8n-style theme)
 ```
 
+## Scoring backends
+
+Each rubric criterion is scored by one of three backends:
+
+- **`code`** — deterministic checks (`final_output_matches_expected`, `required_tool_called`, …).
+- **`judge`** — the tiered LLM judge (Sonnet executor consulting an Opus advisor on borderline calls).
+- **`fi`** — [Future AGI](https://github.com/future-agi/future-agi)'s open-source
+  `ai-evaluation` metric library (groundedness, toxicity, relevancy, …). Set
+  `scorer: fi` + `fi_metric: <name>` on a criterion, or drop an **FI Evaluation**
+  node on the canvas to score a run with a chosen metric set. FI's 0–1 score is
+  discretized into the criterion's binary/three-point scale (Hard Rule 3), keeping
+  the raw value + reason in the rationale. Optional dependency: `uv pip install
+  ascore[fi]`; the default metric set is offline (cloud LLM-judge metrics need
+  `FI_API_KEY`/`FI_SECRET_KEY`).
+
+**Partial batch scoring:** if a case can't be scored (judge/FI outage, bad check
+config), it becomes an *errored* run — kept and surfaced (`errored_test_ids`, an
+amber "not scored" row in the Results panel), but excluded from `task_success_rate`
+and per-criterion means, so a scoring-infra failure never masquerades as the agent
+failing the task. Execution cost/latency still count every run.
+
 ## Design rules the code enforces
 
 1. **The trace schema is the contract.** Changes bump `SCHEMA_VERSION`

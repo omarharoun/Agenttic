@@ -15,6 +15,7 @@ harness:
 scoring:
   calibration_threshold: 0.8
   advisor_max_tokens: 2048   # per-consult cap on advisor output (API minimum 1024)
+  fi_threshold: 0.5          # Future AGI 0-1 score -> binary/three-point cutoff
 live:
   sample_rate: 0.05
   drift_threshold: 0.15

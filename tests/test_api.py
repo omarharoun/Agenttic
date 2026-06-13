@@ -293,3 +293,36 @@ class TestExecutionResults:
         r = client.get(f"/api/executions/{eid}/results").json()
         assert r == {"status": "waiting_approval", "scorecards": [], "cases": []}
         client.post(f"/api/executions/{eid}/cancel")
+
+
+class TestFiAndPartialBatchApi:
+    def test_fi_eval_node_in_catalog(self, client):
+        types = {t["type"]: t for t in client.get("/api/node-types").json()}
+        assert "fi_eval" in types
+        fi = types["fi_eval"]
+        assert fi["inputs"] == {"run": "run_ref"}
+        assert fi["outputs"] == {"scored": "scored_run"}
+        assert "metrics" in fi["config_schema"]["properties"]
+
+    def test_results_surface_errored_cases(self, client):
+        # a judge that always raises -> every case errors (partial batch)
+        from types import SimpleNamespace as NS
+
+        class BoomJudge:
+            def __init__(self):
+                self.messages = NS(create=self._c)
+            def _c(self, **kw):
+                raise RuntimeError("judge 500")
+
+        # swap the injected judge for one that always raises, then run
+        client.app.state.manager.clients["judge"] = BoomJudge()
+        wf = eval_workflow("pilot-support-triage").model_dump()
+        client.post("/api/workflows", json=wf)
+        eid = client.post("/api/workflows/wf-eval/executions").json()["execution_id"]
+        poll(client, eid, "succeeded")  # run completes; scoring all errored
+        r = client.get(f"/api/executions/{eid}/results").json()
+        (sc,) = r["scorecards"]
+        assert len(sc["errored_test_ids"]) == 10
+        assert sc["task_success_rate"] == 0.0
+        assert all(c["scoring_error"] for c in r["cases"])
+        assert "judge 500" in r["cases"][0]["scoring_error"]

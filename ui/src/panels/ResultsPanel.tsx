@@ -10,7 +10,9 @@ export function ResultsPanel({ results }: { results: any }) {
   if (!results) return null;
   const { scorecards, cases } = results;
   if (!scorecards.length && !cases.length) return null;
-  const passed = cases.filter((c: any) => c.passed).length;
+  const errored = cases.filter((c: any) => c.scoring_error);
+  const scored = cases.filter((c: any) => !c.scoring_error);
+  const passed = scored.filter((c: any) => c.passed).length;
 
   return (
     <div className="results">
@@ -20,7 +22,13 @@ export function ResultsPanel({ results }: { results: any }) {
                 style={{ fontSize: 15, fontWeight: 700 }}>
             {Math.round(sc.task_success_rate * 100)}%
           </span>
-          <span>{passed}/{cases.length} passed</span>
+          <span>{passed}/{scored.length} passed{scored.length !== cases.length
+            ? " of scored" : ""}</span>
+          {errored.length > 0 && (
+            <span className="err" title="excluded from the rate">
+              {errored.length} errored
+            </span>
+          )}
           <span>${(sc.mean_cost_usd ?? 0).toFixed(4)}/case</span>
           <span>{sc.visibility_tier.replace("_", "-")}</span>
           <button style={{ marginLeft: "auto" }}
@@ -35,15 +43,24 @@ export function ResultsPanel({ results }: { results: any }) {
         <div key={`${c.node_id}-${c.test_id}`} className="case-row">
           <div className="case-head"
                onClick={() => setOpen(open === c.test_id ? null : c.test_id)}>
-            <span className={c.passed ? "dot ok-bg" : "dot fail-bg"} />
+            <span className={c.scoring_error ? "dot err-bg"
+              : c.passed ? "dot ok-bg" : "dot fail-bg"} />
             <span className="case-id">{c.test_id}</span>
-            <span className="pred" title={c.prediction}>
-              → {c.prediction || "(no output)"}
-            </span>
-            {c.expected?.final_output !== undefined && !c.passed && (
-              <span className="want" title="expected">
-                want: {String(c.expected.final_output)}
+            {c.scoring_error ? (
+              <span className="want" title={c.scoring_error}>
+                ⚠ not scored: {c.scoring_error}
               </span>
+            ) : (
+              <>
+                <span className="pred" title={c.prediction}>
+                  → {c.prediction || "(no output)"}
+                </span>
+                {c.expected?.final_output !== undefined && !c.passed && (
+                  <span className="want" title="expected">
+                    want: {String(c.expected.final_output)}
+                  </span>
+                )}
+              </>
             )}
           </div>
           {open === c.test_id && (

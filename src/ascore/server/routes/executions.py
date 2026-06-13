@@ -73,6 +73,7 @@ def execution_results(execution_id: str, request: Request):
                     "mean_cost_usd": sc.mean_cost_usd,
                     "p95_latency_ms": sc.p95_latency_ms,
                     "per_criterion_means": sc.per_criterion_means,
+                    "errored_test_ids": sc.errored_test_ids,
                     "visibility_tier": sc.visibility_tier,
                 })
             if "run_scores" in payload:  # score node output
@@ -89,6 +90,7 @@ def execution_results(execution_id: str, request: Request):
                         "node_id": node_id,
                         "test_id": rs["test_id"],
                         "passed": rs["passed"],
+                        "scoring_error": rs.get("scoring_error"),
                         "prediction": prediction,
                         "expected": expected_by_id.get(rs["test_id"]),
                         "cost_usd": rs.get("cost_usd"),
