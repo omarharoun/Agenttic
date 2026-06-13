@@ -52,7 +52,7 @@ export function applyEvent(prev: ExecState, evt: SSEEvent): ExecState {
     case "node_progress":
       if (nid && typeof evt.data.index === "number") {
         const done =
-          evt.data.event === "case_finished" || evt.data.event === "case_scored"
+          ["case_finished", "case_scored", "case_error"].includes(evt.data.event)
             ? evt.data.index + 1
             : evt.data.index;
         next.progress[nid] = { done, total: evt.data.total ?? 0 };
@@ -100,6 +100,8 @@ function summarize(evt: SSEEvent): string {
         return `case ${d.index + 1}/${d.total} ${d.ok ? "ok" : "FAILED"} (${d.test_id})`;
       if (d.event === "case_scored")
         return `scored ${d.index + 1}/${d.total} ${d.passed ? "pass" : "fail"} (${d.test_id})`;
+      if (d.event === "case_error")
+        return `case ${d.index + 1}/${d.total} NOT SCORED (${d.test_id}): ${d.error ?? ""}`;
       if (d.message) return d.message;
       return "";
     case "node_waiting":

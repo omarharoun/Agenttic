@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ascore import ops
 from ascore.registry.sqlite_store import Registry
@@ -79,6 +79,16 @@ class RunSuiteConfig(BaseModel):
 
 class ScoreConfig(BaseModel):
     pass_threshold: float = 0.7
+
+
+class FiEvalConfig(BaseModel):
+    metrics: list[str] = Field(default_factory=lambda: list(_default_fi_metrics()))
+    threshold: float = 0.5
+
+
+def _default_fi_metrics() -> list[str]:
+    from ascore.scoring.fi_eval import LOCAL_FI_METRICS
+    return LOCAL_FI_METRICS
 
 
 class ScorecardConfig(BaseModel):
@@ -177,8 +187,10 @@ async def _run_run_suite(ctx: NodeContext, cfg: RunSuiteConfig,
             f"suite {suite_id!r} is not approved (Step 8 human gate). Wire a "
             "Human Gate node before Run Suite to approve from the canvas, or "
             "approve it under Resources → suites, then run again.")
+    rubric = ctx.reg.get_rubric(cases[0].rubric_id)
     return {"run": {
         "suite_id": suite.suite_id, "suite_version": suite.version,
+        "rubric_id": rubric.rubric_id, "rubric_version": rubric.version,
         "trace_ids": [t.trace_id for t in traces],
         "agent_id": adapter.agent_id, "agent_model": ops.agent_model_of(adapter),
         "visibility": adapter.visibility,
@@ -193,8 +205,44 @@ async def _run_score(ctx: NodeContext, cfg: ScoreConfig, inputs: dict) -> dict:
         ctx.cfg, ctx.reg, traces, cases, run_ref["agent_model"],
         on_progress=lambda t, d: ctx.emit("node_progress", {"event": t, **d}),
         judge_client=ctx.clients.get("judge"),
+        fi_evaluate_fn=ctx.clients.get("fi"),
         pass_threshold=cfg.pass_threshold)
     return {"scored": {**run_ref,
+                       "run_scores": [r.model_dump(mode="json") for r in runs]}}
+
+
+async def _run_fi_eval(ctx: NodeContext, cfg: "FiEvalConfig", inputs: dict) -> dict:
+    """Score a run with a chosen set of Future AGI metrics (offline-friendly),
+    via a synthetic one-criterion-per-metric rubric. Output matches the score
+    node's `scored` shape so it wires straight into scorecard → report."""
+    from ascore.registry.sqlite_store import DuplicateVersionError
+    from ascore.scoring.fi_eval import FI_METRICS
+    from ascore.schema.rubric import Criterion, Rubric
+
+    run_ref = inputs["run"]
+    metrics = [m.strip() for m in cfg.metrics if m.strip()]
+    unknown = [m for m in metrics if m not in FI_METRICS]
+    if unknown:
+        raise ValueError(f"unknown fi metrics {unknown}; "
+                         f"available: {sorted(FI_METRICS)}")
+    rubric_id = f"fi::{run_ref['suite_id']}::{'+'.join(sorted(metrics))}"
+    rubric = Rubric(rubric_id=rubric_id, version=1, criteria=[
+        Criterion(criterion_id=m, description=FI_METRICS[m].description or m,
+                  scorer="fi", scale="binary", fi_metric=m) for m in metrics])
+    try:
+        ctx.reg.save_rubric(rubric)
+    except DuplicateVersionError:
+        rubric = ctx.reg.get_rubric(rubric_id)  # reuse on re-run
+
+    _, cases = ctx.reg.get_suite(run_ref["suite_id"], run_ref["suite_version"])
+    traces = [ctx.reg.get_trace(tid) for tid in run_ref["trace_ids"]]
+    runs = await ops.score_op(
+        ctx.cfg, ctx.reg, traces, cases, run_ref["agent_model"],
+        on_progress=lambda t, d: ctx.emit("node_progress", {"event": t, **d}),
+        rubric_override=rubric, fi_evaluate_fn=ctx.clients.get("fi"),
+        pass_threshold=cfg.threshold)
+    return {"scored": {**run_ref, "rubric_id": rubric.rubric_id,
+                       "rubric_version": rubric.version,
                        "run_scores": [r.model_dump(mode="json") for r in runs]}}
 
 
@@ -202,7 +250,10 @@ async def _run_scorecard(ctx: NodeContext, cfg: ScorecardConfig,
                          inputs: dict) -> dict:
     scored = inputs["scored"]
     suite, cases = ctx.reg.get_suite(scored["suite_id"], scored["suite_version"])
-    rubric = ctx.reg.get_rubric(cases[0].rubric_id)
+    # honor an explicit rubric ref (the FI node's synthetic rubric); else the
+    # suite's own rubric (the normal score-node path)
+    rubric = ctx.reg.get_rubric(scored.get("rubric_id") or cases[0].rubric_id,
+                                scored.get("rubric_version"))
     runs = [RunScore.model_validate(r) for r in scored["run_scores"]]
     sc = ops.aggregate_op(ctx.reg, agent_id=scored["agent_id"], suite=suite,
                           rubric=rubric, runs=runs,
@@ -264,6 +315,10 @@ NODE_TYPES: dict[str, NodeSpec] = {s.type: s for s in [
     NodeSpec("score", "Score", "evaluation", ScoreConfig,
              {"run": "run_ref"}, {"scored": "scored_run"}, _run_score,
              "Deterministic checks + tiered LLM judge per criterion."),
+    NodeSpec("fi_eval", "FI Evaluation", "evaluation", FiEvalConfig,
+             {"run": "run_ref"}, {"scored": "scored_run"}, _run_fi_eval,
+             "Score a run with Future AGI metrics (groundedness, toxicity, "
+             "relevancy, ...); feeds the scorecard like the Score node."),
     NodeSpec("scorecard", "Scorecard", "evaluation", ScorecardConfig,
              {"scored": "scored_run"}, {"scorecard": "scorecard_ref"},
              _run_scorecard, "Aggregate run scores into an immutable scorecard."),

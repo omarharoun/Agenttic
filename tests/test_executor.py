@@ -378,3 +378,70 @@ class TestResilience:
             await mgr._handles[eid].task
             assert store.get_execution(eid)["status"] == "failed"
         asyncio.run(main())
+
+
+class TestFiNode:
+    def test_fi_eval_node_feeds_scorecard(self, tmp_path):
+        async def main():
+            reg, store, mgr = make_manager(tmp_path)
+            suite_id = load_pilot(reg)
+            from types import SimpleNamespace as NS
+            def fake_fi(metric, **kw):
+                # 'billing' outputs pass 'contains', everything else fails
+                out = kw.get("output", "")
+                ok = "billing" in out
+                return NS(score=1.0 if ok else 0.0, passed=ok, reason=f"{metric}:{ok}")
+            mgr.clients["fi"] = fake_fi
+
+            wf = Workflow(workflow_id="wf-fi", name="fi", nodes=[
+                node("agent", "agent", variant="reference", agent_id="ref-agent"),
+                node("run", "run_suite", suite_id=suite_id),
+                node("fi", "fi_eval", metrics=["contains"], threshold=0.5),
+                node("card", "scorecard"),
+            ], edges=[
+                edge("e1", "agent", "agent", "run", "agent"),
+                edge("e2", "run", "run", "fi", "run"),
+                edge("e3", "fi", "scored", "card", "scored"),
+            ])
+            eid = mgr.start(wf)
+            await mgr._handles[eid].task
+            ex = store.get_execution(eid)
+            assert ex["status"] == "succeeded"
+            sc_ref = ex["node_outputs"]["card"]["scorecard"]
+            sc = reg.get_scorecard(sc_ref["scorecard_id"])
+            assert "contains" in sc.per_criterion_means
+            assert all(c.scorer == "fi" for r in sc.run_scores
+                       for c in r.criterion_scores)
+            # synthetic fi rubric was persisted and pinned
+            assert sc.rubric_id.startswith("fi::")
+        asyncio.run(main())
+
+    def test_fi_node_partial_batch_on_metric_error(self, tmp_path):
+        async def main():
+            reg, store, mgr = make_manager(tmp_path)
+            suite_id = load_pilot(reg)
+            from types import SimpleNamespace as NS
+            calls = {"n": 0}
+            def flaky_fi(metric, **kw):
+                calls["n"] += 1
+                if calls["n"] == 1:
+                    raise RuntimeError("fi service 503")
+                return NS(score=1.0, passed=True, reason="ok")
+            mgr.clients["fi"] = flaky_fi
+            wf = Workflow(workflow_id="wf-fi", name="fi", nodes=[
+                node("agent", "agent", variant="reference", agent_id="ref-agent"),
+                node("run", "run_suite", suite_id=suite_id),
+                node("fi", "fi_eval", metrics=["contains"]),
+                node("card", "scorecard"),
+            ], edges=[
+                edge("e1", "agent", "agent", "run", "agent"),
+                edge("e2", "run", "run", "fi", "run"),
+                edge("e3", "fi", "scored", "card", "scored"),
+            ])
+            eid = mgr.start(wf)
+            await mgr._handles[eid].task
+            ex = store.get_execution(eid)
+            assert ex["status"] == "succeeded"  # one fi error didn't sink the run
+            sc = reg.get_scorecard(ex["node_outputs"]["card"]["scorecard"]["scorecard_id"])
+            assert len(sc.errored_test_ids) == 1
+        asyncio.run(main())
