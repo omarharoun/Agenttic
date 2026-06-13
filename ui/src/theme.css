@@ -183,3 +183,14 @@ pre.doc {
 .case-detail code { color: var(--text); }
 .kv { margin: 3px 0; }
 .rationale { margin: 2px 0 4px 18px; color: var(--muted); font-style: italic; }
+
+/* node resilience policy box + completed-with-errors status */
+.policy-box {
+  margin-top: 14px; padding: 10px; border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+.policy-title {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin-bottom: 2px;
+}
+.status-chip.completed_with_errors { color: var(--wait); border-color: var(--wait); }

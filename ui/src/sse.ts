@@ -29,8 +29,9 @@ export function useExecutionEvents(executionId: string | null) {
       };
       for (const t of [
         "execution_started", "node_started", "node_progress", "node_waiting",
-        "node_completed", "node_failed", "node_skipped",
+        "node_completed", "node_failed", "node_skipped", "node_retry",
         "execution_succeeded", "execution_failed", "execution_cancelled",
+        "execution_completed_with_errors",
       ]) {
         es.addEventListener(t, handler);
       }

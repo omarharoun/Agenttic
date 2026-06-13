@@ -17,6 +17,8 @@ export interface WorkflowNode {
   label: string;
   position: { x: number; y: number };
   config: Record<string, any>;
+  retries?: number;
+  continue_on_error?: boolean;
 }
 
 export interface WorkflowEdge {

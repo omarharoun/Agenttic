@@ -12,6 +12,13 @@ export function ConfigPanel({ results }: { results?: any }) {
   const nodeState = node ? exec.nodeStates[node.id] : undefined;
   const hasResults = results && (results.cases?.length || results.scorecards?.length);
 
+  const setData = (nodeId: string, patch: Record<string, any>) => {
+    const s = useFlowStore.getState();
+    setGraph(s.nodes.map((n) => n.id === nodeId
+      ? { ...n, data: { ...n.data, ...patch } } : n), s.edges);
+    markDirty(true);
+  };
+
   return (
     <div className="side-panel">
       <div className="panel-head">
@@ -46,19 +53,28 @@ export function ConfigPanel({ results }: { results?: any }) {
             <label>label</label>
             <input
               value={(node.data as any).label ?? ""}
-              onChange={(e) => {
-                const s = useFlowStore.getState();
-                setGraph(s.nodes.map((n) => n.id === node.id
-                  ? { ...n, data: { ...n.data, label: e.target.value } } : n),
-                  s.edges);
-                markDirty(true);
-              }}
+              onChange={(e) => setData(node.id, { label: e.target.value })}
             />
             <SchemaForm
               schema={spec.config_schema}
               value={(node.data as any).config ?? {}}
               onChange={(config) => updateConfig(node.id, config)}
             />
+            <div className="policy-box">
+              <div className="policy-title">resilience</div>
+              <label>retries on failure</label>
+              <input type="number" min={0}
+                     value={(node.data as any).retries ?? 0}
+                     onChange={(e) => setData(node.id,
+                       { retries: Math.max(0, Number(e.target.value) || 0) })} />
+              <label style={{ marginTop: 8 }}>
+                <input type="checkbox" style={{ width: "auto", marginRight: 6 }}
+                       checked={!!(node.data as any).continue_on_error}
+                       onChange={(e) => setData(node.id,
+                         { continue_on_error: e.target.checked })} />
+                continue run if this node fails
+              </label>
+            </div>
           </>
         )}
       </div>

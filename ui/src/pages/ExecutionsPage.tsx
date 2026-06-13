@@ -6,6 +6,7 @@ import { useFlowStore } from "../store";
 
 const STATE_COLOR: Record<string, string> = {
   succeeded: "var(--ok)", failed: "var(--fail)", cancelled: "var(--fail)",
+  completed_with_errors: "var(--wait)",
   running: "var(--cat-input)", waiting_approval: "var(--wait)",
   interrupted: "var(--muted)",
 };

@@ -1,0 +1,287 @@
+You are working on a payment orchestration project. The goal is to turn the existing Solana USDC payment prototype into a Hyperswitch-compatible stablecoin sandwich connector architecture.
+
+Do not build a standalone app. Build this as an open-source payment orchestration extension that could fit into Hyperswitch or a comparable connector-based router.
+
+Primary goal:
+Create a provider-agnostic stablecoin payment rail where:
+1. the merchant/customer can pay in fiat or USDC,
+2. the middle settlement rail uses USDC on Solana,
+3. the recipient can receive fiat or USDC,
+4. ramp/off-ramp providers are replaceable adapters,
+5. the system exposes payment lifecycle semantics compatible with Hyperswitch-style flows.
+
+Architecture to implement:
+
+Merchant App
+  -> Hyperswitch-style Payment Router
+  -> Stablecoin Sandwich Connector
+  -> Ramp Provider Adapter
+  -> Solana USDC Rail
+  -> Off-ramp Provider Adapter
+  -> Recipient Bank/Wallet
+
+Core requirements:
+
+1. Project structure
+- Convert the current prototype into a clean TypeScript project.
+- Add a valid tsconfig.json.
+- Move source code into src/.
+- Use clear modules:
+  - src/server.ts
+  - src/config.ts
+  - src/connectors/stablecoin/
+  - src/connectors/ramp/
+  - src/connectors/offramp/
+  - src/solana/
+  - src/webhooks/
+  - src/ledger/
+  - src/types/
+  - src/routes/
+  - src/utils/
+
+2. Hyperswitch-style payment lifecycle
+Implement a stablecoin connector with methods equivalent to:
+
+- authorizePayment()
+- capturePayment()
+- syncPayment()
+- refundPayment()
+- voidPayment()
+- handleWebhook()
+
+Map internal states to router-style payment states:
+
+created
+requires_customer_action
+processing
+authorized
+captured
+failed
+refunded
+partially_refunded
+cancelled
+
+3. Stablecoin sandwich flow
+Support the following flows:
+
+A. USDC in -> USDC out
+- Customer sends USDC on Solana.
+- System detects payment.
+- System settles exact expected USDC amount to recipient wallet.
+
+B. Fiat in -> USDC out
+- Create ramp quote/session with a ramp provider.
+- Track ramp webhook.
+- Once USDC is received, settle to recipient wallet.
+
+C. USDC in -> Fiat out
+- Detect USDC payment.
+- Create off-ramp payout using selected off-ramp provider.
+- Track payout webhook.
+
+D. Fiat in -> Fiat out
+- Create ramp quote/session.
+- Receive USDC on Solana.
+- Create off-ramp payout.
+- Track final fiat payout.
+
+4. Connector/provider abstraction
+Create interfaces like:
+
+interface RampProvider {
+  createQuote(input): Promise<RampQuote>;
+  createSession(input): Promise<RampSession>;
+  getStatus(providerPaymentId: string): Promise<RampStatus>;
+  handleWebhook(payload, headers): Promise<RampWebhookEvent>;
+}
+
+interface OffRampProvider {
+  createQuote(input): Promise<OffRampQuote>;
+  createPayout(input): Promise<OffRampPayout>;
+  getStatus(providerPayoutId: string): Promise<OffRampStatus>;
+  handleWebhook(payload, headers): Promise<OffRampWebhookEvent>;
+}
+
+interface StablecoinRail {
+  createPaymentIntent(input): Promise<StablecoinPaymentIntent>;
+  checkPaymentStatus(reference: string): Promise<StablecoinPaymentStatus>;
+  settle(input): Promise<StablecoinSettlement>;
+  refund(input): Promise<StablecoinRefund>;
+}
+
+5. Providers
+Implement mock adapters first:
+- MockRampProvider
+- MockOffRampProvider
+- MockSolanaRail
+
+Then prepare real adapter stubs for:
+- TransakRampProvider
+- CircleRampProvider
+- BVNKRampProvider
+- BridgeRampProvider
+- CircleOffRampProvider
+- BVNKOffRampProvider
+- BridgeOffRampProvider
+
+Do not hard-code Transak as the only provider.
+
+6. Solana USDC rail
+Fix the current Solana implementation.
+
+Requirements:
+- Generate a unique Solana Pay reference public key per payment.
+- Never use arbitrary UUID strings as Solana Pay references.
+- Never settle by sweeping the whole gateway balance.
+- Settle only the exact expected USDC amount for the specific order.
+- Add idempotency keys for settlement, refund, and webhook processing.
+- Validate token mint is USDC on Solana.
+- Validate token decimals.
+- Validate amount received is equal to or greater than expected amount.
+- Store chain transaction signature.
+- Store payer address when available.
+- Store recipient token account.
+- Use atomic state transitions where possible.
+
+7. Ledger and reconciliation
+Add a ledger module.
+
+Each payment should store:
+
+- id
+- merchant_id
+- external_order_id
+- router_payment_id
+- connector_payment_id
+- customer_currency
+- customer_amount
+- rail_currency
+- rail_amount
+- recipient_currency
+- recipient_amount
+- fx_rate
+- ramp_provider
+- offramp_provider
+- chain
+- token_mint
+- payment_reference
+- payer_wallet
+- recipient_wallet
+- chain_tx_signature
+- settlement_tx_signature
+- ramp_status
+- rail_status
+- offramp_status
+- payment_status
+- created_at
+- updated_at
+
+Add reconciliation checks:
+
+- fiat amount paid equals quote amount
+- USDC received equals expected amount, allowing only configured tolerance
+- USDC settled equals exact expected settlement amount
+- off-ramp payout matches expected recipient amount
+- provider fees are recorded
+- duplicate webhooks do not create duplicate settlements
+
+Use an in-memory repository for now, but define a repository interface so it can later be replaced by Postgres.
+
+8. API routes
+Expose REST routes that resemble a connector/payment router API:
+
+POST /payments
+Creates a payment.
+
+POST /payments/:id/authorize
+Authorizes or initializes the stablecoin/ramp flow.
+
+POST /payments/:id/capture
+Captures/settles the payment when funds are confirmed.
+
+GET /payments/:id
+Returns payment status and ledger details.
+
+POST /payments/:id/refund
+Creates a refund.
+
+POST /webhooks/ramp/:provider
+Handles ramp provider webhooks.
+
+POST /webhooks/offramp/:provider
+Handles off-ramp provider webhooks.
+
+POST /webhooks/solana
+Handles Solana rail payment confirmation events.
+
+9. Webhook rules
+- Webhooks must be idempotent.
+- Verify provider signatures where real providers support it.
+- Store webhook event IDs.
+- Ignore duplicated events.
+- Do not trust webhook amount blindly; reconcile against stored payment intent.
+- Webhook handlers should update state, then trigger next lifecycle step if appropriate.
+- Do not start a second Express server from inside a webhook module.
+- All routes must be mounted from the main server.
+
+10. Security
+- No private keys in source code.
+- Use environment variables.
+- Validate all request bodies with zod or equivalent.
+- Add basic error handling.
+- Do not log secrets.
+- Separate signing wallet, treasury wallet, and settlement wallet concepts.
+- Include .env.example with required variables.
+
+11. Testing
+Add tests for:
+
+- creating a USDC payment
+- generating unique reference keys
+- rejecting duplicate webhook events
+- settling exact amount only
+- preventing gateway balance sweep
+- fiat-in to USDC-out happy path with mock ramp
+- USDC-in to fiat-out happy path with mock off-ramp
+- refund path
+- payment sync path
+- invalid amount
+- invalid token mint
+- duplicate settlement attempt
+
+12. Documentation
+Update README.md with:
+
+- what the project is
+- what it is not
+- architecture diagram
+- supported flows
+- API examples
+- state machine
+- environment variables
+- how to run
+- how to test
+- security notes
+- production TODOs
+
+Be explicit that this is a Hyperswitch-style connector architecture and not yet a licensed money transmission product.
+
+13. Important constraints
+- Do not overclaim compliance.
+- Do not claim funds settle in 2 seconds unless measured.
+- Do not claim global fiat payout coverage unless implemented.
+- Do not hard-code provider-specific logic into core payment flow.
+- Keep provider adapters replaceable.
+- Prefer clean interfaces and testable services over a quick demo.
+- Prioritize safety, idempotency, and reconciliation over speed.
+
+Deliverables:
+- Refactored TypeScript project
+- Working server
+- Mock provider flow
+- Stablecoin connector service
+- Solana rail abstraction
+- Webhook handlers
+- Ledger repository interface and in-memory implementation
+- Tests
+- Updated README

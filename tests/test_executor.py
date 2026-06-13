@@ -287,3 +287,94 @@ class TestUnapprovedSuiteHint:
             assert "Human Gate" in msg and "Resources" in msg
             assert "ascore approve" not in msg  # no CLI hint in the UI
         asyncio.run(main())
+
+
+class TestResilience:
+    def test_retry_then_succeed(self, tmp_path):
+        async def main():
+            reg, store, mgr = make_manager(tmp_path)
+            attempts = {"n": 0}
+
+            class FlakyConfig(BaseModel):
+                fail_times: int = 0
+
+            async def run_flaky(ctx, cfg, inputs):
+                attempts["n"] += 1
+                if attempts["n"] <= cfg.fail_times:
+                    raise RuntimeError(f"transient {attempts['n']}")
+                return {"agent": {"variant": "reference", "agent_id": "ok"}}
+
+            NODE_TYPES["flaky"] = NodeSpec("flaky", "Flaky", "agents",
+                FlakyConfig, {}, {"agent": "agent_ref"}, run_flaky)
+            try:
+                wf = Workflow(workflow_id="w", name="t", nodes=[
+                    WorkflowNode(node_id="a", type="flaky",
+                                 config={"fail_times": 2}, retries=2),
+                ], edges=[])
+                eid = mgr.start(wf)
+                await mgr._handles[eid].task
+                ex = store.get_execution(eid)
+                assert ex["status"] == "succeeded"
+                assert ex["node_states"]["a"] == "succeeded"
+                retries = [e for e in store.events_after(eid)
+                           if e["type"] == "node_retry"]
+                assert len(retries) == 2
+                assert retries[0]["data"]["attempt"] == 1
+            finally:
+                NODE_TYPES.pop("flaky", None)
+        asyncio.run(main())
+
+    def test_continue_on_error_completes_with_errors(self, tmp_path):
+        async def main():
+            reg, store, mgr = make_manager(tmp_path)
+            # two independent branches; one fails but is marked continue_on_error
+            wf = Workflow(workflow_id="w", name="t", nodes=[
+                WorkflowNode(node_id="bad", type="slow_agent",
+                             config={"seconds": 0.0, "fail": True},
+                             continue_on_error=True),
+                WorkflowNode(node_id="good", type="slow_agent",
+                             config={"seconds": 0.0, "fail": False}),
+            ], edges=[])
+            eid = mgr.start(wf)
+            await mgr._handles[eid].task
+            ex = store.get_execution(eid)
+            assert ex["status"] == "completed_with_errors"
+            assert ex["node_states"] == {"bad": "failed", "good": "succeeded"}
+            failed_evt = [e for e in store.events_after(eid)
+                          if e["type"] == "node_failed"][0]
+            assert failed_evt["data"]["continued"] is True
+            final = [e for e in store.events_after(eid)
+                     if e["type"] == "execution_completed_with_errors"][0]
+            assert final["data"]["errored_nodes"] == ["bad"]
+        asyncio.run(main())
+
+    def test_continue_on_error_still_skips_starved_downstream(self, tmp_path):
+        async def main():
+            reg, store, mgr = make_manager(tmp_path)
+            load_pilot(reg)
+            # run_suite depends on the failed agent's output — it can't run,
+            # but the execution is soft (completed_with_errors), not failed
+            wf = Workflow(workflow_id="w", name="t", nodes=[
+                WorkflowNode(node_id="a", type="slow_agent",
+                             config={"seconds": 0.0, "fail": True},
+                             continue_on_error=True),
+                node("run", "run_suite", suite_id="pilot-support-triage"),
+            ], edges=[edge("e", "a", "agent", "run", "agent")])
+            eid = mgr.start(wf)
+            await mgr._handles[eid].task
+            ex = store.get_execution(eid)
+            assert ex["status"] == "completed_with_errors"
+            assert ex["node_states"] == {"a": "failed", "run": "skipped"}
+        asyncio.run(main())
+
+    def test_hard_failure_still_fails_the_run(self, tmp_path):
+        async def main():
+            reg, store, mgr = make_manager(tmp_path)
+            wf = Workflow(workflow_id="w", name="t", nodes=[
+                WorkflowNode(node_id="a", type="slow_agent",
+                             config={"seconds": 0.0, "fail": True}),  # no flags
+            ], edges=[])
+            eid = mgr.start(wf)
+            await mgr._handles[eid].task
+            assert store.get_execution(eid)["status"] == "failed"
+        asyncio.run(main())
