@@ -46,7 +46,9 @@ class WorkflowExecutor:
     async def run(self, wf: Workflow, execution_id: str, handles: _Handles,
                   seeded_outputs: dict[str, dict] | None = None) -> None:
         outputs: dict[str, dict] = dict(seeded_outputs or {})
-        failed: set[str] = set()
+        blocked: set[str] = set()       # produced no output (failed/errored/skipped)
+        hard_failed: set[str] = set()   # aborts the run
+        errored: set[str] = set()       # continue_on_error: noted, not fatal
         by_id = {n.node_id: n for n in wf.nodes}
         upstream: dict[str, list] = {n.node_id: [] for n in wf.nodes}
         for e in wf.edges:
@@ -67,14 +69,16 @@ class WorkflowExecutor:
                     self._set_state(execution_id, nid, "succeeded")
                     continue
                 deps = {e.source for e in upstream[nid]}
-                if deps & failed:
+                # a node can only run once every input it's wired to exists
+                if deps & blocked:
                     skipped.append(nid)
                 else:
                     runnable.append(nid)
             for nid in skipped:
-                failed.add(nid)  # propagate skip downstream
+                blocked.add(nid)  # starved of input — propagate downstream
                 self._set_state(execution_id, nid, "skipped")
-                self.bus.publish("node_skipped", execution_id, nid)
+                self.bus.publish("node_skipped", execution_id, nid,
+                                 {"reason": "upstream did not produce output"})
             results = await asyncio.gather(
                 *(self._run_node(wf, by_id[nid], upstream[nid], outputs,
                                  execution_id, handles) for nid in runnable),
@@ -83,18 +87,28 @@ class WorkflowExecutor:
                 if isinstance(res, asyncio.CancelledError):
                     status = "cancelled"
                 elif isinstance(res, BaseException):
-                    failed.add(nid)
+                    blocked.add(nid)
+                    if by_id[nid].continue_on_error:
+                        errored.add(nid)        # noted, run keeps going
+                    else:
+                        hard_failed.add(nid)    # aborts downstream + run
                 else:
                     outputs[nid] = res
             if status == "cancelled":
                 break
 
-        if status != "cancelled" and failed:
-            status = "failed"
+        if status != "cancelled":
+            if hard_failed:
+                status = "failed"
+            elif errored:
+                status = "completed_with_errors"
+            else:
+                status = "succeeded"
         self.store.update_execution(execution_id, status=status,
                                     waiting_node_id=None, finished=True)
         self.bus.publish(f"execution_{status}", execution_id,
-                         data={"failed_nodes": sorted(failed)})
+                         data={"failed_nodes": sorted(hard_failed | errored),
+                               "errored_nodes": sorted(errored)})
         self.bus.close(execution_id)
 
     async def _run_node(self, wf: Workflow, node, in_edges, outputs: dict,
@@ -111,17 +125,29 @@ class WorkflowExecutor:
         self._set_state(execution_id, node.node_id, "running")
         self.bus.publish("node_started", execution_id, node.node_id,
                          {"type": node.type, "label": node.label})
-        try:
-            result = await spec.run(ctx, spec.config_model.model_validate(node.config),
-                                    inputs)
-        except asyncio.CancelledError:
-            self._set_state(execution_id, node.node_id, "failed")
-            raise
-        except Exception as exc:  # noqa: BLE001 — node failure is workflow data
-            self._set_state(execution_id, node.node_id, "failed")
-            self.bus.publish("node_failed", execution_id, node.node_id,
-                             {"error": f"{type(exc).__name__}: {exc}"})
-            raise
+        parsed = spec.config_model.model_validate(node.config)
+        attempts = node.retries + 1
+        for attempt in range(attempts):
+            try:
+                result = await spec.run(ctx, parsed, inputs)
+                break
+            except asyncio.CancelledError:
+                self._set_state(execution_id, node.node_id, "failed")
+                raise
+            except Exception as exc:  # noqa: BLE001 — node failure is workflow data
+                err = f"{type(exc).__name__}: {exc}"
+                if attempt + 1 < attempts:  # retry budget remains
+                    self.bus.publish("node_retry", execution_id, node.node_id,
+                                     {"attempt": attempt + 1, "of": node.retries,
+                                      "error": err})
+                    continue
+                self._set_state(execution_id, node.node_id, "failed")
+                self.bus.publish("node_failed", execution_id, node.node_id, {
+                    "error": err,
+                    "continued": node.continue_on_error,
+                    "attempts": attempts,
+                })
+                raise
         self.store.update_execution(execution_id,
                                     node_output=(node.node_id, result))
         self._set_state(execution_id, node.node_id, "succeeded")

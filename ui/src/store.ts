@@ -71,9 +71,13 @@ export function applyEvent(prev: ExecState, evt: SSEEvent): ExecState {
     case "node_skipped":
       if (nid) next.nodeStates[nid] = "skipped";
       break;
+    case "node_retry":
+      // node stays "running"; the log line records the attempt
+      break;
     case "execution_succeeded":
     case "execution_failed":
     case "execution_cancelled":
+    case "execution_completed_with_errors":
       next.status = evt.type.replace("execution_", "");
       break;
   }
@@ -103,13 +107,17 @@ function summarize(evt: SSEEvent): string {
     case "node_completed":
       return "completed";
     case "node_failed":
-      return `failed: ${d.error ?? ""}`;
+      return `failed${d.continued ? " (continued)" : ""}: ${d.error ?? ""}`;
+    case "node_retry":
+      return `retry ${d.attempt}/${d.of} after error: ${d.error ?? ""}`;
     case "node_skipped":
-      return "skipped (upstream failed)";
+      return "skipped (no input — upstream produced none)";
     case "execution_succeeded":
       return "execution succeeded ✓";
     case "execution_failed":
       return "execution failed";
+    case "execution_completed_with_errors":
+      return "completed with errors ⚠";
     case "execution_cancelled":
       return "execution cancelled";
     default:
@@ -178,6 +186,8 @@ export function toWorkflowDoc(
       label: (n.data as any).label ?? "",
       position: { x: n.position.x, y: n.position.y },
       config: (n.data as any).config ?? {},
+      retries: (n.data as any).retries ?? 0,
+      continue_on_error: (n.data as any).continue_on_error ?? false,
     })),
     edges: edges.map((e) => ({
       edge_id: e.id,
@@ -196,7 +206,9 @@ export function fromWorkflowDoc(wf: WorkflowDoc): { nodes: Node[]; edges: Edge[]
       id: n.node_id,
       type: "ascore",
       position: n.position ?? { x: 0, y: 0 },
-      data: { ntype: n.type, label: n.label, config: n.config },
+      data: { ntype: n.type, label: n.label, config: n.config,
+              retries: (n as any).retries ?? 0,
+              continue_on_error: (n as any).continue_on_error ?? false },
     })),
     edges: wf.edges.map((e) => ({
       id: e.edge_id,

@@ -17,6 +17,9 @@ class WorkflowNode(BaseModel):
     label: str = ""
     position: dict = Field(default_factory=lambda: {"x": 0, "y": 0})
     config: dict = Field(default_factory=dict)
+    # execution-resilience policy (not node-type config):
+    retries: int = Field(default=0, ge=0)   # re-attempt on failure before giving up
+    continue_on_error: bool = False         # failure here doesn't abort the run
 
 
 class WorkflowEdge(BaseModel):

@@ -96,7 +96,7 @@ export function EditorPage() {
 
   // fetch the joined scoreboard once the run reaches a terminal state
   useEffect(() => {
-    const terminal = ["succeeded", "failed", "cancelled"];
+    const terminal = ["succeeded", "failed", "cancelled", "completed_with_errors"];
     if (store.exec.executionId && terminal.includes(store.exec.status)) {
       api.executionResults(store.exec.executionId).then(setResults)
         .catch(() => setResults(null));
