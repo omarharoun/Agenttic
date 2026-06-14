@@ -36,3 +36,15 @@ def test_ui_binding_resolution():
     assert _resolve_ui_binding({}, "", 0, lan=False) == ("127.0.0.1", 8700)  # no ui section
     cfg_lan = {"ui": {"host": "0.0.0.0", "port": 8800}}  # persistent via config
     assert _resolve_ui_binding(cfg_lan, "", 0, lan=False) == ("0.0.0.0", 8800)
+
+
+def test_run_uses_named_agent_suite_options():
+    """`ascore run` accepts --agent/--suite (README form), not positionals."""
+    from typer.testing import CliRunner
+    r = CliRunner().invoke(app, ["run", "--help"])
+    assert r.exit_code == 0
+    assert "--agent" in r.output and "--suite" in r.output
+    # missing required options -> clear error, not a crash
+    missing = CliRunner().invoke(app, ["run"])
+    assert missing.exit_code != 0
+    assert "--agent" in missing.output

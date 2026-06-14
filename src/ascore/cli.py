@@ -48,7 +48,9 @@ def approve(suite_id: str, version: int = 1, config: str = "config.yaml"):
 
 
 @app.command()
-def run(agent: str, suite: str, url: str = "",
+def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)"),
+        suite: str = typer.Option(..., "--suite", "-s", help="suite id to run"),
+        url: str = "",
         managed_agent_id: str = "", environment_id: str = "",
         system_prompt: str = "", config: str = "config.yaml"):
     """Run a suite against an agent: the reference agent (--system-prompt to
@@ -130,7 +132,8 @@ def calibrate(suite_id: str, config: str = "config.yaml"):
 
 
 @app.command()
-def regress(agent: str, config: str = "config.yaml"):
+def regress(agent: str = typer.Option(..., "--agent", "-a", help="agent id"),
+            config: str = "config.yaml"):
     """Re-run every suite this agent was scored on; diff against prior results."""
     cfg, reg = _ctx(config)
     for suite_id in reg.suites_scored_for(agent):
