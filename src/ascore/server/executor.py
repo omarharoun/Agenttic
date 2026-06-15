@@ -60,7 +60,9 @@ class WorkflowExecutor:
         status = "succeeded"
 
         for level in levels:
-            if handles.cancelled.is_set():
+            # cancel can be requested locally (same worker) or persisted by
+            # another worker (cross-worker cancel) — honor both at each level.
+            if handles.cancelled.is_set() or self._cancel_requested(execution_id):
                 status = "cancelled"
                 break
             runnable, skipped = [], []
@@ -172,6 +174,13 @@ class WorkflowExecutor:
     def _set_state(self, execution_id: str, node_id: str, state: str) -> None:
         self.store.update_execution(execution_id, node_state=(node_id, state))
 
+    def _cancel_requested(self, execution_id: str) -> bool:
+        """True if another worker persisted a cancel for this execution."""
+        try:
+            return self.store.get_execution(execution_id)["status"] == "cancelled"
+        except Exception:  # noqa: BLE001
+            return False
+
 
 def _summarize(result: dict) -> dict:
     """Small, JSON-safe summary for the node_completed event."""
@@ -247,22 +256,24 @@ class ExecutionManager:
 
     async def cancel(self, execution_id: str) -> None:
         h = self._handles.get(execution_id)
-        if h is None:
-            return
-        h.cancelled.set()
-        h.gate.set()  # unblock a parked gate so the loop can observe cancel
-        if h.task and not h.task.done():
-            h.task.cancel()
-            try:
-                await h.task
-            except (asyncio.CancelledError, Exception):  # noqa: BLE001
-                pass
+        if h is not None:
+            h.cancelled.set()
+            h.gate.set()  # unblock a parked gate so the loop can observe cancel
+            if h.task and not h.task.done():
+                h.task.cancel()
+                try:
+                    await h.task
+                except (asyncio.CancelledError, Exception):  # noqa: BLE001
+                    pass
+        # persist the cancel even without a local handle — a worker that owns
+        # the execution observes the cancelled status at its next level boundary
+        # (cross-worker cancel); a finished/absent execution is left untouched.
         try:
             ex = self.store.get_execution(execution_id)
-            if ex["status"] in ("running", "waiting_approval"):
-                self.store.update_execution(execution_id, status="cancelled",
-                                            waiting_node_id=None, finished=True)
-                self.bus.publish("execution_cancelled", execution_id)
-                self.bus.close(execution_id)
-        except KeyError:
-            pass
+        except (KeyError, Exception):  # noqa: BLE001
+            return
+        if ex["status"] in ("running", "waiting_approval"):
+            self.store.update_execution(execution_id, status="cancelled",
+                                        waiting_node_id=None, finished=True)
+            self.bus.publish("execution_cancelled", execution_id)
+            self.bus.close(execution_id)

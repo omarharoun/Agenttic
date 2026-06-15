@@ -49,6 +49,9 @@ database:
   url: ""             # blank => SQLite (paths.registry_db, DB-per-tenant).
                       # Set a postgresql+psycopg:// URL (or ASCORE_DB env) for a
                       # shared Postgres with row-level tenant scoping.
+events:
+  backend: memory     # memory (single process) | redis (multi-worker SSE)
+  redis_url: ""       # redis://host:6379/0 (or ASCORE_REDIS_URL); required for redis
 observability:
   log_level: INFO     # ascore logger level
   log_json: true      # structured JSON request logs (false => plain text)
