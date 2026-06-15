@@ -82,6 +82,7 @@ export const api = {
     fetch(`/api/suites/${id}/review`).then((r) => (r.ok ? r.text() : "")),
   approveSuite: (id: string, version: number) =>
     fetch(`/api/suites/${id}/approve?version=${version}`, { method: "POST" }),
+  listAgents: () => fetch("/api/agents").then((r) => json<any>(r)),
   leaderboard: (suites: string[] = []) =>
     fetch(`/api/leaderboard${suites.length ? `?suites=${suites.join(",")}` : ""}`)
       .then((r) => json<any>(r)),

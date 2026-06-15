@@ -1,4 +1,5 @@
 import { NavLink, Route, Routes } from "react-router-dom";
+import { AgentsPage } from "./pages/AgentsPage";
 import { EditorPage } from "./pages/EditorPage";
 import { ExecutionsPage } from "./pages/ExecutionsPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
@@ -12,12 +13,14 @@ export function App() {
         <NavLink to="/" end title="Workflow editor">▦</NavLink>
         <NavLink to="/executions" title="Executions">▶</NavLink>
         <NavLink to="/leaderboard" title="Agenttic Index leaderboard">🏆</NavLink>
+        <NavLink to="/agents" title="Agents (discovered)">🤖</NavLink>
         <NavLink to="/resources" title="Suites / scorecards / traces">▤</NavLink>
       </nav>
       <Routes>
         <Route path="/" element={<EditorPage />} />
         <Route path="/executions" element={<ExecutionsPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/agents" element={<AgentsPage />} />
         <Route path="/resources" element={<ResourcesPage />} />
       </Routes>
     </>
