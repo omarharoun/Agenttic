@@ -326,9 +326,14 @@ Added structured JSON request logs with a per-request id (honors/echoes
 and `/ready` (default-DB ping → 503 when down), and a `/metrics` Prometheus
 endpoint from a dependency-free registry (HTTP request counts + duration
 summary, `ascore_runs_total{status}`, `ascore_llm_cost_usd_total`).
-`server/observability.py`, `server/metrics.py`. **Residual:** metrics are
-per-process (scrape each worker or move to a shared exporter); token-level
-counters and OpenTelemetry tracing are still future work.
+`server/observability.py`, `server/metrics.py`. **Update (`<otel commit>`):**
+added per-token counters (`ascore_llm_tokens_total{component,kind}` from agent +
+judge), and **OpenTelemetry** tracing (`server/tracing.py`, the `otel` extra):
+`observability.otel_enabled` + `OTEL_EXPORTER_OTLP_ENDPOINT` exports a
+request → run → (agent/judge) span hierarchy; it's a no-op when disabled, so the
+default path is unaffected (`tests/test_tracing.py`). **Residual (Low):** the
+text `/metrics` registry is per-process — scrape each replica, or front with an
+OTel collector / push-gateway for aggregation.
 
 #### Original finding
 

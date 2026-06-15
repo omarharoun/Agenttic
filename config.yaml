@@ -61,6 +61,7 @@ retention:            # trace data lifecycle (run `ascore retention --apply` on 
 observability:
   log_level: INFO     # ascore logger level
   log_json: true      # structured JSON request logs (false => plain text)
+  otel_enabled: false # true + OTEL_EXPORTER_OTLP_ENDPOINT => export traces (needs the otel extra)
 auth:
   required: false     # true => server refuses to start without a token (fail closed)
   token: ""           # the ADMIN token; prefer the ASCORE_API_TOKEN env var
