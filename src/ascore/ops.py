@@ -172,6 +172,8 @@ def aggregate_op(
         rubric_id=rubric.rubric_id, rubric_version=rubric.version,
         run_scores=runs, visibility_tier=visibility)
     reg.save_scorecard(sc)
+    # record total spend (execution + scoring) for the daily budget ledger
+    reg.record_spend(agent_id, sc.total_cost_usd + sc.total_scoring_cost_usd)
     return sc
 
 

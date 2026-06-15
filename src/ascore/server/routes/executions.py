@@ -71,6 +71,8 @@ def execution_results(execution_id: str, request: Request):
                     "suite_version": sc.suite_version,
                     "task_success_rate": sc.task_success_rate,
                     "mean_cost_usd": sc.mean_cost_usd,
+                    "total_cost_usd": sc.total_cost_usd,
+                    "total_scoring_cost_usd": sc.total_scoring_cost_usd,
                     "p95_latency_ms": sc.p95_latency_ms,
                     "per_criterion_means": sc.per_criterion_means,
                     "errored_test_ids": sc.errored_test_ids,
@@ -94,6 +96,7 @@ def execution_results(execution_id: str, request: Request):
                         "prediction": prediction,
                         "expected": expected_by_id.get(rs["test_id"]),
                         "cost_usd": rs.get("cost_usd"),
+                        "scoring_cost_usd": rs.get("scoring_cost_usd"),
                         "steps": rs.get("steps"),
                         "latency_ms": rs.get("latency_ms"),
                         "criteria": [{

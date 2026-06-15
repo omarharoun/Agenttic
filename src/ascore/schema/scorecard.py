@@ -16,6 +16,7 @@ class CriterionScore(BaseModel):
     scorer: Literal["code", "judge", "fi"]
     calibrated: bool = True  # Hard Rule 6: False => shown as PROVISIONAL
     judge_rationale: str | None = None
+    cost_usd: float = 0.0  # scoring cost for this criterion (judge tokens; 0 for code)
 
     @model_validator(mode="after")
     def _score_in_scale(self) -> "CriterionScore":
@@ -39,7 +40,8 @@ class RunScore(BaseModel):
     test_id: str
     criterion_scores: list[CriterionScore]
     passed: bool
-    cost_usd: float = 0.0
+    cost_usd: float = 0.0           # agent execution cost (from the trace)
+    scoring_cost_usd: float = 0.0   # judge/scoring cost for this run
     latency_ms: float = 0.0
     steps: int = 0
     scoring_error: str | None = None
@@ -56,7 +58,9 @@ class Scorecard(BaseModel):
     rubric_version: int
     run_scores: list[RunScore]
     task_success_rate: float
-    mean_cost_usd: float
+    mean_cost_usd: float            # mean agent execution cost per run
+    total_cost_usd: float = 0.0     # total agent execution cost over all runs
+    total_scoring_cost_usd: float = 0.0  # total judge/scoring cost over all runs
     p95_latency_ms: float
     per_criterion_means: dict[str, float] = Field(default_factory=dict)
     errored_test_ids: list[str] = Field(default_factory=list)
@@ -91,7 +95,9 @@ class Scorecard(BaseModel):
         errored_ids = [r.test_id for r in run_scores if r.scoring_error is not None]
         s = len(scored)
         success = (sum(1 for r in scored if r.passed) / s) if s else 0.0
-        mean_cost = sum(r.cost_usd for r in run_scores) / n
+        total_cost = sum(r.cost_usd for r in run_scores)
+        total_scoring_cost = sum(r.scoring_cost_usd for r in run_scores)
+        mean_cost = total_cost / n
         latencies = sorted(r.latency_ms for r in run_scores)
         p95 = latencies[min(n - 1, max(0, round(0.95 * n) - 1))]
         per_crit: dict[str, list[float]] = {}
@@ -109,6 +115,8 @@ class Scorecard(BaseModel):
             run_scores=run_scores,
             task_success_rate=success,
             mean_cost_usd=mean_cost,
+            total_cost_usd=total_cost,
+            total_scoring_cost_usd=total_scoring_cost,
             p95_latency_ms=p95,
             per_criterion_means=means,
             errored_test_ids=errored_ids,

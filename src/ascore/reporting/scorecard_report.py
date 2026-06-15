@@ -52,6 +52,13 @@ def render_markdown(
         f"${sc.mean_cost_usd:.4f} per run and p95 latency of "
         f"{sc.p95_latency_ms:.0f} ms. {tier_note}",
         "",
+        "## Cost",
+        "",
+        f"- Agent execution: **${sc.total_cost_usd:.4f}** "
+        f"(${sc.mean_cost_usd:.4f}/run × {n} runs)",
+        f"- Scoring (judge): **${sc.total_scoring_cost_usd:.4f}**",
+        f"- Total run cost: **${sc.total_cost_usd + sc.total_scoring_cost_usd:.4f}**",
+        "",
         "## Results by test case",
         "",
         "| Test case | Result | Cost (USD) | Latency (ms) | Steps |",
