@@ -28,3 +28,5 @@ ui:
   host: 127.0.0.1
   port: 8700
   uploads_dir: uploads/
+leaderboard:
+  suite_weights: {}   # per-suite Index weights (suite_id: weight); default 1.0 each

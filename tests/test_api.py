@@ -326,3 +326,55 @@ class TestFiAndPartialBatchApi:
         assert sc["task_success_rate"] == 0.0
         assert all(c["scoring_error"] for c in r["cases"])
         assert "judge 500" in r["cases"][0]["scoring_error"]
+
+
+class TestLeaderboardApi:
+    def test_leaderboard_ranks_two_agents(self, client):
+        # two agents with different routing behavior -> different Index
+        from types import SimpleNamespace as NS
+        import json as _json
+        import uuid as _uuid
+
+        class AlwaysGeneralClient:
+            """Consults the KB but misroutes everything to 'general'."""
+            def __init__(self):
+                self.messages = NS(create=self._c)
+            def _c(self, **kw):
+                has_tool_result = any(
+                    isinstance(m.get("content"), list) for m in kw["messages"])
+                if not has_tool_result:
+                    return NS(stop_reason="tool_use",
+                              usage=NS(input_tokens=200, output_tokens=30),
+                              content=[NS(type="tool_use", name="lookup_kb",
+                                          input={"key": "routing_rules"},
+                                          id=f"tu_{_uuid.uuid4().hex[:6]}")])
+                return NS(stop_reason="end_turn",
+                          usage=NS(input_tokens=260, output_tokens=8),
+                          content=[NS(type="text", text="general")])
+
+        wf = eval_workflow("pilot-support-triage").model_dump()
+        agents = {"agent-good": RoutingFakeClient(),
+                  "agent-meh": AlwaysGeneralClient()}
+        for agent_id, agent_client in agents.items():
+            for n in wf["nodes"]:
+                if n["node_id"] == "agent":
+                    n["config"]["agent_id"] = agent_id
+            wf["workflow_id"] = f"wf-{agent_id}"
+            client.app.state.manager.clients["agent"] = agent_client
+            client.app.state.manager.clients["judge"] = ProfessionalToneJudgeClient()
+            client.post("/api/workflows", json=wf)
+            eid = client.post(
+                f"/api/workflows/wf-{agent_id}/executions").json()["execution_id"]
+            poll(client, eid, "succeeded")
+
+        board = client.get("/api/leaderboard").json()
+        names = [r["agent_id"] for r in board["agents"]]
+        assert names[0] == "agent-good"  # higher Index ranks first
+        assert board["agents"][0]["rank"] == 1
+        assert board["agents"][0]["index"] > board["agents"][1]["index"]
+        assert board["suites"] == ["pilot-support-triage"]
+        assert all(r["coverage"] == 1 for r in board["agents"])
+
+    def test_leaderboard_empty_when_no_runs(self, client):
+        assert client.get("/api/leaderboard").json() == {
+            "suites": [], "agents": [], "weights": {}}
