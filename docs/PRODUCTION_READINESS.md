@@ -94,9 +94,12 @@ the 291-test suite stay untouched. Isolation verified in `tests/test_tenancy.py`
 > tradeoffs: no cross-tenant queries (desired), a registry/manager per tenant in
 > memory (lazy-created; fine for tens of tenants), and per-file backups. **When
 > we move to Postgres / many tenants, switch to row-level `tenant_id` scoping**
-> (pairs with the Alembic migrations in §3.2). The CLI still operates on the
-> `default` tenant only — a `--tenant` flag is a small follow-up. Flag me if
-> you'd prefer row-level scoping now instead.
+> (pairs with the Alembic migrations in §3.2). **Update:** Postgres support
+> with row-level `tenant_id` scoping is now implemented (§3.1) — the maintainer
+> ratified keeping DB-per-tenant for SQLite. The CLI is tenant-aware too:
+> `ascore --tenant <t> …` (or `ASCORE_TENANT`) selects the workspace for every
+> command; it operates directly on the DB as an admin tool (DB access, not an
+> API token; provider keys via env/`*_FILE`).
 
 #### Original finding
 There is a single SQLite file (`config.yaml` → `paths.registry_db: ascore.db`)
