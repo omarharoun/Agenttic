@@ -157,6 +157,20 @@ src/ascore/
 ui/                # React + React Flow canvas (Vite, dark n8n-style theme)
 ```
 
+## Agenttic Index (leaderboard)
+
+A leaderboard that ranks agents across suites, in the spirit of
+[artificialanalysis.ai](https://artificialanalysis.ai/)'s Intelligence Index.
+Each **suite is a benchmark**; an agent's **Index** is the weighted mean of its
+per-suite task-success rate (0–100), using the latest scorecard per (agent,
+suite). The UI's 🏆 page shows a ranked table (Index, blended $/case, p95
+latency, suite coverage, tier) and an Index-vs-cost scatter; a common-set
+filter restricts the board to shared suites for an apples-to-apples comparison.
+Per-suite weights live in `config.yaml` (`leaderboard.suite_weights`). API:
+`GET /api/leaderboard?suites=a,b`. Comparison is honest about coverage — an
+agent is ranked on what it actually ran, never silently averaged over different
+denominators.
+
 ## Scoring backends
 
 Each rubric criterion is scored by one of three backends:

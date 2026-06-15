@@ -49,6 +49,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app = FastAPI(title="Agenttic", lifespan=lifespan)
 
     from ascore.server.routes.executions import router as executions_router
+    from ascore.server.routes.leaderboard import router as leaderboard_router
     from ascore.server.routes.live import router as live_router
     from ascore.server.routes.resources import router as resources_router
     from ascore.server.routes.workflows import router as workflows_router
@@ -57,6 +58,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(executions_router, prefix="/api")
     app.include_router(resources_router, prefix="/api")
     app.include_router(live_router, prefix="/api")
+    app.include_router(leaderboard_router, prefix="/api")
 
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"),
