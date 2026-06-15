@@ -20,6 +20,7 @@ from ascore.registry.sqlite_store import Registry
 from ascore.server.auth import check_startup, require_auth
 from ascore.server.events import EventBus
 from ascore.server.executor import ExecutionManager
+from ascore.server.ratelimit import RateLimitMiddleware
 from ascore.server.store import UIStore
 
 UI_DIST = Path(__file__).resolve().parents[3] / "ui" / "dist"
@@ -63,6 +64,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         yield
 
     app = FastAPI(title="Agenttic", lifespan=lifespan)
+    app.add_middleware(RateLimitMiddleware)
 
     from ascore.server.routes.executions import router as executions_router
     from ascore.server.routes.leaderboard import router as leaderboard_router
