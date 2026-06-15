@@ -60,6 +60,13 @@ def compute_leaderboard(
         costs = [per[s].get("mean_cost_usd") or 0.0 for s in agent_suites]
         lats = [per[s].get("p95_latency_ms") or 0.0 for s in agent_suites]
         tiers = {per[s].get("visibility_tier") for s in agent_suites}
+        # all-in $/case: (execution + judge) over total cases this agent ran.
+        # None (n/a) when case counts aren't recorded — never fabricated.
+        total_cases = sum(per[s].get("n_runs") or 0 for s in agent_suites)
+        all_in = sum((per[s].get("total_cost_usd") or 0.0)
+                     + (per[s].get("total_scoring_cost_usd") or 0.0)
+                     for s in agent_suites)
+        cost_per_case = round(all_in / total_cases, 6) if total_cases else None
         rows.append({
             "agent_id": agent_id,
             "index": round(index, 1),
@@ -67,6 +74,7 @@ def compute_leaderboard(
             "p95_latency_ms": sum(lats) / len(lats),
             "coverage": len(agent_suites),
             "total_suites": len(suites),
+            "all_in_cost_per_case_usd": cost_per_case,  # None => n/a in the UI
             "agent_type": declared_types.get(agent_id, "discovered"),
             "visibility_tier": tiers.pop() if len(tiers) == 1 else "mixed",
             "n_errored": sum(per[s].get("n_errored", 0) for s in agent_suites),

@@ -9,7 +9,8 @@ const COLUMNS: [string, string, 1 | -1, boolean][] = [
   ["agent_id", "agent", 1, false],
   ["agent_type", "type", 1, false],
   ["index", "Index", -1, true],
-  ["mean_cost_usd", "$/case", 1, true],
+  ["mean_cost_usd", "exec $/case", 1, true],
+  ["all_in_cost_per_case_usd", "all-in $/case", 1, true],
   ["p95_latency_ms", "p95 ms", 1, true],
   ["coverage", "coverage", -1, true],
   ["visibility_tier", "tier", 1, false],
@@ -99,6 +100,10 @@ export function LeaderboardPage() {
                       ? { color: "var(--muted)" } : undefined}>{a.agent_type}</td>
                     <td><b style={{ color: barColor(a.index) }}>{a.index}</b></td>
                     <td>${a.mean_cost_usd.toFixed(4)}</td>
+                    <td title="execution + judge cost per case">
+                      {a.all_in_cost_per_case_usd == null
+                        ? <span style={{ color: "var(--muted)" }}>n/a</span>
+                        : `$${a.all_in_cost_per_case_usd.toFixed(4)}`}</td>
                     <td>{Math.round(a.p95_latency_ms)}</td>
                     <td>{a.coverage}/{a.total_suites}</td>
                     <td>{a.visibility_tier.replace("_", "-")}</td>
