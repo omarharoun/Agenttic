@@ -51,6 +51,8 @@ auth:
                       # when set (env or here), ALL /api routes need the token
 security:
   rate_limit_per_minute: 0          # 0 = off; per-client (token or IP) request cap
+  rate_limit_backend: memory        # memory (default) | redis (multi-worker)
+  redis_url: ""                     # redis://host:6379/0 — required for redis backend
   blackbox_allowed_schemes: [http, https]
   blackbox_block_private: true      # block private/loopback/link-local/metadata IPs
   blackbox_url_allowlist: []        # if non-empty, only these host suffixes allowed
