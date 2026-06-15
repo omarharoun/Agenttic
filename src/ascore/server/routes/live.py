@@ -7,12 +7,13 @@ Live data stays in its own tables — nothing here touches batch scorecards.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ascore.live.monitor import LiveMonitor
 from ascore.registry.sqlite_store import NotFoundError
 from ascore.schema.trace import Trace
 from ascore.scoring.judge import LLMJudge
+from ascore.server.auth import require_operator
 
 router = APIRouter(tags=["live"])
 
@@ -40,7 +41,7 @@ def _monitor(state, rubric_id: str, agent_id: str) -> LiveMonitor:
     )
 
 
-@router.post("/live/ingest")
+@router.post("/live/ingest", dependencies=[Depends(require_operator)])
 def ingest(trace: Trace, request: Request, rubric_id: str):
     """Ingest one production trace (no test_case_id). Sync route — FastAPI
     runs it in the threadpool, so the sampled judge call doesn't block the

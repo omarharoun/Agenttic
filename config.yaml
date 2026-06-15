@@ -47,8 +47,10 @@ budget:               # spend ceilings (0 = unlimited)
   warn_only: false              # true => estimate gate warns but does not abort
 auth:
   required: false     # true => server refuses to start without a token (fail closed)
-  token: ""           # prefer the ASCORE_API_TOKEN env var; this is the fallback
-                      # when set (env or here), ALL /api routes need the token
+  token: ""           # the ADMIN token; prefer the ASCORE_API_TOKEN env var
+                      # when any token is set, ALL /api routes need one
+  tokens: {}          # additional principals: {token: role}; roles are
+                      # viewer (read) < operator (run/approve/manage) < admin
 security:
   rate_limit_per_minute: 0          # 0 = off; per-client (token or IP) request cap
   rate_limit_backend: memory        # memory (default) | redis (multi-worker)

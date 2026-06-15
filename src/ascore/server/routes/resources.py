@@ -9,12 +9,13 @@ import re
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from fastapi.responses import PlainTextResponse
 
 from ascore import ops
 from ascore.registry.sqlite_store import NotFoundError
 from ascore.schema.agent import DeclaredAgent
+from ascore.server.auth import require_operator
 
 router = APIRouter(tags=["resources"])
 
@@ -43,7 +44,7 @@ def get_review(suite_id: str, request: Request):
     return path.read_text()
 
 
-@router.post("/suites/{suite_id}/approve")
+@router.post("/suites/{suite_id}/approve", dependencies=[Depends(require_operator)])
 def approve_suite(suite_id: str, request: Request, version: int = 1):
     try:
         request.app.state.reg.approve_suite(suite_id, version)
@@ -167,6 +168,12 @@ def managed_agents(request: Request):
         return {"agents": [], "warning": f"{type(exc).__name__}: {exc}"}
 
 
+@router.get("/me")
+def whoami(request: Request):
+    """The caller's resolved role (admin when auth is disabled)."""
+    return {"role": getattr(request.state, "role", "admin")}
+
+
 @router.get("/agents/catalog")
 def list_catalog(request: Request, include_retired: bool = False):
     """The declared agent catalog — pre-registered agents (latest version each)
@@ -174,7 +181,7 @@ def list_catalog(request: Request, include_retired: bool = False):
     return {"agents": request.app.state.reg.list_declared_agents(include_retired)}
 
 
-@router.post("/agents/catalog")
+@router.post("/agents/catalog", dependencies=[Depends(require_operator)])
 def register_catalog_agent(agent: DeclaredAgent, request: Request):
     """Register a new agent or store the next version of an existing one.
     Per-variant connection requirements are validated by the schema (422);
@@ -198,7 +205,7 @@ def get_catalog_agent(agent_id: str, request: Request, version: int | None = Non
         raise HTTPException(404, f"declared agent {agent_id} not found")
 
 
-@router.delete("/agents/catalog/{agent_id}")
+@router.delete("/agents/catalog/{agent_id}", dependencies=[Depends(require_operator)])
 def retire_catalog_agent(agent_id: str, request: Request):
     """Soft-delete: retire the agent (history is kept; re-register to revive)."""
     try:
@@ -214,7 +221,7 @@ def monitor_status(agent_id: str, request: Request):
     return {"agent_id": agent_id, "reeval_requests": reg.reeval_requests(agent_id)}
 
 
-@router.post("/uploads")
+@router.post("/uploads", dependencies=[Depends(require_operator)])
 async def upload(request: Request, file: UploadFile):
     uploads_dir = Path(request.app.state.cfg.get("ui", {})
                        .get("uploads_dir", "uploads/"))
