@@ -230,6 +230,25 @@ def pilot(config: str = "config.yaml",
                       f"`uv run ascore approve {suite.suite_id}`.")
 
 
+@app.command()
+def migrate(status: bool = typer.Option(False, "--status",
+                                        help="show applied/pending and exit"),
+            config: str = "config.yaml"):
+    """Apply schema migrations to the registry DB (idempotent). Building the
+    Registry already migrates to head; this reports or re-runs explicitly."""
+    from ascore.migrations import migration_status, run_migrations
+
+    _, reg = _ctx(config)  # constructing the Registry runs migrations
+    if status:
+        st = migration_status(reg.engine)
+        console.print(f"applied={st['applied']} pending={st['pending']} "
+                      f"head={st['head']}")
+        return
+    applied = run_migrations(reg.engine)
+    console.print(f"Applied migrations: {applied}" if applied
+                  else "[green]Schema up to date.[/]")
+
+
 def _resolve_ui_binding(cfg: dict, host: str, port: int, lan: bool) -> tuple[str, int]:
     """Precedence: --lan > --host/--port flags > config.yaml ui section >
     loopback defaults."""
