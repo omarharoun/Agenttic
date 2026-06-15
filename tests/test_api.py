@@ -380,6 +380,39 @@ class TestLeaderboardApi:
             "suites": [], "agents": [], "weights": {}}
 
 
+class TestCostEstimateApi:
+    def test_estimate_for_suite(self, client):
+        r = client.get("/api/estimate?suite_id=pilot-support-triage").json()
+        est = r["estimate"]
+        assert est["n_cases"] == 10
+        assert est["agent_variant"] == "reference"
+        assert est["projected_usd"] > 0
+        assert est["n_judge_criteria"] >= 1  # the pilot rubric has a judge criterion
+        assert "budget" in r and r["budget"]["projected_usd"] == est["projected_usd"]
+
+    def test_estimate_unknown_suite_404(self, client):
+        assert client.get("/api/estimate?suite_id=ghost").status_code == 404
+
+    def test_estimate_declared_blackbox_agent(self, client):
+        client.post("/api/agents/catalog", json={
+            "agent_id": "client-bb", "variant": "blackbox",
+            "url": "https://agents.example.com/x"})
+        est = client.get("/api/estimate?suite_id=pilot-support-triage"
+                         "&agent_id=client-bb").json()["estimate"]
+        assert est["agent_variant"] == "blackbox"
+        assert est["projected_agent_usd"] == 0.0  # unknown for black-box
+
+    def test_workflow_estimate(self, client):
+        wf = eval_workflow("pilot-support-triage").model_dump()
+        for n in wf["nodes"]:
+            if n["type"] == "run_suite":
+                n["config"]["suite_id"] = "pilot-support-triage"
+        client.post("/api/workflows", json=wf)
+        r = client.get("/api/workflows/wf-eval/estimate").json()
+        assert r["estimate"]["n_cases"] == 10
+        assert r["estimate"]["projected_usd"] > 0
+
+
 class TestAgentsDiscovery:
     def test_lists_agents_observed_from_runs(self, client):
         # before any run, no observed agents (managed may warn w/o key)
