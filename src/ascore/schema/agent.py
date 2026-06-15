@@ -38,6 +38,13 @@ class DeclaredAgent(BaseModel):
     managed_agent_id: str = ""    # managed: Anthropic Managed Agent id
     environment_id: str = ""      # managed: its environment id
 
+    # black-box cost hints — black-box agents expose no token usage, so cost is
+    # unknown unless declared. Provide a flat per-call cost, OR expected token
+    # counts priced at `model`'s rate (else the default rate). Unset => unknown.
+    cost_per_call_usd: float = 0.0
+    expected_input_tokens: int = 0
+    expected_output_tokens: int = 0
+
     tags: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")

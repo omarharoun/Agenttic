@@ -58,6 +58,7 @@ def estimate_run_cost(
     n_judge_criteria: int = 0,
     judge_model: str | None = None,
     avg_input_chars: int = 0,
+    bb_call_cost: float = 0.0,
 ) -> CostEstimate:
     c = cfg.get("cost", {}) or {}
     steps = int(c.get("expected_agent_steps", 3))
@@ -69,9 +70,13 @@ def estimate_run_cost(
 
     if agent_variant == "blackbox":
         agent_calls = 1
-        agent_usd = 0.0
-        notes.append("black-box agent cost is unknown (no token usage exposed); "
-                     "only judge cost is estimated.")
+        if bb_call_cost:
+            agent_usd = bb_call_cost * n_cases
+            notes.append("black-box agent cost from the declared per-call cost.")
+        else:
+            agent_usd = 0.0
+            notes.append("black-box agent cost is unknown (no token usage "
+                         "exposed and none declared); only judge cost is estimated.")
     else:
         agent_calls = steps
         per_call = token_cost(cfg, agent_model, in_tok, out_tok)
@@ -100,10 +105,11 @@ def estimate_run_cost(
 
 
 def _resolve_agent(cfg: dict, reg: Registry, agent_id: str | None,
-                   agent_model: str | None) -> tuple[str, str | None, str]:
-    """(variant, model, visibility) for an agent_id — from the declared catalog
-    if present, else a reference agent on the default model."""
-    variant, visibility = "reference", "glass_box"
+                   agent_model: str | None) -> tuple[str, str | None, str, float]:
+    """(variant, model, visibility, bb_call_cost) for an agent_id — from the
+    declared catalog if present, else a reference agent on the default model."""
+    from ascore.ops import blackbox_call_cost
+    variant, visibility, bb_cost = "reference", "glass_box", 0.0
     model = agent_model or cfg["models"]["agent_default"]
     if agent_id:
         try:
@@ -113,16 +119,21 @@ def _resolve_agent(cfg: dict, reg: Registry, agent_id: str | None,
                 model = agent_model or d.model or cfg["models"]["agent_default"]
             elif variant == "blackbox":
                 model, visibility = None, "black_box"
+                bb_cost = blackbox_call_cost(
+                    cfg, cost_per_call_usd=d.cost_per_call_usd, model=d.model,
+                    expected_input_tokens=d.expected_input_tokens,
+                    expected_output_tokens=d.expected_output_tokens)
             elif variant == "managed":
                 model = agent_model or cfg["models"]["agent_default"]
         except NotFoundError:
             pass
-    return variant, model, visibility
+    return variant, model, visibility, bb_cost
 
 
 def estimate_for_run(cfg: dict, reg: Registry, suite_id: str, *,
                      variant: str, model: str | None,
                      with_judge: bool = True,
+                     bb_call_cost: float = 0.0,
                      version: int | None = None) -> CostEstimate:
     """Estimate for a concrete (variant, model) — used by the budget gate where
     the adapter is already built, so the variant/model are known exactly."""
@@ -141,7 +152,7 @@ def estimate_for_run(cfg: dict, reg: Registry, suite_id: str, *,
     return estimate_run_cost(
         cfg, n_cases=len(cases), agent_variant=variant, agent_model=model,
         n_judge_criteria=n_judge, judge_model=judge_model_for(cfg, model),
-        avg_input_chars=avg_chars)
+        avg_input_chars=avg_chars, bb_call_cost=bb_call_cost)
 
 
 def estimate_for_suite(cfg: dict, reg: Registry, suite_id: str, *,
@@ -149,13 +160,15 @@ def estimate_for_suite(cfg: dict, reg: Registry, suite_id: str, *,
                        agent_model: str | None = None,
                        with_judge: bool = True,
                        version: int | None = None) -> CostEstimate:
-    variant, model, _ = _resolve_agent(cfg, reg, agent_id, agent_model)
+    variant, model, _, bb_cost = _resolve_agent(cfg, reg, agent_id, agent_model)
     return estimate_for_run(cfg, reg, suite_id, variant=variant, model=model,
-                            with_judge=with_judge, version=version)
+                            with_judge=with_judge, bb_call_cost=bb_cost,
+                            version=version)
 
 
 def estimate_for_workflow(cfg: dict, reg: Registry, wf) -> CostEstimate:
     """Estimate a workflow by finding its agent + run-suite + score nodes."""
+    from ascore.ops import blackbox_call_cost
     nodes = {n.type: n for n in wf.nodes}
     agent_node = nodes.get("agent")
     suite_id = None
@@ -165,8 +178,21 @@ def estimate_for_workflow(cfg: dict, reg: Registry, wf) -> CostEstimate:
             break
     if not suite_id:
         raise ValueError("workflow has no run_suite/generator node with a suite_id")
-    agent_id = (agent_node.config.get("agent_id") if agent_node else None)
-    agent_model = (agent_node.config.get("model") if agent_node else None) or None
+    ac = agent_node.config if agent_node else {}
+    agent_id = ac.get("agent_id")
+    agent_model = ac.get("model") or None
+    variant = ac.get("variant", "reference")
     with_judge = "score" in nodes
+    # ad-hoc black-box node cost hints (declared agents resolve via agent_id)
+    if variant == "blackbox" and any(ac.get(k) for k in
+            ("cost_per_call_usd", "expected_input_tokens", "expected_output_tokens")):
+        model = agent_model
+        bb_cost = blackbox_call_cost(
+            cfg, cost_per_call_usd=ac.get("cost_per_call_usd", 0.0),
+            model=agent_model or "",
+            expected_input_tokens=ac.get("expected_input_tokens", 0),
+            expected_output_tokens=ac.get("expected_output_tokens", 0))
+        return estimate_for_run(cfg, reg, suite_id, variant=variant, model=model,
+                                with_judge=with_judge, bb_call_cost=bb_cost)
     return estimate_for_suite(cfg, reg, suite_id, agent_id=agent_id,
                               agent_model=agent_model, with_judge=with_judge)

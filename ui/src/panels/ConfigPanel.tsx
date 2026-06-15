@@ -6,7 +6,8 @@ import { ResultsPanel } from "./ResultsPanel";
 import { SchemaForm } from "./SchemaForm";
 
 const AGENT_FIELDS = ["agent_id", "variant", "model", "system_prompt", "url",
-  "managed_agent_id", "environment_id"] as const;
+  "managed_agent_id", "environment_id", "cost_per_call_usd",
+  "expected_input_tokens", "expected_output_tokens"] as const;
 
 /** Dropdown of declared catalog agents. Picking one freezes its connection
  *  details into the node config (reproducible snapshot), then the form below

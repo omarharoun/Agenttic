@@ -65,11 +65,16 @@ class AgentConfig(BaseModel):
     variant: Literal["reference", "blackbox", "managed"] = "reference"
     agent_id: str = "agent-under-test"
     system_prompt: str = ""     # reference variant: the DUT's task instructions
+    model: str = ""             # reference: model override; blackbox: pricing hint
     url: str = ""
     managed_agent_id: str = ""
     environment_id: str = ""
     agent_yaml_path: str = ""
     deploy: bool = False
+    # black-box cost hints (see schema.agent.DeclaredAgent)
+    cost_per_call_usd: float = 0.0
+    expected_input_tokens: int = 0
+    expected_output_tokens: int = 0
 
 
 class RunSuiteConfig(BaseModel):
@@ -175,7 +180,11 @@ async def _run_run_suite(ctx: NodeContext, cfg: RunSuiteConfig,
         managed_agent_id=agent_ref.get("managed_agent_id", ""),
         environment_id=agent_ref.get("environment_id", ""),
         client=ctx.clients.get("agent"),
-        system_prompt=agent_ref.get("system_prompt", ""))
+        system_prompt=agent_ref.get("system_prompt", ""),
+        model=agent_ref.get("model", ""),
+        cost_per_call_usd=agent_ref.get("cost_per_call_usd", 0.0),
+        expected_input_tokens=agent_ref.get("expected_input_tokens", 0),
+        expected_output_tokens=agent_ref.get("expected_output_tokens", 0))
     from ascore.harness.runner import SuiteNotApprovedError
     try:
         suite, cases, traces = await ops.run_suite_op(

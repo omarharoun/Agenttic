@@ -58,6 +58,7 @@ class BlackBoxHTTPAgent(AgentAdapter):
         output_field: str = "output",
         timeout: float = 60.0,
         allow_private_url: bool = False,  # opt-in to hit private/loopback hosts
+        cost_per_call_usd: float = 0.0,   # declared cost (black-box has no usage)
         transport=None,  # injectable for tests; defaults to real HTTP
     ):
         self.agent_id = agent_id
@@ -65,6 +66,7 @@ class BlackBoxHTTPAgent(AgentAdapter):
         self.output_field = output_field
         self.timeout = timeout
         self.allow_private_url = allow_private_url
+        self.cost_per_call_usd = cost_per_call_usd
         self._transport = transport or (
             lambda payload: _http_transport(self.url, payload, self.timeout,
                                             self.allow_private_url)
@@ -72,22 +74,25 @@ class BlackBoxHTTPAgent(AgentAdapter):
 
     def describe(self) -> dict:
         return {"adapter": "BlackBoxHTTPAgent", "url": self.url,
-                "output_field": self.output_field}
+                "output_field": self.output_field,
+                "cost_per_call_usd": self.cost_per_call_usd}
 
     def run(self, test_input: dict, *, test_case_id: str | None = None) -> Trace:
         t0 = datetime.now(timezone.utc)
         wall = time.monotonic()
         error: str | None = None
         final = ""
+        cost = 0.0
         try:
             body = self._transport(test_input)
+            cost = self.cost_per_call_usd  # the call was actually made
             if self.output_field not in body:
                 error = f"response missing field {self.output_field!r}: keys={list(body)}"
             else:
                 final = str(body[self.output_field])
         except (ConnectionError, OSError):
             raise  # transport errors bubble up — the harness owns retries
-        except Exception as exc:  # noqa: BLE001 — malformed response is data
+        except Exception as exc:  # noqa: BLE001 — malformed response/blocked url is data
             error = f"{type(exc).__name__}: {exc}"
         latency_ms = (time.monotonic() - wall) * 1000.0
         t1 = datetime.now(timezone.utc)
@@ -109,7 +114,7 @@ class BlackBoxHTTPAgent(AgentAdapter):
             spans=[span],
             visibility=self.visibility,
             final_output=final if not error else f"BLACKBOX_FAILURE:{error}",
-            total_cost_usd=0.0,           # unknown for black-box agents
+            total_cost_usd=cost,          # declared per-call cost (0 if unknown)
             total_latency_ms=latency_ms,
             total_steps=1,
             schema_version=SCHEMA_VERSION,
