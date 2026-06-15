@@ -25,6 +25,20 @@ from ascore.server.store import UIStore
 UI_DIST = Path(__file__).resolve().parents[3] / "ui" / "dist"
 
 
+def safe_static_path(base: Path, rel: str) -> Path | None:
+    """Resolve ``rel`` under ``base`` and return it only if it stays inside
+    ``base`` and is a real file — blocks `../` path traversal / LFI. Returns
+    None for traversal attempts or non-files (caller falls back to index)."""
+    base = base.resolve()
+    try:
+        target = (base / rel).resolve()
+    except (ValueError, OSError):
+        return None
+    if target == base or base not in target.parents:
+        return None
+    return target if target.is_file() else None
+
+
 def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
                registry: Registry | None = None) -> FastAPI:
     """``clients`` and ``registry`` are test-injection points (fake LLM/agent
@@ -71,9 +85,9 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
 
         @app.get("/{path:path}", include_in_schema=False)
         async def spa(path: str):  # SPA fallback: any non-API route -> index
-            candidate = UI_DIST / path
-            if path and candidate.is_file():
-                return FileResponse(candidate)
+            target = safe_static_path(UI_DIST, path) if path else None
+            if target is not None:
+                return FileResponse(target)
             return FileResponse(UI_DIST / "index.html")
 
     return app
