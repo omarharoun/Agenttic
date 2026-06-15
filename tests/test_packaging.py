@@ -12,7 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_deploy_files_present():
     for f in ("Dockerfile", ".dockerignore", "docker-compose.yml",
               "config.prod.yaml", ".env.example",
-              ".github/workflows/ci.yml"):
+              ".github/workflows/ci.yml",
+              "scripts/backup.sh", "scripts/restore.sh",
+              "docs/OPERATIONS.md"):
         assert (ROOT / f).is_file(), f
 
 

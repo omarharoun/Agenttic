@@ -233,6 +233,28 @@ def pilot(config: str = "config.yaml",
 
 
 @app.command()
+def retention(apply: bool = typer.Option(False, "--apply",
+                                         help="perform redaction/pruning (default is dry-run)"),
+              config: str = "config.yaml"):
+    """Apply the trace retention policy (config `retention`): redact old trace
+    inputs/outputs (PII) and prune very old traces. Run on a schedule. Operates
+    on the default tenant's DB; for Postgres it covers all tenants in that DB."""
+    cfg, reg = _ctx(config)
+    r = cfg.get("retention", {}) or {}
+    redact_days = int(r.get("trace_redact_days", 0) or 0)
+    prune_days = int(r.get("trace_prune_days", 0) or 0)
+    if apply:
+        redacted = reg.redact_old_traces(redact_days)
+        pruned = reg.prune_traces(prune_days)
+        console.print(f"[green]Retention applied[/]: redacted {redacted}, "
+                      f"pruned {pruned} traces.")
+    else:
+        console.print(f"[yellow]Dry run[/] (use --apply): would redact traces "
+                      f">{redact_days}d and prune traces >{prune_days}d "
+                      f"(0 = disabled).")
+
+
+@app.command()
 def migrate(status: bool = typer.Option(False, "--status",
                                         help="show applied/pending and exit"),
             config: str = "config.yaml"):

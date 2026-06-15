@@ -63,6 +63,6 @@ security:
   rate_limit_backend: memory              # redis for multi-worker (ASCORE_REDIS_URL)
   redis_url: ""
   blackbox_block_private: true
-retention:
-  trace_days: 0                           # 0 = keep forever; N = prune trace payloads older than N days
-  redact_trace_io: false                  # true => store traces with inputs/outputs redacted
+retention:                                # run `ascore retention --apply` on a schedule (cron/k8s CronJob)
+  trace_redact_days: 30                    # strip inputs/outputs from traces older than N days (PII); 0 = off
+  trace_prune_days: 90                     # delete traces older than N days; scorecards keep aggregates; 0 = off
