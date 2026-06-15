@@ -224,6 +224,37 @@ amber "not scored" row in the Results panel), but excluded from `task_success_ra
 and per-criterion means, so a scoring-infra failure never masquerades as the agent
 failing the task. Execution cost/latency still count every run.
 
+## Operational controls (auth, cost, hardening)
+
+```yaml
+auth: {required: true, token: ""}     # prefer the ASCORE_API_TOKEN env var
+security:
+  rate_limit_per_minute: 120          # 0 = off; per token/IP
+  blackbox_block_private: true        # SSRF guard for black-box agent URLs
+budget:
+  max_run_cost_usd: 5.0               # abort a run that would exceed this
+  max_daily_cost_usd: 50.0            # 0 = unlimited
+```
+
+- **Auth.** Set `ASCORE_API_TOKEN` (or `auth.token`) and every `/api` route —
+  including the SSE stream (`?token=`) and the human-approval gate — requires
+  it. `auth.required: true` makes the server refuse to start without a token.
+  The UI's 🔑 control stores the token locally and attaches it to every call.
+- **SSRF guard.** Black-box agent URLs are validated at registration and at
+  request time: http/https only, no private/loopback/link-local/metadata
+  targets, no redirects. Hitting a private host needs an explicit opt-in.
+- **Rate limiting.** A per-client sliding-window cap on `/api`
+  (`security.rate_limit_per_minute`).
+- **Cost estimation & ceilings.** Pricing lives in `config.yaml` (`pricing`).
+  Before a run, `ascore` projects spend (agent + judge) — `GET /api/estimate`,
+  `GET /api/workflows/{id}/estimate`, and a chip in the editor. Actual cost
+  (execution **and** judge tokens) is recorded on every scorecard
+  (`total_cost_usd`, `total_scoring_cost_usd`) and shown in the report and
+  results. The `budget` caps abort a run that would exceed the per-run or daily
+  ceiling (a pre-run gate, plus a runtime cap that stops remaining cases once
+  the per-run budget is spent). See `docs/PRODUCTION_READINESS.md` for the full
+  gap analysis and what's still prototype-grade.
+
 ## Design rules the code enforces
 
 1. **The trace schema is the contract.** Changes bump `SCHEMA_VERSION`
