@@ -411,6 +411,11 @@ class TestCostEstimateApi:
         # 0.005 * 10 cases of agent cost now estimated, not "unknown"
         assert est["projected_agent_usd"] == 0.05
 
+    def test_quota_endpoint(self, client):
+        r = client.get("/api/quota").json()
+        assert r["tenant"] == "default"
+        assert "spent_today_usd" in r and "remaining_daily_usd" in r
+
     def test_workflow_estimate(self, client):
         wf = eval_workflow("pilot-support-triage").model_dump()
         for n in wf["nodes"]:

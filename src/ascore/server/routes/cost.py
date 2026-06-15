@@ -5,11 +5,27 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
 
-from ascore.budget import budget_context
+from ascore.budget import budget_context, tenant_quota
 from ascore.cost import estimate_for_suite, estimate_for_workflow
 from ascore.registry.sqlite_store import NotFoundError
 
 router = APIRouter(tags=["cost"])
+
+
+@router.get("/quota")
+def quota(request: Request):
+    """This tenant's spend quota + current usage (today and rolling 30 days)."""
+    reg = request.state.reg
+    q = tenant_quota(request.state.cfg, reg.tenant)
+    today = reg.spend_today()
+    month = reg.spend_since_days(29)
+    def _remaining(cap, spent):
+        return None if not cap else round(max(0.0, cap - spent), 6)
+    return {"tenant": reg.tenant,
+            "daily_usd": q["daily_usd"], "monthly_usd": q["monthly_usd"],
+            "spent_today_usd": round(today, 6), "spent_month_usd": round(month, 6),
+            "remaining_daily_usd": _remaining(q["daily_usd"], today),
+            "remaining_monthly_usd": _remaining(q["monthly_usd"], month)}
 
 
 @router.get("/estimate")

@@ -421,9 +421,13 @@ surfaced in the scorecard, Markdown report, and results API
 daily cap (`budget.max_daily_cost_usd`, via a spend ledger) — a pre-run gate
 aborts before spending and a runtime `RunBudget` aborts remaining cases once
 the per-run cap is crossed. The UI shows the projected cost (red when over
-budget). **Residual:** the runtime cap charges execution cost as it runs (judge
-cost is bounded by the pre-run estimate, not charged mid-run); per-tenant
-quotas await multi-tenancy (§1.3).
+budget). **Per-tenant quotas (`<quotas commit>`):** `quotas.tiers[<tenant>]`
+(daily + rolling-30-day USD caps, with a `quotas.default` tier) are enforced
+pre-run alongside the global caps and surfaced at `GET /api/quota`
+(`ascore/budget.py`, `tests/test_quotas.py`) — this also bounds spend per tenant
+despite shared provider keys (closes the §2.1 residual). **Residual (Low):** the
+runtime cap charges execution cost as it runs (judge cost is bounded by the
+pre-run estimate, not charged mid-run).
 
 #### Original finding
 

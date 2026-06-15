@@ -43,8 +43,11 @@ cost:
   judge_output_tokens: 120
 budget:
   max_run_cost_usd: 25.0                  # hard per-run ceiling
-  max_daily_cost_usd: 250.0               # per-tenant daily ceiling (0 = off)
+  max_daily_cost_usd: 250.0               # global daily ceiling per tenant (0 = off)
   warn_only: false
+quotas:                                   # per-tenant spend quotas (0 = unlimited)
+  default: {daily_usd: 100.0, monthly_usd: 2000.0}
+  tiers: {}                               # e.g. {acme: {daily_usd: 500, monthly_usd: 10000}}
 observability:
   log_level: INFO
   log_json: true
