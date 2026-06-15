@@ -242,14 +242,16 @@ class TestFailureAndCancel:
         async def main():
             reg, store, mgr = make_manager(tmp_path)
             wf = Workflow(workflow_id="w", name="t", nodes=[
-                node("a", "slow_agent", seconds=0.15),
-                node("b", "slow_agent", seconds=0.15),
+                node("a", "slow_agent", seconds=0.4),
+                node("b", "slow_agent", seconds=0.4),
             ], edges=[])
             t0 = asyncio.get_running_loop().time()
             eid = mgr.start(wf)
             await mgr._handles[eid].task
             elapsed = asyncio.get_running_loop().time() - t0
-            assert elapsed < 0.28  # serial would be >= 0.3
+            # concurrent ~0.4s (+ thread-pool spin-up); serial would be >= 0.8s.
+            # wide margin so the assertion proves concurrency without flaking.
+            assert elapsed < 0.7
             types = [e["type"] for e in store.events_after(eid)]
             assert types.count("node_started") == 2
         asyncio.run(main())
