@@ -378,3 +378,33 @@ class TestLeaderboardApi:
     def test_leaderboard_empty_when_no_runs(self, client):
         assert client.get("/api/leaderboard").json() == {
             "suites": [], "agents": [], "weights": {}}
+
+
+class TestAgentsDiscovery:
+    def test_lists_agents_observed_from_runs(self, client):
+        # before any run, no observed agents (managed may warn w/o key)
+        empty = client.get("/api/agents").json()
+        assert empty["agents"] == []
+
+        wf = eval_workflow("pilot-support-triage").model_dump()
+        for n in wf["nodes"]:
+            if n["node_id"] == "agent":
+                n["config"]["agent_id"] = "discovered-agent"
+        client.post("/api/workflows", json=wf)
+        eid = client.post("/api/workflows/wf-eval/executions").json()["execution_id"]
+        poll(client, eid, "succeeded")
+
+        agents = {a["agent_id"]: a for a in client.get("/api/agents").json()["agents"]}
+        a = agents["discovered-agent"]
+        assert a["scored"] is True
+        assert "scored" in a["sources"] and "traced" in a["sources"]
+        assert a["n_scorecards"] == 1 and a["n_traces"] == 10
+        assert a["suites"] == ["pilot-support-triage"]
+        assert a["last_seen"]
+
+    def test_managed_failure_is_a_warning_not_a_500(self, client):
+        # no ANTHROPIC_API_KEY in test env -> managed enrichment degrades softly
+        r = client.get("/api/agents")
+        assert r.status_code == 200
+        # warning may be set (no key) but the call still succeeds
+        assert "agents" in r.json()

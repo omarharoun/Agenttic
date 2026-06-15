@@ -100,6 +100,38 @@ def scorecard_report(scorecard_id: str, request: Request):
         raise HTTPException(404, f"scorecard {scorecard_id} not found")
 
 
+@router.get("/agents")
+def list_agents(request: Request, include_managed: bool = True):
+    """Every agent the platform knows about — discovered from scorecards and
+    traces (descriptive; the agent set is open-ended), optionally enriched
+    with deployed Managed Agents. Each row says where it came from and whether
+    it's been scored yet."""
+    agents = request.app.state.store.list_agents()
+    warning = None
+    if include_managed:
+        by_id = {a["agent_id"]: a for a in agents}
+        try:
+            import anthropic
+            client = anthropic.Anthropic()
+            for a in client.beta.agents.list():
+                name = getattr(a, "name", "") or a.id
+                existing = by_id.get(name) or by_id.get(a.id)
+                if existing:
+                    existing.setdefault("sources", [])
+                    if "managed" not in existing["sources"]:
+                        existing["sources"] = sorted(set(existing["sources"]) | {"managed"})
+                    existing["managed_agent_id"] = a.id
+                else:
+                    agents.append({
+                        "agent_id": name, "sources": ["managed"], "scored": False,
+                        "n_scorecards": 0, "n_traces": 0, "suites": [],
+                        "last_seen": None, "managed_agent_id": a.id,
+                        "managed_version": getattr(a, "version", None)})
+        except Exception as exc:  # noqa: BLE001 — never 500 a browse endpoint
+            warning = f"managed agents unavailable: {type(exc).__name__}: {exc}"
+    return {"agents": agents, "warning": warning}
+
+
 @router.get("/agents/managed")
 def managed_agents(request: Request):
     """Deployed Managed Agents (for the agent node's picker). Empty list +

@@ -266,6 +266,51 @@ class UIStore:
                             "n_spans": len(p.get("spans", []))})
             return out
 
+    def list_agents(self) -> list[dict]:
+        """Discover every agent the platform has OBSERVED — distinct agent_ids
+        across scorecards and traces. The set of agents is open-ended (any
+        endpoint/config is a new agent), so this is descriptive: it lists what
+        has actually run, never a fixed catalog. Efficient column-only selects
+        avoid loading trace/scorecard payloads."""
+        agents: dict[str, dict] = {}
+
+        def _entry(aid: str) -> dict:
+            return agents.setdefault(aid, {
+                "agent_id": aid, "sources": set(), "n_scorecards": 0,
+                "n_traces": 0, "suites": set(), "last_seen": None})
+
+        def _seen(e: dict, ts) -> None:
+            iso = ts.isoformat() if ts else None
+            if iso and (e["last_seen"] is None or iso > e["last_seen"]):
+                e["last_seen"] = iso
+
+        with Session(self.engine) as s:
+            for aid, suite_id, created in s.exec(select(
+                    ScorecardRow.agent_id, ScorecardRow.suite_id,
+                    ScorecardRow.created_at)).all():
+                e = _entry(aid)
+                e["sources"].add("scored")
+                e["n_scorecards"] += 1
+                e["suites"].add(suite_id)
+                _seen(e, created)
+            for aid, mode, created in s.exec(select(
+                    TraceRow.agent_id, TraceRow.mode, TraceRow.created_at)).all():
+                e = _entry(aid)
+                e["sources"].add("live" if mode == "live" else "traced")
+                e["n_traces"] += 1
+                _seen(e, created)
+
+        return [{
+            "agent_id": e["agent_id"],
+            "sources": sorted(e["sources"]),
+            "scored": "scored" in e["sources"],
+            "n_scorecards": e["n_scorecards"],
+            "n_traces": e["n_traces"],
+            "suites": sorted(e["suites"]),
+            "last_seen": e["last_seen"],
+        } for e in sorted(agents.values(),
+                          key=lambda e: e["last_seen"] or "", reverse=True)]
+
     def list_scorecards(self, agent_id: str | None = None,
                         suite_id: str | None = None) -> list[dict]:
         with Session(self.engine) as s:
