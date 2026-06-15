@@ -133,6 +133,11 @@ class AnthropicSimpleAgent(AgentAdapter):
             )
             tokens_in = getattr(resp.usage, "input_tokens", None)
             tokens_out = getattr(resp.usage, "output_tokens", None)
+            try:  # observability counters (best-effort; never break a run)
+                from ascore.server.metrics import record_tokens
+                record_tokens("agent", tokens_in, tokens_out)
+            except Exception:  # noqa: BLE001
+                pass
             spans.append(Span(
                 span_id=_sid(), kind="llm_call", name=self.model,
                 start_time=t0, end_time=_now(),

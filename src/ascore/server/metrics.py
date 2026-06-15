@@ -18,6 +18,7 @@ _HELP = {
     "ascore_http_request_duration_seconds": "HTTP request duration in seconds.",
     "ascore_runs_total": "Completed scoring runs (scorecards), by outcome.",
     "ascore_llm_cost_usd_total": "Total LLM spend recorded (execution + scoring).",
+    "ascore_llm_tokens_total": "LLM tokens used, by component (agent/judge) and kind.",
 }
 
 
@@ -54,6 +55,16 @@ def record_run(status: str) -> None:
 def record_cost(usd: float) -> None:
     if usd:
         inc_counter("ascore_llm_cost_usd_total", None, usd)
+
+
+def record_tokens(component: str, tokens_in: int | None,
+                  tokens_out: int | None) -> None:
+    if tokens_in:
+        inc_counter("ascore_llm_tokens_total",
+                    {"component": component, "kind": "input"}, tokens_in)
+    if tokens_out:
+        inc_counter("ascore_llm_tokens_total",
+                    {"component": component, "kind": "output"}, tokens_out)
 
 
 def reset() -> None:  # tests

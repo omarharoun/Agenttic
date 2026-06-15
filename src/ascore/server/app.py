@@ -149,6 +149,8 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         import asyncio
         cfg = load_config(config_path)
         configure_logging(cfg)
+        from ascore.server.tracing import setup_tracing
+        setup_tracing(cfg)  # OTel exporter when observability.otel_enabled
         check_startup(cfg)  # fail closed if auth.required without a token
         workspaces = Workspaces(cfg, default_registry=registry, clients=clients,
                                 loop=asyncio.get_running_loop())

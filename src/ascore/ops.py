@@ -240,13 +240,15 @@ async def run_and_score_op(
     judge_client=None,
 ) -> Scorecard:
     """The full run → score → aggregate chain (CLI `run`/`regress` behavior)."""
-    suite, cases, traces = await run_suite_op(
-        cfg, reg, adapter, suite_id, version, on_progress)
-    runs = await score_op(cfg, reg, traces, cases, agent_model_of(adapter),
-                          on_progress, judge_client=judge_client)
-    rubric = reg.get_rubric(cases[0].rubric_id)
-    return aggregate_op(reg, agent_id=adapter.agent_id, suite=suite,
-                        rubric=rubric, runs=runs, visibility=adapter.visibility)
+    from ascore.server.tracing import span
+    with span("run.suite", suite_id=suite_id, agent_id=adapter.agent_id):
+        suite, cases, traces = await run_suite_op(
+            cfg, reg, adapter, suite_id, version, on_progress)
+        runs = await score_op(cfg, reg, traces, cases, agent_model_of(adapter),
+                              on_progress, judge_client=judge_client)
+        rubric = reg.get_rubric(cases[0].rubric_id)
+        return aggregate_op(reg, agent_id=adapter.agent_id, suite=suite,
+                            rubric=rubric, runs=runs, visibility=adapter.visibility)
 
 
 def generate_op(cfg: dict, reg: Registry, business_doc: str, suite_id: str,

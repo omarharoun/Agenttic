@@ -163,13 +163,18 @@ class LLMJudge:
         """USD cost of a judge call from its token usage (0 without pricing).
         Advisor-tool tokens reported on the response are priced at the executor
         model rate — an approximation, flagged in the cost estimate's notes."""
+        usage = getattr(resp, "usage", None)
+        tin = getattr(usage, "input_tokens", None)
+        tout = getattr(usage, "output_tokens", None)
+        try:  # observability counters (best-effort)
+            from ascore.server.metrics import record_tokens
+            record_tokens("judge", tin, tout)
+        except Exception:  # noqa: BLE001
+            pass
         if not self.cfg:
             return 0.0
         from ascore.pricing import token_cost
-        usage = getattr(resp, "usage", None)
-        return token_cost(self.cfg, self.model,
-                          getattr(usage, "input_tokens", None),
-                          getattr(usage, "output_tokens", None))
+        return token_cost(self.cfg, self.model, tin, tout)
 
     def _create(self, prompt: str):
         if self.advisor_model is None:

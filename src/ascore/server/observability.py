@@ -18,6 +18,7 @@ import uuid
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ascore.server import metrics
+from ascore.server.tracing import span
 
 logger = logging.getLogger("ascore.request")
 
@@ -72,7 +73,10 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
         status = 500
         response = None
         try:
-            response = await call_next(request)
+            with span("http.request", **{"http.method": request.method,
+                                         "http.target": request.url.path,
+                                         "request_id": rid}):
+                response = await call_next(request)
             status = response.status_code
             response.headers["X-Request-ID"] = rid
             return response
