@@ -89,6 +89,7 @@ def score_run(
         criterion_scores=scores,
         passed=weighted >= pass_threshold,
         cost_usd=trace.total_cost_usd,
+        scoring_cost_usd=sum(s.cost_usd for s in scores),
         latency_ms=trace.total_latency_ms,
         steps=trace.total_steps,
     )

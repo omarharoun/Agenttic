@@ -104,6 +104,7 @@ class LLMJudge:
         advisor_model: str | None = None,
         advisor_max_tokens: int = 2048,
         advisor_max_uses: int = 1,
+        cfg: dict | None = None,
     ):
         if model == agent_model:
             raise ValueError(
@@ -124,6 +125,7 @@ class LLMJudge:
         self.advisor_model = advisor_model
         self.advisor_max_tokens = advisor_max_tokens
         self.advisor_max_uses = advisor_max_uses
+        self.cfg = cfg  # for pricing; cost is 0 when not provided
 
     def score_criterion(
         self, criterion: Criterion, trace: Trace, tc: TestCase
@@ -150,11 +152,24 @@ class LLMJudge:
                 score=score,
                 scorer="judge",
                 judge_rationale=rationale,
+                cost_usd=self._call_cost(resp),
             )
         raise JudgeError(
             f"criterion {criterion.criterion_id}, trace {trace.trace_id}: "
             f"no valid judge output after {self.max_retries + 1} attempts ({last_err})"
         )
+
+    def _call_cost(self, resp) -> float:
+        """USD cost of a judge call from its token usage (0 without pricing).
+        Advisor-tool tokens reported on the response are priced at the executor
+        model rate — an approximation, flagged in the cost estimate's notes."""
+        if not self.cfg:
+            return 0.0
+        from ascore.pricing import token_cost
+        usage = getattr(resp, "usage", None)
+        return token_cost(self.cfg, self.model,
+                          getattr(usage, "input_tokens", None),
+                          getattr(usage, "output_tokens", None))
 
     def _create(self, prompt: str):
         if self.advisor_model is None:
@@ -217,5 +232,6 @@ def make_judge(cfg: dict, agent_model: str, client=None) -> LLMJudge:
             client=client,
             advisor_model=strong,
             advisor_max_tokens=cfg.get("scoring", {}).get("advisor_max_tokens", 2048),
+            cfg=cfg,
         )
-    return LLMJudge(model=strong, agent_model=agent_model, client=client)
+    return LLMJudge(model=strong, agent_model=agent_model, client=client, cfg=cfg)
