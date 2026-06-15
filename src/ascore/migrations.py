@@ -29,9 +29,34 @@ def _baseline(conn) -> None:
     SQLModel.metadata.create_all(conn)
 
 
+_TENANT_TABLES = [
+    "suiterow", "caserow", "rubricrow", "declaredagentrow", "tracerow",
+    "scorecardrow", "livescorerow", "reevalrow", "spendrow",
+    "workflowrow", "executionrow", "executioneventrow",
+]
+
+
+def _add_tenant_id(conn) -> None:
+    """v2 — add tenant_id to any table created before tenancy (pre-existing v1
+    DBs). Fresh DBs already have it from the baseline, so this is a no-op there.
+    Portable across SQLite and Postgres (checks columns via the inspector)."""
+    from sqlalchemy import inspect
+    insp = inspect(conn)
+    existing = set(insp.get_table_names())
+    for table in _TENANT_TABLES:
+        if table not in existing:
+            continue
+        cols = {c["name"] for c in insp.get_columns(table)}
+        if "tenant_id" not in cols:
+            conn.execute(text(
+                f"ALTER TABLE {table} ADD COLUMN tenant_id VARCHAR "
+                "DEFAULT 'default'"))
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
+    (2, "add_tenant_id", _add_tenant_id),
 ]
 
 

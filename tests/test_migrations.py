@@ -22,7 +22,7 @@ class TestRunner:
         assert {"suiterow", "scorecardrow", "declaredagentrow", "spendrow",
                 "workflowrow", "schema_migrations"} <= {t.lower() for t in tables}
         st = migration_status(reg.engine)
-        assert st["applied"] == [1] and st["pending"] == [] and st["head"] == 1
+        assert st["pending"] == [] and st["head"] >= 1 and 1 in st["applied"]
 
     def test_idempotent(self, tmp_path):
         reg = Registry(tmp_path / "m.db")

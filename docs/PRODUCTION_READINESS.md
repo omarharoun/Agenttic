@@ -147,8 +147,12 @@ connect-time PRAGMA listener sets `journal_mode=WAL`, `busy_timeout=5000`, and
 `foreign_keys=ON` on every connection (`registry/sqlite_store.py`
 `_harden_sqlite`). Cross-thread writes no longer error and lock contention waits
 rather than failing; verified in `tests/test_migrations.py::TestHardening`.
-**Residual:** SQLite is still single-writer — for heavy concurrency move to
-Postgres (the SQLModel layer makes it mostly a URL change).
+**Update (Postgres now supported):** the Registry/UIStore are backend-agnostic;
+set `ASCORE_DB`/`database.url` to a `postgresql+psycopg://` URL and all tenants
+share one Postgres database with **row-level `tenant_id` isolation** (migrations
+run on both backends). `tests/test_postgres.py` proves isolation (CI runs it
+against a Postgres service). SQLite (single-writer) remains the zero-config
+default; deploy on Postgres for real concurrency.
 
 #### Original finding
 `create_engine(f"sqlite:///{db_path}")` (`registry/sqlite_store.py:121`) is
