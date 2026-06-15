@@ -1,9 +1,9 @@
 """UI persistence: workflows, executions, execution events — plus the
 list-all browse queries the Registry deliberately lacks.
 
-Shares the Registry's SQLite engine (one file, WAL mode for concurrent
-event writes from worker threads while the API reads). The Registry itself
-is untouched: its append-only contract stays exactly as specified.
+Shares the Registry's engine. Every table is tenant-scoped (``tenant_id``);
+a UIStore is bound to one tenant and filters/stamps by it, matching the
+Registry's tenancy model (DB-per-tenant on SQLite, row-level on Postgres).
 """
 
 from __future__ import annotations
@@ -11,10 +11,11 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from sqlalchemy import UniqueConstraint, text
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, Session, SQLModel, select
 
 from ascore.registry.sqlite_store import (
+    DEFAULT_TENANT,
     NotFoundError,
     RubricRow,
     ScorecardRow,
@@ -29,16 +30,20 @@ def _now() -> datetime:
 
 
 class WorkflowRow(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("tenant_id", "workflow_id"),)
     id: int | None = Field(default=None, primary_key=True)
-    workflow_id: str = Field(index=True, unique=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    workflow_id: str = Field(index=True)
     name: str
     updated_at: datetime
     payload: str  # Workflow JSON
 
 
 class ExecutionRow(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("tenant_id", "execution_id"),)
     id: int | None = Field(default=None, primary_key=True)
-    execution_id: str = Field(index=True, unique=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    execution_id: str = Field(index=True)
     workflow_id: str = Field(index=True)
     status: str  # running|waiting_approval|succeeded|failed|cancelled|interrupted
     waiting_node_id: str | None = None
@@ -50,8 +55,9 @@ class ExecutionRow(SQLModel, table=True):
 
 
 class ExecutionEventRow(SQLModel, table=True):
-    __table_args__ = (UniqueConstraint("execution_id", "seq"),)
+    __table_args__ = (UniqueConstraint("tenant_id", "execution_id", "seq"),)
     id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
     execution_id: str = Field(index=True)
     seq: int
     ts: datetime
@@ -61,23 +67,25 @@ class ExecutionEventRow(SQLModel, table=True):
 
 
 class UIStore:
-    """Wraps the SAME engine as the Registry; create_all is idempotent."""
+    """Wraps the SAME engine as the Registry; create_all is idempotent. Bound
+    to one tenant; all queries are scoped by ``tenant_id``."""
 
-    def __init__(self, engine):
+    def __init__(self, engine, tenant: str = DEFAULT_TENANT):
         self.engine = engine
+        self.tenant = tenant
         SQLModel.metadata.create_all(engine)
-        with engine.connect() as conn:
-            conn.execute(text("PRAGMA journal_mode=WAL"))
 
     # -- workflows ----------------------------------------------------------
 
     def save_workflow(self, wf: Workflow) -> None:
         with Session(self.engine) as s:
             row = s.exec(select(WorkflowRow).where(
+                WorkflowRow.tenant_id == self.tenant,
                 WorkflowRow.workflow_id == wf.workflow_id)).first()
             if row is None:
-                row = WorkflowRow(workflow_id=wf.workflow_id, name=wf.name,
-                                  updated_at=_now(), payload=wf.model_dump_json())
+                row = WorkflowRow(tenant_id=self.tenant, workflow_id=wf.workflow_id,
+                                  name=wf.name, updated_at=_now(),
+                                  payload=wf.model_dump_json())
             else:
                 row.name, row.updated_at = wf.name, _now()
                 row.payload = wf.model_dump_json()
@@ -87,6 +95,7 @@ class UIStore:
     def get_workflow(self, workflow_id: str) -> Workflow:
         with Session(self.engine) as s:
             row = s.exec(select(WorkflowRow).where(
+                WorkflowRow.tenant_id == self.tenant,
                 WorkflowRow.workflow_id == workflow_id)).first()
             if row is None:
                 raise NotFoundError(f"workflow {workflow_id}")
@@ -94,7 +103,8 @@ class UIStore:
 
     def list_workflows(self) -> list[dict]:
         with Session(self.engine) as s:
-            rows = s.exec(select(WorkflowRow).order_by(
+            rows = s.exec(select(WorkflowRow).where(
+                WorkflowRow.tenant_id == self.tenant).order_by(
                 WorkflowRow.updated_at.desc())).all()
             out = []
             for r in rows:
@@ -107,6 +117,7 @@ class UIStore:
     def delete_workflow(self, workflow_id: str) -> None:
         with Session(self.engine) as s:
             row = s.exec(select(WorkflowRow).where(
+                WorkflowRow.tenant_id == self.tenant,
                 WorkflowRow.workflow_id == workflow_id)).first()
             if row:
                 s.delete(row)
@@ -118,8 +129,8 @@ class UIStore:
         states = {n.node_id: "pending" for n in wf.nodes}
         with Session(self.engine) as s:
             s.add(ExecutionRow(
-                execution_id=execution_id, workflow_id=wf.workflow_id,
-                status="running", started_at=_now(),
+                tenant_id=self.tenant, execution_id=execution_id,
+                workflow_id=wf.workflow_id, status="running", started_at=_now(),
                 workflow_snapshot=wf.model_dump_json(),
                 node_states=json.dumps(states)))
             s.commit()
@@ -131,6 +142,7 @@ class UIStore:
                          finished: bool = False) -> None:
         with Session(self.engine) as s:
             row = s.exec(select(ExecutionRow).where(
+                ExecutionRow.tenant_id == self.tenant,
                 ExecutionRow.execution_id == execution_id)).first()
             if row is None:
                 raise NotFoundError(f"execution {execution_id}")
@@ -154,6 +166,7 @@ class UIStore:
     def get_execution(self, execution_id: str) -> dict:
         with Session(self.engine) as s:
             row = s.exec(select(ExecutionRow).where(
+                ExecutionRow.tenant_id == self.tenant,
                 ExecutionRow.execution_id == execution_id)).first()
             if row is None:
                 raise NotFoundError(f"execution {execution_id}")
@@ -161,7 +174,9 @@ class UIStore:
 
     def list_executions(self, workflow_id: str | None = None) -> list[dict]:
         with Session(self.engine) as s:
-            q = select(ExecutionRow).order_by(ExecutionRow.started_at.desc())
+            q = select(ExecutionRow).where(
+                ExecutionRow.tenant_id == self.tenant).order_by(
+                ExecutionRow.started_at.desc())
             if workflow_id:
                 q = q.where(ExecutionRow.workflow_id == workflow_id)
             return [self._execution_dict(r, full=False) for r in s.exec(q).all()]
@@ -185,6 +200,7 @@ class UIStore:
         previous process. waiting_approval rows stay resumable."""
         with Session(self.engine) as s:
             rows = s.exec(select(ExecutionRow).where(
+                ExecutionRow.tenant_id == self.tenant,
                 ExecutionRow.status == "running")).all()
             for r in rows:
                 r.status = "interrupted"
@@ -198,7 +214,8 @@ class UIStore:
     def append_event(self, execution_id: str, seq: int, etype: str,
                      node_id: str | None, data: dict) -> None:
         with Session(self.engine) as s:
-            s.add(ExecutionEventRow(execution_id=execution_id, seq=seq,
+            s.add(ExecutionEventRow(tenant_id=self.tenant,
+                                    execution_id=execution_id, seq=seq,
                                     ts=_now(), type=etype, node_id=node_id,
                                     data=json.dumps(data)))
             s.commit()
@@ -206,7 +223,8 @@ class UIStore:
     def events_after(self, execution_id: str, after: int = 0) -> list[dict]:
         with Session(self.engine) as s:
             rows = s.exec(select(ExecutionEventRow)
-                          .where(ExecutionEventRow.execution_id == execution_id,
+                          .where(ExecutionEventRow.tenant_id == self.tenant,
+                                 ExecutionEventRow.execution_id == execution_id,
                                  ExecutionEventRow.seq > after)
                           .order_by(ExecutionEventRow.seq)).all()
             return [{"seq": r.seq, "ts": r.ts.isoformat(), "type": r.type,
@@ -221,7 +239,8 @@ class UIStore:
 
     def list_suites(self) -> list[dict]:
         with Session(self.engine) as s:
-            rows = s.exec(select(SuiteRow)).all()
+            rows = s.exec(select(SuiteRow).where(
+                SuiteRow.tenant_id == self.tenant)).all()
             latest: dict[str, SuiteRow] = {}
             for r in rows:
                 if r.suite_id not in latest or r.version > latest[r.suite_id].version:
@@ -237,7 +256,8 @@ class UIStore:
 
     def list_rubrics(self) -> list[dict]:
         with Session(self.engine) as s:
-            rows = s.exec(select(RubricRow)).all()
+            rows = s.exec(select(RubricRow).where(
+                RubricRow.tenant_id == self.tenant)).all()
             latest: dict[str, RubricRow] = {}
             for r in rows:
                 if r.rubric_id not in latest or r.version > latest[r.rubric_id].version:
@@ -249,7 +269,8 @@ class UIStore:
     def list_traces(self, agent_id: str | None = None, mode: str | None = None,
                     limit: int = 50, offset: int = 0) -> list[dict]:
         with Session(self.engine) as s:
-            q = select(TraceRow).order_by(TraceRow.id.desc())
+            q = select(TraceRow).where(
+                TraceRow.tenant_id == self.tenant).order_by(TraceRow.id.desc())
             if agent_id:
                 q = q.where(TraceRow.agent_id == agent_id)
             if mode:
@@ -268,10 +289,8 @@ class UIStore:
 
     def list_agents(self) -> list[dict]:
         """Discover every agent the platform has OBSERVED — distinct agent_ids
-        across scorecards and traces. The set of agents is open-ended (any
-        endpoint/config is a new agent), so this is descriptive: it lists what
-        has actually run, never a fixed catalog. Efficient column-only selects
-        avoid loading trace/scorecard payloads."""
+        across scorecards and traces (this tenant). Descriptive: lists what has
+        actually run, never a fixed catalog."""
         agents: dict[str, dict] = {}
 
         def _entry(aid: str) -> dict:
@@ -287,14 +306,16 @@ class UIStore:
         with Session(self.engine) as s:
             for aid, suite_id, created in s.exec(select(
                     ScorecardRow.agent_id, ScorecardRow.suite_id,
-                    ScorecardRow.created_at)).all():
+                    ScorecardRow.created_at).where(
+                    ScorecardRow.tenant_id == self.tenant)).all():
                 e = _entry(aid)
                 e["sources"].add("scored")
                 e["n_scorecards"] += 1
                 e["suites"].add(suite_id)
                 _seen(e, created)
             for aid, mode, created in s.exec(select(
-                    TraceRow.agent_id, TraceRow.mode, TraceRow.created_at)).all():
+                    TraceRow.agent_id, TraceRow.mode, TraceRow.created_at).where(
+                    TraceRow.tenant_id == self.tenant)).all():
                 e = _entry(aid)
                 e["sources"].add("live" if mode == "live" else "traced")
                 e["n_traces"] += 1
@@ -314,7 +335,9 @@ class UIStore:
     def list_scorecards(self, agent_id: str | None = None,
                         suite_id: str | None = None) -> list[dict]:
         with Session(self.engine) as s:
-            q = select(ScorecardRow).order_by(ScorecardRow.created_at.desc())
+            q = select(ScorecardRow).where(
+                ScorecardRow.tenant_id == self.tenant).order_by(
+                ScorecardRow.created_at.desc())
             if agent_id:
                 q = q.where(ScorecardRow.agent_id == agent_id)
             if suite_id:

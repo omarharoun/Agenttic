@@ -14,6 +14,7 @@ docs/PRODUCTION_READINESS.md §1.3).
 
 from __future__ import annotations
 
+import os
 import re
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -60,9 +61,14 @@ class Workspace:
 
 
 class Workspaces:
-    """Lazily builds and caches a Workspace per tenant. ``default`` uses the
-    configured DB (or an injected registry, for tests); other tenants get a
-    sibling SQLite file ``<db_stem>.<tenant><suffix>``."""
+    """Lazily builds and caches a Workspace per tenant.
+
+    Backend is chosen once: if a Postgres URL is configured (``ASCORE_DB`` env
+    or ``database.url``), all tenants share one engine and isolate by
+    ``tenant_id`` (row-level). Otherwise SQLite is used DB-per-tenant — the
+    ``default`` tenant uses ``paths.registry_db`` (or an injected registry, for
+    tests) and others get a sibling file ``<db_stem>.<tenant><suffix>``.
+    """
 
     def __init__(self, cfg: dict, default_registry: Registry | None = None,
                  clients: dict | None = None, loop=None):
@@ -71,25 +77,44 @@ class Workspaces:
         self._default_registry = default_registry
         self.loop = loop  # captured at startup so per-tenant EventBus works
         self._ws: dict[str, Workspace] = {}             # even off the event loop
+        self._db_url = (os.environ.get("ASCORE_DB")
+                        or (cfg.get("database", {}) or {}).get("url") or "")
+        self._postgres = bool(self._db_url) and not self._db_url.startswith("sqlite")
+        self._shared_engine = None  # one engine shared across tenants (Postgres)
 
     @staticmethod
     def normalize(tenant: str | None) -> str:
         return tenant if tenant and _TENANT_RE.match(tenant) else "default"
 
+    @property
+    def backend(self) -> str:
+        return "postgres" if self._postgres else "sqlite"
+
     def _db_path(self, tenant: str) -> str:
         base = Path(self.cfg["paths"]["registry_db"])
+        if tenant == "default":
+            return str(base)
         return str(base.with_name(f"{base.stem}.{tenant}{base.suffix}"))
+
+    def _build(self, tenant: str):
+        if self._postgres:
+            if self._shared_engine is None:
+                from ascore.registry.sqlite_store import make_engine
+                self._shared_engine = make_engine(self._db_url)
+            reg = Registry(engine=self._shared_engine, tenant=tenant)
+            store = UIStore(self._shared_engine, tenant=tenant)
+            return reg, store
+        # SQLite: file-per-tenant; tenant_id stays "default" within each file
+        if tenant == "default" and self._default_registry is not None:
+            reg = self._default_registry
+        else:
+            reg = Registry(self._db_path(tenant))
+        return reg, UIStore(reg.engine)
 
     def get(self, tenant: str) -> Workspace:
         tenant = self.normalize(tenant)
         if tenant not in self._ws:
-            if tenant == "default" and self._default_registry is not None:
-                reg = self._default_registry
-            else:
-                reg = Registry(self._db_path(tenant)
-                               if tenant != "default"
-                               else self.cfg["paths"]["registry_db"])
-            store = UIStore(reg.engine)
+            reg, store = self._build(tenant)
             store.interrupt_orphans()
             bus = EventBus(store, loop=self.loop)
             manager = ExecutionManager(self.cfg, reg, store, bus,

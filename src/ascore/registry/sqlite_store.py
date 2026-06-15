@@ -1,4 +1,4 @@
-"""Registry — versioned SQLite storage (Step 6).
+"""Registry — versioned storage (Step 6), SQLite by default, Postgres-capable.
 
 Principles:
 * Append-only versioning: a (suite_id, version) or (rubric_id, version) pair
@@ -8,8 +8,14 @@ Principles:
 * Live-path data (production traces, live scores, re-eval requests) lives in
   separate tables and never mixes into batch scorecards (Step 9 criterion).
 
-The only permitted in-place update is the suite approval flag (the Step 8
-human gate) — gate state, not content.
+The only permitted in-place updates are the suite approval flag and the catalog
+``active`` flag — gate/catalog state, not content.
+
+**Tenancy.** Every table carries a ``tenant_id``. A Registry is bound to one
+tenant and scopes every read/write by it. With SQLite the default deployment is
+DB-per-tenant (the file is the boundary; ``tenant_id`` stays "default"); with
+Postgres a single database is shared and ``tenant_id`` provides row-level
+isolation (see ``server.app.Workspaces``).
 """
 
 from __future__ import annotations
@@ -17,7 +23,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import UniqueConstraint, event
+from sqlalchemy import UniqueConstraint, event, func
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from ascore.schema.agent import DeclaredAgent
@@ -25,6 +31,8 @@ from ascore.schema.scorecard import Scorecard
 from ascore.schema.testcase import TestCase, TestSuite
 from ascore.schema.rubric import Rubric
 from ascore.schema.trace import Trace
+
+DEFAULT_TENANT = "default"
 
 
 class DuplicateVersionError(RuntimeError):
@@ -36,8 +44,9 @@ class NotFoundError(KeyError):
 
 
 class SuiteRow(SQLModel, table=True):
-    __table_args__ = (UniqueConstraint("suite_id", "version"),)
+    __table_args__ = (UniqueConstraint("tenant_id", "suite_id", "version"),)
     id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
     suite_id: str = Field(index=True)
     version: int
     approved: bool = False
@@ -45,8 +54,10 @@ class SuiteRow(SQLModel, table=True):
 
 
 class CaseRow(SQLModel, table=True):
-    __table_args__ = (UniqueConstraint("suite_id", "suite_version", "test_id"),)
+    __table_args__ = (UniqueConstraint("tenant_id", "suite_id", "suite_version",
+                                       "test_id"),)
     id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
     suite_id: str = Field(index=True)
     suite_version: int
     test_id: str
@@ -54,8 +65,9 @@ class CaseRow(SQLModel, table=True):
 
 
 class RubricRow(SQLModel, table=True):
-    __table_args__ = (UniqueConstraint("rubric_id", "version"),)
+    __table_args__ = (UniqueConstraint("tenant_id", "rubric_id", "version"),)
     id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
     rubric_id: str = Field(index=True)
     version: int
     payload: str
@@ -66,8 +78,9 @@ class DeclaredAgentRow(SQLModel, table=True):
     and rubrics — editing an agent stores the next version. ``active`` is the
     one permitted in-place flag (a retire toggle, like the suite approval gate);
     it is catalog state, not connection content."""
-    __table_args__ = (UniqueConstraint("agent_id", "version"),)
+    __table_args__ = (UniqueConstraint("tenant_id", "agent_id", "version"),)
     id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
     agent_id: str = Field(index=True)
     version: int
     active: bool = True
@@ -76,8 +89,10 @@ class DeclaredAgentRow(SQLModel, table=True):
 
 
 class TraceRow(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("tenant_id", "trace_id"),)
     id: int | None = Field(default=None, primary_key=True)
-    trace_id: str = Field(index=True, unique=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    trace_id: str = Field(index=True)
     agent_id: str = Field(index=True)
     mode: str = Field(index=True)  # "batch" | "live"
     created_at: datetime
@@ -85,8 +100,10 @@ class TraceRow(SQLModel, table=True):
 
 
 class ScorecardRow(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("tenant_id", "scorecard_id"),)
     id: int | None = Field(default=None, primary_key=True)
-    scorecard_id: str = Field(index=True, unique=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    scorecard_id: str = Field(index=True)
     agent_id: str = Field(index=True)
     suite_id: str = Field(index=True)
     suite_version: int
@@ -96,6 +113,7 @@ class ScorecardRow(SQLModel, table=True):
 
 class LiveScoreRow(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
     agent_id: str = Field(index=True)
     trace_id: str
     criterion_id: str = Field(index=True)
@@ -105,6 +123,7 @@ class LiveScoreRow(SQLModel, table=True):
 
 class ReEvalRow(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
     agent_id: str = Field(index=True)
     reason: str
     created_at: datetime
@@ -113,6 +132,7 @@ class ReEvalRow(SQLModel, table=True):
 class SpendRow(SQLModel, table=True):
     """Append-only ledger of LLM spend, for the daily budget cap."""
     id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
     day: str = Field(index=True)  # UTC YYYY-MM-DD
     model: str
     cost_usd: float
@@ -137,18 +157,33 @@ def _harden_sqlite(engine) -> None:
         cur.close()
 
 
-class Registry:
-    """SQLite-backed store. Also satisfies the harness TraceStore protocol."""
+def make_engine(url: str):
+    """Build a SQLAlchemy engine for ``url`` (sqlite:/// or postgresql+psycopg://),
+    applying SQLite hardening when applicable."""
+    is_sqlite = url.startswith("sqlite")
+    connect_args = {"check_same_thread": False} if is_sqlite else {}
+    engine = create_engine(url, connect_args=connect_args)
+    if is_sqlite:
+        _harden_sqlite(engine)
+    return engine
 
-    def __init__(self, db_path: str | Path = "ascore.db"):
-        # check_same_thread=False: the harness/event bus write from worker
-        # threads; safe here because writes serialize via SQLite's lock and the
-        # busy_timeout above makes contention wait rather than error.
-        self.engine = create_engine(
-            f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
-        _harden_sqlite(self.engine)
+
+class Registry:
+    """Versioned store bound to one tenant. Also satisfies the harness
+    TraceStore protocol. Pass ``db_path`` (SQLite file), ``url`` (any backend),
+    or a shared ``engine`` (Postgres multi-tenant)."""
+
+    def __init__(self, db_path: str | Path | None = None, *,
+                 url: str | None = None, engine=None, tenant: str = DEFAULT_TENANT):
+        self.tenant = tenant
+        if engine is not None:
+            self.engine = engine
+        else:
+            if url is None:
+                url = f"sqlite:///{db_path if db_path is not None else 'ascore.db'}"
+            self.engine = make_engine(url)
         from ascore.migrations import run_migrations
-        run_migrations(self.engine)  # versioned schema (baseline builds it all)
+        run_migrations(self.engine)  # idempotent; versioned schema
 
     # -- suites / cases ----------------------------------------------------
 
@@ -158,6 +193,7 @@ class Registry:
             raise ValueError(f"cases not belonging to suite {suite.suite_id}: {bad}")
         with Session(self.engine) as s:
             exists = s.exec(select(SuiteRow).where(
+                SuiteRow.tenant_id == self.tenant,
                 SuiteRow.suite_id == suite.suite_id,
                 SuiteRow.version == suite.version)).first()
             if exists:
@@ -165,17 +201,20 @@ class Registry:
                     f"suite {suite.suite_id} v{suite.version} already stored; "
                     "save the next version instead"
                 )
-            s.add(SuiteRow(suite_id=suite.suite_id, version=suite.version,
-                           approved=suite.approved, payload=suite.model_dump_json()))
+            s.add(SuiteRow(tenant_id=self.tenant, suite_id=suite.suite_id,
+                           version=suite.version, approved=suite.approved,
+                           payload=suite.model_dump_json()))
             for c in cases:
-                s.add(CaseRow(suite_id=suite.suite_id, suite_version=suite.version,
-                              test_id=c.test_id, payload=c.model_dump_json()))
+                s.add(CaseRow(tenant_id=self.tenant, suite_id=suite.suite_id,
+                              suite_version=suite.version, test_id=c.test_id,
+                              payload=c.model_dump_json()))
             s.commit()
 
     def get_suite(self, suite_id: str, version: int | None = None
                   ) -> tuple[TestSuite, list[TestCase]]:
         with Session(self.engine) as s:
-            q = select(SuiteRow).where(SuiteRow.suite_id == suite_id)
+            q = select(SuiteRow).where(SuiteRow.tenant_id == self.tenant,
+                                       SuiteRow.suite_id == suite_id)
             q = q.where(SuiteRow.version == version) if version is not None \
                 else q.order_by(SuiteRow.version.desc())
             row = s.exec(q).first()
@@ -184,6 +223,7 @@ class Registry:
             suite = TestSuite.model_validate_json(row.payload)
             suite.approved = row.approved
             case_rows = s.exec(select(CaseRow).where(
+                CaseRow.tenant_id == self.tenant,
                 CaseRow.suite_id == suite_id,
                 CaseRow.suite_version == suite.version)).all()
             cases = [TestCase.model_validate_json(r.payload) for r in case_rows]
@@ -192,7 +232,9 @@ class Registry:
     def approve_suite(self, suite_id: str, version: int) -> None:
         with Session(self.engine) as s:
             row = s.exec(select(SuiteRow).where(
-                SuiteRow.suite_id == suite_id, SuiteRow.version == version)).first()
+                SuiteRow.tenant_id == self.tenant,
+                SuiteRow.suite_id == suite_id,
+                SuiteRow.version == version)).first()
             if not row:
                 raise NotFoundError(f"suite {suite_id} v{version}")
             row.approved = True
@@ -204,18 +246,20 @@ class Registry:
     def save_rubric(self, rubric: Rubric) -> None:
         with Session(self.engine) as s:
             if s.exec(select(RubricRow).where(
+                    RubricRow.tenant_id == self.tenant,
                     RubricRow.rubric_id == rubric.rubric_id,
                     RubricRow.version == rubric.version)).first():
                 raise DuplicateVersionError(
                     f"rubric {rubric.rubric_id} v{rubric.version} already stored"
                 )
-            s.add(RubricRow(rubric_id=rubric.rubric_id, version=rubric.version,
-                            payload=rubric.model_dump_json()))
+            s.add(RubricRow(tenant_id=self.tenant, rubric_id=rubric.rubric_id,
+                            version=rubric.version, payload=rubric.model_dump_json()))
             s.commit()
 
     def get_rubric(self, rubric_id: str, version: int | None = None) -> Rubric:
         with Session(self.engine) as s:
-            q = select(RubricRow).where(RubricRow.rubric_id == rubric_id)
+            q = select(RubricRow).where(RubricRow.tenant_id == self.tenant,
+                                        RubricRow.rubric_id == rubric_id)
             q = q.where(RubricRow.version == version) if version is not None \
                 else q.order_by(RubricRow.version.desc())
             row = s.exec(q).first()
@@ -232,11 +276,13 @@ class Registry:
         stay on record (append-only)."""
         with Session(self.engine) as s:
             versions = s.exec(select(DeclaredAgentRow.version).where(
+                DeclaredAgentRow.tenant_id == self.tenant,
                 DeclaredAgentRow.agent_id == agent.agent_id)).all()
             agent = agent.model_copy(
                 update={"version": (max(versions) + 1) if versions else 1})
             s.add(DeclaredAgentRow(
-                agent_id=agent.agent_id, version=agent.version, active=True,
+                tenant_id=self.tenant, agent_id=agent.agent_id,
+                version=agent.version, active=True,
                 created_at=_now(), payload=agent.model_dump_json()))
             s.commit()
         return agent
@@ -245,6 +291,7 @@ class Registry:
                            ) -> DeclaredAgent:
         with Session(self.engine) as s:
             q = select(DeclaredAgentRow).where(
+                DeclaredAgentRow.tenant_id == self.tenant,
                 DeclaredAgentRow.agent_id == agent_id)
             q = q.where(DeclaredAgentRow.version == version) if version is not None \
                 else q.order_by(DeclaredAgentRow.version.desc())
@@ -258,7 +305,8 @@ class Registry:
         """Latest version of every declared agent. Each dict is the agent's
         fields plus catalog metadata (``active``, ``created_at``)."""
         with Session(self.engine) as s:
-            rows = s.exec(select(DeclaredAgentRow)).all()
+            rows = s.exec(select(DeclaredAgentRow).where(
+                DeclaredAgentRow.tenant_id == self.tenant)).all()
         latest: dict[str, DeclaredAgentRow] = {}
         for r in rows:
             if r.agent_id not in latest or r.version > latest[r.agent_id].version:
@@ -277,6 +325,7 @@ class Registry:
         history stays (append-only); re-registering reactivates it."""
         with Session(self.engine) as s:
             rows = s.exec(select(DeclaredAgentRow).where(
+                DeclaredAgentRow.tenant_id == self.tenant,
                 DeclaredAgentRow.agent_id == agent_id)).all()
             if not rows:
                 raise NotFoundError(f"declared agent {agent_id}")
@@ -289,14 +338,16 @@ class Registry:
 
     def save_trace(self, trace: Trace, mode: str = "batch") -> None:
         with Session(self.engine) as s:
-            s.add(TraceRow(trace_id=trace.trace_id, agent_id=trace.agent_id,
-                           mode=mode, created_at=_now(),
+            s.add(TraceRow(tenant_id=self.tenant, trace_id=trace.trace_id,
+                           agent_id=trace.agent_id, mode=mode, created_at=_now(),
                            payload=trace.model_dump_json()))
             s.commit()
 
     def get_trace(self, trace_id: str) -> Trace:
         with Session(self.engine) as s:
-            row = s.exec(select(TraceRow).where(TraceRow.trace_id == trace_id)).first()
+            row = s.exec(select(TraceRow).where(
+                TraceRow.tenant_id == self.tenant,
+                TraceRow.trace_id == trace_id)).first()
             if not row:
                 raise NotFoundError(f"trace {trace_id}")
             return Trace.model_validate_json(row.payload)
@@ -304,6 +355,7 @@ class Registry:
     def traces(self, agent_id: str, mode: str = "batch") -> list[Trace]:
         with Session(self.engine) as s:
             rows = s.exec(select(TraceRow).where(
+                TraceRow.tenant_id == self.tenant,
                 TraceRow.agent_id == agent_id, TraceRow.mode == mode)
                 .order_by(TraceRow.id)).all()
             return [Trace.model_validate_json(r.payload) for r in rows]
@@ -312,14 +364,16 @@ class Registry:
 
     def save_scorecard(self, sc: Scorecard) -> None:
         with Session(self.engine) as s:
-            s.add(ScorecardRow(scorecard_id=sc.scorecard_id, agent_id=sc.agent_id,
-                               suite_id=sc.suite_id, suite_version=sc.suite_version,
+            s.add(ScorecardRow(tenant_id=self.tenant, scorecard_id=sc.scorecard_id,
+                               agent_id=sc.agent_id, suite_id=sc.suite_id,
+                               suite_version=sc.suite_version,
                                created_at=sc.created_at, payload=sc.model_dump_json()))
             s.commit()
 
     def get_scorecard(self, scorecard_id: str) -> Scorecard:
         with Session(self.engine) as s:
             row = s.exec(select(ScorecardRow).where(
+                ScorecardRow.tenant_id == self.tenant,
                 ScorecardRow.scorecard_id == scorecard_id)).first()
             if not row:
                 raise NotFoundError(f"scorecard {scorecard_id}")
@@ -328,7 +382,8 @@ class Registry:
     def scorecards_for(self, agent_id: str, suite_id: str | None = None
                        ) -> list[Scorecard]:
         with Session(self.engine) as s:
-            q = select(ScorecardRow).where(ScorecardRow.agent_id == agent_id)
+            q = select(ScorecardRow).where(ScorecardRow.tenant_id == self.tenant,
+                                           ScorecardRow.agent_id == agent_id)
             if suite_id:
                 q = q.where(ScorecardRow.suite_id == suite_id)
             rows = s.exec(q.order_by(ScorecardRow.created_at)).all()
@@ -337,6 +392,7 @@ class Registry:
     def suites_scored_for(self, agent_id: str) -> list[str]:
         with Session(self.engine) as s:
             rows = s.exec(select(ScorecardRow.suite_id).where(
+                ScorecardRow.tenant_id == self.tenant,
                 ScorecardRow.agent_id == agent_id).distinct()).all()
             return list(rows)
 
@@ -346,14 +402,16 @@ class Registry:
                          scores: dict[str, float]) -> None:
         with Session(self.engine) as s:
             for cid, val in scores.items():
-                s.add(LiveScoreRow(agent_id=agent_id, trace_id=trace_id,
-                                   criterion_id=cid, score=val, created_at=_now()))
+                s.add(LiveScoreRow(tenant_id=self.tenant, agent_id=agent_id,
+                                   trace_id=trace_id, criterion_id=cid, score=val,
+                                   created_at=_now()))
             s.commit()
 
     def live_scores(self, agent_id: str, criterion_id: str, last_n: int
                     ) -> list[float]:
         with Session(self.engine) as s:
             rows = s.exec(select(LiveScoreRow).where(
+                LiveScoreRow.tenant_id == self.tenant,
                 LiveScoreRow.agent_id == agent_id,
                 LiveScoreRow.criterion_id == criterion_id)
                 .order_by(LiveScoreRow.id.desc()).limit(last_n)).all()
@@ -361,12 +419,14 @@ class Registry:
 
     def save_reeval_request(self, agent_id: str, reason: str) -> None:
         with Session(self.engine) as s:
-            s.add(ReEvalRow(agent_id=agent_id, reason=reason, created_at=_now()))
+            s.add(ReEvalRow(tenant_id=self.tenant, agent_id=agent_id,
+                            reason=reason, created_at=_now()))
             s.commit()
 
     def reeval_requests(self, agent_id: str) -> list[str]:
         with Session(self.engine) as s:
             rows = s.exec(select(ReEvalRow).where(
+                ReEvalRow.tenant_id == self.tenant,
                 ReEvalRow.agent_id == agent_id).order_by(ReEvalRow.id)).all()
             return [r.reason for r in rows]
 
@@ -377,14 +437,37 @@ class Registry:
             return
         now = _now()
         with Session(self.engine) as s:
-            s.add(SpendRow(day=now.strftime("%Y-%m-%d"), model=model,
-                           cost_usd=cost_usd, created_at=now))
+            s.add(SpendRow(tenant_id=self.tenant, day=now.strftime("%Y-%m-%d"),
+                           model=model, cost_usd=cost_usd, created_at=now))
             s.commit()
 
     def spend_today(self) -> float:
-        from sqlalchemy import func
-        day = _now().strftime("%Y-%m-%d")
+        return self.spend_since_days(0)
+
+    def spend_since_days(self, days: int) -> float:
+        """Total spend over the trailing ``days`` days (0 => just today)."""
+        from datetime import timedelta
+        start = (_now() - timedelta(days=days)).strftime("%Y-%m-%d")
         with Session(self.engine) as s:
             total = s.exec(select(func.sum(SpendRow.cost_usd)).where(
-                SpendRow.day == day)).one()
+                SpendRow.tenant_id == self.tenant, SpendRow.day >= start)).one()
             return float(total or 0.0)
+
+    # -- retention --------------------------------------------------------------
+
+    def prune_traces(self, older_than_days: int) -> int:
+        """Delete trace rows (this tenant) older than ``older_than_days``.
+        Returns the number removed. Live + batch alike; scorecards keep their
+        aggregates, so historical results survive."""
+        if older_than_days <= 0:
+            return 0
+        from datetime import timedelta
+        cutoff = _now() - timedelta(days=older_than_days)
+        with Session(self.engine) as s:
+            rows = s.exec(select(TraceRow).where(
+                TraceRow.tenant_id == self.tenant,
+                TraceRow.created_at < cutoff)).all()
+            for r in rows:
+                s.delete(r)
+            s.commit()
+            return len(rows)
