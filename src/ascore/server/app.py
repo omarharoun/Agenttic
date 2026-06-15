@@ -11,12 +11,13 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from ascore.config import load_config
 from ascore.registry.sqlite_store import Registry
+from ascore.server.auth import check_startup, require_auth
 from ascore.server.events import EventBus
 from ascore.server.executor import ExecutionManager
 from ascore.server.store import UIStore
@@ -32,6 +33,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         cfg = load_config(config_path)
+        check_startup(cfg)  # fail closed if auth.required without a token
         reg = registry or Registry(cfg["paths"]["registry_db"])
         store = UIStore(reg.engine)
         interrupted = store.interrupt_orphans()
@@ -54,11 +56,14 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     from ascore.server.routes.resources import router as resources_router
     from ascore.server.routes.workflows import router as workflows_router
 
-    app.include_router(workflows_router, prefix="/api")
-    app.include_router(executions_router, prefix="/api")
-    app.include_router(resources_router, prefix="/api")
-    app.include_router(live_router, prefix="/api")
-    app.include_router(leaderboard_router, prefix="/api")
+    # every /api route — incl. the SSE stream and the approval gate — requires
+    # the API token once one is configured (no-op when auth is disabled).
+    protected = [Depends(require_auth)]
+    app.include_router(workflows_router, prefix="/api", dependencies=protected)
+    app.include_router(executions_router, prefix="/api", dependencies=protected)
+    app.include_router(resources_router, prefix="/api", dependencies=protected)
+    app.include_router(live_router, prefix="/api", dependencies=protected)
+    app.include_router(leaderboard_router, prefix="/api", dependencies=protected)
 
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"),

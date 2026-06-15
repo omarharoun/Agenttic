@@ -260,14 +260,19 @@ def ui(host: str = "", port: int = 0,
             f"to http://{host}:{port}).")
     console.print(f"Agenttic UI on [bold]http://{host}:{port}[/]")
     if host != "127.0.0.1":
+        from ascore.server.auth import configured_token
+
         ip = _lan_ip()
         if ip:
             console.print(f"LAN: [bold]http://{ip}:{port}[/]")
-        console.print(
-            "[yellow]Warning:[/] the API has no authentication — anyone on "
-            "this network can edit workflows, approve suites, and trigger "
-            "runs that spend your Anthropic credits. Use only on a trusted "
-            "network.")
+        if configured_token(cfg):
+            console.print("[green]Auth:[/] API token required for all /api routes.")
+        else:
+            console.print(
+                "[yellow]Warning:[/] no API token set — anyone on this network "
+                "can edit workflows, approve suites, and trigger runs that spend "
+                "your Anthropic credits. Set ASCORE_API_TOKEN (or auth.token) "
+                "before exposing to a network.")
     uvicorn.run(create_app(config), host=host, port=port, log_level="info")
 
 
