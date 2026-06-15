@@ -110,6 +110,15 @@ class ReEvalRow(SQLModel, table=True):
     created_at: datetime
 
 
+class SpendRow(SQLModel, table=True):
+    """Append-only ledger of LLM spend, for the daily budget cap."""
+    id: int | None = Field(default=None, primary_key=True)
+    day: str = Field(index=True)  # UTC YYYY-MM-DD
+    model: str
+    cost_usd: float
+    created_at: datetime
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -340,3 +349,22 @@ class Registry:
             rows = s.exec(select(ReEvalRow).where(
                 ReEvalRow.agent_id == agent_id).order_by(ReEvalRow.id)).all()
             return [r.reason for r in rows]
+
+    # -- spend ledger (budget caps) --------------------------------------------
+
+    def record_spend(self, model: str, cost_usd: float) -> None:
+        if not cost_usd:
+            return
+        now = _now()
+        with Session(self.engine) as s:
+            s.add(SpendRow(day=now.strftime("%Y-%m-%d"), model=model,
+                           cost_usd=cost_usd, created_at=now))
+            s.commit()
+
+    def spend_today(self) -> float:
+        from sqlalchemy import func
+        day = _now().strftime("%Y-%m-%d")
+        with Session(self.engine) as s:
+            total = s.exec(select(func.sum(SpendRow.cost_usd)).where(
+                SpendRow.day == day)).one()
+            return float(total or 0.0)
