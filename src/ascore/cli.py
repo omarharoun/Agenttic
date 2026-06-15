@@ -85,9 +85,16 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
                                     system_prompt=system_prompt, model=model)
     except ValueError as exc:
         raise typer.BadParameter(str(exc))
-    sc = asyncio.run(ops.run_and_score_op(cfg, reg, adapter, suite))
+    from ascore.budget import BudgetExceededError
+    try:
+        sc = asyncio.run(ops.run_and_score_op(cfg, reg, adapter, suite))
+    except BudgetExceededError as exc:
+        console.print(f"[red]Budget cap:[/] {exc}")
+        raise typer.Exit(2)
     console.print(f"Scorecard [bold]{sc.scorecard_id}[/]: success "
-                  f"{sc.task_success_rate:.0%}, mean cost ${sc.mean_cost_usd:.4f}")
+                  f"{sc.task_success_rate:.0%}, mean exec cost "
+                  f"${sc.mean_cost_usd:.4f}, total run cost "
+                  f"${sc.total_cost_usd + sc.total_scoring_cost_usd:.4f}")
 
 
 @app.command()

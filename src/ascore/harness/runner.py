@@ -71,6 +71,7 @@ async def run_suite(
     config: HarnessConfig = HarnessConfig(),
     transport_errors: tuple[type[Exception], ...] = (ConnectionError, OSError),
     on_event: Callable[[str, dict], None] | None = None,
+    budget=None,  # optional ascore.budget.RunBudget — abort remaining cases on cap
 ) -> list[Trace]:
     """Run every test case; return traces in test-case order.
 
@@ -91,6 +92,19 @@ async def run_suite(
 
     async def one(index: int, tc: TestCase) -> Trace:
         async with sem:
+            # budget kill-switch: once the per-run cap is hit, don't start new
+            # runs — short-circuit to a clean budget_exceeded trace (no spend).
+            if budget is not None and budget.exhausted:
+                trace = _failure_trace(
+                    adapter, tc, "budget_exceeded",
+                    f"per-run cost cap ${budget.max_run_usd:.4f} reached "
+                    f"(spent ${budget.spent_usd:.4f}); remaining cases skipped")
+                store.save_trace(trace)
+                if on_event:
+                    on_event("budget_exceeded", {
+                        "index": index, "total": total, "test_id": tc.test_id,
+                        "spent_usd": round(budget.spent_usd, 6)})
+                return trace
             if on_event:
                 on_event("case_started",
                          {"index": index, "total": total, "test_id": tc.test_id})
@@ -120,6 +134,8 @@ async def run_suite(
                     )
                 break
             assert trace is not None
+            if budget is not None:
+                budget.charge(trace.total_cost_usd)
             store.save_trace(trace)
             if on_event:
                 on_event("case_finished", {

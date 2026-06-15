@@ -120,13 +120,14 @@ def _resolve_agent(cfg: dict, reg: Registry, agent_id: str | None,
     return variant, model, visibility
 
 
-def estimate_for_suite(cfg: dict, reg: Registry, suite_id: str, *,
-                       agent_id: str | None = None,
-                       agent_model: str | None = None,
-                       with_judge: bool = True,
-                       version: int | None = None) -> CostEstimate:
-    suite, cases = reg.get_suite(suite_id, version)
-    variant, model, visibility = _resolve_agent(cfg, reg, agent_id, agent_model)
+def estimate_for_run(cfg: dict, reg: Registry, suite_id: str, *,
+                     variant: str, model: str | None,
+                     with_judge: bool = True,
+                     version: int | None = None) -> CostEstimate:
+    """Estimate for a concrete (variant, model) — used by the budget gate where
+    the adapter is already built, so the variant/model are known exactly."""
+    _, cases = reg.get_suite(suite_id, version)
+    visibility = "black_box" if variant == "blackbox" else "glass_box"
     n_judge = 0
     if with_judge and cases:
         try:
@@ -141,6 +142,16 @@ def estimate_for_suite(cfg: dict, reg: Registry, suite_id: str, *,
         cfg, n_cases=len(cases), agent_variant=variant, agent_model=model,
         n_judge_criteria=n_judge, judge_model=judge_model_for(cfg, model),
         avg_input_chars=avg_chars)
+
+
+def estimate_for_suite(cfg: dict, reg: Registry, suite_id: str, *,
+                       agent_id: str | None = None,
+                       agent_model: str | None = None,
+                       with_judge: bool = True,
+                       version: int | None = None) -> CostEstimate:
+    variant, model, _ = _resolve_agent(cfg, reg, agent_id, agent_model)
+    return estimate_for_run(cfg, reg, suite_id, variant=variant, model=model,
+                            with_judge=with_judge, version=version)
 
 
 def estimate_for_workflow(cfg: dict, reg: Registry, wf) -> CostEstimate:
