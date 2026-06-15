@@ -20,6 +20,7 @@ from pathlib import Path
 from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
+from ascore.schema.agent import DeclaredAgent
 from ascore.schema.scorecard import Scorecard
 from ascore.schema.testcase import TestCase, TestSuite
 from ascore.schema.rubric import Rubric
@@ -57,6 +58,20 @@ class RubricRow(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     rubric_id: str = Field(index=True)
     version: int
+    payload: str
+
+
+class DeclaredAgentRow(SQLModel, table=True):
+    """The pre-registered agent catalog. Versioned + append-only like suites
+    and rubrics — editing an agent stores the next version. ``active`` is the
+    one permitted in-place flag (a retire toggle, like the suite approval gate);
+    it is catalog state, not connection content."""
+    __table_args__ = (UniqueConstraint("agent_id", "version"),)
+    id: int | None = Field(default=None, primary_key=True)
+    agent_id: str = Field(index=True)
+    version: int
+    active: bool = True
+    created_at: datetime
     payload: str
 
 
@@ -178,6 +193,68 @@ class Registry:
             if not row:
                 raise NotFoundError(f"rubric {rubric_id} v{version}")
             return Rubric.model_validate_json(row.payload)
+
+    # -- declared agent catalog ------------------------------------------------
+
+    def register_agent(self, agent: DeclaredAgent) -> DeclaredAgent:
+        """Create or update a catalog entry. Create-or-bump semantics (like
+        Managed Agent deploy): a new agent_id starts at v1; re-registering an
+        existing one stores the next version and reactivates it. Prior versions
+        stay on record (append-only)."""
+        with Session(self.engine) as s:
+            versions = s.exec(select(DeclaredAgentRow.version).where(
+                DeclaredAgentRow.agent_id == agent.agent_id)).all()
+            agent = agent.model_copy(
+                update={"version": (max(versions) + 1) if versions else 1})
+            s.add(DeclaredAgentRow(
+                agent_id=agent.agent_id, version=agent.version, active=True,
+                created_at=_now(), payload=agent.model_dump_json()))
+            s.commit()
+        return agent
+
+    def get_declared_agent(self, agent_id: str, version: int | None = None
+                           ) -> DeclaredAgent:
+        with Session(self.engine) as s:
+            q = select(DeclaredAgentRow).where(
+                DeclaredAgentRow.agent_id == agent_id)
+            q = q.where(DeclaredAgentRow.version == version) if version is not None \
+                else q.order_by(DeclaredAgentRow.version.desc())
+            row = s.exec(q).first()
+            if not row:
+                raise NotFoundError(f"declared agent {agent_id}")
+            return DeclaredAgent.model_validate_json(row.payload)
+
+    def list_declared_agents(self, include_retired: bool = False
+                             ) -> list[dict]:
+        """Latest version of every declared agent. Each dict is the agent's
+        fields plus catalog metadata (``active``, ``created_at``)."""
+        with Session(self.engine) as s:
+            rows = s.exec(select(DeclaredAgentRow)).all()
+        latest: dict[str, DeclaredAgentRow] = {}
+        for r in rows:
+            if r.agent_id not in latest or r.version > latest[r.agent_id].version:
+                latest[r.agent_id] = r
+        out = []
+        for r in sorted(latest.values(), key=lambda r: r.agent_id):
+            if not r.active and not include_retired:
+                continue
+            agent = DeclaredAgent.model_validate_json(r.payload)
+            out.append({**agent.model_dump(), "active": r.active,
+                        "created_at": r.created_at.isoformat()})
+        return out
+
+    def retire_agent(self, agent_id: str) -> None:
+        """Soft-delete: flip every version of this agent to inactive. The
+        history stays (append-only); re-registering reactivates it."""
+        with Session(self.engine) as s:
+            rows = s.exec(select(DeclaredAgentRow).where(
+                DeclaredAgentRow.agent_id == agent_id)).all()
+            if not rows:
+                raise NotFoundError(f"declared agent {agent_id}")
+            for r in rows:
+                r.active = False
+                s.add(r)
+            s.commit()
 
     # -- traces ----------------------------------------------------------------
 

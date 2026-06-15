@@ -38,6 +38,37 @@ def test_ui_binding_resolution():
     assert _resolve_ui_binding(cfg_lan, "", 0, lan=False) == ("0.0.0.0", 8800)
 
 
+def _agent_cfg(tmp_path):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(
+        "models: {agent_default: a, judge_strong: j, judge_light: l, generator: g}\n"
+        "harness: {timeout_seconds: 1, max_steps: 1, max_parallel: 1, transport_retries: 0}\n"
+        "scoring: {calibration_threshold: 0.8}\n"
+        "live: {sample_rate: 0.05, drift_threshold: 0.15, drift_window_runs: 50}\n"
+        f"paths: {{registry_db: {tmp_path / 'p.db'}, review_dir: r/, calibration_dir: c/}}\n")
+    return cfg
+
+
+def test_agents_catalog_cli_roundtrip(tmp_path):
+    from typer.testing import CliRunner
+    cfg = _agent_cfg(tmp_path)
+    run = CliRunner()
+    add = run.invoke(app, ["agents", "add", "client-x", "--variant", "blackbox",
+                           "--url", "http://x", "--config", str(cfg)])
+    assert add.exit_code == 0 and "Registered" in add.output
+
+    listed = run.invoke(app, ["agents", "list", "--config", str(cfg)])
+    assert listed.exit_code == 0 and "client-x" in listed.output
+
+    # bad connection details fail cleanly, not with a traceback
+    bad = run.invoke(app, ["agents", "add", "b", "--variant", "blackbox",
+                           "--config", str(cfg)])
+    assert bad.exit_code != 0
+
+    retire = run.invoke(app, ["agents", "retire", "client-x", "--config", str(cfg)])
+    assert retire.exit_code == 0 and "Retired" in retire.output
+
+
 def test_run_uses_named_agent_suite_options():
     """`ascore run` accepts --agent/--suite (README form), not positionals."""
     from typer.testing import CliRunner

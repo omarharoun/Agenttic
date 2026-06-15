@@ -52,18 +52,37 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
         suite: str = typer.Option(..., "--suite", "-s", help="suite id to run"),
         url: str = "",
         managed_agent_id: str = "", environment_id: str = "",
-        system_prompt: str = "", config: str = "config.yaml"):
-    """Run a suite against an agent: the reference agent (--system-prompt to
-    set its task instructions), --url for black-box HTTP, or
-    --managed-agent-id/--environment-id for a deployed Anthropic Managed
-    Agent (see `ascore deploy`)."""
+        system_prompt: str = "", model: str = "", config: str = "config.yaml"):
+    """Run a suite against an agent.
+
+    If --agent matches a name in the declared catalog (`ascore agents add`), its
+    connection details are used automatically — so `ascore run --agent prod
+    --suite s` just works. Otherwise build one ad-hoc: the reference agent
+    (--system-prompt/--model), --url for black-box HTTP, or
+    --managed-agent-id/--environment-id for a deployed Managed Agent. Explicit
+    flags always override the catalog."""
+    from ascore.registry.sqlite_store import NotFoundError
+
     cfg, reg = _ctx(config)
     variant = "managed" if managed_agent_id else ("blackbox" if url else "reference")
+    # resolve a declared catalog agent when no connection flags were given
+    if not (url or managed_agent_id):
+        try:
+            d = reg.get_declared_agent(agent)
+            variant = d.variant
+            url, managed_agent_id = d.url, d.managed_agent_id
+            environment_id = environment_id or d.environment_id
+            system_prompt = system_prompt or d.system_prompt
+            model = model or d.model
+            console.print(f"[dim]using declared agent {agent} "
+                          f"(v{d.version}, {d.variant})[/]")
+        except NotFoundError:
+            pass
     try:
         adapter = ops.build_adapter(cfg, variant=variant, agent_id=agent, url=url,
                                     managed_agent_id=managed_agent_id,
                                     environment_id=environment_id,
-                                    system_prompt=system_prompt)
+                                    system_prompt=system_prompt, model=model)
     except ValueError as exc:
         raise typer.BadParameter(str(exc))
     sc = asyncio.run(ops.run_and_score_op(cfg, reg, adapter, suite))
@@ -250,6 +269,89 @@ def ui(host: str = "", port: int = 0,
             "runs that spend your Anthropic credits. Use only on a trusted "
             "network.")
     uvicorn.run(create_app(config), host=host, port=port, log_level="info")
+
+
+agents_app = typer.Typer(help="Declared agent catalog: pre-register agents so "
+                              "they're pickable for runs and typed on the Index.")
+app.add_typer(agents_app, name="agents")
+
+
+@agents_app.command("add")
+def agents_add(
+    agent_id: str,
+    variant: str = typer.Option("reference", "--variant", "-v",
+                                help="reference | blackbox | managed"),
+    model: str = typer.Option("", help="reference: model override"),
+    system_prompt: str = typer.Option("", help="reference: task instructions"),
+    url: str = typer.Option("", help="blackbox: HTTP endpoint"),
+    managed_agent_id: str = typer.Option("", help="managed: agent id"),
+    environment_id: str = typer.Option("", help="managed: environment id"),
+    description: str = typer.Option("", help="free-text note"),
+    config: str = "config.yaml",
+):
+    """Register an agent (or store the next version of an existing one)."""
+    from pydantic import ValidationError
+
+    from ascore.schema.agent import DeclaredAgent
+
+    _, reg = _ctx(config)
+    try:
+        agent = DeclaredAgent(
+            agent_id=agent_id, variant=variant, model=model,
+            system_prompt=system_prompt, url=url,
+            managed_agent_id=managed_agent_id, environment_id=environment_id,
+            description=description)
+    except ValidationError as exc:
+        raise typer.BadParameter(str(exc))
+    saved = reg.register_agent(agent)
+    console.print(f"[green]Registered[/] {saved.agent_id} v{saved.version} "
+                  f"({saved.variant}).")
+
+
+@agents_app.command("list")
+def agents_list(all_: bool = typer.Option(False, "--all",
+                                          help="include retired agents"),
+                config: str = "config.yaml"):
+    """List declared agents."""
+    _, reg = _ctx(config)
+    rows = reg.list_declared_agents(include_retired=all_)
+    if not rows:
+        console.print("No declared agents. Add one with `uv run ascore agents add`.")
+        return
+    table = Table("agent", "type", "version", "connection", "active")
+    for a in rows:
+        conn = (a["url"] or a["managed_agent_id"]
+                or a["model"] or "config default")
+        table.add_row(a["agent_id"], a["variant"], str(a["version"]), conn,
+                      "✓" if a["active"] else "[red]retired[/]")
+    console.print(table)
+
+
+@agents_app.command("show")
+def agents_show(agent_id: str, config: str = "config.yaml"):
+    """Show one declared agent's full details."""
+    from ascore.registry.sqlite_store import NotFoundError
+
+    _, reg = _ctx(config)
+    try:
+        agent = reg.get_declared_agent(agent_id)
+    except NotFoundError:
+        raise typer.BadParameter(f"no declared agent {agent_id!r}")
+    for k, v in agent.model_dump().items():
+        console.print(f"  [bold]{k}[/]: {v}")
+
+
+@agents_app.command("retire")
+def agents_retire(agent_id: str, config: str = "config.yaml"):
+    """Retire an agent (soft-delete; history kept, re-add to revive)."""
+    from ascore.registry.sqlite_store import NotFoundError
+
+    _, reg = _ctx(config)
+    try:
+        reg.retire_agent(agent_id)
+    except NotFoundError:
+        raise typer.BadParameter(f"no declared agent {agent_id!r}")
+    console.print(f"[yellow]Retired[/] {agent_id}.")
 
 
 if __name__ == "__main__":

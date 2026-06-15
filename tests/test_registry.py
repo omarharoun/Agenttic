@@ -12,6 +12,7 @@ import pytest
 from ascore.registry.sqlite_store import (
     DuplicateVersionError, NotFoundError, Registry,
 )
+from ascore.schema.agent import DeclaredAgent
 from ascore.schema.rubric import Criterion, Rubric
 from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
 from ascore.schema.testcase import TestCase, TestSuite
@@ -111,6 +112,53 @@ class TestRegressionSupport:
         sc = scorecard(sid="sc-x")
         reg.save_scorecard(sc)
         assert reg.get_scorecard("sc-x") == sc
+
+
+class TestDeclaredAgentCatalog:
+    def test_register_assigns_v1_then_bumps(self, reg):
+        a = reg.register_agent(DeclaredAgent(agent_id="prod", model="m1"))
+        assert a.version == 1
+        b = reg.register_agent(DeclaredAgent(agent_id="prod", model="m2"))
+        assert b.version == 2
+        # latest wins; old version still retrievable (append-only)
+        assert reg.get_declared_agent("prod").model == "m2"
+        assert reg.get_declared_agent("prod", version=1).model == "m1"
+
+    def test_list_returns_latest_per_agent(self, reg):
+        reg.register_agent(DeclaredAgent(agent_id="a", description="old"))
+        reg.register_agent(DeclaredAgent(agent_id="a", description="new"))
+        reg.register_agent(DeclaredAgent(agent_id="b", variant="blackbox",
+                                         url="http://x"))
+        rows = {r["agent_id"]: r for r in reg.list_declared_agents()}
+        assert rows["a"]["description"] == "new" and rows["a"]["version"] == 2
+        assert rows["b"]["variant"] == "blackbox" and rows["b"]["url"] == "http://x"
+
+    def test_retire_hides_then_reregister_revives(self, reg):
+        reg.register_agent(DeclaredAgent(agent_id="x"))
+        reg.retire_agent("x")
+        assert reg.list_declared_agents() == []
+        retired = reg.list_declared_agents(include_retired=True)
+        assert retired[0]["agent_id"] == "x" and retired[0]["active"] is False
+        # re-registering brings it back, active, at the next version
+        revived = reg.register_agent(DeclaredAgent(agent_id="x"))
+        assert revived.version == 2
+        assert [r["agent_id"] for r in reg.list_declared_agents()] == ["x"]
+
+    def test_missing_agent_raises(self, reg):
+        with pytest.raises(NotFoundError):
+            reg.get_declared_agent("ghost")
+        with pytest.raises(NotFoundError):
+            reg.retire_agent("ghost")
+
+    def test_variant_connection_validation(self):
+        with pytest.raises(ValueError):
+            DeclaredAgent(agent_id="b", variant="blackbox")          # no url
+        with pytest.raises(ValueError):
+            DeclaredAgent(agent_id="m", variant="managed")           # no ids
+        # well-formed entries validate
+        assert DeclaredAgent(agent_id="b", variant="blackbox", url="http://x")
+        assert DeclaredAgent(agent_id="m", variant="managed",
+                             managed_agent_id="ag_1", environment_id="env_1")
 
 
 class TestTraceStorage:

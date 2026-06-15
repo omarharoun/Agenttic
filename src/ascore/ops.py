@@ -46,10 +46,12 @@ def build_adapter(
     environment_id: str = "",
     client=None,
     system_prompt: str = "",
+    model: str = "",
 ) -> AgentAdapter:
     """Instantiate the adapter for one agent under test. ``system_prompt``
-    overrides the reference agent's task instructions (it is part of the
-    configuration under test and feeds the trace config hash)."""
+    overrides the reference agent's task instructions and ``model`` overrides
+    its model (both are part of the configuration under test and feed the trace
+    config hash, so a declared agent that pins them is reproducible)."""
     if variant == "managed":
         if not environment_id:
             environment_id = cfg.get("managed", {}).get("environment_id", "")
@@ -64,7 +66,7 @@ def build_adapter(
             raise ValueError("blackbox adapter needs a url")
         return BlackBoxHTTPAgent(agent_id=agent_id, url=url)
     kw = {"client": client} if client is not None else {}
-    return AnthropicSimpleAgent(model=cfg["models"]["agent_default"],
+    return AnthropicSimpleAgent(model=model or cfg["models"]["agent_default"],
                                 kb_path="kb.json", agent_id=agent_id,
                                 max_steps=cfg["harness"]["max_steps"],
                                 system_prompt=system_prompt or None, **kw)

@@ -408,3 +408,74 @@ class TestAgentsDiscovery:
         assert r.status_code == 200
         # warning may be set (no key) but the call still succeeds
         assert "agents" in r.json()
+
+
+class TestDeclaredAgentCatalogApi:
+    def test_register_list_get_retire(self, client):
+        # register a black-box agent
+        r = client.post("/api/agents/catalog", json={
+            "agent_id": "client-x", "variant": "blackbox",
+            "url": "http://client-x/agent", "description": "the client's bot"})
+        assert r.status_code == 200 and r.json()["version"] == 1
+
+        catalog = client.get("/api/agents/catalog").json()["agents"]
+        assert [a["agent_id"] for a in catalog] == ["client-x"]
+        assert catalog[0]["url"] == "http://client-x/agent"
+
+        one = client.get("/api/agents/catalog/client-x").json()
+        assert one["variant"] == "blackbox"
+
+        # re-register bumps the version (append-only)
+        v2 = client.post("/api/agents/catalog", json={
+            "agent_id": "client-x", "variant": "blackbox",
+            "url": "http://client-x/v2"}).json()
+        assert v2["version"] == 2
+
+        # retire hides it from the default catalog list
+        assert client.delete("/api/agents/catalog/client-x").json() == {
+            "retired": "client-x"}
+        assert client.get("/api/agents/catalog").json()["agents"] == []
+        assert len(client.get(
+            "/api/agents/catalog?include_retired=true").json()["agents"]) == 1
+
+    def test_invalid_variant_connection_is_422(self, client):
+        r = client.post("/api/agents/catalog",
+                        json={"agent_id": "b", "variant": "blackbox"})  # no url
+        assert r.status_code == 422
+
+    def test_unknown_agent_404(self, client):
+        assert client.get("/api/agents/catalog/ghost").status_code == 404
+        assert client.delete("/api/agents/catalog/ghost").status_code == 404
+
+    def test_declared_agent_shows_in_discovery_before_any_run(self, client):
+        client.post("/api/agents/catalog", json={
+            "agent_id": "prod-agent", "variant": "reference",
+            "model": "claude-x", "description": "prod"})
+        agents = {a["agent_id"]: a
+                  for a in client.get("/api/agents").json()["agents"]}
+        a = agents["prod-agent"]
+        assert a["declared"] is True and a["variant"] == "reference"
+        assert "declared" in a["sources"] and a["scored"] is False
+
+    def test_declared_then_run_unions_sources(self, client):
+        client.post("/api/agents/catalog", json={
+            "agent_id": "discovered-agent", "variant": "reference"})
+        wf = eval_workflow("pilot-support-triage").model_dump()
+        for n in wf["nodes"]:
+            if n["node_id"] == "agent":
+                n["config"]["agent_id"] = "discovered-agent"
+        client.post("/api/workflows", json=wf)
+        eid = client.post(
+            "/api/workflows/wf-eval/executions").json()["execution_id"]
+        poll(client, eid, "succeeded")
+
+        a = {x["agent_id"]: x
+             for x in client.get("/api/agents").json()["agents"]}["discovered-agent"]
+        assert {"declared", "scored", "traced"} <= set(a["sources"])
+        assert a["declared"] is True and a["scored"] is True
+
+        # the leaderboard now carries the declared type
+        board = client.get("/api/leaderboard").json()
+        row = next(r for r in board["agents"]
+                   if r["agent_id"] == "discovered-agent")
+        assert row["agent_type"] == "reference"
