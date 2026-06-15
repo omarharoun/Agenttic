@@ -64,7 +64,9 @@ def build_adapter(
     if variant == "blackbox":
         if not url:
             raise ValueError("blackbox adapter needs a url")
-        return BlackBoxHTTPAgent(agent_id=agent_id, url=url)
+        allow_private = not cfg.get("security", {}).get("blackbox_block_private", True)
+        return BlackBoxHTTPAgent(agent_id=agent_id, url=url,
+                                 allow_private_url=allow_private)
     kw = {"client": client} if client is not None else {}
     return AnthropicSimpleAgent(model=model or cfg["models"]["agent_default"],
                                 kb_path="kb.json", agent_id=agent_id,

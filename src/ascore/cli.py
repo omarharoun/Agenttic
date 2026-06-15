@@ -298,8 +298,9 @@ def agents_add(
     from pydantic import ValidationError
 
     from ascore.schema.agent import DeclaredAgent
+    from ascore.security import UnsafeURLError, validate_blackbox_url
 
-    _, reg = _ctx(config)
+    cfg, reg = _ctx(config)
     try:
         agent = DeclaredAgent(
             agent_id=agent_id, variant=variant, model=model,
@@ -308,6 +309,11 @@ def agents_add(
             description=description)
     except ValidationError as exc:
         raise typer.BadParameter(str(exc))
+    if agent.variant == "blackbox":
+        try:
+            validate_blackbox_url(agent.url, cfg=cfg, allow_unresolved=True)
+        except UnsafeURLError as exc:
+            raise typer.BadParameter(f"unsafe agent url: {exc}")
     saved = reg.register_agent(agent)
     console.print(f"[green]Registered[/] {saved.agent_id} v{saved.version} "
                   f"({saved.variant}).")

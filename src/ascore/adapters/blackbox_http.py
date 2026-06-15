@@ -14,14 +14,31 @@ from datetime import datetime, timezone
 
 from ascore.adapters.base import AgentAdapter
 from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from ascore.security import validate_blackbox_url
 
 
-def _http_transport(url: str, payload: dict, timeout: float) -> dict:
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuse redirects so a validated URL can't be bounced to an internal
+    target (SSRF redirect bypass)."""
+    def redirect_request(self, *args, **kwargs):  # noqa: D401
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
+def _http_transport(url: str, payload: dict, timeout: float,
+                    allow_private: bool = False) -> dict:
+    # request-time SSRF check: must resolve to a public address to be dialed
+    # (unless the operator explicitly allowed private targets for this agent)
+    validate_blackbox_url(
+        url, resolve=True, allow_unresolved=False,
+        cfg={"security": {"blackbox_block_private": not allow_private}})
     req = urllib.request.Request(
         url, data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"}, method="POST",
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with _OPENER.open(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode())
 
 
@@ -40,14 +57,17 @@ class BlackBoxHTTPAgent(AgentAdapter):
         url: str,
         output_field: str = "output",
         timeout: float = 60.0,
+        allow_private_url: bool = False,  # opt-in to hit private/loopback hosts
         transport=None,  # injectable for tests; defaults to real HTTP
     ):
         self.agent_id = agent_id
         self.url = url
         self.output_field = output_field
         self.timeout = timeout
+        self.allow_private_url = allow_private_url
         self._transport = transport or (
-            lambda payload: _http_transport(self.url, payload, self.timeout)
+            lambda payload: _http_transport(self.url, payload, self.timeout,
+                                            self.allow_private_url)
         )
 
     def describe(self) -> dict:

@@ -60,12 +60,23 @@ def tc(expected):
 
 class TestBlackBoxAdapter:
     def test_real_http_round_trip(self, stub_server):
-        agent = BlackBoxHTTPAgent(agent_id="client-x", url=stub_server)
+        # localhost stub: must explicitly opt into a private target (SSRF guard)
+        agent = BlackBoxHTTPAgent(agent_id="client-x", url=stub_server,
+                                  allow_private_url=True)
         trace = agent.run({"ticket": "I want a refund"}, test_case_id="tc-1")
         assert trace.visibility == "black_box"
         assert json.loads(trace.final_output)["queue"] == "billing"
         assert len(trace.spans) == 1 and trace.spans[0].kind == "final_output"
         assert trace.total_latency_ms > 0
+
+    def test_loopback_blocked_without_optin(self, stub_server):
+        # without opt-in the loopback URL is refused before any network call;
+        # the run is recorded as an error trace (never dialed), not an SSRF hit
+        agent = BlackBoxHTTPAgent(agent_id="x", url=stub_server)  # no opt-in
+        trace = agent.run({"ticket": "I want a refund"})
+        assert trace.final_output.startswith("BLACKBOX_FAILURE")
+        assert trace.spans[0].kind == "error"
+        assert "private/reserved" in (trace.spans[0].error or "")
 
     def test_missing_output_field_is_data_not_crash(self):
         agent = BlackBoxHTTPAgent(agent_id="x", url="http://unused",
@@ -91,7 +102,8 @@ class TestVisibilityRestriction:
         assert {c.criterion_id for c in black} == {"routing", "json_ok"}
 
     def test_black_box_scoring_end_to_end(self, stub_server):
-        agent = BlackBoxHTTPAgent(agent_id="client-x", url=stub_server)
+        agent = BlackBoxHTTPAgent(agent_id="client-x", url=stub_server,
+                                  allow_private_url=True)
         trace = agent.run({"ticket": "I want a refund"}, test_case_id="tc-1")
         rs = score_run(trace, tc({"final_output": '{"queue": "billing"}'}),
                        RUBRIC, judge=None)  # no judge needed: trajectory judge excluded
