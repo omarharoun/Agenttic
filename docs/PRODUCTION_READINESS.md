@@ -519,9 +519,21 @@ These were the Blockers/Highs that made the app actively dangerous on a network:
    `9d3939b`/`dbf1e7d`/`bd52336`/`8af2815`.
 5. ✅ **Rate limiting** on the API (§4.3) — `086dc05`.
 
-The next-most-urgent items not yet done: AuthZ roles (§1.2), multi-tenancy
-(§1.3), observability (§5), and migrations + SQLite hardening (§3) — these make
-up Phase 1.
+**Phase 1 — operability & multi-tenant — ✅ DONE.**
+- ✅ AuthZ roles (§1.2) — `88e4f54`.
+- ✅ Multi-tenancy / workspace isolation (§1.3) — `919c15e` (file-per-tenant; flagged).
+- ✅ Observability: logs + /health + /ready + /metrics (§5) — `ae5815b`.
+- ✅ SQLite hardening + versioned migrations (§3.1, §3.2) — `322e85b`.
+- ⚠️ Backups documented (§3.3); automated backups/encryption/retention still open.
+- ✅ Cost caveats from the prior round: leaderboard all-in $/case (`048e894`),
+  black-box declared cost (`01a8e86`), pluggable+Redis rate limiter (`2ec6c4b`).
+
+Remaining (Phase 2/3): global error envelope + secret redaction (§4.4/§2.2),
+pagination on list endpoints (§4.2), per-tenant LLM quotas (§7 residual),
+CSRF + UI role-gating (§11), live-path debounce/queue (§8), prompt-injection
+defenses (§6.2), Postgres + row-level tenant_id + shared event transport for
+horizontal scale (§3.1/§9/§12), CI/CD + container (§9), automated backups &
+retention (§3.3), and dependency scanning/SBOM (§6.4).
 
 **Phase 1 — Make it operable & safe to run for one team.**
 6. Structured logging, `/healthz` + `/readyz`, LLM cost/latency metrics (§5).
