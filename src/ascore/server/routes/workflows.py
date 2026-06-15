@@ -3,9 +3,10 @@ config side-panel forms (each node type ships its pydantic JSON schema)."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ascore.registry.sqlite_store import NotFoundError
+from ascore.server.auth import require_operator
 from ascore.server.nodes import NODE_TYPES
 from ascore.server.workflow_schema import Workflow, validate_workflow
 
@@ -27,7 +28,7 @@ def list_workflows(request: Request):
     return request.app.state.store.list_workflows()
 
 
-@router.post("/workflows")
+@router.post("/workflows", dependencies=[Depends(require_operator)])
 def save_workflow(wf: Workflow, request: Request, dry_run: bool = False):
     """Persist a workflow document (or just validate it with ?dry_run=true —
     used by the UI to check imports before anything is saved)."""
@@ -47,7 +48,7 @@ def get_workflow(workflow_id: str, request: Request):
     return {"workflow": wf.model_dump(), "problems": validate_workflow(wf)}
 
 
-@router.delete("/workflows/{workflow_id}")
+@router.delete("/workflows/{workflow_id}", dependencies=[Depends(require_operator)])
 def delete_workflow(workflow_id: str, request: Request):
     request.app.state.store.delete_workflow(workflow_id)
     return {"deleted": workflow_id}

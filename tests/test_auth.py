@@ -17,15 +17,16 @@ harness: {timeout_seconds: 10, max_parallel: 5, transport_retries: 1, max_steps:
 scoring: {calibration_threshold: 0.8}
 live: {sample_rate: 0.05, drift_threshold: 0.15, drift_window_runs: 50}
 paths: {registry_db: %(db)s, review_dir: %(review)s, calibration_dir: %(calib)s}
-auth: {required: %(required)s, token: "%(token)s"}
+auth: {required: %(required)s, token: "%(token)s", tokens: %(tokens)s}
 """
 
 
-def _app(tmp_path, *, token="", required="false"):
+def _app(tmp_path, *, token="", required="false", tokens="{}"):
     cfg_path = tmp_path / "config.yaml"
     cfg_path.write_text(CONFIG % {
         "db": tmp_path / "a.db", "review": tmp_path / "r",
-        "calib": tmp_path / "c", "token": token, "required": required})
+        "calib": tmp_path / "c", "token": token, "required": required,
+        "tokens": tokens})
     return create_app(str(cfg_path), registry=Registry(tmp_path / "a.db"))
 
 
@@ -62,6 +63,57 @@ class TestTokenEnforcement:
     def test_approval_gate_requires_auth(self, tmp_path):
         with TestClient(_app(tmp_path, token="s3cret")) as c:
             assert c.post("/api/executions/x/approve").status_code == 401
+
+
+class TestRoles:
+    # admin token "adm", operator "op", viewer "vw"
+    TOKENS = '{"op": "operator", "vw": "viewer"}'
+
+    def _c(self, tmp_path):
+        return TestClient(_app(tmp_path, token="adm", tokens=self.TOKENS))
+
+    def _hdr(self, t):
+        return {"Authorization": f"Bearer {t}"}
+
+    def test_viewer_can_read_not_write(self, tmp_path):
+        with self._c(tmp_path) as c:
+            assert c.get("/api/agents", headers=self._hdr("vw")).status_code == 200
+            # catalog write requires operator
+            r = c.post("/api/agents/catalog", headers=self._hdr("vw"),
+                       json={"agent_id": "x", "variant": "reference"})
+            assert r.status_code == 403
+
+    def test_operator_can_write(self, tmp_path):
+        with self._c(tmp_path) as c:
+            r = c.post("/api/agents/catalog", headers=self._hdr("op"),
+                       json={"agent_id": "x", "variant": "reference"})
+            assert r.status_code == 200
+
+    def test_admin_can_write(self, tmp_path):
+        with self._c(tmp_path) as c:
+            r = c.post("/api/agents/catalog", headers=self._hdr("adm"),
+                       json={"agent_id": "y", "variant": "reference"})
+            assert r.status_code == 200
+
+    def test_viewer_cannot_trigger_runs_or_approve(self, tmp_path):
+        with self._c(tmp_path) as c:
+            assert c.post("/api/workflows/none/executions",
+                          headers=self._hdr("vw")).status_code == 403
+            assert c.post("/api/executions/none/approve",
+                          headers=self._hdr("vw")).status_code == 403
+
+    def test_open_api_treats_everyone_as_admin(self, tmp_path):
+        # no tokens configured -> open, writes allowed
+        with TestClient(_app(tmp_path)) as c:
+            assert c.post("/api/agents/catalog",
+                          json={"agent_id": "z", "variant": "reference"}
+                          ).status_code == 200
+            assert c.get("/api/me").json()["role"] == "admin"
+
+    def test_me_reports_role(self, tmp_path):
+        with self._c(tmp_path) as c:
+            assert c.get("/api/me", headers=self._hdr("vw")).json()["role"] == "viewer"
+            assert c.get("/api/me", headers=self._hdr("op")).json()["role"] == "operator"
 
 
 class TestStartupFailClosed:

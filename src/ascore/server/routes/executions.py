@@ -7,16 +7,18 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sse_starlette.sse import EventSourceResponse
 
 from ascore.registry.sqlite_store import NotFoundError
+from ascore.server.auth import require_operator
 from ascore.server.executor import WorkflowValidationError
 
 router = APIRouter(tags=["executions"])
 
 
-@router.post("/workflows/{workflow_id}/executions")
+@router.post("/workflows/{workflow_id}/executions",
+             dependencies=[Depends(require_operator)])
 async def start_execution(workflow_id: str, request: Request):
     # async: the manager calls asyncio.create_task, which needs the loop
     state = request.app.state
@@ -133,7 +135,8 @@ async def stream_events(execution_id: str, request: Request, after: int = 0):
     return EventSourceResponse(gen())
 
 
-@router.post("/executions/{execution_id}/approve")
+@router.post("/executions/{execution_id}/approve",
+             dependencies=[Depends(require_operator)])
 async def approve_execution(execution_id: str, request: Request):
     """Approve the suite a gated execution is waiting on, then release the
     gate (in-process) or resume (after a server restart)."""
@@ -156,13 +159,15 @@ async def approve_execution(execution_id: str, request: Request):
                          "version": info["version"]}}
 
 
-@router.post("/executions/{execution_id}/cancel")
+@router.post("/executions/{execution_id}/cancel",
+             dependencies=[Depends(require_operator)])
 async def cancel_execution(execution_id: str, request: Request):
     await request.app.state.manager.cancel(execution_id)
     return {"cancelled": execution_id}
 
 
-@router.post("/executions/{execution_id}/resume")
+@router.post("/executions/{execution_id}/resume",
+             dependencies=[Depends(require_operator)])
 async def resume_execution(execution_id: str, request: Request):
     try:
         request.app.state.manager.resume(execution_id)
