@@ -64,7 +64,15 @@ who can reach the port.
   `fastapi-users` or an reverse-proxy like oauth2-proxy) with the token also
   gating the SSE stream.
 
-### 1.2 No authorization model — **High**
+### 1.2 No authorization model — **High** · ✅ FIXED (`88e4f54`)
+Tokens now map to roles (viewer < operator < admin); `auth.tokens` is a
+`{token: role}` (or `{token: {role, tenant}}`) map, the admin token comes from
+`ASCORE_API_TOKEN`/`auth.token`. `require_operator` gates run-trigger, gate
+approval, cancel/resume, suite approval, catalog write, workflow write, live
+ingest, and uploads; reads stay viewer-level. `server/auth.py`,
+`tests/test_auth.py::TestRoles`.
+
+#### Original finding
 Even with login, there are no roles. The human gate (`harness/runner.py:80-84`,
 `registry.approve_suite`) is the platform's one governance control, and **any
 caller can approve any suite**. Approval should be a privileged action.
@@ -72,7 +80,25 @@ caller can approve any suite**. Approval should be a privileged action.
 - **Fix:** role-based checks (viewer / operator / approver). Approve, deploy,
   delete, and run-that-spends should require elevated roles.
 
-### 1.3 No multi-tenancy — **High**
+### 1.3 No multi-tenancy — **High** · ✅ FIXED (`<this commit>`) — maintainer decision below
+Each tenant is now an **isolated workspace = its own SQLite database** + UIStore
++ EventBus + ExecutionManager (`server/app.py` `Workspaces`). The request's
+tenant comes from its auth principal (`auth.tokens[*].tenant`); `bind_workspace`
+resolves it and exposes the tenant's reg/store/manager/bus on `request.state`.
+The `default` tenant maps to the existing `registry_db`, so all current data and
+the 291-test suite stay untouched. Isolation verified in `tests/test_tenancy.py`.
+
+> **Maintainer decision to confirm:** I chose **file-per-tenant** over row-level
+> `tenant_id` scoping. It gives hard isolation with *zero data migration* and no
+> rewrite of every registry method/constraint, and keeps the suite green. The
+> tradeoffs: no cross-tenant queries (desired), a registry/manager per tenant in
+> memory (lazy-created; fine for tens of tenants), and per-file backups. **When
+> we move to Postgres / many tenants, switch to row-level `tenant_id` scoping**
+> (pairs with the Alembic migrations in §3.2). The CLI still operates on the
+> `default` tenant only — a `--tenant` flag is a small follow-up. Flag me if
+> you'd prefer row-level scoping now instead.
+
+#### Original finding
 There is a single SQLite file (`config.yaml` → `paths.registry_db: ascore.db`)
 and **flat global namespaces**: `agent_id`, `suite_id`, `scorecard_id` are not
 scoped to any tenant/org/project. `Registry` and `UIStore` share one engine

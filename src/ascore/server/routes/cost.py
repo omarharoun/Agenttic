@@ -18,7 +18,7 @@ def estimate_suite(request: Request, suite_id: str,
                    with_judge: bool = True):
     """Projected cost of running ``suite_id`` against an agent (declared agent
     or, by default, the reference agent on the default model)."""
-    state = request.app.state
+    state = request.state
     try:
         est = estimate_for_suite(state.cfg, state.reg, suite_id,
                                  agent_id=agent_id, agent_model=agent_model,
@@ -31,7 +31,7 @@ def estimate_suite(request: Request, suite_id: str,
 
 @router.get("/workflows/{workflow_id}/estimate")
 def estimate_workflow(workflow_id: str, request: Request):
-    state = request.app.state
+    state = request.state
     try:
         wf = state.store.get_workflow(workflow_id)
     except NotFoundError:

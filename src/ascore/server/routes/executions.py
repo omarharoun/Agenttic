@@ -21,7 +21,7 @@ router = APIRouter(tags=["executions"])
              dependencies=[Depends(require_operator)])
 async def start_execution(workflow_id: str, request: Request):
     # async: the manager calls asyncio.create_task, which needs the loop
-    state = request.app.state
+    state = request.state
     try:
         wf = state.store.get_workflow(workflow_id)
     except NotFoundError:
@@ -35,13 +35,13 @@ async def start_execution(workflow_id: str, request: Request):
 
 @router.get("/executions")
 def list_executions(request: Request, workflow_id: str | None = None):
-    return request.app.state.store.list_executions(workflow_id)
+    return request.state.store.list_executions(workflow_id)
 
 
 @router.get("/executions/{execution_id}")
 def get_execution(execution_id: str, request: Request):
     try:
-        return request.app.state.store.get_execution(execution_id)
+        return request.state.store.get_execution(execution_id)
     except NotFoundError:
         raise HTTPException(404, f"execution {execution_id} not found")
 
@@ -51,7 +51,7 @@ def execution_results(execution_id: str, request: Request):
     """Joined, render-ready results for an execution: scorecard summaries
     plus one row per test case — the agent's actual output (its prediction),
     the expected value, per-criterion scores, and judge rationales."""
-    state = request.app.state
+    state = request.state
     try:
         ex = state.store.get_execution(execution_id)
     except NotFoundError:
@@ -115,7 +115,7 @@ def execution_results(execution_id: str, request: Request):
 
 @router.get("/executions/{execution_id}/events")
 async def stream_events(execution_id: str, request: Request, after: int = 0):
-    state = request.app.state
+    state = request.state
     try:
         state.store.get_execution(execution_id)
     except NotFoundError:
@@ -140,7 +140,7 @@ async def stream_events(execution_id: str, request: Request, after: int = 0):
 async def approve_execution(execution_id: str, request: Request):
     """Approve the suite a gated execution is waiting on, then release the
     gate (in-process) or resume (after a server restart)."""
-    state = request.app.state
+    state = request.state
     try:
         ex = state.store.get_execution(execution_id)
     except NotFoundError:
@@ -162,7 +162,7 @@ async def approve_execution(execution_id: str, request: Request):
 @router.post("/executions/{execution_id}/cancel",
              dependencies=[Depends(require_operator)])
 async def cancel_execution(execution_id: str, request: Request):
-    await request.app.state.manager.cancel(execution_id)
+    await request.state.manager.cancel(execution_id)
     return {"cancelled": execution_id}
 
 
@@ -170,7 +170,7 @@ async def cancel_execution(execution_id: str, request: Request):
              dependencies=[Depends(require_operator)])
 async def resume_execution(execution_id: str, request: Request):
     try:
-        request.app.state.manager.resume(execution_id)
+        request.state.manager.resume(execution_id)
     except (NotFoundError, ValueError) as exc:
         raise HTTPException(409, str(exc))
     return {"resumed": execution_id}

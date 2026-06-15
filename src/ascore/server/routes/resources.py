@@ -22,13 +22,13 @@ router = APIRouter(tags=["resources"])
 
 @router.get("/suites")
 def list_suites(request: Request):
-    return request.app.state.store.list_suites()
+    return request.state.store.list_suites()
 
 
 @router.get("/suites/{suite_id}")
 def get_suite(suite_id: str, request: Request, version: int | None = None):
     try:
-        suite, cases = request.app.state.reg.get_suite(suite_id, version)
+        suite, cases = request.state.reg.get_suite(suite_id, version)
     except NotFoundError:
         raise HTTPException(404, f"suite {suite_id} not found")
     return {"suite": suite.model_dump(),
@@ -37,7 +37,7 @@ def get_suite(suite_id: str, request: Request, version: int | None = None):
 
 @router.get("/suites/{suite_id}/review", response_class=PlainTextResponse)
 def get_review(suite_id: str, request: Request):
-    review_dir = Path(request.app.state.cfg["paths"]["review_dir"])
+    review_dir = Path(request.state.cfg["paths"]["review_dir"])
     path = review_dir / f"{suite_id}.md"
     if not path.is_file():
         raise HTTPException(404, f"no review file for {suite_id}")
@@ -47,7 +47,7 @@ def get_review(suite_id: str, request: Request):
 @router.post("/suites/{suite_id}/approve", dependencies=[Depends(require_operator)])
 def approve_suite(suite_id: str, request: Request, version: int = 1):
     try:
-        request.app.state.reg.approve_suite(suite_id, version)
+        request.state.reg.approve_suite(suite_id, version)
     except NotFoundError:
         raise HTTPException(404, f"suite {suite_id} v{version} not found")
     return {"approved": suite_id, "version": version}
@@ -55,13 +55,13 @@ def approve_suite(suite_id: str, request: Request, version: int = 1):
 
 @router.get("/rubrics")
 def list_rubrics(request: Request):
-    return request.app.state.store.list_rubrics()
+    return request.state.store.list_rubrics()
 
 
 @router.get("/rubrics/{rubric_id}")
 def get_rubric(rubric_id: str, request: Request, version: int | None = None):
     try:
-        return request.app.state.reg.get_rubric(rubric_id, version).model_dump()
+        return request.state.reg.get_rubric(rubric_id, version).model_dump()
     except NotFoundError:
         raise HTTPException(404, f"rubric {rubric_id} not found")
 
@@ -69,13 +69,13 @@ def get_rubric(rubric_id: str, request: Request, version: int | None = None):
 @router.get("/traces")
 def list_traces(request: Request, agent_id: str | None = None,
                 mode: str | None = None, limit: int = 50, offset: int = 0):
-    return request.app.state.store.list_traces(agent_id, mode, limit, offset)
+    return request.state.store.list_traces(agent_id, mode, limit, offset)
 
 
 @router.get("/traces/{trace_id}")
 def get_trace(trace_id: str, request: Request):
     try:
-        return request.app.state.reg.get_trace(trace_id).model_dump(mode="json")
+        return request.state.reg.get_trace(trace_id).model_dump(mode="json")
     except NotFoundError:
         raise HTTPException(404, f"trace {trace_id} not found")
 
@@ -83,13 +83,13 @@ def get_trace(trace_id: str, request: Request):
 @router.get("/scorecards")
 def list_scorecards(request: Request, agent_id: str | None = None,
                     suite_id: str | None = None):
-    return request.app.state.store.list_scorecards(agent_id, suite_id)
+    return request.state.store.list_scorecards(agent_id, suite_id)
 
 
 @router.get("/scorecards/{scorecard_id}")
 def get_scorecard(scorecard_id: str, request: Request):
     try:
-        return request.app.state.reg.get_scorecard(scorecard_id).model_dump(mode="json")
+        return request.state.reg.get_scorecard(scorecard_id).model_dump(mode="json")
     except NotFoundError:
         raise HTTPException(404, f"scorecard {scorecard_id} not found")
 
@@ -97,7 +97,7 @@ def get_scorecard(scorecard_id: str, request: Request):
 @router.get("/scorecards/{scorecard_id}/report", response_class=PlainTextResponse)
 def scorecard_report(scorecard_id: str, request: Request):
     try:
-        return ops.report_op(request.app.state.reg, scorecard_id)
+        return ops.report_op(request.state.reg, scorecard_id)
     except NotFoundError:
         raise HTTPException(404, f"scorecard {scorecard_id} not found")
 
@@ -109,13 +109,13 @@ def list_agents(request: Request, include_managed: bool = True):
     open-ended, so discovery stays descriptive), optionally enriched with
     deployed Managed Agents. Each row says where it came from and whether it's
     been scored yet."""
-    agents = request.app.state.store.list_agents()
+    agents = request.state.store.list_agents()
     by_id = {a["agent_id"]: a for a in agents}
 
     # fold in declared catalog entries: attach variant/connection details to
     # observed agents, and surface declared-but-never-run agents as their own
     # rows so the catalog is visible before a single run.
-    for d in request.app.state.reg.list_declared_agents():
+    for d in request.state.reg.list_declared_agents():
         existing = by_id.get(d["agent_id"])
         meta = {"declared": True, "variant": d["variant"],
                 "description": d.get("description", ""), "model": d.get("model", "")}
@@ -178,7 +178,7 @@ def whoami(request: Request):
 def list_catalog(request: Request, include_retired: bool = False):
     """The declared agent catalog — pre-registered agents (latest version each)
     with full connection details, for the run-config picker."""
-    return {"agents": request.app.state.reg.list_declared_agents(include_retired)}
+    return {"agents": request.state.reg.list_declared_agents(include_retired)}
 
 
 @router.post("/agents/catalog", dependencies=[Depends(require_operator)])
@@ -189,18 +189,18 @@ def register_catalog_agent(agent: DeclaredAgent, request: Request):
     if agent.variant == "blackbox":
         from ascore.security import UnsafeURLError, validate_blackbox_url
         try:
-            validate_blackbox_url(agent.url, cfg=request.app.state.cfg,
+            validate_blackbox_url(agent.url, cfg=request.state.cfg,
                                   allow_unresolved=True)
         except UnsafeURLError as exc:
             raise HTTPException(422, f"unsafe agent url: {exc}")
-    saved = request.app.state.reg.register_agent(agent)
+    saved = request.state.reg.register_agent(agent)
     return saved.model_dump()
 
 
 @router.get("/agents/catalog/{agent_id}")
 def get_catalog_agent(agent_id: str, request: Request, version: int | None = None):
     try:
-        return request.app.state.reg.get_declared_agent(agent_id, version).model_dump()
+        return request.state.reg.get_declared_agent(agent_id, version).model_dump()
     except NotFoundError:
         raise HTTPException(404, f"declared agent {agent_id} not found")
 
@@ -209,7 +209,7 @@ def get_catalog_agent(agent_id: str, request: Request, version: int | None = Non
 def retire_catalog_agent(agent_id: str, request: Request):
     """Soft-delete: retire the agent (history is kept; re-register to revive)."""
     try:
-        request.app.state.reg.retire_agent(agent_id)
+        request.state.reg.retire_agent(agent_id)
     except NotFoundError:
         raise HTTPException(404, f"declared agent {agent_id} not found")
     return {"retired": agent_id}
@@ -217,13 +217,13 @@ def retire_catalog_agent(agent_id: str, request: Request):
 
 @router.get("/monitor/{agent_id}")
 def monitor_status(agent_id: str, request: Request):
-    reg = request.app.state.reg
+    reg = request.state.reg
     return {"agent_id": agent_id, "reeval_requests": reg.reeval_requests(agent_id)}
 
 
 @router.post("/uploads", dependencies=[Depends(require_operator)])
 async def upload(request: Request, file: UploadFile):
-    uploads_dir = Path(request.app.state.cfg.get("ui", {})
+    uploads_dir = Path(request.state.cfg.get("ui", {})
                        .get("uploads_dir", "uploads/"))
     uploads_dir.mkdir(parents=True, exist_ok=True)
     safe = re.sub(r"[^A-Za-z0-9._-]", "_", file.filename or "upload.txt")
