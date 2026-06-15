@@ -30,3 +30,12 @@ ui:
   uploads_dir: uploads/
 leaderboard:
   suite_weights: {}   # per-suite Index weights (suite_id: weight); default 1.0 each
+auth:
+  required: false     # true => server refuses to start without a token (fail closed)
+  token: ""           # prefer the ASCORE_API_TOKEN env var; this is the fallback
+                      # when set (env or here), ALL /api routes need the token
+security:
+  rate_limit_per_minute: 0          # 0 = off; per-client (token or IP) request cap
+  blackbox_allowed_schemes: [http, https]
+  blackbox_block_private: true      # block private/loopback/link-local/metadata IPs
+  blackbox_url_allowlist: []        # if non-empty, only these host suffixes allowed
