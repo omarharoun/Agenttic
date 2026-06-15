@@ -1,0 +1,14 @@
+.git
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+ui/node_modules
+ui/dist
+*.db
+*.db-wal
+*.db-shm
+review/
+calibration/
+uploads/
+docs/architecture.png
