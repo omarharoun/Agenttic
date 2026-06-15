@@ -14,6 +14,7 @@ from fastapi.responses import PlainTextResponse
 
 from ascore import ops
 from ascore.registry.sqlite_store import NotFoundError
+from ascore.schema.agent import DeclaredAgent
 
 router = APIRouter(tags=["resources"])
 
@@ -102,11 +103,31 @@ def scorecard_report(scorecard_id: str, request: Request):
 
 @router.get("/agents")
 def list_agents(request: Request, include_managed: bool = True):
-    """Every agent the platform knows about — discovered from scorecards and
-    traces (descriptive; the agent set is open-ended), optionally enriched
-    with deployed Managed Agents. Each row says where it came from and whether
-    it's been scored yet."""
+    """Every agent the platform knows about — pre-registered in the catalog
+    (declared) and/or discovered from scorecards and traces (the agent set is
+    open-ended, so discovery stays descriptive), optionally enriched with
+    deployed Managed Agents. Each row says where it came from and whether it's
+    been scored yet."""
     agents = request.app.state.store.list_agents()
+    by_id = {a["agent_id"]: a for a in agents}
+
+    # fold in declared catalog entries: attach variant/connection details to
+    # observed agents, and surface declared-but-never-run agents as their own
+    # rows so the catalog is visible before a single run.
+    for d in request.app.state.reg.list_declared_agents():
+        existing = by_id.get(d["agent_id"])
+        meta = {"declared": True, "variant": d["variant"],
+                "description": d.get("description", ""), "model": d.get("model", "")}
+        if existing:
+            existing.update(meta)
+            existing["sources"] = sorted(set(existing["sources"]) | {"declared"})
+        else:
+            row = {"agent_id": d["agent_id"], "sources": ["declared"],
+                   "scored": False, "n_scorecards": 0, "n_traces": 0,
+                   "suites": [], "last_seen": None, **meta}
+            agents.append(row)
+            by_id[d["agent_id"]] = row
+
     warning = None
     if include_managed:
         by_id = {a["agent_id"]: a for a in agents}
@@ -144,6 +165,39 @@ def managed_agents(request: Request):
                            for a in client.beta.agents.list()], "warning": None}
     except Exception as exc:  # noqa: BLE001 — browse endpoint must not 500
         return {"agents": [], "warning": f"{type(exc).__name__}: {exc}"}
+
+
+@router.get("/agents/catalog")
+def list_catalog(request: Request, include_retired: bool = False):
+    """The declared agent catalog — pre-registered agents (latest version each)
+    with full connection details, for the run-config picker."""
+    return {"agents": request.app.state.reg.list_declared_agents(include_retired)}
+
+
+@router.post("/agents/catalog")
+def register_catalog_agent(agent: DeclaredAgent, request: Request):
+    """Register a new agent or store the next version of an existing one.
+    Per-variant connection requirements are validated by the schema (422)."""
+    saved = request.app.state.reg.register_agent(agent)
+    return saved.model_dump()
+
+
+@router.get("/agents/catalog/{agent_id}")
+def get_catalog_agent(agent_id: str, request: Request, version: int | None = None):
+    try:
+        return request.app.state.reg.get_declared_agent(agent_id, version).model_dump()
+    except NotFoundError:
+        raise HTTPException(404, f"declared agent {agent_id} not found")
+
+
+@router.delete("/agents/catalog/{agent_id}")
+def retire_catalog_agent(agent_id: str, request: Request):
+    """Soft-delete: retire the agent (history is kept; re-register to revive)."""
+    try:
+        request.app.state.reg.retire_agent(agent_id)
+    except NotFoundError:
+        raise HTTPException(404, f"declared agent {agent_id} not found")
+    return {"retired": agent_id}
 
 
 @router.get("/monitor/{agent_id}")

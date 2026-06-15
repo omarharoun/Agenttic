@@ -67,3 +67,17 @@ class TestCoverage:
 
     def test_empty(self):
         assert compute_leaderboard([]) == {"suites": [], "agents": []}
+
+
+class TestDeclaredType:
+    def test_agent_type_from_catalog_else_discovered(self):
+        cards = [sc("declared-a", "s1", 1.0), sc("ad-hoc-b", "s1", 0.5)]
+        board = compute_leaderboard(cards,
+                                    declared_types={"declared-a": "blackbox"})
+        rows = {r["agent_id"]: r for r in board["agents"]}
+        assert rows["declared-a"]["agent_type"] == "blackbox"
+        assert rows["ad-hoc-b"]["agent_type"] == "discovered"
+
+    def test_default_all_discovered(self):
+        board = compute_leaderboard([sc("a", "s1", 1.0)])
+        assert board["agents"][0]["agent_type"] == "discovered"

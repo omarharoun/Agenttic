@@ -20,14 +20,20 @@ def compute_leaderboard(
     *,
     weights: dict[str, float] | None = None,
     suite_filter: Iterable[str] | None = None,
+    declared_types: dict[str, str] | None = None,
 ) -> dict:
     """Roll scorecard summaries into a ranked leaderboard.
 
     ``scorecards`` are summary dicts (as from ``UIStore.list_scorecards``):
     ``agent_id, suite_id, suite_version, task_success_rate, mean_cost_usd,
     p95_latency_ms, visibility_tier, created_at`` (ISO string, sortable).
+
+    ``declared_types`` maps agent_id → its catalog variant (reference/blackbox/
+    managed); each row gets an ``agent_type`` from it. Agents not in the catalog
+    are ``"discovered"`` — honest about what is registered vs merely observed.
     """
     weights = weights or {}
+    declared_types = declared_types or {}
     allow = set(suite_filter) if suite_filter is not None else None
 
     # latest scorecard per (agent, suite) by created_at (ISO strings sort)
@@ -61,6 +67,7 @@ def compute_leaderboard(
             "p95_latency_ms": sum(lats) / len(lats),
             "coverage": len(agent_suites),
             "total_suites": len(suites),
+            "agent_type": declared_types.get(agent_id, "discovered"),
             "visibility_tier": tiers.pop() if len(tiers) == 1 else "mixed",
             "n_errored": sum(per[s].get("n_errored", 0) for s in agent_suites),
             "per_suite": {

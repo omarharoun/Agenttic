@@ -17,7 +17,10 @@ def leaderboard(request: Request,
     state = request.app.state
     weights = (state.cfg.get("leaderboard", {}) or {}).get("suite_weights", {})
     suite_filter = [s for s in suites.split(",") if s] or None
+    declared_types = {a["agent_id"]: a["variant"]
+                      for a in state.reg.list_declared_agents(include_retired=True)}
     board = compute_leaderboard(
-        state.store.list_scorecards(), weights=weights, suite_filter=suite_filter)
+        state.store.list_scorecards(), weights=weights, suite_filter=suite_filter,
+        declared_types=declared_types)
     board["weights"] = weights
     return board

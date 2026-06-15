@@ -169,7 +169,39 @@ filter restricts the board to shared suites for an apples-to-apples comparison.
 Per-suite weights live in `config.yaml` (`leaderboard.suite_weights`). API:
 `GET /api/leaderboard?suites=a,b`. Comparison is honest about coverage — an
 agent is ranked on what it actually ran, never silently averaged over different
-denominators.
+denominators. The **type** column is sourced from the declared catalog (below):
+catalogued agents show their variant, the rest read `discovered`.
+
+## Agents: declared catalog + discovery
+
+The agent set is open-ended — any endpoint/config/prompt is a new agent — so the
+platform **discovers** agents descriptively from runs: `GET /api/agents` unions
+every agent observed in scorecards and traces (plus deployed Managed Agents),
+and the 🤖 Agents page lists them. Nothing needs registering for an agent to
+show up.
+
+On top of that, you can **declare** agents you run repeatedly — pre-register a
+name, variant, and connection details once, then pick them when configuring a
+run instead of retyping endpoints:
+
+```bash
+ascore agents add prod-bot --variant blackbox --url https://prod/agent
+ascore agents add triage --variant reference --model claude-sonnet-4-6 \
+                 --system-prompt "You are a support-ticket router."
+ascore agents list                       # the catalog (latest version each)
+ascore run --agent prod-bot --suite support-v1   # connection details resolved
+```
+
+`ascore run --agent <id>` resolves a catalogued agent automatically (explicit
+flags still override). In the UI, the Agent node gets a **declared agent**
+dropdown that freezes the chosen connection details into the node (so the
+workflow snapshot stays reproducible), and the Agents page has a registration
+form. The catalog is versioned and append-only in the registry like everything
+else (editing stores the next version; `ascore agents retire` / `DELETE
+/api/agents/catalog/{id}` is a soft-delete that keeps history). Declared agents
+also surface in `GET /api/agents` with a `declared` source even before their
+first run. CRUD API: `GET/POST /api/agents/catalog`, `GET/DELETE
+/api/agents/catalog/{id}`.
 
 ## Scoring backends
 
@@ -218,7 +250,8 @@ instrumenting an agent for glass-box traces unlocks the full rubric.
 ## Status & roadmap
 
 All 10 spec steps implemented with their acceptance criteria as tests
-(`pytest` → 100 passing). Natural next increments: OpenTelemetry GenAI
-export/import for the trace schema, framework adapters (LangGraph, OpenAI
-Agents), an HTTP ingest endpoint for the live path, and per-engagement suite
-libraries.
+(`pytest` → 220 passing), plus a visual workflow builder, the Agenttic Index
+leaderboard, and a declared agent catalog over the discovery model. Natural next
+increments: OpenTelemetry GenAI export/import for the trace schema, framework
+adapters (LangGraph, OpenAI Agents), an HTTP ingest endpoint for the live path,
+and per-engagement suite libraries.

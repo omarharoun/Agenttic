@@ -7,6 +7,7 @@ import { api } from "../api";
 const COLUMNS: [string, string, 1 | -1, boolean][] = [
   ["rank", "#", 1, true],
   ["agent_id", "agent", 1, false],
+  ["agent_type", "type", 1, false],
   ["index", "Index", -1, true],
   ["mean_cost_usd", "$/case", 1, true],
   ["p95_latency_ms", "p95 ms", 1, true],
@@ -94,6 +95,8 @@ export function LeaderboardPage() {
                   <tr key={a.agent_id}>
                     <td>{a.rank}</td>
                     <td>{a.agent_id}</td>
+                    <td style={a.agent_type === "discovered"
+                      ? { color: "var(--muted)" } : undefined}>{a.agent_type}</td>
                     <td><b style={{ color: barColor(a.index) }}>{a.index}</b></td>
                     <td>${a.mean_cost_usd.toFixed(4)}</td>
                     <td>{Math.round(a.p95_latency_ms)}</td>

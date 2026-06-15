@@ -83,6 +83,19 @@ export const api = {
   approveSuite: (id: string, version: number) =>
     fetch(`/api/suites/${id}/approve?version=${version}`, { method: "POST" }),
   listAgents: () => fetch("/api/agents").then((r) => json<any>(r)),
+  listCatalog: (includeRetired = false) =>
+    fetch(`/api/agents/catalog${includeRetired ? "?include_retired=true" : ""}`)
+      .then((r) => json<{ agents: any[] }>(r)),
+  registerAgent: (agent: Record<string, any>) =>
+    fetch("/api/agents/catalog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(agent),
+    }).then((r) => json<any>(r)),
+  retireAgent: (agentId: string) =>
+    fetch(`/api/agents/catalog/${encodeURIComponent(agentId)}`, {
+      method: "DELETE",
+    }).then((r) => json<any>(r)),
   leaderboard: (suites: string[] = []) =>
     fetch(`/api/leaderboard${suites.length ? `?suites=${suites.join(",")}` : ""}`)
       .then((r) => json<any>(r)),
