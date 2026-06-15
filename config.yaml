@@ -45,6 +45,9 @@ budget:               # spend ceilings (0 = unlimited)
   max_run_cost_usd: 0.0         # abort a single run past this
   max_daily_cost_usd: 0.0       # abort when today's spend + this run would exceed
   warn_only: false              # true => estimate gate warns but does not abort
+observability:
+  log_level: INFO     # ascore logger level
+  log_json: true      # structured JSON request logs (false => plain text)
 auth:
   required: false     # true => server refuses to start without a token (fail closed)
   token: ""           # the ADMIN token; prefer the ASCORE_API_TOKEN env var
