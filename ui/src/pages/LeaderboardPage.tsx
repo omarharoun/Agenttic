@@ -3,19 +3,46 @@ import { api } from "../api";
 
 /** Agenttic Index — ranks agents across suites (artificialanalysis.ai style):
  * a leaderboard table + an Index-vs-cost scatter, with a common-set filter. */
+// columns: [key, label, default direction (1 asc / -1 desc), numeric?]
+const COLUMNS: [string, string, 1 | -1, boolean][] = [
+  ["rank", "#", 1, true],
+  ["agent_id", "agent", 1, false],
+  ["index", "Index", -1, true],
+  ["mean_cost_usd", "$/case", 1, true],
+  ["p95_latency_ms", "p95 ms", 1, true],
+  ["coverage", "coverage", -1, true],
+  ["visibility_tier", "tier", 1, false],
+  ["n_errored", "errored", 1, true],
+];
+
 export function LeaderboardPage() {
   const [board, setBoard] = useState<any | null>(null);
   const [filter, setFilter] = useState<string[]>([]);
+  const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>(
+    { key: "index", dir: -1 });
 
   const load = (suites: string[]) =>
     api.leaderboard(suites).then(setBoard).catch(() => setBoard(null));
   useEffect(() => { load(filter); }, [filter]);
 
   if (!board) return <div className="page"><div className="list-page">…</div></div>;
-  const { agents, suites } = board;
+  const { suites } = board;
 
   const toggle = (s: string) =>
     setFilter((f) => f.includes(s) ? f.filter((x) => x !== s) : [...f, s]);
+
+  const sortBy = (key: string, def: 1 | -1) =>
+    setSort((cur) => cur.key === key
+      ? { key, dir: (cur.dir * -1) as 1 | -1 }   // toggle direction
+      : { key, dir: def });
+
+  const agents = [...board.agents].sort((a: any, b: any) => {
+    const va = a[sort.key], vb = b[sort.key];
+    const cmp = typeof va === "string"
+      ? String(va).localeCompare(String(vb))
+      : (va ?? 0) - (vb ?? 0);
+    return cmp * sort.dir;
+  });
 
   return (
     <div className="page">
@@ -53,8 +80,14 @@ export function LeaderboardPage() {
             <Scatter agents={agents} />
             <table className="data" style={{ marginTop: 16 }}>
               <thead>
-                <tr><th>#</th><th>agent</th><th>Index</th><th>$/case</th>
-                    <th>p95 ms</th><th>coverage</th><th>tier</th><th>errored</th></tr>
+                <tr>
+                  {COLUMNS.map(([key, label, def]) => (
+                    <th key={key} className="sortable"
+                        onClick={() => sortBy(key, def)}>
+                      {label}{sort.key === key ? (sort.dir === 1 ? " ▲" : " ▼") : ""}
+                    </th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
                 {agents.map((a: any) => (

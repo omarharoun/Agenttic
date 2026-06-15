@@ -196,3 +196,6 @@ pre.doc {
 .status-chip.completed_with_errors { color: var(--wait); border-color: var(--wait); }
 
 .err-bg { background: var(--wait); }   /* errored case (not scored) */
+
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--text); }
