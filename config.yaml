@@ -30,6 +30,21 @@ ui:
   uploads_dir: uploads/
 leaderboard:
   suite_weights: {}   # per-suite Index weights (suite_id: weight); default 1.0 each
+pricing:              # USD per 1M tokens, per model (Hard Rule 7: no hardcoded prices)
+  claude-sonnet-4-6: {input: 3.0, output: 15.0}
+  claude-opus-4-8: {input: 15.0, output: 75.0}
+  claude-haiku-4-5-20251001: {input: 1.0, output: 5.0}
+  default: {input: 3.0, output: 15.0}   # used when a model isn't listed above
+cost:                 # priors for the pre-run cost estimator
+  expected_agent_steps: 3       # agent LLM calls per case
+  expected_input_tokens: 600    # per agent LLM call
+  expected_output_tokens: 250
+  judge_input_tokens: 700       # per judge criterion call
+  judge_output_tokens: 120
+budget:               # spend ceilings (0 = unlimited)
+  max_run_cost_usd: 0.0         # abort a single run past this
+  max_daily_cost_usd: 0.0       # abort when today's spend + this run would exceed
+  warn_only: false              # true => estimate gate warns but does not abort
 auth:
   required: false     # true => server refuses to start without a token (fail closed)
   token: ""           # prefer the ASCORE_API_TOKEN env var; this is the fallback
