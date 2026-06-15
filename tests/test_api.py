@@ -443,6 +443,15 @@ class TestDeclaredAgentCatalogApi:
                         json={"agent_id": "b", "variant": "blackbox"})  # no url
         assert r.status_code == 422
 
+    def test_ssrf_url_rejected_at_registration(self, client):
+        # metadata / loopback / non-http schemes are refused with 422
+        for url in ("http://169.254.169.254/latest/", "http://127.0.0.1/agent",
+                    "file:///etc/passwd"):
+            r = client.post("/api/agents/catalog", json={
+                "agent_id": "evil", "variant": "blackbox", "url": url})
+            assert r.status_code == 422, url
+            assert "unsafe agent url" in str(r.json()["detail"])
+
     def test_unknown_agent_404(self, client):
         assert client.get("/api/agents/catalog/ghost").status_code == 404
         assert client.delete("/api/agents/catalog/ghost").status_code == 404

@@ -177,7 +177,15 @@ def list_catalog(request: Request, include_retired: bool = False):
 @router.post("/agents/catalog")
 def register_catalog_agent(agent: DeclaredAgent, request: Request):
     """Register a new agent or store the next version of an existing one.
-    Per-variant connection requirements are validated by the schema (422)."""
+    Per-variant connection requirements are validated by the schema (422);
+    black-box URLs are SSRF-checked here too (registration-time gate)."""
+    if agent.variant == "blackbox":
+        from ascore.security import UnsafeURLError, validate_blackbox_url
+        try:
+            validate_blackbox_url(agent.url, cfg=request.app.state.cfg,
+                                  allow_unresolved=True)
+        except UnsafeURLError as exc:
+            raise HTTPException(422, f"unsafe agent url: {exc}")
     saved = request.app.state.reg.register_agent(agent)
     return saved.model_dump()
 
