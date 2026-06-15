@@ -10,6 +10,7 @@ const SOURCE_COLOR: Record<string, string> = {
 const BLANK = {
   agent_id: "", variant: "reference", description: "", model: "",
   system_prompt: "", url: "", managed_agent_id: "", environment_id: "",
+  cost_per_call_usd: 0, expected_input_tokens: 0, expected_output_tokens: 0,
 };
 
 /** Two complementary views of the platform's agents:
@@ -79,11 +80,19 @@ export function AgentsPage() {
               </div>
             )}
             {form.variant === "blackbox" && (
-              <div>
-                <label>url *</label>
-                <input value={form.url}
-                       onChange={(e) => setForm({ ...form, url: e.target.value })} />
-              </div>
+              <>
+                <div>
+                  <label>url *</label>
+                  <input value={form.url}
+                         onChange={(e) => setForm({ ...form, url: e.target.value })} />
+                </div>
+                <div>
+                  <label>cost per call (USD) <small>(black-box; 0 = unknown)</small></label>
+                  <input type="number" step="0.0001" value={form.cost_per_call_usd}
+                         onChange={(e) => setForm({ ...form,
+                           cost_per_call_usd: Number(e.target.value) || 0 })} />
+                </div>
+              </>
             )}
             {form.variant === "managed" && (
               <>

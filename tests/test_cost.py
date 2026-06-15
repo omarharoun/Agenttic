@@ -33,8 +33,15 @@ class TestEstimateMath:
             CFG, n_cases=5, agent_variant="blackbox", agent_model=None,
             n_judge_criteria=1, judge_model="claude-opus-4-8")
         assert est.projected_agent_usd == 0.0
-        assert any("black-box" in n for n in est.notes)
+        assert any("unknown" in n for n in est.notes)
         assert est.projected_judge_usd > 0  # judge still estimated
+
+    def test_blackbox_declared_per_call_cost_used(self):
+        est = estimate_run_cost(
+            CFG, n_cases=5, agent_variant="blackbox", agent_model=None,
+            bb_call_cost=0.01)
+        assert est.projected_agent_usd == 0.05  # 0.01 * 5
+        assert any("declared per-call" in n for n in est.notes)
 
     def test_scales_with_case_count(self):
         a = estimate_run_cost(CFG, n_cases=1, agent_variant="reference",

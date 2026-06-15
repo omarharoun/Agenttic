@@ -85,6 +85,21 @@ class TestBlackBoxAdapter:
         assert trace.final_output.startswith("BLACKBOX_FAILURE")
         assert trace.spans[0].kind == "error"
 
+    def test_declared_per_call_cost_recorded(self):
+        agent = BlackBoxHTTPAgent(agent_id="x", url="http://unused",
+                                  cost_per_call_usd=0.002,
+                                  transport=lambda p: {"output": "ok"})
+        trace = agent.run({"q": 1})
+        assert trace.total_cost_usd == 0.002
+
+    def test_no_cost_when_call_not_made(self):
+        # transport raising (caught) means no call completed -> no charge
+        agent = BlackBoxHTTPAgent(agent_id="x", url="http://unused",
+                                  cost_per_call_usd=0.002,
+                                  transport=lambda p: (_ for _ in ()).throw(ValueError("boom")))
+        trace = agent.run({"q": 1})
+        assert trace.total_cost_usd == 0.0
+
     def test_transport_error_bubbles_to_harness(self):
         def boom(p):
             raise ConnectionError("refused")

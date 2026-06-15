@@ -65,6 +65,7 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
 
     cfg, reg = _ctx(config)
     variant = "managed" if managed_agent_id else ("blackbox" if url else "reference")
+    bb = {}  # black-box cost hints from the declared agent
     # resolve a declared catalog agent when no connection flags were given
     if not (url or managed_agent_id):
         try:
@@ -74,6 +75,9 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
             environment_id = environment_id or d.environment_id
             system_prompt = system_prompt or d.system_prompt
             model = model or d.model
+            bb = {"cost_per_call_usd": d.cost_per_call_usd,
+                  "expected_input_tokens": d.expected_input_tokens,
+                  "expected_output_tokens": d.expected_output_tokens}
             console.print(f"[dim]using declared agent {agent} "
                           f"(v{d.version}, {d.variant})[/]")
         except NotFoundError:
@@ -82,7 +86,7 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
         adapter = ops.build_adapter(cfg, variant=variant, agent_id=agent, url=url,
                                     managed_agent_id=managed_agent_id,
                                     environment_id=environment_id,
-                                    system_prompt=system_prompt, model=model)
+                                    system_prompt=system_prompt, model=model, **bb)
     except ValueError as exc:
         raise typer.BadParameter(str(exc))
     from ascore.budget import BudgetExceededError

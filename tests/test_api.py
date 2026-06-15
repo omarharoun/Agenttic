@@ -402,6 +402,15 @@ class TestCostEstimateApi:
         assert est["agent_variant"] == "blackbox"
         assert est["projected_agent_usd"] == 0.0  # unknown for black-box
 
+    def test_estimate_declared_blackbox_with_cost(self, client):
+        client.post("/api/agents/catalog", json={
+            "agent_id": "client-bb2", "variant": "blackbox",
+            "url": "https://agents.example.com/y", "cost_per_call_usd": 0.005})
+        est = client.get("/api/estimate?suite_id=pilot-support-triage"
+                         "&agent_id=client-bb2").json()["estimate"]
+        # 0.005 * 10 cases of agent cost now estimated, not "unknown"
+        assert est["projected_agent_usd"] == 0.05
+
     def test_workflow_estimate(self, client):
         wf = eval_workflow("pilot-support-triage").model_dump()
         for n in wf["nodes"]:

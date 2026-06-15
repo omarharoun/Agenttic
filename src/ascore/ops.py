@@ -47,11 +47,18 @@ def build_adapter(
     client=None,
     system_prompt: str = "",
     model: str = "",
+    cost_per_call_usd: float = 0.0,
+    expected_input_tokens: int = 0,
+    expected_output_tokens: int = 0,
 ) -> AgentAdapter:
     """Instantiate the adapter for one agent under test. ``system_prompt``
     overrides the reference agent's task instructions and ``model`` overrides
     its model (both are part of the configuration under test and feed the trace
-    config hash, so a declared agent that pins them is reproducible)."""
+    config hash, so a declared agent that pins them is reproducible).
+
+    Black-box agents expose no token usage, so their cost is whatever is
+    declared: ``cost_per_call_usd`` (flat) or ``expected_*_tokens`` priced at
+    ``model`` (or the default rate). Unset => cost stays 0 (unknown)."""
     if variant == "managed":
         if not environment_id:
             environment_id = cfg.get("managed", {}).get("environment_id", "")
@@ -65,8 +72,12 @@ def build_adapter(
         if not url:
             raise ValueError("blackbox adapter needs a url")
         allow_private = not cfg.get("security", {}).get("blackbox_block_private", True)
-        return BlackBoxHTTPAgent(agent_id=agent_id, url=url,
-                                 allow_private_url=allow_private)
+        return BlackBoxHTTPAgent(
+            agent_id=agent_id, url=url, allow_private_url=allow_private,
+            cost_per_call_usd=blackbox_call_cost(
+                cfg, cost_per_call_usd=cost_per_call_usd, model=model,
+                expected_input_tokens=expected_input_tokens,
+                expected_output_tokens=expected_output_tokens))
     kw = {"client": client} if client is not None else {}
     resolved_model = model or cfg["models"]["agent_default"]
     from ascore.pricing import model_price
@@ -75,6 +86,21 @@ def build_adapter(
                                 max_steps=cfg["harness"]["max_steps"],
                                 pricing_per_mtok=model_price(cfg, resolved_model),
                                 system_prompt=system_prompt or None, **kw)
+
+
+def blackbox_call_cost(cfg: dict, *, cost_per_call_usd: float = 0.0,
+                       model: str = "", expected_input_tokens: int = 0,
+                       expected_output_tokens: int = 0) -> float:
+    """Resolve a black-box agent's per-call cost from its declared hints:
+    a flat cost wins; else expected tokens priced at ``model`` (or default);
+    else 0 (unknown)."""
+    if cost_per_call_usd:
+        return float(cost_per_call_usd)
+    if expected_input_tokens or expected_output_tokens:
+        from ascore.pricing import token_cost
+        return token_cost(cfg, model or None,
+                          expected_input_tokens, expected_output_tokens)
+    return 0.0
 
 
 def agent_model_of(adapter: AgentAdapter) -> str:
@@ -103,7 +129,9 @@ async def run_suite_op(
     suite, cases = reg.get_suite(suite_id, version)
     variant = "blackbox" if adapter.visibility == "black_box" else "reference"
     est = estimate_for_run(cfg, reg, suite_id, variant=variant,
-                           model=getattr(adapter, "model", None), version=version)
+                           model=getattr(adapter, "model", None),
+                           bb_call_cost=getattr(adapter, "cost_per_call_usd", 0.0),
+                           version=version)
     warnings = check_pre_run(cfg, reg, est.projected_usd)  # may raise
     if warnings and on_progress:
         on_progress("budget_warning", {"warnings": warnings,
