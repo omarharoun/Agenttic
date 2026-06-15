@@ -1,17 +1,24 @@
 """FastAPI application: the HTTP/SSE surface the React Flow canvas talks to.
 
-create_app() wires config → Registry → UIStore → EventBus → ExecutionManager
-in the lifespan (single process, single SQLite file). In production the
-built frontend (ui/dist) is served from the same app; in development the
-Vite dev server proxies /api here.
+create_app() wires config → Workspaces in the lifespan. Each **tenant** is an
+isolated workspace = its own SQLite database + UIStore + EventBus +
+ExecutionManager; the ``default`` tenant maps to the configured ``registry_db``
+(so existing single-tenant data is untouched). A request's tenant comes from its
+auth principal (see server/auth.py); ``bind_workspace`` resolves it and exposes
+the tenant's reg/store/manager/bus on ``request.state`` for the routes.
+
+This file-per-tenant model gives hard isolation with no data migration; for a
+Postgres/scale future it would become row-level tenant_id scoping (see
+docs/PRODUCTION_READINESS.md §1.3).
 """
 
 from __future__ import annotations
 
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -24,6 +31,8 @@ from ascore.server.ratelimit import RateLimitMiddleware
 from ascore.server.store import UIStore
 
 UI_DIST = Path(__file__).resolve().parents[3] / "ui" / "dist"
+
+_TENANT_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
 def safe_static_path(base: Path, rel: str) -> Path | None:
@@ -40,27 +49,86 @@ def safe_static_path(base: Path, rel: str) -> Path | None:
     return target if target.is_file() else None
 
 
+class Workspace:
+    """One tenant's isolated stack."""
+    def __init__(self, cfg, reg, store, bus, manager, tenant):
+        self.cfg, self.reg, self.store = cfg, reg, store
+        self.bus, self.manager, self.tenant = bus, manager, tenant
+
+
+class Workspaces:
+    """Lazily builds and caches a Workspace per tenant. ``default`` uses the
+    configured DB (or an injected registry, for tests); other tenants get a
+    sibling SQLite file ``<db_stem>.<tenant><suffix>``."""
+
+    def __init__(self, cfg: dict, default_registry: Registry | None = None,
+                 clients: dict | None = None, loop=None):
+        self.cfg = cfg
+        self.clients = clients or {}
+        self._default_registry = default_registry
+        self.loop = loop  # captured at startup so per-tenant EventBus works
+        self._ws: dict[str, Workspace] = {}             # even off the event loop
+
+    @staticmethod
+    def normalize(tenant: str | None) -> str:
+        return tenant if tenant and _TENANT_RE.match(tenant) else "default"
+
+    def _db_path(self, tenant: str) -> str:
+        base = Path(self.cfg["paths"]["registry_db"])
+        return str(base.with_name(f"{base.stem}.{tenant}{base.suffix}"))
+
+    def get(self, tenant: str) -> Workspace:
+        tenant = self.normalize(tenant)
+        if tenant not in self._ws:
+            if tenant == "default" and self._default_registry is not None:
+                reg = self._default_registry
+            else:
+                reg = Registry(self._db_path(tenant)
+                               if tenant != "default"
+                               else self.cfg["paths"]["registry_db"])
+            store = UIStore(reg.engine)
+            store.interrupt_orphans()
+            bus = EventBus(store, loop=self.loop)
+            manager = ExecutionManager(self.cfg, reg, store, bus,
+                                       clients=self.clients)
+            self._ws[tenant] = Workspace(self.cfg, reg, store, bus, manager, tenant)
+        return self._ws[tenant]
+
+
+def bind_workspace(request: Request) -> None:
+    """Expose the caller's tenant workspace on request.state (runs after
+    require_auth, which set request.state.tenant)."""
+    tenant = getattr(request.state, "tenant", "default")
+    ws = request.app.state.workspaces.get(tenant)
+    request.state.cfg = ws.cfg
+    request.state.reg = ws.reg
+    request.state.store = ws.store
+    request.state.manager = ws.manager
+    request.state.bus = ws.bus
+    request.state.clients = request.app.state.clients
+
+
 def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
                registry: Registry | None = None) -> FastAPI:
     """``clients`` and ``registry`` are test-injection points (fake LLM/agent
-    clients; a tmp-path registry)."""
+    clients; a tmp-path registry for the default tenant)."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        import asyncio
         cfg = load_config(config_path)
         check_startup(cfg)  # fail closed if auth.required without a token
-        reg = registry or Registry(cfg["paths"]["registry_db"])
-        store = UIStore(reg.engine)
-        interrupted = store.interrupt_orphans()
-        bus = EventBus(store)
-        manager = ExecutionManager(cfg, reg, store, bus, clients=clients)
+        workspaces = Workspaces(cfg, default_registry=registry, clients=clients,
+                                loop=asyncio.get_running_loop())
+        default = workspaces.get("default")  # eager: interrupt default orphans
         app.state.cfg = cfg
-        app.state.reg = reg
-        app.state.store = store
-        app.state.bus = bus
-        app.state.manager = manager
+        app.state.workspaces = workspaces
+        # back-compat: default-tenant objects exposed directly on app.state
+        app.state.reg = default.reg
+        app.state.store = default.store
+        app.state.bus = default.bus
+        app.state.manager = default.manager
         app.state.clients = clients or {}
-        app.state.interrupted_on_boot = interrupted
         yield
 
     app = FastAPI(title="Agenttic", lifespan=lifespan)
@@ -73,9 +141,9 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     from ascore.server.routes.resources import router as resources_router
     from ascore.server.routes.workflows import router as workflows_router
 
-    # every /api route — incl. the SSE stream and the approval gate — requires
-    # the API token once one is configured (no-op when auth is disabled).
-    protected = [Depends(require_auth)]
+    # every /api route authenticates (sets role + tenant) then binds the
+    # tenant's workspace onto request.state — incl. SSE and the approval gate.
+    protected = [Depends(require_auth), Depends(bind_workspace)]
     app.include_router(workflows_router, prefix="/api", dependencies=protected)
     app.include_router(executions_router, prefix="/api", dependencies=protected)
     app.include_router(resources_router, prefix="/api", dependencies=protected)

@@ -14,7 +14,7 @@ router = APIRouter(tags=["leaderboard"])
 def leaderboard(request: Request,
                 suites: str = Query("", description="comma-separated suite_ids "
                                     "to restrict to a common set")):
-    state = request.app.state
+    state = request.state
     weights = (state.cfg.get("leaderboard", {}) or {}).get("suite_weights", {})
     suite_filter = [s for s in suites.split(",") if s] or None
     declared_types = {a["agent_id"]: a["variant"]

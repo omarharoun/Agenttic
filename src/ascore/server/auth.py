@@ -58,17 +58,30 @@ def check_startup(cfg: dict) -> None:
             "or set auth.token / auth.tokens in config.yaml")
 
 
-def resolve_role(cfg: dict, provided: str | None) -> str | None:
-    """Role for a presented token, or None if it matches nothing."""
+def resolve_principal(cfg: dict, provided: str | None) -> tuple[str, str] | None:
+    """(role, tenant) for a presented token, or None if it matches nothing.
+
+    A role-token's value is either a plain role string (tenant = "default") or
+    a ``{role, tenant}`` mapping. The admin token's tenant is
+    ``auth.admin_tenant`` (default "default")."""
     if not provided:
         return None
     admin = configured_token(cfg)
     if admin and secrets.compare_digest(provided, admin):
-        return "admin"
-    for tok, role in _role_tokens(cfg).items():
+        return "admin", str((cfg.get("auth", {}) or {}).get("admin_tenant", "default"))
+    for tok, spec in _role_tokens(cfg).items():
         if secrets.compare_digest(provided, str(tok)):
-            return role if role in ROLES else "viewer"
+            if isinstance(spec, dict):
+                role = spec.get("role", "viewer")
+                return (role if role in ROLES else "viewer",
+                        str(spec.get("tenant", "default")))
+            return (spec if spec in ROLES else "viewer", "default")
     return None
+
+
+def resolve_role(cfg: dict, provided: str | None) -> str | None:
+    p = resolve_principal(cfg, provided)
+    return p[0] if p else None
 
 
 def _provided_token(request: Request) -> str | None:
@@ -83,19 +96,20 @@ def _provided_token(request: Request) -> str | None:
 
 
 def require_auth(request: Request) -> None:
-    """Authenticate the request and stash its role on ``request.state.role``.
-    No-op-open (role=admin) when no token is configured."""
+    """Authenticate the request and stash its role + tenant on request.state.
+    No-op-open (role=admin, tenant=default) when no token is configured."""
     cfg = request.app.state.cfg
     if not auth_enabled(cfg):
         request.state.role = "admin"
+        request.state.tenant = "default"
         return
-    role = resolve_role(cfg, _provided_token(request))
-    if role is None:
+    principal = resolve_principal(cfg, _provided_token(request))
+    if principal is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="missing or invalid API token",
             headers={"WWW-Authenticate": "Bearer"})
-    request.state.role = role
+    request.state.role, request.state.tenant = principal
 
 
 def require_role(min_role: str):

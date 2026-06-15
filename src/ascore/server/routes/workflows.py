@@ -25,7 +25,7 @@ def node_types():
 
 @router.get("/workflows")
 def list_workflows(request: Request):
-    return request.app.state.store.list_workflows()
+    return request.state.store.list_workflows()
 
 
 @router.post("/workflows", dependencies=[Depends(require_operator)])
@@ -34,7 +34,7 @@ def save_workflow(wf: Workflow, request: Request, dry_run: bool = False):
     used by the UI to check imports before anything is saved)."""
     problems = validate_workflow(wf)
     if not dry_run:
-        request.app.state.store.save_workflow(wf)
+        request.state.store.save_workflow(wf)
     return {"workflow_id": wf.workflow_id, "problems": problems,
             "saved": not dry_run}
 
@@ -42,7 +42,7 @@ def save_workflow(wf: Workflow, request: Request, dry_run: bool = False):
 @router.get("/workflows/{workflow_id}")
 def get_workflow(workflow_id: str, request: Request):
     try:
-        wf = request.app.state.store.get_workflow(workflow_id)
+        wf = request.state.store.get_workflow(workflow_id)
     except NotFoundError:
         raise HTTPException(404, f"workflow {workflow_id} not found")
     return {"workflow": wf.model_dump(), "problems": validate_workflow(wf)}
@@ -50,5 +50,5 @@ def get_workflow(workflow_id: str, request: Request):
 
 @router.delete("/workflows/{workflow_id}", dependencies=[Depends(require_operator)])
 def delete_workflow(workflow_id: str, request: Request):
-    request.app.state.store.delete_workflow(workflow_id)
+    request.state.store.delete_workflow(workflow_id)
     return {"deleted": workflow_id}

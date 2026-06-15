@@ -46,7 +46,7 @@ def ingest(trace: Trace, request: Request, rubric_id: str):
     """Ingest one production trace (no test_case_id). Sync route — FastAPI
     runs it in the threadpool, so the sampled judge call doesn't block the
     event loop."""
-    state = request.app.state
+    state = request.state
     monitor = _monitor(state, rubric_id, trace.agent_id)
     try:
         scored = monitor.ingest(trace)
@@ -58,7 +58,7 @@ def ingest(trace: Trace, request: Request, rubric_id: str):
 @router.get("/live/{agent_id}/status")
 def live_status(agent_id: str, request: Request, rubric_id: str,
                 baseline_scorecard_id: str):
-    state = request.app.state
+    state = request.state
     try:
         baseline = state.reg.get_scorecard(baseline_scorecard_id)
     except NotFoundError:
