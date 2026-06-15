@@ -68,9 +68,12 @@ def build_adapter(
         return BlackBoxHTTPAgent(agent_id=agent_id, url=url,
                                  allow_private_url=allow_private)
     kw = {"client": client} if client is not None else {}
-    return AnthropicSimpleAgent(model=model or cfg["models"]["agent_default"],
+    resolved_model = model or cfg["models"]["agent_default"]
+    from ascore.pricing import model_price
+    return AnthropicSimpleAgent(model=resolved_model,
                                 kb_path="kb.json", agent_id=agent_id,
                                 max_steps=cfg["harness"]["max_steps"],
+                                pricing_per_mtok=model_price(cfg, resolved_model),
                                 system_prompt=system_prompt or None, **kw)
 
 
