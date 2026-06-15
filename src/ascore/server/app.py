@@ -28,7 +28,7 @@ from ascore.config import load_config
 from ascore.registry.sqlite_store import Registry
 from ascore.server import metrics
 from ascore.server.auth import check_startup, require_auth
-from ascore.server.events import EventBus
+from ascore.server.events import EventBus, make_transport
 from ascore.server.executor import ExecutionManager
 from ascore.server.observability import ObservabilityMiddleware, configure_logging
 from ascore.server.ratelimit import RateLimitMiddleware
@@ -81,6 +81,7 @@ class Workspaces:
                         or (cfg.get("database", {}) or {}).get("url") or "")
         self._postgres = bool(self._db_url) and not self._db_url.startswith("sqlite")
         self._shared_engine = None  # one engine shared across tenants (Postgres)
+        self._transport = None      # one event transport shared across executions
 
     @staticmethod
     def normalize(tenant: str | None) -> str:
@@ -116,7 +117,9 @@ class Workspaces:
         if tenant not in self._ws:
             reg, store = self._build(tenant)
             store.interrupt_orphans()
-            bus = EventBus(store, loop=self.loop)
+            if self._transport is None:
+                self._transport = make_transport(self.cfg, self.loop)
+            bus = EventBus(store, loop=self.loop, transport=self._transport)
             manager = ExecutionManager(self.cfg, reg, store, bus,
                                        clients=self.clients)
             self._ws[tenant] = Workspace(self.cfg, reg, store, bus, manager, tenant)

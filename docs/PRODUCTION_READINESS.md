@@ -447,9 +447,10 @@ production:
   (with Postgres + Redis service containers), frontend typecheck+build+vitest,
   a `pip-audit` advisory scan, and a docker build — so master is verifiably
   green on every push. (`tests/test_packaging.py` validates these artifacts.)
-- ⚠️ **Residual (now → §3 multi-worker):** single-process by default; running
-  multiple uvicorn workers requires the shared event transport (see below,
-  resolved separately). Image defaults to one worker until Redis events are on.
+- ✅ **Multi-worker:** with `events.backend=redis` (+ `ASCORE_REDIS_URL`) the
+  event transport is Redis pub/sub, so SSE works across replicas; run
+  `uvicorn --workers N` or scale the service. In-memory (single process) stays
+  the default. See §12.
 
 #### Original finding
 
@@ -511,8 +512,19 @@ mocked, acceptance criteria per spec step, plus the new catalog tests. Real gaps
 
 ---
 
-## 12. Async harness scalability — **Medium**
+## 12. Async harness scalability — **Medium** · ⚠️ HORIZONTAL SCALE ENABLED
+**Update:** the API now runs **multiple workers/replicas** — the event transport
+is pluggable (`events.backend=redis` → Redis pub/sub) so SSE works across
+workers (`server/events.py`, `tests/test_events_transport.py`), cross-worker
+**approve** works via the persisted-state resume path, and cross-worker
+**cancel** is honored at each level boundary via the persisted status
+(`executor._cancel_requested`). Combined with Postgres (§3.1) the stack scales
+horizontally. **Residual (Medium/Low):** the per-run harness still holds all
+traces in memory and uses the default threadpool; for very large suites a real
+task queue (Celery/Arq) and streamed results remain a future optimization (not
+a correctness gap). In-process single-worker stays the zero-config default.
 
+#### Original finding
 `harness/runner.py:132-133` creates a coroutine for **every** test case up front
 and `asyncio.gather`s them; execution is bounded by `Semaphore(max_parallel)`
 (`runner.py:89`), but all `Trace` objects are held in memory for the whole run.
