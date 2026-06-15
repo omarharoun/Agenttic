@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { sseUrl } from "./api";
 import { useFlowStore } from "./store";
 
 /** Subscribe to an execution's SSE stream; events feed the flow store so
@@ -15,7 +16,7 @@ export function useExecutionEvents(executionId: string | null) {
 
     const connect = () => {
       es = new EventSource(
-        `/api/executions/${executionId}/events?after=${lastSeq.current}`,
+        sseUrl(`/api/executions/${executionId}/events?after=${lastSeq.current}`),
       );
       const handler = (e: MessageEvent) => {
         const payload = JSON.parse(e.data);

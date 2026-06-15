@@ -92,7 +92,13 @@ export function EditorPage() {
   const [problems, setProblems] = useState<string[]>([]);
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [results, setResults] = useState<any | null>(null);
+  const [estimate, setEstimate] = useState<any | null>(null);
   useExecutionEvents(store.exec.executionId);
+
+  // pre-run cost projection for the saved workflow (best-effort; hidden when
+  // the workflow isn't estimable, e.g. no run-suite node with a suite_id yet)
+  const refreshEstimate = (id: string) =>
+    api.estimateWorkflow(id).then(setEstimate).catch(() => setEstimate(null));
 
   // fetch the joined scoreboard once the run reaches a terminal state
   useEffect(() => {
@@ -116,8 +122,10 @@ export function EditorPage() {
     setResults(null);
   };
 
-  const openWorkflow = async (id: string) =>
+  const openWorkflow = async (id: string) => {
     load((await api.getWorkflow(id)).workflow);
+    refreshEstimate(id);
+  };
 
   useEffect(() => {
     (async () => {
@@ -127,6 +135,7 @@ export function EditorPage() {
       load(existing.length
         ? (await api.getWorkflow(existing[0].workflow_id)).workflow
         : STARTER);
+      if (existing.length) refreshEstimate(existing[0].workflow_id);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -196,6 +205,7 @@ export function EditorPage() {
     setProblems(r.problems);
     store.markDirty(false);
     setWorkflows(await api.listWorkflows());
+    refreshEstimate(store.workflowId);
     return r.problems;
   };
 
@@ -278,6 +288,19 @@ export function EditorPage() {
             ✋ Approve
           </button>
         )}
+        {estimate?.estimate && (() => {
+          const e = estimate.estimate, b = estimate.budget || {};
+          const over = b.would_exceed_run || b.would_exceed_daily;
+          const note = e.notes?.length ? "\n" + e.notes.join("\n") : "";
+          return (
+            <span style={{ fontSize: 12, color: over ? "var(--fail)" : "var(--muted)" }}
+                  title={`projected: agent $${e.projected_agent_usd}, judge ` +
+                         `$${e.projected_judge_usd} over ${e.n_cases} cases` +
+                         (over ? "\n⚠ exceeds budget cap" : "") + note}>
+              ~${e.projected_usd.toFixed(4)}{over ? " ⚠ over budget" : ""}
+            </span>
+          );
+        })()}
         <button onClick={save}>Save</button>
         {running ? (
           <button onClick={() => store.exec.executionId &&
