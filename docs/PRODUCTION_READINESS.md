@@ -6,6 +6,13 @@
 React/Vite UI, and the CLI. Grounded in a direct read of the code; file:line
 references throughout.
 
+> **Update (2026-06-15, Phase 0 landed):** the five "stop the bleeding"
+> blockers and a full cost-analysis stack have since been implemented and
+> tested (272 backend tests, UI builds clean). Fixed items are marked
+> **✅ FIXED** inline with the commit; the "Phase 0" section of the roadmap is
+> checked off. Everything in Phases 1–3 still stands. Search ✅ for what's
+> done and ⚠️ for what was only partially addressed.
+
 ## TL;DR — verdict
 
 Agenttic is a **well-architected prototype with excellent internal discipline**
@@ -30,7 +37,15 @@ deployment), **Medium** (needed for operability/scale), **Low** (polish).
 
 ## 1. Authentication, authorization & multi-tenancy
 
-### 1.1 No authentication anywhere — **Blocker**
+### 1.1 No authentication anywhere — **Blocker** · ✅ FIXED (`021f5c8`)
+A shared bearer token now gates **every** `/api` route, the SSE stream
+(`?token=`), and the approval gate. Token from `ASCORE_API_TOKEN` (preferred)
+or `auth.token`; `auth.required: true` fails the server closed without one.
+`server/auth.py`, applied as a router dependency in `server/app.py`. The UI
+carries it (🔑 control). **Residual:** still a single shared secret, not
+per-user identity — see §1.2/§1.3 for roles and tenancy.
+
+#### Original finding
 `grep` for `Depends|CORS|Middleware|api_key|Authorization` across
 `src/ascore/server/` returns **nothing**. `create_app` (`server/app.py:27-74`)
 mounts five routers under `/api` with zero auth dependency. Every endpoint —
@@ -145,7 +160,12 @@ business/PII data, kept forever (append-only).
 
 ## 4. API hardening
 
-### 4.1 Path traversal / LFI in the SPA fallback — **High**
+### 4.1 Path traversal / LFI in the SPA fallback — **High** · ✅ FIXED (`0db95ae`)
+`safe_static_path()` now resolves the candidate and serves it only if it stays
+strictly inside the resolved `ui/dist` and is a real file; traversal attempts
+fall back to `index.html`. Unit-tested in `tests/test_static_safety.py`.
+
+#### Original finding
 `server/app.py:67-72`:
 ```python
 @app.get("/{path:path}", include_in_schema=False)
@@ -176,7 +196,13 @@ rows** and, worse, **parse every JSON payload** in Python:
   aggregates (success rate, cost, p95) into indexed columns so the leaderboard
   doesn't deserialize full payloads.
 
-### 4.3 No rate limiting — **High** (given §1.1/§2.1)
+### 4.3 No rate limiting — **High** · ✅ FIXED (`086dc05`)
+In-process sliding-60s-window limiter on `/api`, keyed by token (else client
+IP), from `security.rate_limit_per_minute` (0 = off). `server/ratelimit.py`.
+**Residual:** per-process only — a multi-worker deployment needs a shared store
+(Redis); noted in §9.
+
+#### Original finding
 No limiter anywhere. An open `POST …/executions` with a large suite is an
 uncapped spend/DoS amplifier.
 - **Fix:** `slowapi`/reverse-proxy rate limits, plus the cost quota in §7.
@@ -223,7 +249,15 @@ validation.
 
 ## 6. Security (injection, SSRF, prompt-injection, supply chain)
 
-### 6.1 SSRF via black-box agent URLs — **Blocker** (when network-exposed)
+### 6.1 SSRF via black-box agent URLs — **Blocker** · ✅ FIXED (`3a9e47f`)
+`ascore/security.py` `validate_blackbox_url` enforces an allowed scheme
+(http/https only), an optional host allowlist, and rejection of any host that
+is/resolves to a private/loopback/link-local/reserved/multicast/metadata
+address — at registration (catalog POST + `agents add`) and at request time
+(must resolve to a public IP; redirects disabled). Hitting a private host needs
+explicit opt-in (`allow_private_url`). Tests in `tests/test_security.py`.
+
+#### Original finding
 `adapters/blackbox_http.py:19-25`:
 ```python
 def _http_transport(url, payload, timeout):
@@ -271,7 +305,22 @@ and the optional `ai-evaluation` (Future AGI) backend can reach a cloud service.
 
 ---
 
-## 7. Cost controls & quotas for LLM calls — **High**
+## 7. Cost controls & quotas for LLM calls — **High** · ✅ FIXED (`9d3939b`, `dbf1e7d`, `bd52336`, `8af2815`)
+Implemented end to end: pricing moved to config (`pricing.*`,
+`ascore/pricing.py`); a pre-run **estimator** (`ascore/cost.py`,
+`GET /api/estimate`, `GET /api/workflows/{id}/estimate`) projects agent + judge
+spend before a run; **actual cost** is now tracked for judge calls too and
+surfaced in the scorecard, Markdown report, and results API
+(`total_cost_usd` / `total_scoring_cost_usd`); and a **spend ceiling**
+(`ascore/budget.py`) enforces a per-run cap (`budget.max_run_cost_usd`) and a
+daily cap (`budget.max_daily_cost_usd`, via a spend ledger) — a pre-run gate
+aborts before spending and a runtime `RunBudget` aborts remaining cases once
+the per-run cap is crossed. The UI shows the projected cost (red when over
+budget). **Residual:** the runtime cap charges execution cost as it runs (judge
+cost is bounded by the pre-run estimate, not charged mid-run); per-tenant
+quotas await multi-tenancy (§1.3).
+
+#### Original finding
 
 Per-call bounds exist: `max_steps` (`config.yaml`, default 10), agent
 `max_tokens=1024` (`anthropic_simple.py:130`), judge `max_tokens=300`, advisor
@@ -359,9 +408,9 @@ mocked, acceptance criteria per spec step, plus the new catalog tests. Real gaps
 
 ## 11. Frontend & SSE specifics — **Medium**
 
-- **SSE stream is unauthenticated** (`events.py` / the executions SSE route):
-  anyone can subscribe to any `execution_id`'s event stream and read node
-  outputs/summaries.
+- **SSE stream is unauthenticated** — ✅ FIXED (`021f5c8`): the events route is
+  an `/api` route, so it now requires the token (passed as `?token=` since
+  EventSource can't set headers).
 - **No CSRF protection:** state-changing `POST`/`DELETE` endpoints have no CSRF
   token; with the server on a predictable localhost port, a malicious web page
   the operator visits could issue cross-origin POSTs (no CORS *allow* is set, but
@@ -391,14 +440,18 @@ threads. Single-process, no distributed workers.
 
 ## Prioritized roadmap to "genuinely production-ready"
 
-**Phase 0 — Stop the bleeding (do before any non-localhost exposure).** These are
-the Blockers/Highs that make the current app actively dangerous on a network:
-1. **AuthN on all `/api` routes + SSE** (§1.1, §11) — one bearer-token dependency
-   is enough to start.
-2. **Fix SSRF** in `blackbox_http` + `DeclaredAgent` URL validation (§6.1).
-3. **Fix path traversal** in the SPA fallback (§4.1) — trivial, high impact.
-4. **LLM cost ceiling + abort** in the run path (§7).
-5. **Rate limiting** on state-changing endpoints (§4.3).
+**Phase 0 — Stop the bleeding (do before any non-localhost exposure).** ✅ **DONE.**
+These were the Blockers/Highs that made the app actively dangerous on a network:
+1. ✅ **AuthN on all `/api` routes + SSE** (§1.1, §11) — `021f5c8`.
+2. ✅ **Fix SSRF** in `blackbox_http` + catalog URL validation (§6.1) — `3a9e47f`.
+3. ✅ **Fix path traversal** in the SPA fallback (§4.1) — `0db95ae`.
+4. ✅ **LLM cost ceiling + abort** + estimator + actual-cost tracking (§7) —
+   `9d3939b`/`dbf1e7d`/`bd52336`/`8af2815`.
+5. ✅ **Rate limiting** on the API (§4.3) — `086dc05`.
+
+The next-most-urgent items not yet done: AuthZ roles (§1.2), multi-tenancy
+(§1.3), observability (§5), and migrations + SQLite hardening (§3) — these make
+up Phase 1.
 
 **Phase 1 — Make it operable & safe to run for one team.**
 6. Structured logging, `/healthz` + `/readyz`, LLM cost/latency metrics (§5).
