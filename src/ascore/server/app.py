@@ -19,14 +19,17 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
 from ascore.config import load_config
 from ascore.registry.sqlite_store import Registry
+from ascore.server import metrics
 from ascore.server.auth import check_startup, require_auth
 from ascore.server.events import EventBus
 from ascore.server.executor import ExecutionManager
+from ascore.server.observability import ObservabilityMiddleware, configure_logging
 from ascore.server.ratelimit import RateLimitMiddleware
 from ascore.server.store import UIStore
 
@@ -117,6 +120,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     async def lifespan(app: FastAPI):
         import asyncio
         cfg = load_config(config_path)
+        configure_logging(cfg)
         check_startup(cfg)  # fail closed if auth.required without a token
         workspaces = Workspaces(cfg, default_registry=registry, clients=clients,
                                 loop=asyncio.get_running_loop())
@@ -133,6 +137,26 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
 
     app = FastAPI(title="Agenttic", lifespan=lifespan)
     app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(ObservabilityMiddleware)  # outermost: ids, timing, logs
+
+    @app.get("/health", include_in_schema=False)
+    async def health():  # liveness — process is up
+        return {"status": "ok"}
+
+    @app.get("/ready", include_in_schema=False)
+    async def ready():  # readiness — default DB reachable
+        from fastapi.responses import JSONResponse
+        try:
+            with app.state.reg.engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            return {"status": "ready"}
+        except Exception as exc:  # noqa: BLE001
+            return JSONResponse({"status": "not_ready", "detail": str(exc)},
+                                status_code=503)
+
+    @app.get("/metrics", include_in_schema=False)
+    async def metrics_endpoint():
+        return PlainTextResponse(metrics.render())
 
     from ascore.server.routes.cost import router as cost_router
     from ascore.server.routes.executions import router as executions_router

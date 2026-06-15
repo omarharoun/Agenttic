@@ -219,7 +219,14 @@ def aggregate_op(
         run_scores=runs, visibility_tier=visibility)
     reg.save_scorecard(sc)
     # record total spend (execution + scoring) for the daily budget ledger
-    reg.record_spend(agent_id, sc.total_cost_usd + sc.total_scoring_cost_usd)
+    total_spend = sc.total_cost_usd + sc.total_scoring_cost_usd
+    reg.record_spend(agent_id, total_spend)
+    try:  # observability counters (best-effort; never block a scorecard)
+        from ascore.server import metrics
+        metrics.record_run("errored" if sc.errored_test_ids else "completed")
+        metrics.record_cost(total_spend)
+    except Exception:  # noqa: BLE001
+        pass
     return sc
 
 
