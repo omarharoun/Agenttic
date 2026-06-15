@@ -91,8 +91,25 @@ async def run_suite_op(
     version: int | None = None,
     on_progress: ProgressFn | None = None,
 ) -> tuple[TestSuite, list[TestCase], list[Trace]]:
-    """Harness step: execute every case of a suite, persisting all traces."""
+    """Harness step: execute every case of a suite, persisting all traces.
+
+    Enforces the spend ceiling: a pre-run estimate gate (raises
+    BudgetExceededError before any spend if projected cost breaches a cap,
+    unless budget.warn_only) and a RunBudget that aborts remaining cases once
+    actual execution cost crosses the per-run cap."""
+    from ascore.budget import RunBudget, check_pre_run
+    from ascore.cost import estimate_for_run
+
     suite, cases = reg.get_suite(suite_id, version)
+    variant = "blackbox" if adapter.visibility == "black_box" else "reference"
+    est = estimate_for_run(cfg, reg, suite_id, variant=variant,
+                           model=getattr(adapter, "model", None), version=version)
+    warnings = check_pre_run(cfg, reg, est.projected_usd)  # may raise
+    if warnings and on_progress:
+        on_progress("budget_warning", {"warnings": warnings,
+                                       "projected_usd": est.projected_usd})
+
+    max_run = float(cfg.get("budget", {}).get("max_run_cost_usd", 0) or 0)
     h = cfg["harness"]
     traces = await run_suite(
         adapter, suite, cases, reg,
@@ -100,6 +117,7 @@ async def run_suite_op(
                       max_parallel=h["max_parallel"],
                       transport_retries=h["transport_retries"]),
         on_event=on_progress,
+        budget=RunBudget(max_run_usd=max_run) if max_run else None,
     )
     return suite, cases, traces
 
