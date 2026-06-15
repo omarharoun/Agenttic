@@ -1,0 +1,53 @@
+# Full-stack deployment. The app runs zero-config (SQLite, in-memory events) by
+# default; bring Postgres and/or Redis online with compose profiles:
+#   docker compose up                      # app only (SQLite)
+#   docker compose --profile postgres up   # app + Postgres
+#   docker compose --profile redis up      # app + Redis (multi-worker events + rate limit)
+#   docker compose --profile postgres --profile redis up
+services:
+  app:
+    build: .
+    ports:
+      - "8700:8700"
+    env_file:
+      - .env
+    environment:
+      # uncomment when running the matching profile:
+      # ASCORE_DB: postgresql+psycopg://ascore:ascore@postgres:5432/ascore
+      # ASCORE_REDIS_URL: redis://redis:6379/0
+      ASCORE_HOST: "0.0.0.0"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ascore-data:/app/data        # SQLite DBs live here (paths.registry_db)
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_USER: ascore
+      POSTGRES_PASSWORD: ascore
+      POSTGRES_DB: ascore
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ascore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  ascore-data:
+  pg-data:
+  redis-data:

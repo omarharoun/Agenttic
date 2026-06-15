@@ -431,7 +431,23 @@ production:
 
 ---
 
-## 9. Deployment, packaging & CI/CD — **High**
+## 9. Deployment, packaging & CI/CD — **High** · ⚠️ MOSTLY FIXED
+- ✅ **Container:** multi-stage `Dockerfile` (Node builds the UI → Python slim
+  serves it), runs **non-root** (`appuser`), with a `HEALTHCHECK` hitting
+  `/health`. `.dockerignore` included.
+- ✅ **Compose:** `docker-compose.yml` runs the app zero-config and brings up
+  Postgres/Redis via `--profile postgres` / `--profile redis`.
+- ✅ **Config/secrets:** `config.prod.yaml` (fail-closed auth, caps, retention)
+  + `.env.example` documenting the secret surface.
+- ✅ **CI:** `.github/workflows/ci.yml` runs ruff (error-level), backend pytest
+  (with Postgres + Redis service containers), frontend typecheck+build+vitest,
+  a `pip-audit` advisory scan, and a docker build — so master is verifiably
+  green on every push. (`tests/test_packaging.py` validates these artifacts.)
+- ⚠️ **Residual (now → §3 multi-worker):** single-process by default; running
+  multiple uvicorn workers requires the shared event transport (see below,
+  resolved separately). Image defaults to one worker until Redis events are on.
+
+#### Original finding
 
 - **No container:** no `Dockerfile`, `docker-compose`, or `.dockerignore`
   (confirmed absent).

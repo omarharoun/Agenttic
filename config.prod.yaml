@@ -1,0 +1,68 @@
+# Production config sample. Copy to config.yaml (or mount it) and supply
+# secrets via environment variables (see .env.example) — never commit real
+# tokens/keys. Hard Rule 7: all models, thresholds, rates live here.
+models:
+  agent_default: claude-sonnet-4-6
+  judge_executor: claude-sonnet-4-6
+  judge_strong: claude-opus-4-8          # must differ from agent_default (Rule 4)
+  judge_light: claude-haiku-4-5-20251001
+  generator: claude-opus-4-8
+harness:
+  timeout_seconds: 120
+  max_steps: 10
+  max_parallel: 5
+  transport_retries: 2
+scoring:
+  calibration_threshold: 0.8
+  advisor_max_tokens: 2048
+  fi_threshold: 0.5
+live:
+  sample_rate: 0.05
+  drift_threshold: 0.15
+  drift_window_runs: 50
+paths:
+  registry_db: /app/data/ascore.db       # persistent volume; ignored when ASCORE_DB (Postgres) is set
+  review_dir: /app/review/
+  calibration_dir: /app/calibration/
+ui:
+  host: 0.0.0.0
+  port: 8700
+  uploads_dir: /app/uploads/
+leaderboard:
+  suite_weights: {}
+pricing:
+  claude-sonnet-4-6: {input: 3.0, output: 15.0}
+  claude-opus-4-8: {input: 15.0, output: 75.0}
+  claude-haiku-4-5-20251001: {input: 1.0, output: 5.0}
+  default: {input: 3.0, output: 15.0}
+cost:
+  expected_agent_steps: 3
+  expected_input_tokens: 600
+  expected_output_tokens: 250
+  judge_input_tokens: 700
+  judge_output_tokens: 120
+budget:
+  max_run_cost_usd: 25.0                  # hard per-run ceiling
+  max_daily_cost_usd: 250.0               # per-tenant daily ceiling (0 = off)
+  warn_only: false
+observability:
+  log_level: INFO
+  log_json: true
+  otel_enabled: false                     # set true + OTEL_EXPORTER_OTLP_ENDPOINT to export traces
+database:
+  url: ""                                 # blank => SQLite (paths.registry_db); else read ASCORE_DB env
+events:
+  backend: memory                         # memory | redis (multi-worker); redis_url from ASCORE_REDIS_URL
+auth:
+  required: true                          # fail closed: refuse to start without a token
+  token: ""                               # set via ASCORE_API_TOKEN (do NOT hardcode)
+  tokens: {}                              # {token: {role, tenant}} for additional principals
+  admin_tenant: default
+security:
+  rate_limit_per_minute: 120
+  rate_limit_backend: memory              # redis for multi-worker (ASCORE_REDIS_URL)
+  redis_url: ""
+  blackbox_block_private: true
+retention:
+  trace_days: 0                           # 0 = keep forever; N = prune trace payloads older than N days
+  redact_trace_io: false                  # true => store traces with inputs/outputs redacted
