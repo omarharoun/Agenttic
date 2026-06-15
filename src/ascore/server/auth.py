@@ -21,7 +21,6 @@ work everywhere else.
 
 from __future__ import annotations
 
-import os
 import secrets
 
 from fastapi import HTTPException, Request, status
@@ -30,8 +29,9 @@ ROLES = {"viewer": 0, "operator": 1, "admin": 2}
 
 
 def configured_token(cfg: dict) -> str:
-    """The admin token (env wins over config), or "" if unset."""
-    env = os.environ.get("ASCORE_API_TOKEN", "").strip()
+    """The admin token (env / *_FILE wins over config), or "" if unset."""
+    from ascore.secrets import get_secret
+    env = get_secret("ASCORE_API_TOKEN")
     if env:
         return env
     return str((cfg.get("auth", {}) or {}).get("token", "") or "").strip()

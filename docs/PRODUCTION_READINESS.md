@@ -116,7 +116,19 @@ tables and leaderboard.
 
 ## 2. Secrets handling
 
-### 2.1 Implicit, process-global API key — **High**
+### 2.1 Implicit, process-global API key — **High** · ✅ FIXED (`<secrets commit>`)
+Secrets (`ANTHROPIC_API_KEY`, `ASCORE_API_TOKEN`, `FI_*`, `ASCORE_DB`,
+`ASCORE_REDIS_URL`) load from env **or a `<NAME>_FILE` path** so Docker/K8s/Vault
+file-mounted secrets work transparently (`ascore/secrets.py`;
+`hydrate_env_secrets()` runs at app + CLI startup). The auth token resolves via
+the same path. **Rotation:** overlapping `auth.tokens` entries allow
+zero-downtime rotation (add new → deploy → remove old); the admin token rotates
+via `ASCORE_API_TOKEN` + restart — documented in `.env.example`/§secret-surface.
+**Residual (Medium):** per-tenant *provider* keys (each tenant billing its own
+Anthropic key) — today one server key bills all tenants; per-tenant quotas (§7)
+bound the spend in the meantime.
+
+#### Original finding
 `ANTHROPIC_API_KEY` is read implicitly by `anthropic.Anthropic()` constructed in
 three places (`adapters/anthropic_simple.py:95-96`, `scoring/judge.py:117-119`,
 `ops.deploy_op`). FI keys (`FI_API_KEY`/`FI_SECRET_KEY`) likewise. There is no
@@ -129,7 +141,14 @@ secrets manager, no rotation, no per-tenant key.
   startup, never log them (see §5), and — once multi-tenant — let a tenant
   supply its own key, stored encrypted, selected per run.
 
-### 2.2 No secret redaction — **Medium**
+### 2.2 No secret redaction — **Medium** · ✅ FIXED (`<secrets commit>`)
+A `SecretRedactor` logging filter scrubs known secret values (resolved keys +
+configured tokens) from every log record's message and structured fields
+(`ascore/secrets.py`, wired in `configure_logging`). Request logs already use
+`url.path` (no query string), so the SSE `?token=` never reaches the logs.
+Tested in `tests/test_secrets.py`.
+
+#### Original finding
 Errors are surfaced verbatim to clients (e.g. `resources.py:130-131` returns
 `f"managed agents unavailable: {type(exc).__name__}: {exc}"`; the judge embeds
 `raw[:200]` of model output in `JudgeError`). If a key or internal detail ever

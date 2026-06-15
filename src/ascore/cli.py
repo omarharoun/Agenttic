@@ -24,6 +24,8 @@ console = Console()
 
 
 def _ctx(config_path: str = "config.yaml"):
+    from ascore.secrets import hydrate_env_secrets
+    hydrate_env_secrets()  # pull *_FILE secrets into the environment
     cfg = load_config(config_path)
     return cfg, Registry(cfg["paths"]["registry_db"])
 

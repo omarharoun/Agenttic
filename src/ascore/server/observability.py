@@ -34,16 +34,28 @@ class _JsonFormatter(logging.Formatter):
 
 
 def configure_logging(cfg: dict) -> None:
+    from ascore.secrets import (
+        SecretRedactor, hydrate_env_secrets, known_secret_values)
+
+    hydrate_env_secrets()  # pull *_FILE secrets into the environment
     obs = (cfg.get("observability", {}) or {})
     level = str(obs.get("log_level", "INFO")).upper()
     root = logging.getLogger("ascore")
     root.setLevel(level)
+    redactor = SecretRedactor(known_secret_values(cfg))
     if any(getattr(h, "_ascore", False) for h in root.handlers):
-        return  # idempotent across create_app calls / tests
+        # idempotent across create_app calls / tests — refresh the redactor's
+        # secret set in case config changed, but don't stack handlers
+        for h in root.handlers:
+            for f in h.filters:
+                if isinstance(f, SecretRedactor):
+                    f.secrets = redactor.secrets
+        return
     handler = logging.StreamHandler()
     handler._ascore = True  # type: ignore[attr-defined]
     handler.setFormatter(_JsonFormatter() if obs.get("log_json", True)
                          else logging.Formatter("%(name)s %(levelname)s %(message)s"))
+    handler.addFilter(redactor)
     root.addHandler(handler)
     root.propagate = False
 
