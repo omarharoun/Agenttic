@@ -17,7 +17,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, event
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from ascore.schema.agent import DeclaredAgent
@@ -123,12 +123,32 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _harden_sqlite(engine) -> None:
+    """Per-connection PRAGMAs for safe concurrent access: WAL (concurrent
+    readers + one writer), a busy timeout (wait instead of 'database is
+    locked'), and foreign-key enforcement. WAL persists on the file; the rest
+    are connection-scoped, so set them on every connect."""
+    @event.listens_for(engine, "connect")
+    def _set_pragmas(dbapi_conn, _record):  # noqa: ANN001
+        cur = dbapi_conn.cursor()
+        cur.execute("PRAGMA journal_mode=WAL")
+        cur.execute("PRAGMA busy_timeout=5000")
+        cur.execute("PRAGMA foreign_keys=ON")
+        cur.close()
+
+
 class Registry:
     """SQLite-backed store. Also satisfies the harness TraceStore protocol."""
 
     def __init__(self, db_path: str | Path = "ascore.db"):
-        self.engine = create_engine(f"sqlite:///{db_path}")
-        SQLModel.metadata.create_all(self.engine)
+        # check_same_thread=False: the harness/event bus write from worker
+        # threads; safe here because writes serialize via SQLite's lock and the
+        # busy_timeout above makes contention wait rather than error.
+        self.engine = create_engine(
+            f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
+        _harden_sqlite(self.engine)
+        from ascore.migrations import run_migrations
+        run_migrations(self.engine)  # versioned schema (baseline builds it all)
 
     # -- suites / cases ----------------------------------------------------
 

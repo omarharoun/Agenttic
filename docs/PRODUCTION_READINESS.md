@@ -141,7 +141,16 @@ lands in an exception string it goes straight to the API response.
 
 ## 3. Data persistence & migrations
 
-### 3.1 SQLite + cross-thread writes, no `check_same_thread` — **High**
+### 3.1 SQLite + cross-thread writes, no `check_same_thread` — **High** · ✅ FIXED (`<migrations commit>`)
+The engine is now created with `connect_args={"check_same_thread": False}` and a
+connect-time PRAGMA listener sets `journal_mode=WAL`, `busy_timeout=5000`, and
+`foreign_keys=ON` on every connection (`registry/sqlite_store.py`
+`_harden_sqlite`). Cross-thread writes no longer error and lock contention waits
+rather than failing; verified in `tests/test_migrations.py::TestHardening`.
+**Residual:** SQLite is still single-writer — for heavy concurrency move to
+Postgres (the SQLModel layer makes it mostly a URL change).
+
+#### Original finding
 `create_engine(f"sqlite:///{db_path}")` (`registry/sqlite_store.py:121`) is
 created with **no `connect_args`**. WAL is enabled once on the shared engine
 (`server/store.py:69-70`), which helps reader/writer concurrency, but:
@@ -162,7 +171,18 @@ created with **no `connect_args`**. WAL is enabled once on the shared engine
   deployment — the SQLModel layer makes this mostly a connection-string change,
   but see §3.2.
 
-### 3.2 No migration strategy — **High**
+### 3.2 No migration strategy — **High** · ✅ FIXED (`<migrations commit>`)
+A versioned migration runner (`ascore/migrations.py`) replaces additive
+`create_all` drift: each migration is recorded in a `schema_migrations` table,
+the v1 baseline builds the current schema, and `Registry.__init__` migrates to
+head on construction (so every tenant DB self-migrates). `ascore migrate
+[--status]` reports/forces it. Future schema changes add a new numbered
+migration rather than editing an applied one. **Decision:** I used an in-repo,
+dependency-free runner (sized for single-SQLite) rather than Alembic; when we
+move to Postgres, swapping in Alembic is reasonable — the migration list maps
+directly to revision files. Flag me if you'd prefer Alembic now.
+
+#### Original finding
 Schema is created with `SQLModel.metadata.create_all` (`sqlite_store.py:122`,
 `server/store.py:68`), which is **additive only**. New *tables* appear
 automatically (that's why the new `DeclaredAgentRow` "just worked"), but **column
@@ -175,7 +195,21 @@ There is no Alembic, no versioned migrations, no rollback.
 - **Fix:** adopt Alembic now, baseline the current schema, and make every schema
   change a reviewed migration. Do this before the DB holds data you can't drop.
 
-### 3.3 No backup/retention/PII story — **Medium**
+### 3.3 No backup/retention/PII story — **Medium** · ⚠️ PARTIAL (backup documented)
+**Backup story (documented):** all state lives in SQLite files under
+`paths.registry_db` — the default tenant's `ascore.db` plus one
+`ascore.<tenant>.db` per tenant (and their `-wal`/`-shm` sidecars). To back up:
+* **Online (recommended):** `sqlite3 ascore.db ".backup '/backups/ascore-$(date +%F).db'"`
+  per file — consistent under WAL without stopping the server. Or run
+  [Litestream](https://litestream.io) to stream each DB to object storage for
+  point-in-time recovery.
+* **Cold:** stop the server and copy the `*.db*` files.
+Restore = drop the file(s) back in place; `Registry.__init__` re-applies any
+pending migrations on next start. **Still open:** automated/scheduled backups,
+encryption at rest, and a trace-payload retention/PII-redaction policy
+(traces are append-only and may contain client data).
+
+#### Original finding
 No backup job, no retention policy, no encryption-at-rest. Traces store full
 agent inputs/outputs (`schema/trace.py`), which for real clients will contain
 business/PII data, kept forever (append-only).
@@ -251,7 +285,17 @@ validation.
 
 ---
 
-## 5. Observability — **High**
+## 5. Observability — **High** · ✅ FIXED (`ae5815b`)
+Added structured JSON request logs with a per-request id (honors/echoes
+`X-Request-ID`, includes tenant + role), unauthenticated `/health` (liveness)
+and `/ready` (default-DB ping → 503 when down), and a `/metrics` Prometheus
+endpoint from a dependency-free registry (HTTP request counts + duration
+summary, `ascore_runs_total{status}`, `ascore_llm_cost_usd_total`).
+`server/observability.py`, `server/metrics.py`. **Residual:** metrics are
+per-process (scrape each worker or move to a shared exporter); token-level
+counters and OpenTelemetry tracing are still future work.
+
+#### Original finding
 
 `grep` for `logging|getLogger|/health|/healthz|/metrics|prometheus` across
 `src/ascore/` returns **nothing**. There is:
