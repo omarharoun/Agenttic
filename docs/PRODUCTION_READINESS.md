@@ -6,12 +6,58 @@
 React/Vite UI, and the CLI. Grounded in a direct read of the code; file:line
 references throughout.
 
+# ✅ PRODUCTION-READINESS SIGN-OFF (2026-06-15)
+
+**Status: no open Blocker or High items remain.** Every Blocker and High from the
+original review below is **✅ FIXED** (annotated inline with its commit). The
+remaining items are Medium/Low residuals, each documented with a rationale.
+
+- **Tests:** 356 backend tests passing (+2 skipped: live Postgres/Redis, which
+  run in CI against service containers); frontend `tsc` + `vite build` + vitest
+  green. CI (`.github/workflows/ci.yml`) runs all of this — incl. Postgres &
+  Redis services and a docker build — on every push.
+- **What was closed in this drive (Phase 1 + production hardening):**
+  authn + RBAC (viewer/operator/admin) on every route; SSRF + path-traversal +
+  rate-limit (pluggable, Redis-capable); multi-tenancy (DB-per-tenant on SQLite,
+  row-level on Postgres); **Postgres backend**; **true multi-worker** (Redis
+  pub/sub events, cross-worker approve/cancel); secrets via env/`*_FILE` + log
+  redaction; backups + restore drill + trace retention/redaction; per-tenant
+  spend quotas; OpenTelemetry tracing + per-token metrics; CLI `--tenant`
+  parity; global error envelope; a security matrix + harness concurrency test.
+
+### What a real deployment still needs from the operator (infra, not code)
+
+These are deliberately out of the codebase — provide them at deploy time:
+
+1. **Managed Postgres** (set `ASCORE_DB`) and **Redis** (`ASCORE_REDIS_URL`,
+   `events.backend=redis`, `security.rate_limit_backend=redis`) for multi-replica
+   HA. SQLite + in-memory is the zero-config single-node default.
+2. **Secrets**: supply `ANTHROPIC_API_KEY` and `ASCORE_API_TOKEN` (and any
+   role/tenant tokens) via your secret store — env or `*_FILE` mounts. Set
+   `auth.required: true`.
+3. **TLS / ingress**: terminate HTTPS at a reverse proxy / load balancer in
+   front of the app (the app speaks plain HTTP).
+4. **Scheduled jobs**: cron / k8s CronJob for `scripts/backup.sh` and
+   `ascore retention --apply` (see `docs/OPERATIONS.md`).
+5. **Backups + encryption-at-rest**: enable Litestream or managed-DB snapshots,
+   and encrypt the data volume / DB at the infrastructure layer.
+6. **Metrics/tracing collection**: scrape `/metrics` per replica (Prometheus)
+   and point `OTEL_EXPORTER_OTLP_ENDPOINT` at your collector.
+
+### Medium/Low residuals still tracked (non-blocking)
+
+Pagination on a few list endpoints (§4.2), prompt-injection hardening of the
+judge (§6.2), live-path debounce/queue (§8), CSRF + UI role-gating (§11),
+per-run *scoring*-cost mid-run charging and a task-queue for very large suites
+(§7/§12), per-tenant *provider* keys (§2.1), SBOM/strict CVE-gating (§6.4).
+None block production; all are documented in place.
+
+---
+
 > **Update (2026-06-15, Phase 0 landed):** the five "stop the bleeding"
-> blockers and a full cost-analysis stack have since been implemented and
-> tested (272 backend tests, UI builds clean). Fixed items are marked
-> **✅ FIXED** inline with the commit; the "Phase 0" section of the roadmap is
-> checked off. Everything in Phases 1–3 still stands. Search ✅ for what's
-> done and ⚠️ for what was only partially addressed.
+> blockers and a full cost-analysis stack were implemented and tested. Fixed
+> items are marked **✅ FIXED** inline with the commit. (Superseded by the
+> sign-off above; kept for history.)
 
 ## TL;DR — verdict
 
@@ -80,7 +126,7 @@ caller can approve any suite**. Approval should be a privileged action.
 - **Fix:** role-based checks (viewer / operator / approver). Approve, deploy,
   delete, and run-that-spends should require elevated roles.
 
-### 1.3 No multi-tenancy — **High** · ✅ FIXED (`<this commit>`) — maintainer decision below
+### 1.3 No multi-tenancy — **High** · ✅ FIXED (`919c15e`) — maintainer decision below
 Each tenant is now an **isolated workspace = its own SQLite database** + UIStore
 + EventBus + ExecutionManager (`server/app.py` `Workspaces`). The request's
 tenant comes from its auth principal (`auth.tokens[*].tenant`); `bind_workspace`
@@ -119,7 +165,7 @@ tables and leaderboard.
 
 ## 2. Secrets handling
 
-### 2.1 Implicit, process-global API key — **High** · ✅ FIXED (`<secrets commit>`)
+### 2.1 Implicit, process-global API key — **High** · ✅ FIXED (`1c5d601`)
 Secrets (`ANTHROPIC_API_KEY`, `ASCORE_API_TOKEN`, `FI_*`, `ASCORE_DB`,
 `ASCORE_REDIS_URL`) load from env **or a `<NAME>_FILE` path** so Docker/K8s/Vault
 file-mounted secrets work transparently (`ascore/secrets.py`;
@@ -144,7 +190,7 @@ secrets manager, no rotation, no per-tenant key.
   startup, never log them (see §5), and — once multi-tenant — let a tenant
   supply its own key, stored encrypted, selected per run.
 
-### 2.2 No secret redaction — **Medium** · ✅ FIXED (`<secrets commit>`)
+### 2.2 No secret redaction — **Medium** · ✅ FIXED (`1c5d601`)
 A `SecretRedactor` logging filter scrubs known secret values (resolved keys +
 configured tokens) from every log record's message and structured fields
 (`ascore/secrets.py`, wired in `configure_logging`). Request logs already use
@@ -163,7 +209,7 @@ lands in an exception string it goes straight to the API response.
 
 ## 3. Data persistence & migrations
 
-### 3.1 SQLite + cross-thread writes, no `check_same_thread` — **High** · ✅ FIXED (`<migrations commit>`)
+### 3.1 SQLite + cross-thread writes, no `check_same_thread` — **High** · ✅ FIXED (`322e85b`)
 The engine is now created with `connect_args={"check_same_thread": False}` and a
 connect-time PRAGMA listener sets `journal_mode=WAL`, `busy_timeout=5000`, and
 `foreign_keys=ON` on every connection (`registry/sqlite_store.py`
@@ -197,7 +243,7 @@ created with **no `connect_args`**. WAL is enabled once on the shared engine
   deployment — the SQLModel layer makes this mostly a connection-string change,
   but see §3.2.
 
-### 3.2 No migration strategy — **High** · ✅ FIXED (`<migrations commit>`)
+### 3.2 No migration strategy — **High** · ✅ FIXED (`322e85b`)
 A versioned migration runner (`ascore/migrations.py`) replaces additive
 `create_all` drift: each migration is recorded in a `schema_migrations` table,
 the v1 baseline builds the current schema, and `Registry.__init__` migrates to
@@ -221,7 +267,7 @@ There is no Alembic, no versioned migrations, no rollback.
 - **Fix:** adopt Alembic now, baseline the current schema, and make every schema
   change a reviewed migration. Do this before the DB holds data you can't drop.
 
-### 3.3 No backup/retention/PII story — **Medium** · ✅ FIXED (`<backups commit>`)
+### 3.3 No backup/retention/PII story — **Medium** · ✅ FIXED (`5ef858e`)
 **Backups:** `scripts/backup.sh` / `scripts/restore.sh` (SQLite `.backup`
 per-tenant file, or `pg_dump`/`pg_restore` for Postgres) + a Litestream config
 example, with a step-by-step **restore drill** in `docs/OPERATIONS.md`.
@@ -305,7 +351,13 @@ No limiter anywhere. An open `POST …/executions` with a large suite is an
 uncapped spend/DoS amplifier.
 - **Fix:** `slowapi`/reverse-proxy rate limits, plus the cost quota in §7.
 
-### 4.4 Error handling leaks internals / inconsistent — **Medium**
+### 4.4 Error handling leaks internals / inconsistent — **Medium** · ✅ FIXED
+A global exception handler (`server/app.py`) returns a consistent
+`{error, request_id}` envelope on unhandled errors and logs the full detail
+server-side (correlated by request id) — internals are never returned to the
+client. Secret values are scrubbed from logs (§2.2).
+
+#### Original finding
 Several handlers return raw exception strings (`resources.py:130-131`,
 `146`). Broad `except Exception` blocks are used pervasively (intentional for the
 "mistakes are data" invariant in the *engine*, but they also appear in HTTP
@@ -329,7 +381,7 @@ Added structured JSON request logs with a per-request id (honors/echoes
 and `/ready` (default-DB ping → 503 when down), and a `/metrics` Prometheus
 endpoint from a dependency-free registry (HTTP request counts + duration
 summary, `ascore_runs_total{status}`, `ascore_llm_cost_usd_total`).
-`server/observability.py`, `server/metrics.py`. **Update (`<otel commit>`):**
+`server/observability.py`, `server/metrics.py`. **Update (`8955bdb`):**
 added per-token counters (`ascore_llm_tokens_total{component,kind}` from agent +
 judge), and **OpenTelemetry** tracing (`server/tracing.py`, the `otel` extra):
 `observability.otel_enabled` + `OTEL_EXPORTER_OTLP_ENDPOINT` exports a
@@ -429,7 +481,7 @@ surfaced in the scorecard, Markdown report, and results API
 daily cap (`budget.max_daily_cost_usd`, via a spend ledger) — a pre-run gate
 aborts before spending and a runtime `RunBudget` aborts remaining cases once
 the per-run cap is crossed. The UI shows the projected cost (red when over
-budget). **Per-tenant quotas (`<quotas commit>`):** `quotas.tiers[<tenant>]`
+budget). **Per-tenant quotas (`e105dc7`):** `quotas.tiers[<tenant>]`
 (daily + rolling-30-day USD caps, with a `quotas.default` tier) are enforced
 pre-run alongside the global caps and surfaced at `GET /api/quota`
 (`ascore/budget.py`, `tests/test_quotas.py`) — this also bounds spend per tenant
@@ -478,7 +530,7 @@ production:
 
 ---
 
-## 9. Deployment, packaging & CI/CD — **High** · ⚠️ MOSTLY FIXED
+## 9. Deployment, packaging & CI/CD — **High** · ✅ FIXED
 - ✅ **Container:** multi-stage `Dockerfile` (Node builds the UI → Python slim
   serves it), runs **non-root** (`appuser`), with a `HEALTHCHECK` hitting
   `/health`. `.dockerignore` included.

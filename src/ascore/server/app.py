@@ -14,6 +14,7 @@ docs/PRODUCTION_READINESS.md §1.3).
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from contextlib import asynccontextmanager
@@ -168,6 +169,20 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app = FastAPI(title="Agenttic", lifespan=lifespan)
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(ObservabilityMiddleware)  # outermost: ids, timing, logs
+
+    @app.exception_handler(Exception)
+    async def _unhandled(request: Request, exc: Exception):
+        # consistent envelope; never leak internals to the client. The full
+        # error is logged server-side with the request id for correlation.
+        from fastapi.responses import JSONResponse
+        rid = getattr(request.state, "request_id", None)
+        logging.getLogger("ascore.error").error(
+            "unhandled error", extra={"extra_fields": {
+                "request_id": rid, "path": request.url.path,
+                "error": f"{type(exc).__name__}: {exc}"}})
+        return JSONResponse(
+            status_code=500,
+            content={"error": "internal server error", "request_id": rid})
 
     @app.get("/health", include_in_schema=False)
     async def health():  # liveness — process is up

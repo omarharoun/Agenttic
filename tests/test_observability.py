@@ -49,6 +49,25 @@ def test_metrics_endpoint_counts_requests(tmp_path):
     assert "ascore_http_request_duration_seconds_count" in body
 
 
+def test_unhandled_error_returns_clean_envelope(tmp_path):
+    # force an internal error in a real endpoint; assert no traceback leaks
+    from ascore.server.app import create_app
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(CONFIG % {"db": tmp_path / "a.db", "r": tmp_path / "r",
+                             "c": tmp_path / "c"})
+    app = create_app(str(cfg), registry=Registry(tmp_path / "a.db"))
+    with TestClient(app, raise_server_exceptions=False) as c:
+        def boom():
+            raise RuntimeError("kaboom secret detail")
+        c.app.state.store.list_agents = boom   # default-tenant store the route uses
+        r = c.get("/api/agents")
+        assert r.status_code == 500
+        body = r.json()
+        assert body["error"] == "internal server error"
+        assert "kaboom" not in str(body)        # internals not leaked
+        assert body["request_id"]               # correlation id present
+
+
 class TestMetricsRegistry:
     def test_counter_and_summary_render(self):
         metrics.reset()
