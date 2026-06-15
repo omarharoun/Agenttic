@@ -43,8 +43,11 @@ cost:                 # priors for the pre-run cost estimator
   judge_output_tokens: 120
 budget:               # spend ceilings (0 = unlimited)
   max_run_cost_usd: 0.0         # abort a single run past this
-  max_daily_cost_usd: 0.0       # abort when today's spend + this run would exceed
+  max_daily_cost_usd: 0.0       # global daily cap (per tenant); 0 = off
   warn_only: false              # true => estimate gate warns but does not abort
+quotas:               # per-tenant spend quotas (0 = unlimited); enforced pre-run
+  default: {daily_usd: 0.0, monthly_usd: 0.0}   # applies to tenants without a tier
+  tiers: {}                                      # {tenant: {daily_usd, monthly_usd}}
 database:
   url: ""             # blank => SQLite (paths.registry_db, DB-per-tenant).
                       # Set a postgresql+psycopg:// URL (or ASCORE_DB env) for a
