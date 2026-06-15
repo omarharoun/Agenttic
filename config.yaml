@@ -52,6 +52,9 @@ database:
 events:
   backend: memory     # memory (single process) | redis (multi-worker SSE)
   redis_url: ""       # redis://host:6379/0 (or ASCORE_REDIS_URL); required for redis
+retention:            # trace data lifecycle (run `ascore retention --apply` on a schedule)
+  trace_redact_days: 0  # >0: strip inputs/outputs from traces older than N days (PII)
+  trace_prune_days: 0   # >0: delete traces older than N days (scorecards keep aggregates)
 observability:
   log_level: INFO     # ascore logger level
   log_json: true      # structured JSON request logs (false => plain text)

@@ -20,6 +20,7 @@ isolation (see ``server.app.Workspaces``).
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -471,3 +472,32 @@ class Registry:
                 s.delete(r)
             s.commit()
             return len(rows)
+
+    def redact_old_traces(self, older_than_days: int) -> int:
+        """Strip span inputs/outputs and final_output from traces (this tenant)
+        older than ``older_than_days`` — a PII control that keeps the trace row
+        (timing/cost/structure) while dropping the potentially-sensitive
+        payloads. Returns the number redacted. Idempotent."""
+        if older_than_days <= 0:
+            return 0
+        from datetime import timedelta
+        cutoff = _now() - timedelta(days=older_than_days)
+        n = 0
+        with Session(self.engine) as s:
+            rows = s.exec(select(TraceRow).where(
+                TraceRow.tenant_id == self.tenant,
+                TraceRow.created_at < cutoff)).all()
+            for r in rows:
+                p = json.loads(r.payload)
+                for span in p.get("spans", []):
+                    span["input"] = {}
+                    span["output"] = {}
+                    if span.get("error"):
+                        span["error"] = "[redacted]"
+                if p.get("final_output"):
+                    p["final_output"] = "[redacted]"
+                r.payload = json.dumps(p)
+                s.add(r)
+                n += 1
+            s.commit()
+            return n

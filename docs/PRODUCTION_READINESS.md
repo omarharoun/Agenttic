@@ -218,7 +218,19 @@ There is no Alembic, no versioned migrations, no rollback.
 - **Fix:** adopt Alembic now, baseline the current schema, and make every schema
   change a reviewed migration. Do this before the DB holds data you can't drop.
 
-### 3.3 No backup/retention/PII story — **Medium** · ⚠️ PARTIAL (backup documented)
+### 3.3 No backup/retention/PII story — **Medium** · ✅ FIXED (`<backups commit>`)
+**Backups:** `scripts/backup.sh` / `scripts/restore.sh` (SQLite `.backup`
+per-tenant file, or `pg_dump`/`pg_restore` for Postgres) + a Litestream config
+example, with a step-by-step **restore drill** in `docs/OPERATIONS.md`.
+**Retention/PII:** `retention.trace_redact_days` (strip trace inputs/outputs,
+keep timing/cost) and `retention.trace_prune_days` (delete old traces;
+scorecards keep aggregates), applied by `ascore retention --apply`
+(`Registry.redact_old_traces` / `prune_traces`, `tests/test_retention.py`).
+**Residual (Low, operator infra):** scheduling the backup + retention jobs
+(cron/k8s CronJob) and encryption-at-rest are deployment concerns, documented
+in OPERATIONS.md.
+
+#### Original finding (now historical)
 **Backup story (documented):** all state lives in SQLite files under
 `paths.registry_db` — the default tenant's `ascore.db` plus one
 `ascore.<tenant>.db` per tenant (and their `-wal`/`-shm` sidecars). To back up:
