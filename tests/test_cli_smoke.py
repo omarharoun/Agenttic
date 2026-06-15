@@ -49,6 +49,24 @@ def _agent_cfg(tmp_path):
     return cfg
 
 
+def test_cli_tenant_flag_isolates_data(tmp_path):
+    from typer.testing import CliRunner
+    cfg = _agent_cfg(tmp_path)
+    run = CliRunner()
+    # register an agent under tenant 'acme'
+    a = run.invoke(app, ["--tenant", "acme", "agents", "add", "acme-bot",
+                         "--config", str(cfg)])
+    assert a.exit_code == 0, a.output
+    # default tenant doesn't see it
+    d = run.invoke(app, ["agents", "list", "--config", str(cfg)])
+    assert "acme-bot" not in d.output
+    # acme tenant does
+    al = run.invoke(app, ["--tenant", "acme", "agents", "list", "--config", str(cfg)])
+    assert "acme-bot" in al.output
+    # and it lives in a sibling DB file
+    assert (tmp_path / "p.acme.db").exists()
+
+
 def test_agents_catalog_cli_roundtrip(tmp_path):
     from typer.testing import CliRunner
     cfg = _agent_cfg(tmp_path)

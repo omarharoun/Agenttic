@@ -7,6 +7,7 @@ Requires ANTHROPIC_API_KEY in the environment for commands that call models
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 
 import typer
@@ -22,12 +23,33 @@ from ascore.scoring.calibration import calibration_report, load_labels
 app = typer.Typer(help="Agentic scoring & benchmarking platform")
 console = Console()
 
+# Global --tenant (or ASCORE_TENANT) selects the workspace for every command.
+_STATE: dict[str, str | None] = {"tenant": None}
+
+
+@app.callback()
+def _main(tenant: str = typer.Option(
+        None, "--tenant", envvar="ASCORE_TENANT",
+        help="workspace/tenant to operate on (default: 'default')")):
+    """Agenttic CLI. The CLI operates directly on the registry DB (admin-level);
+    --tenant selects the workspace, matching the server's tenancy model."""
+    _STATE["tenant"] = tenant
+
 
 def _ctx(config_path: str = "config.yaml"):
     from ascore.secrets import hydrate_env_secrets
     hydrate_env_secrets()  # pull *_FILE secrets into the environment
     cfg = load_config(config_path)
-    return cfg, Registry(cfg["paths"]["registry_db"])
+    tenant = _STATE.get("tenant") or os.environ.get("ASCORE_TENANT") or "default"
+    db_url = os.environ.get("ASCORE_DB") or (cfg.get("database", {}) or {}).get("url") or ""
+    if db_url and not db_url.startswith("sqlite"):
+        from ascore.registry.sqlite_store import make_engine
+        return cfg, Registry(engine=make_engine(db_url), tenant=tenant)
+    # SQLite: file-per-tenant (mirrors server Workspaces)
+    base = Path(cfg["paths"]["registry_db"])
+    path = base if tenant == "default" \
+        else base.with_name(f"{base.stem}.{tenant}{base.suffix}")
+    return cfg, Registry(str(path))
 
 
 @app.command()
