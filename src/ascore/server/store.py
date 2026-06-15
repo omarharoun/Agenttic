@@ -328,6 +328,7 @@ class UIStore:
                             "mean_cost_usd": p.get("mean_cost_usd"),
                             "total_cost_usd": p.get("total_cost_usd", 0.0),
                             "total_scoring_cost_usd": p.get("total_scoring_cost_usd", 0.0),
+                            "n_runs": len(p.get("run_scores", [])),
                             "p95_latency_ms": p.get("p95_latency_ms"),
                             "n_errored": len(p.get("errored_test_ids", [])),
                             "visibility_tier": p.get("visibility_tier"),

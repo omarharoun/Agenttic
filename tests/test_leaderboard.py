@@ -4,12 +4,17 @@ from ascore.leaderboard import compute_leaderboard
 
 
 def sc(agent, suite, rate, *, cost=0.01, p95=100.0, created="2026-06-15T00:00:00",
-       version=1, tier="glass_box", n_errored=0, sid=None):
-    return {"scorecard_id": sid or f"{agent}-{suite}-{created}",
-            "agent_id": agent, "suite_id": suite, "suite_version": version,
-            "task_success_rate": rate, "mean_cost_usd": cost,
-            "p95_latency_ms": p95, "visibility_tier": tier,
-            "n_errored": n_errored, "created_at": created}
+       version=1, tier="glass_box", n_errored=0, sid=None,
+       total_cost=None, total_scoring=None, n_runs=None):
+    d = {"scorecard_id": sid or f"{agent}-{suite}-{created}",
+         "agent_id": agent, "suite_id": suite, "suite_version": version,
+         "task_success_rate": rate, "mean_cost_usd": cost,
+         "p95_latency_ms": p95, "visibility_tier": tier,
+         "n_errored": n_errored, "created_at": created}
+    if total_cost is not None:
+        d.update(total_cost_usd=total_cost, total_scoring_cost_usd=total_scoring or 0.0,
+                 n_runs=n_runs)
+    return d
 
 
 class TestRanking:
@@ -67,6 +72,24 @@ class TestCoverage:
 
     def test_empty(self):
         assert compute_leaderboard([]) == {"suites": [], "agents": []}
+
+
+class TestAllInCostPerCase:
+    def test_blended_across_suites(self):
+        # agent a: s1 = $0.20 exec + $0.10 judge over 10 cases;
+        #          s2 = $0.30 exec + $0.00 judge over 5 cases.
+        # all-in = (0.30 + 0.30) / (10 + 5) = 0.04 / case
+        cards = [
+            sc("a", "s1", 1.0, total_cost=0.20, total_scoring=0.10, n_runs=10),
+            sc("a", "s2", 1.0, total_cost=0.30, total_scoring=0.00, n_runs=5),
+        ]
+        row = compute_leaderboard(cards)["agents"][0]
+        assert row["all_in_cost_per_case_usd"] == round(0.60 / 15, 6)
+
+    def test_na_when_case_counts_absent(self):
+        # summaries without n_runs -> undefined, reported as None (n/a), not 0
+        row = compute_leaderboard([sc("a", "s1", 1.0)])["agents"][0]
+        assert row["all_in_cost_per_case_usd"] is None
 
 
 class TestDeclaredType:
