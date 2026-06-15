@@ -29,7 +29,15 @@ export function ResultsPanel({ results }: { results: any }) {
               {errored.length} errored
             </span>
           )}
-          <span>${(sc.mean_cost_usd ?? 0).toFixed(4)}/case</span>
+          <span title="agent execution cost / case">
+            ${(sc.mean_cost_usd ?? 0).toFixed(4)}/case</span>
+          {(sc.total_cost_usd != null || sc.total_scoring_cost_usd != null) && (
+            <span title={`agent execution $${(sc.total_cost_usd ?? 0).toFixed(4)} + `
+                         + `judge $${(sc.total_scoring_cost_usd ?? 0).toFixed(4)}`}>
+              total ${((sc.total_cost_usd ?? 0)
+                       + (sc.total_scoring_cost_usd ?? 0)).toFixed(4)}
+            </span>
+          )}
           <span>{sc.visibility_tier.replace("_", "-")}</span>
           <button style={{ marginLeft: "auto" }}
                   onClick={() => report ? setReport("")
