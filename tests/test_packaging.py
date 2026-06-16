@@ -30,9 +30,10 @@ def test_compose_is_valid_yaml_with_profiles():
     assert "app" in compose["services"]
     assert compose["services"]["postgres"]["profiles"] == ["postgres"]
     assert compose["services"]["redis"]["profiles"] == ["redis"]
-    # Caddy reverse proxy is opt-in (profile-gated) and ships with a Caddyfile
-    assert compose["services"]["caddy"]["profiles"] == ["caddy"]
-    assert (ROOT / "Caddyfile").is_file()
+    # public access/TLS is handled by a host Cloudflare Tunnel, not a compose
+    # reverse-proxy service — there should be no caddy/nginx service here
+    assert "caddy" not in compose["services"]
+    assert "nginx" not in compose["services"]
 
 
 def test_ci_workflow_is_valid_yaml():

@@ -4,8 +4,8 @@
 #   docker compose --profile postgres up   # app + Postgres
 #   docker compose --profile redis up      # app + Redis (multi-worker events + rate limit)
 #   docker compose --profile postgres --profile redis up
-#   docker compose --profile postgres --profile redis --profile caddy up
-#     ^ adds the Caddy reverse proxy for auto-HTTPS (needs ASCORE_DOMAIN set).
+# Public access/TLS is handled by a Cloudflare Tunnel on the host (not compose);
+# see docs/OPERATIONS.md.
 services:
   app:
     build: .
@@ -49,28 +49,13 @@ services:
       timeout: 5s
       retries: 5
 
-  # Opt-in TLS reverse proxy. Enable with `--profile caddy` AND set ASCORE_DOMAIN
-  # to a DNS name pointing at this host; Caddy then auto-provisions HTTPS and
-  # proxies to the app over the internal network (app need not be published).
-  # Leave it off until a hostname exists (the app stays on 127.0.0.1 only).
-  caddy:
-    image: caddy:2-alpine
-    profiles: ["caddy"]
-    depends_on: [app]
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      ASCORE_DOMAIN: ${ASCORE_DOMAIN:-}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-    restart: unless-stopped
+# Public exposure / TLS: front the app with a Cloudflare Tunnel (cloudflared)
+# running as a host systemd service — outbound-only, TLS terminated at
+# Cloudflare's edge, no inbound ports opened on the VM. The app stays bound to
+# 127.0.0.1:8700 and the tunnel routes the domain → http://localhost:8700.
+# See docs/OPERATIONS.md ("Public access via Cloudflare Tunnel").
 
 volumes:
   ascore-data:
   pg-data:
   redis-data:
-  caddy-data:
-  caddy-config:
