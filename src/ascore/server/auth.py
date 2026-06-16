@@ -21,11 +21,17 @@ work everywhere else.
 
 from __future__ import annotations
 
+import os
 import secrets
 
 from fastapi import HTTPException, Request, status
 
 ROLES = {"viewer": 0, "operator": 1, "admin": 2}
+
+SESSION_COOKIE = "ascore_session"
+CSRF_COOKIE = "ascore_csrf"          # readable (double-submit) CSRF token
+CSRF_HEADER = "x-csrf-token"
+_SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 
 def configured_token(cfg: dict) -> str:
@@ -41,21 +47,31 @@ def _role_tokens(cfg: dict) -> dict:
     return (cfg.get("auth", {}) or {}).get("tokens", {}) or {}
 
 
-def auth_enabled(cfg: dict) -> bool:
-    """True when any token (admin or role-mapped) is configured."""
-    return bool(configured_token(cfg) or _role_tokens(cfg))
-
-
 def auth_required(cfg: dict) -> bool:
     return bool((cfg.get("auth", {}) or {}).get("required", False))
 
 
+def auth_enabled(cfg: dict) -> bool:
+    """True when the API requires authentication — any token configured, or
+    ``auth.required`` (which user-session login also satisfies)."""
+    return bool(configured_token(cfg) or _role_tokens(cfg) or auth_required(cfg))
+
+
 def check_startup(cfg: dict) -> None:
-    """Fail closed: if auth is marked required, a token must be resolvable."""
-    if auth_required(cfg) and not auth_enabled(cfg):
+    """Fail closed: if auth is required, there must be *some* way to get in —
+    a configured token, an env-bootstrapped admin, or open signup."""
+    if not auth_required(cfg):
+        return
+    has_token = bool(configured_token(cfg) or _role_tokens(cfg))
+    from ascore.secrets import get_secret
+    has_admin_bootstrap = bool(os.environ.get("ASCORE_ADMIN_EMAIL")
+                               and get_secret("ASCORE_ADMIN_PASSWORD"))
+    allow_signup = bool((cfg.get("auth", {}) or {}).get("allow_signup", False))
+    if not (has_token or has_admin_bootstrap or allow_signup):
         raise RuntimeError(
-            "auth.required is true but no token is set — export ASCORE_API_TOKEN, "
-            "or set auth.token / auth.tokens in config.yaml")
+            "auth.required is true but no way to authenticate — set "
+            "ASCORE_API_TOKEN, bootstrap an admin (ASCORE_ADMIN_EMAIL/"
+            "ASCORE_ADMIN_PASSWORD), or enable auth.allow_signup")
 
 
 def resolve_principal(cfg: dict, provided: str | None) -> tuple[str, str] | None:
@@ -95,21 +111,59 @@ def _provided_token(request: Request) -> str | None:
     return tok.strip() if tok else None
 
 
+def _set_principal(request: Request, role: str, tenant: str,
+                   *, email: str | None, method: str) -> None:
+    request.state.role = role
+    request.state.tenant = tenant
+    request.state.user_email = email
+    request.state.auth_method = method
+
+
 def require_auth(request: Request) -> None:
-    """Authenticate the request and stash its role + tenant on request.state.
-    No-op-open (role=admin, tenant=default) when no token is configured."""
+    """Authenticate the request and stash role/tenant/email on request.state.
+
+    Precedence: an explicit **bearer / X-API-Key / ?token** wins — if present it
+    must be valid (else 401). Otherwise a **session cookie** (browser login) is
+    used; cookie-authenticated *unsafe* methods also require a matching CSRF
+    token (double-submit). No-op-open (admin) when auth is disabled."""
     cfg = request.app.state.cfg
     if not auth_enabled(cfg):
-        request.state.role = "admin"
-        request.state.tenant = "default"
+        _set_principal(request, "admin", "default", email=None, method="open")
         return
-    principal = resolve_principal(cfg, _provided_token(request))
-    if principal is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="missing or invalid API token",
-            headers={"WWW-Authenticate": "Bearer"})
-    request.state.role, request.state.tenant = principal
+
+    provided = _provided_token(request)
+    if provided is not None:  # explicit token path
+        principal = resolve_principal(cfg, provided)
+        if principal is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid API token",
+                headers={"WWW-Authenticate": "Bearer"})
+        _set_principal(request, principal[0], principal[1], email=None,
+                       method="token")
+        return
+
+    token = request.cookies.get(SESSION_COOKIE)
+    if token:
+        from ascore.server.sessions import session_secret, verify_session
+        body = verify_session(token, session_secret(cfg))
+        if body:
+            if request.method not in _SAFE_METHODS:
+                c = request.cookies.get(CSRF_COOKIE)
+                h = request.headers.get(CSRF_HEADER)
+                if not (c and h and secrets.compare_digest(c, h)):
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="CSRF token missing or invalid")
+            _set_principal(request, body.get("role", "viewer"),
+                           body.get("tenant", "default"),
+                           email=body.get("email"), method="session")
+            return
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="authentication required (API token or login session)",
+        headers={"WWW-Authenticate": "Bearer"})
 
 
 def require_role(min_role: str):

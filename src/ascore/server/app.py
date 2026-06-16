@@ -168,6 +168,20 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         app.state.bus = default.bus
         app.state.manager = default.manager
         app.state.clients = clients or {}
+        # first-admin bootstrap (env-driven, idempotent)
+        admin_email = os.environ.get("ASCORE_ADMIN_EMAIL")
+        from ascore.secrets import get_secret
+        admin_pw = get_secret("ASCORE_ADMIN_PASSWORD")
+        if admin_email and admin_pw:
+            try:
+                from ascore.server.users import UserStore
+                created = UserStore(default.reg.engine).ensure_admin(
+                    admin_email, admin_pw)
+                logging.getLogger("ascore").info(
+                    "admin bootstrap: %s", "created" if created else "exists")
+            except Exception as exc:  # noqa: BLE001 — never block startup
+                logging.getLogger("ascore").warning("admin bootstrap failed: %s",
+                                                     type(exc).__name__)
         yield
 
     app = FastAPI(title="Agenttic", lifespan=lifespan)
@@ -207,6 +221,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     async def metrics_endpoint():
         return PlainTextResponse(metrics.render())
 
+    from ascore.server.routes.auth import router as auth_router
     from ascore.server.routes.cost import router as cost_router
     from ascore.server.routes.executions import router as executions_router
     from ascore.server.routes.leaderboard import router as leaderboard_router
@@ -216,6 +231,10 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
 
     # every /api route authenticates (sets role + tenant) then binds the
     # tenant's workspace onto request.state — incl. SSE and the approval gate.
+    # auth endpoints are PUBLIC (they ARE the authentication); rate-limited by
+    # the middleware + per-email lockout.
+    app.include_router(auth_router, prefix="/api")
+
     protected = [Depends(require_auth), Depends(bind_workspace)]
     app.include_router(workflows_router, prefix="/api", dependencies=protected)
     app.include_router(executions_router, prefix="/api", dependencies=protected)
