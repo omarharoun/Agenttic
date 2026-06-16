@@ -35,7 +35,11 @@ from ascore.server.observability import ObservabilityMiddleware, configure_loggi
 from ascore.server.ratelimit import RateLimitMiddleware
 from ascore.server.store import UIStore
 
-UI_DIST = Path(__file__).resolve().parents[3] / "ui" / "dist"
+# UI_DIST: env override (ASCORE_UI_DIST) for installed/container layouts where
+# the package lives in site-packages; falls back to the repo-relative path for
+# local/dev runs.
+UI_DIST = Path(os.environ.get("ASCORE_UI_DIST")
+               or Path(__file__).resolve().parents[3] / "ui" / "dist")
 
 _TENANT_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 

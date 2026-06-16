@@ -17,8 +17,10 @@ COPY pyproject.toml README.md ./
 COPY src/ ./src/
 RUN pip install --no-cache-dir ".[postgres,redis]"
 
-# the built frontend (served by the same app)
+# the built frontend (served by the same app). ASCORE_UI_DIST tells the app
+# where dist lives, since the package itself is installed under site-packages.
 COPY --from=ui /ui/dist ./ui/dist
+ENV ASCORE_UI_DIST=/app/ui/dist
 # default config baked in; override by mounting /app/config.yaml or env vars
 COPY config.yaml ./config.yaml
 
