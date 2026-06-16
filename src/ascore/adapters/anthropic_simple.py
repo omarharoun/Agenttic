@@ -90,11 +90,14 @@ class AnthropicSimpleAgent(AgentAdapter):
         client=None,
         agent_id: str = "anthropic-simple-ref",
         system_prompt: str | None = None,
+        retry_policy=None,
     ):
         if client is None:  # real client only constructed when not injected (tests inject a fake)
             import anthropic
             client = anthropic.Anthropic()
         self.client = client
+        from ascore.retry import RetryPolicy
+        self.retry_policy = retry_policy or RetryPolicy()
         self.model = model
         self.kb_path = Path(kb_path)
         self.max_steps = max_steps
@@ -122,15 +125,25 @@ class AnthropicSimpleAgent(AgentAdapter):
         t_wall = time.monotonic()
         final_text = ""
 
+        from ascore.retry import with_retry
         for _ in range(self.max_steps):
             t0 = _now()
-            resp = self.client.messages.create(
-                model=self.model,
-                max_tokens=1024,
-                system=self.system_prompt,
-                tools=TOOLS,
-                messages=list(messages),
-            )
+            try:
+                resp = with_retry(lambda: self.client.messages.create(
+                    model=self.model,
+                    max_tokens=1024,
+                    system=self.system_prompt,
+                    tools=TOOLS,
+                    messages=list(messages),
+                ), self.retry_policy, op="agent")
+            except Exception as exc:  # noqa: BLE001 — retries exhausted: persist partial work
+                # Don't discard earlier steps (and their token cost): record an
+                # error span and finish the trace with what we have.
+                final_text = f"UPSTREAM_ERROR:{type(exc).__name__}: {exc}"
+                spans.append(Span(
+                    span_id=_sid(), kind="error", name="upstream_error",
+                    start_time=t0, end_time=_now(), error=final_text))
+                break
             tokens_in = getattr(resp.usage, "input_tokens", None)
             tokens_out = getattr(resp.usage, "output_tokens", None)
             try:  # observability counters (best-effort; never break a run)

@@ -105,6 +105,7 @@ class LLMJudge:
         advisor_max_tokens: int = 2048,
         advisor_max_uses: int = 1,
         cfg: dict | None = None,
+        retry_policy=None,
     ):
         if model == agent_model:
             raise ValueError(
@@ -126,6 +127,9 @@ class LLMJudge:
         self.advisor_max_tokens = advisor_max_tokens
         self.advisor_max_uses = advisor_max_uses
         self.cfg = cfg  # for pricing; cost is 0 when not provided
+        from ascore.retry import RetryPolicy
+        self.retry_policy = retry_policy or (
+            RetryPolicy.from_cfg(cfg) if cfg else RetryPolicy())
 
     def score_criterion(
         self, criterion: Criterion, trace: Trace, tc: TestCase
@@ -177,16 +181,17 @@ class LLMJudge:
         return token_cost(self.cfg, self.model, tin, tout)
 
     def _create(self, prompt: str):
+        from ascore.retry import with_retry
         if self.advisor_model is None:
-            return self.client.messages.create(
+            return with_retry(lambda: self.client.messages.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
                 system=SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": prompt}],
-            )
+            ), self.retry_policy, op="judge")
         messages = [{"role": "user", "content": prompt}]
         for _ in range(_MAX_PAUSE_CONTINUATIONS + 1):
-            resp = self.client.beta.messages.create(
+            resp = with_retry(lambda: self.client.beta.messages.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
                 system=ADVISOR_SYSTEM_PROMPT,
@@ -199,7 +204,7 @@ class LLMJudge:
                     "max_uses": self.advisor_max_uses,
                     "max_tokens": self.advisor_max_tokens,
                 }],
-            )
+            ), self.retry_policy, op="judge-advisor")
             if getattr(resp, "stop_reason", None) != "pause_turn":
                 return resp
             # dangling advisor call: re-send so the server resumes it

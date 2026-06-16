@@ -59,6 +59,8 @@ def build_adapter(
     Black-box agents expose no token usage, so their cost is whatever is
     declared: ``cost_per_call_usd`` (flat) or ``expected_*_tokens`` priced at
     ``model`` (or the default rate). Unset => cost stays 0 (unknown)."""
+    from ascore.retry import RetryPolicy
+    retry_policy = RetryPolicy.from_cfg(cfg)
     if variant == "managed":
         if not environment_id:
             environment_id = cfg.get("managed", {}).get("environment_id", "")
@@ -67,7 +69,7 @@ def build_adapter(
         kw = {"client": client} if client is not None else {}
         return ManagedAgentAdapter(
             managed_agent_id=managed_agent_id, environment_id=environment_id,
-            agent_id=agent_id, **kw)
+            agent_id=agent_id, retry_policy=retry_policy, **kw)
     if variant == "blackbox":
         if not url:
             raise ValueError("blackbox adapter needs a url")
@@ -85,7 +87,8 @@ def build_adapter(
                                 kb_path="kb.json", agent_id=agent_id,
                                 max_steps=cfg["harness"]["max_steps"],
                                 pricing_per_mtok=model_price(cfg, resolved_model),
-                                system_prompt=system_prompt or None, **kw)
+                                system_prompt=system_prompt or None,
+                                retry_policy=retry_policy, **kw)
 
 
 def blackbox_call_cost(cfg: dict, *, cost_per_call_usd: float = 0.0,
@@ -146,6 +149,7 @@ async def run_suite_op(
                       transport_retries=h["transport_retries"]),
         on_event=on_progress,
         budget=RunBudget(max_run_usd=max_run) if max_run else None,
+        resume=bool(cfg["harness"].get("resume", True)),
     )
     return suite, cases, traces
 
@@ -256,7 +260,12 @@ def generate_op(cfg: dict, reg: Registry, business_doc: str, suite_id: str,
                 cases_per_task: int = 5) -> TestSuite:
     """Generator step: business doc → DRAFT suite + review file (human gate)."""
     kw = {"client": client} if client is not None else {}
-    gen = BenchmarkGenerator(model=cfg["models"]["generator"], **kw)
+    from ascore.pricing import model_price
+    from ascore.retry import RetryPolicy
+    gen = BenchmarkGenerator(model=cfg["models"]["generator"],
+                             retry_policy=RetryPolicy.from_cfg(cfg),
+                             pricing_per_mtok=model_price(cfg, cfg["models"]["generator"]),
+                             **kw)
     return gen.generate_suite(business_doc, suite_id=suite_id, registry=reg,
                               review_dir=cfg["paths"]["review_dir"],
                               on_progress=on_progress,
