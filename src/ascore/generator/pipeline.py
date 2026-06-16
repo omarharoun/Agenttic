@@ -61,23 +61,40 @@ class GeneratorError(RuntimeError):
 
 
 class BenchmarkGenerator:
-    def __init__(self, *, model: str, client=None, max_tokens: int = 4000):
+    def __init__(self, *, model: str, client=None, max_tokens: int = 4000,
+                 retry_policy=None, pricing_per_mtok: dict | None = None):
         if client is None:
             import anthropic
             client = anthropic.Anthropic()
         self.client = client
         self.model = model
         self.max_tokens = max_tokens
+        from ascore.retry import RetryPolicy
+        self.retry_policy = retry_policy or RetryPolicy()
+        self.pricing = pricing_per_mtok or {"input": 3.0, "output": 15.0}
+        # token usage accumulated across stages, so cost is recorded even when a
+        # later stage fails (see generate_suite).
+        self.tokens_in = 0
+        self.tokens_out = 0
+
+    @property
+    def spent_usd(self) -> float:
+        return (self.tokens_in * self.pricing["input"]
+                + self.tokens_out * self.pricing["output"]) / 1_000_000
 
     # -- LLM plumbing ------------------------------------------------------
 
     def _ask_json(self, prompt: str) -> dict:
+        from ascore.retry import with_retry
         last = ""
-        for _ in range(2):  # one retry on malformed output
-            resp = self.client.messages.create(
+        for _ in range(2):  # one retry on malformed output (transient 5xx retried below)
+            resp = with_retry(lambda: self.client.messages.create(
                 model=self.model, max_tokens=self.max_tokens,
                 system=SYSTEM, messages=[{"role": "user", "content": prompt}],
-            )
+            ), self.retry_policy, op="generator")
+            usage = getattr(resp, "usage", None)
+            self.tokens_in += getattr(usage, "input_tokens", 0) or 0
+            self.tokens_out += getattr(usage, "output_tokens", 0) or 0
             raw = "".join(b.text for b in resp.content
                           if getattr(b, "type", "") == "text").strip()
             raw = re.sub(r"^```(json)?|```$", "", raw).strip()
@@ -133,32 +150,59 @@ class BenchmarkGenerator:
         """Run all stages, persist the DRAFT suite (approved=False), and write
         the human-review file. The suite cannot run until `ascore approve`.
         ``on_progress(event_type, data)`` reports each LLM stage as it lands."""
+        from ascore.registry.sqlite_store import DuplicateVersionError
         emit = on_progress or (lambda t, d: None)
-        tasks = self.extract_tasks(business_doc)
-        emit("tasks_extracted", {"total": len(tasks),
-                                 "tasks": [t["slug"] for t in tasks]})
-        all_cases: list[TestCase] = []
-        rubrics: list[Rubric] = []
-        for i, task in enumerate(tasks):
-            rubric = self.define_criteria(task, rubric_id=f"{suite_id}-{task['slug']}")
-            registry.save_rubric(rubric)
-            rubrics.append(rubric)
-            emit("criteria_defined", {"index": i, "total": len(tasks),
-                                      "task": task["slug"],
-                                      "n_criteria": len(rubric.criteria)})
-            new_cases = self.generate_cases(task, suite_id=suite_id,
-                                            rubric=rubric, n=cases_per_task)
-            all_cases += new_cases
-            emit("cases_generated", {"index": i, "total": len(tasks),
-                                     "task": task["slug"],
-                                     "n_cases": len(new_cases)})
+        try:
+            tasks = self.extract_tasks(business_doc)
+            emit("tasks_extracted", {"total": len(tasks),
+                                     "tasks": [t["slug"] for t in tasks]})
+            # Resume: cases already checkpointed for this suite are reused, and
+            # their tasks are skipped — a prior failure doesn't re-spend tokens.
+            resumed = {c.test_id: c for c in registry.peek_cases(suite_id, 1)}
+            all_cases: list[TestCase] = list(resumed.values())
+            rubrics: list[Rubric] = []
+            for i, task in enumerate(tasks):
+                prefix = f"{suite_id}-{task['slug']}-"
+                rubric_id = f"{suite_id}-{task['slug']}"
+                if any(tid.startswith(prefix) for tid in resumed):
+                    try:
+                        rubrics.append(registry.get_rubric(rubric_id))
+                    except Exception:  # noqa: BLE001 — rubric optional for review
+                        pass
+                    emit("cases_skipped", {"index": i, "total": len(tasks),
+                                           "task": task["slug"], "reason": "resumed"})
+                    continue
+                rubric = self.define_criteria(task, rubric_id=rubric_id)
+                try:
+                    registry.save_rubric(rubric)
+                except DuplicateVersionError:
+                    rubric = registry.get_rubric(rubric_id)  # resume after partial
+                rubrics.append(rubric)
+                emit("criteria_defined", {"index": i, "total": len(tasks),
+                                          "task": task["slug"],
+                                          "n_criteria": len(rubric.criteria)})
+                new_cases = self.generate_cases(task, suite_id=suite_id,
+                                                rubric=rubric, n=cases_per_task)
+                registry.add_cases(suite_id, 1, new_cases)  # checkpoint immediately
+                all_cases += new_cases
+                emit("cases_generated", {"index": i, "total": len(tasks),
+                                         "task": task["slug"],
+                                         "n_cases": len(new_cases)})
+        finally:
+            # record tokens spent so far even if a stage ultimately failed
+            if self.spent_usd:
+                try:
+                    registry.record_spend(f"generator:{self.model}", self.spent_usd)
+                except Exception:  # noqa: BLE001
+                    pass
+        all_cases.sort(key=lambda c: c.test_id)
         suite = TestSuite(
             suite_id=suite_id, version=1,
             business_context=business_doc[:500],
             test_ids=[c.test_id for c in all_cases],
             approved=False,
         )
-        registry.save_suite(suite, all_cases)
+        registry.finalize_suite(suite)
         self._write_review(suite, tasks, rubrics, all_cases, Path(review_dir))
         return suite
 

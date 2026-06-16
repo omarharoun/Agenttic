@@ -244,6 +244,51 @@ class Registry:
             cases = [TestCase.model_validate_json(r.payload) for r in case_rows]
             return suite, sorted(cases, key=lambda c: c.test_id)
 
+    def add_cases(self, suite_id: str, version: int, cases: list[TestCase]) -> int:
+        """Persist generated cases incrementally (generator checkpointing).
+        Idempotent: skips (suite_id, version, test_id) already present. Returns
+        the number newly inserted. Lets a failed generation resume instead of
+        re-spending tokens for already-generated tasks."""
+        added = 0
+        with Session(self.engine) as s:
+            existing = set(s.exec(select(CaseRow.test_id).where(
+                CaseRow.tenant_id == self.tenant, CaseRow.suite_id == suite_id,
+                CaseRow.suite_version == version)).all())
+            for c in cases:
+                if c.test_id in existing:
+                    continue
+                s.add(CaseRow(tenant_id=self.tenant, suite_id=suite_id,
+                              suite_version=version, test_id=c.test_id,
+                              payload=c.model_dump_json()))
+                added += 1
+            s.commit()
+        return added
+
+    def peek_cases(self, suite_id: str, version: int) -> list[TestCase]:
+        """Cases already checkpointed for (suite_id, version) — for resume.
+        Empty if none. Does NOT require a SuiteRow to exist yet."""
+        with Session(self.engine) as s:
+            rows = s.exec(select(CaseRow).where(
+                CaseRow.tenant_id == self.tenant, CaseRow.suite_id == suite_id,
+                CaseRow.suite_version == version)).all()
+            return sorted((TestCase.model_validate_json(r.payload) for r in rows),
+                          key=lambda c: c.test_id)
+
+    def finalize_suite(self, suite: TestSuite) -> None:
+        """Insert the SuiteRow once all cases are checkpointed (generator end).
+        Idempotent — a re-run that completes simply confirms the existing row."""
+        with Session(self.engine) as s:
+            exists = s.exec(select(SuiteRow).where(
+                SuiteRow.tenant_id == self.tenant,
+                SuiteRow.suite_id == suite.suite_id,
+                SuiteRow.version == suite.version)).first()
+            if exists:
+                return
+            s.add(SuiteRow(tenant_id=self.tenant, suite_id=suite.suite_id,
+                           version=suite.version, approved=suite.approved,
+                           payload=suite.model_dump_json()))
+            s.commit()
+
     def approve_suite(self, suite_id: str, version: int) -> None:
         with Session(self.engine) as s:
             row = s.exec(select(SuiteRow).where(
