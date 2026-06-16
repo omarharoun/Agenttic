@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { ThemeToggle } from "../components/ThemeToggle";
 
 const STEPS = [
   ["01", "Generate", "Turn a business doc into a versioned benchmark suite — LLM drafts, a human gate approves."],
@@ -26,6 +27,7 @@ export function LandingPage() {
           <span className="spacer" />
           <a className="navlink" href="/api-docs">API docs</a>
           <Link className="navlink" to="/login">Log in</Link>
+          <ThemeToggle />
           <Link className="btn-primary" to="/signup">Get started</Link>
         </nav>
       </header>
@@ -89,7 +91,7 @@ export function LandingPage() {
 
       <footer className="lp">
         <div className="lp-footer">
-          <span><span className="hex" style={{ color: "var(--cat-input)" }}>⬡</span> Agenttic</span>
+          <span><span className="hex" style={{ color: "var(--accent)" }}>⬡</span> Agenttic</span>
           <a href="/api-docs">API docs</a>
           <Link to="/login">Log in</Link>
           <Link to="/signup">Sign up</Link>
