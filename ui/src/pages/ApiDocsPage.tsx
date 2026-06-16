@@ -59,7 +59,6 @@ export function ApiDocsPage() {
         <span className="spacer" />
         <a className="navlink" href="/openapi.json">openapi.json</a>
         <a className="navlink" href="/docs">Swagger</a>
-        <Link className="navlink" to="/login">Log in</Link>
       </nav>
       <div className="docs">
         <h1>API Reference</h1>

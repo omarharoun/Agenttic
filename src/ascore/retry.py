@@ -50,9 +50,11 @@ class RetryPolicy:
 
     @classmethod
     def from_cfg(cls, cfg: dict) -> "RetryPolicy":
+        # Resilience is ALWAYS ON — there is no enable/disable flag. Only the
+        # backoff parameters are tunable; max_attempts is floored at 1.
         r = (cfg.get("anthropic", {}) or {}).get("retry", {}) or {}
         return cls(
-            max_attempts=int(r.get("max_attempts", 5)),
+            max_attempts=max(1, int(r.get("max_attempts", 5))),
             base_delay=float(r.get("base_delay", 0.5)),
             max_delay=float(r.get("max_delay", 30.0)),
             jitter=bool(r.get("jitter", True)),
