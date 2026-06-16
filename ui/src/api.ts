@@ -46,16 +46,31 @@ export const auth = {
     t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY),
 };
 
-function authHeaders(extra: HeadersInit = {}): Record<string, string> {
-  const t = auth.get();
+function readCookie(name: string): string {
+  const m = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+  return m ? decodeURIComponent(m[1]) : "";
+}
+
+function authHeaders(method: string, extra: HeadersInit = {}): Record<string, string> {
   const h: Record<string, string> = { ...(extra as Record<string, string>) };
-  if (t) h.Authorization = `Bearer ${t}`;
+  const t = auth.get();
+  if (t) h.Authorization = `Bearer ${t}`;  // bearer (CI/power users) takes precedence
+  // CSRF double-submit for cookie-authenticated mutations
+  if (!t && !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase())) {
+    const csrf = readCookie("ascore_csrf");
+    if (csrf) h["X-CSRF-Token"] = csrf;
+  }
   return h;
 }
 
-/** fetch with the bearer token attached. */
+/** fetch with credentials (session cookie) + bearer/CSRF as applicable. */
 function afetch(url: string, opts: RequestInit = {}) {
-  return fetch(url, { ...opts, headers: authHeaders(opts.headers) });
+  const method = opts.method || "GET";
+  return fetch(url, {
+    ...opts,
+    credentials: "include",                 // send the session cookie
+    headers: authHeaders(method, opts.headers),
+  });
 }
 
 /** Append the token to an SSE URL (EventSource has no header API). */
@@ -73,13 +88,31 @@ async function json<T>(res: Response): Promise<T> {
     } catch {
       /* keep status */
     }
-    if (res.status === 401) detail = "401 — set a valid API token (🔑 in the nav)";
-    throw new Error(detail);
+    if (res.status === 401) detail = "401 unauthenticated — log in or set an API token";
+    const err = new Error(detail) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
 
+export interface Me { role: string; tenant: string; email: string | null; auth_method: string; }
+
 export const api = {
+  // --- auth / session ---
+  me: () => afetch("/api/me").then((r) => json<Me>(r)),
+  signup: (email: string, password: string) =>
+    afetch("/api/auth/signup", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    }).then((r) => json<any>(r)),
+  login: (email: string, password: string) =>
+    afetch("/api/auth/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    }).then((r) => json<any>(r)),
+  logout: () => afetch("/api/auth/logout", { method: "POST" }).then((r) => json<any>(r)),
+
   nodeTypes: () => afetch("/api/node-types").then((r) => json<NodeTypeSpec[]>(r)),
   listWorkflows: () => afetch("/api/workflows").then((r) => json<any[]>(r)),
   getWorkflow: (id: string) =>
