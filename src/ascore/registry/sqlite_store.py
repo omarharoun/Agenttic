@@ -140,6 +140,20 @@ class SpendRow(SQLModel, table=True):
     created_at: datetime
 
 
+class UserRow(SQLModel, table=True):
+    """A login account. GLOBAL table (lookup by email, not tenant-scoped) — the
+    user authenticates first, then their ``tenant_id``/``role`` drive the
+    existing tenant scoping + RBAC. Passwords are bcrypt hashes, never plaintext."""
+    __tablename__ = "users"
+    __table_args__ = (UniqueConstraint("email"),)
+    id: int | None = Field(default=None, primary_key=True)
+    email: str = Field(index=True)
+    password_hash: str
+    role: str = "viewer"                       # viewer | operator | admin
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    created_at: datetime
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
