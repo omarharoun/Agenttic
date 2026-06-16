@@ -53,10 +53,19 @@ def _add_tenant_id(conn) -> None:
                 "DEFAULT 'default'"))
 
 
+def _users_table(conn) -> None:
+    """v3 — the login-accounts table. Fresh DBs get it from the baseline;
+    this creates it on DBs already at v2 (idempotent via checkfirst)."""
+    import ascore.registry.sqlite_store  # noqa: F401 (registers UserRow)
+    from ascore.registry.sqlite_store import UserRow
+    UserRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
     (2, "add_tenant_id", _add_tenant_id),
+    (3, "users_table", _users_table),
 ]
 
 
