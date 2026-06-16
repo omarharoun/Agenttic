@@ -12,13 +12,18 @@ Stages:
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
+
+from pydantic import ValidationError
 
 from ascore.registry.sqlite_store import Registry
 from ascore.schema.rubric import Criterion, Rubric
 from ascore.schema.testcase import TestCase, TestSuite
 from ascore.scoring.checks import CHECKS
+
+logger = logging.getLogger(__name__)
 
 TAG_MIX = ("happy_path", "happy_path", "edge_case", "edge_case", "adversarial")
 
@@ -115,7 +120,29 @@ class BenchmarkGenerator:
     def define_criteria(self, task: dict, rubric_id: str) -> Rubric:
         data = self._ask_json(DEFINE_CRITERIA_PROMPT.format(
             task=json.dumps(task), checks=sorted(CHECKS)))
-        criteria = [Criterion(**c) for c in data["criteria"]]  # schema enforces anchors/scales
+        # Repair/validate each criterion in isolation: a single malformed item
+        # (e.g. a judge criterion the LLM emitted without anchors) is skipped
+        # and surfaced, not allowed to abort the whole rubric. The schema
+        # already coerces null anchors/tags -> empty; only genuinely invalid
+        # criteria (Hard Rule violations, wrong types) fall through to here.
+        criteria, skipped = [], []
+        for raw in data.get("criteria", []):
+            cid = raw.get("criterion_id", "?") if isinstance(raw, dict) else "?"
+            try:
+                criteria.append(Criterion(**raw))
+            except (ValidationError, ValueError, TypeError) as exc:
+                # keep the human-meaningful line (e.g. the Hard Rule message),
+                # not pydantic's trailing docs URL
+                lines = [ln.strip() for ln in str(exc).splitlines()
+                         if ln.strip() and "errors.pydantic.dev" not in ln]
+                msg = lines[-1] if lines else str(exc)
+                skipped.append(f"{cid}: {msg}")
+                logger.warning("generator: skipping invalid criterion %r for "
+                               "rubric %s: %s", cid, rubric_id, exc)
+        if not criteria:
+            raise GeneratorError(
+                f"rubric {rubric_id}: no valid criteria generated "
+                f"({len(skipped)} skipped) — {'; '.join(skipped) or 'empty'}")
         return Rubric(rubric_id=rubric_id, version=1, criteria=criteria)
 
     def generate_cases(self, task: dict, *, suite_id: str, rubric: Rubric,

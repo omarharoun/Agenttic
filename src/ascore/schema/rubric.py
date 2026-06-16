@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class Criterion(BaseModel):
@@ -22,6 +22,21 @@ class Criterion(BaseModel):
     fi_metric: str | None = None  # required when scorer == "fi" (a Future AGI metric)
     anchors: dict = Field(default_factory=dict)  # required keys for judge: "pass", "fail"
     tags: list[str] = Field(default_factory=list)  # e.g. "trajectory", "live"
+
+    # LLM output and older records often carry an explicit ``null`` for these
+    # optional containers; default_factory only fills a MISSING key, so coerce
+    # None -> empty here rather than crashing with a cryptic dict/list type
+    # error. Hard Rule 2 below still rejects a judge criterion with no real
+    # pass/fail anchors — with a clear message instead of a validation dump.
+    @field_validator("anchors", mode="before")
+    @classmethod
+    def _anchors_none_to_empty(cls, v: object) -> object:
+        return {} if v is None else v
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _tags_none_to_empty(cls, v: object) -> object:
+        return [] if v is None else v
 
     @model_validator(mode="after")
     def _scorer_requirements(self) -> "Criterion":

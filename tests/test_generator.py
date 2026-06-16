@@ -93,12 +93,41 @@ class TestGeneration:
             make_generator([bad, bad]).extract_tasks(JOB_DOC)
 
     def test_generator_cannot_emit_unanchored_judge_criteria(self):
+        # all criteria invalid -> abort this rubric, but the message still names
+        # the underlying Hard Rule 2 violation (not a cryptic dict_type dump).
         broken = {"criteria": [{"criterion_id": "x", "description": "d",
                                 "scorer": "judge", "scale": "binary",
                                 "check_ref": None, "anchors": {}, "tags": []}]}
         gen = make_generator([reply(broken)])
-        with pytest.raises(Exception, match="Hard Rule 2"):
+        with pytest.raises(GeneratorError, match="Hard Rule 2"):
             gen.define_criteria(TASKS["tasks"][0], rubric_id="r")
+
+    def test_one_invalid_criterion_skipped_rest_proceed(self):
+        # a valid code criterion + an invalid judge one (no anchors): the bad
+        # item is dropped, the good one survives — no abort of the whole rubric.
+        mixed = {"criteria": [
+            {"criterion_id": "ok", "description": "d", "scorer": "code",
+             "scale": "binary", "check_ref": "final_output_matches_expected",
+             "anchors": {}, "tags": []},
+            {"criterion_id": "bad_judge", "description": "d", "scorer": "judge",
+             "scale": "binary", "check_ref": None, "anchors": {}, "tags": []},
+        ]}
+        gen = make_generator([reply(mixed)])
+        rubric = gen.define_criteria(TASKS["tasks"][0], rubric_id="r")
+        assert [c.criterion_id for c in rubric.criteria] == ["ok"]
+
+    def test_null_anchors_in_generated_criteria_tolerated(self):
+        # the live bug: LLM emits "anchors": null on a code criterion. Must
+        # coerce to {} and keep the criterion, not raise dict_type.
+        payload = {"criteria": [
+            {"criterion_id": "ok", "description": "d", "scorer": "code",
+             "scale": "binary", "check_ref": "final_output_matches_expected",
+             "anchors": None, "tags": None},
+        ]}
+        gen = make_generator([reply(payload)])
+        rubric = gen.define_criteria(TASKS["tasks"][0], rubric_id="r")
+        assert rubric.criteria[0].anchors == {}
+        assert rubric.criteria[0].tags == []
 
 
 class TestApprovalGateEndToEnd:
