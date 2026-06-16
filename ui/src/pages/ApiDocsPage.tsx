@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { ThemeToggle } from "../components/ThemeToggle";
 
 const GROUP_TITLES: Record<string, string> = {
   auth: "Authentication", workflows: "Workflows", executions: "Executions",
@@ -59,13 +60,14 @@ export function ApiDocsPage() {
         <span className="spacer" />
         <a className="navlink" href="/openapi.json">openapi.json</a>
         <a className="navlink" href="/docs">Swagger</a>
+        <ThemeToggle />
       </nav>
       <div className="docs">
         <h1>API Reference</h1>
         <p style={{ color: "var(--muted)", fontSize: 15, lineHeight: 1.6 }}>
           The Agenttic HTTP API. The interactive Swagger UI lives at{" "}
-          <a href="/docs" style={{ color: "var(--cat-input)" }}>/docs</a> and the raw
-          spec at <a href="/openapi.json" style={{ color: "var(--cat-input)" }}>/openapi.json</a>.
+          <a href="/docs" style={{ color: "var(--accent)" }}>/docs</a> and the raw
+          spec at <a href="/openapi.json" style={{ color: "var(--accent)" }}>/openapi.json</a>.
         </p>
 
         <div className="group">
@@ -78,7 +80,7 @@ export function ApiDocsPage() {
             cookie; browser requests then authenticate automatically (cookie-based
             mutations also need the <code>X-CSRF-Token</code> header, echoed from the
             <code> ascore_csrf</code> cookie). Get a session by{" "}
-            <Link to="/signup" style={{ color: "var(--cat-input)" }}>signing up</Link>.
+            <Link to="/signup" style={{ color: "var(--accent)" }}>signing up</Link>.
           </p>
           <pre className="curl">{`# bearer token (CI / scripts)
 curl ${origin}/api/agents -H "Authorization: Bearer $ASCORE_API_TOKEN"

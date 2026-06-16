@@ -29,8 +29,8 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
     <div className="auth-wrap">
       <form className="auth-card" onSubmit={submit}>
         <Link to="/" className="brand" style={{ textDecoration: "none", color: "var(--text)",
-          fontWeight: 800, fontSize: 18 }}>
-          <span style={{ color: "var(--cat-input)" }}>⬡</span> Agenttic
+          fontWeight: 600, fontSize: 19, fontFamily: "var(--font-serif)" }}>
+          <span style={{ color: "var(--accent)" }}>⬡</span> Agenttic
         </Link>
         <h1 style={{ marginTop: 16 }}>{signup ? "Create your workspace" : "Welcome back"}</h1>
         <p className="muted">

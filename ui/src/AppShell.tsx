@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import { api, auth, type Me } from "./api";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { AgentsPage } from "./pages/AgentsPage";
 import { EditorPage } from "./pages/EditorPage";
 import { ExecutionsPage } from "./pages/ExecutionsPage";
@@ -75,6 +76,7 @@ export function AppShell() {
         <NavLink to="/app/resources" title="Suites / scorecards / traces">▤</NavLink>
         <a href="/api-docs" title="API documentation">📖</a>
         <span style={{ flex: 1 }} />
+        <ThemeToggle />
         <TokenControl />
         <button title={me ? `${me.email ?? me.auth_method} · ${me.role} · ${me.tenant}` : "account"}
                 onClick={logout} style={{ fontSize: 15 }}>⎋</button>
