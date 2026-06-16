@@ -72,6 +72,7 @@ async def run_suite(
     transport_errors: tuple[type[Exception], ...] = (ConnectionError, OSError),
     on_event: Callable[[str, dict], None] | None = None,
     budget=None,  # optional ascore.budget.RunBudget — abort remaining cases on cap
+    resume: bool = True,  # reuse successful persisted traces (don't re-spend)
 ) -> list[Trace]:
     """Run every test case; return traces in test-case order.
 
@@ -90,7 +91,28 @@ async def run_suite(
     sem = asyncio.Semaphore(config.max_parallel)
     total = len(test_cases)
 
+    # Resume: map test_case_id -> a prior SUCCESSFUL trace for this exact agent
+    # config. Infra/upstream failures are NOT reused (they get re-run); genuine
+    # agent outputs are. Lets a partially-failed run resume without re-spending.
+    _FAIL_PREFIXES = ("HARNESS_FAILURE", "UPSTREAM_ERROR", "BLACKBOX_FAILURE")
+    done: dict[str, Trace] = {}
+    if resume and hasattr(store, "traces"):
+        cfg_hash = adapter.config_hash()
+        try:
+            for t in store.traces(adapter.agent_id, mode="batch"):
+                if (t.test_case_id and t.agent_config_hash == cfg_hash
+                        and not str(t.final_output).startswith(_FAIL_PREFIXES)):
+                    done[t.test_case_id] = t  # later (newer) trace wins
+        except Exception:  # noqa: BLE001 — resume is best-effort
+            done = {}
+
     async def one(index: int, tc: TestCase) -> Trace:
+        if tc.test_id in done:
+            if on_event:
+                on_event("case_resumed", {"index": index, "total": total,
+                                          "test_id": tc.test_id,
+                                          "trace_id": done[tc.test_id].trace_id})
+            return done[tc.test_id]
         async with sem:
             # budget kill-switch: once the per-run cap is hit, don't start new
             # runs — short-circuit to a clean budget_exceeded trace (no spend).
