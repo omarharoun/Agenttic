@@ -138,7 +138,7 @@ function Scatter({ agents }: { agents: any[] }) {
       borderRadius: 8 }}>
       {[0, 25, 50, 75, 100].map((g) => (
         <g key={g}>
-          <line x1={pad} x2={W - pad} y1={y(g)} y2={y(g)} stroke="var(--border)" />
+          <line x1={pad} x2={W - pad} y1={y(g)} y2={y(g)} stroke="var(--viz-grid)" />
           <text x={6} y={y(g) + 4} fill="var(--muted)" fontSize="10">{g}</text>
         </g>
       ))}
