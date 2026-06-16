@@ -81,10 +81,12 @@ class RedisRateLimiter(RateLimiterBackend):
 
 
 def make_rate_limiter(cfg: dict) -> RateLimiterBackend:
+    import os
     sec = cfg.get("security", {}) or {}
     backend = str(sec.get("rate_limit_backend", "memory")).lower()
-    if backend == "redis":
-        return RedisRateLimiter(url=sec.get("redis_url", ""))
+    url = os.environ.get("ASCORE_REDIS_URL") or sec.get("redis_url", "")
+    if backend == "redis" and url:
+        return RedisRateLimiter(url=url)
     return InMemoryRateLimiter()
 
 
