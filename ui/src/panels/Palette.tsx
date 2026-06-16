@@ -12,6 +12,7 @@ const CAT_ORDER = ["input", "benchmark", "agents", "evaluation", "delivery"];
 
 export function Palette() {
   const catalog = useFlowStore((s) => s.catalog);
+  const addNode = useFlowStore((s) => s.addNode);
   const byCat: Record<string, typeof catalog[string][]> = {};
   for (const spec of Object.values(catalog)) {
     // helper/test node types are not draggable UI citizens
@@ -27,8 +28,14 @@ export function Palette() {
             <div
               key={spec.type}
               className="palette-item"
+              role="button"
+              tabIndex={0}
               draggable
-              title={spec.description}
+              title={`${spec.description}\n(click to add / focus, or drag onto the canvas)`}
+              onClick={() => addNode(spec.type)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); addNode(spec.type); }
+              }}
               onDragStart={(e) =>
                 e.dataTransfer.setData("application/ascore-node", spec.type)
               }

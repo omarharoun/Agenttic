@@ -149,7 +149,7 @@ async def run_suite_op(
                       transport_retries=h["transport_retries"]),
         on_event=on_progress,
         budget=RunBudget(max_run_usd=max_run) if max_run else None,
-        resume=bool(cfg["harness"].get("resume", True)),
+        resume=True,  # resilience is mandatory — resume is always on
     )
     return suite, cases, traces
 

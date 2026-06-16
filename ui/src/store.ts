@@ -140,6 +140,7 @@ interface FlowState {
   setGraph: (nodes: Node[], edges: Edge[]) => void;
   setWorkflowMeta: (id: string, name: string) => void;
   select: (id: string | null) => void;
+  addNode: (ntype: string) => void;
   updateConfig: (nodeId: string, config: Record<string, any>) => void;
   setExec: (exec: ExecState) => void;
   pushEvent: (evt: SSEEvent) => void;
@@ -161,6 +162,22 @@ export const useFlowStore = create<FlowState>((set) => ({
   setWorkflowMeta: (workflowId, workflowName) =>
     set({ workflowId, workflowName }),
   select: (selectedNodeId) => set({ selectedNodeId }),
+  // Click a palette item: focus the existing node of that type if present
+  // ("linked to its box"), otherwise add a new one (cascaded so it doesn't
+  // stack) and select it. Drag-to-place still adds via the canvas onDrop.
+  addNode: (ntype) =>
+    set((s) => {
+      const existing = s.nodes.find((n) => (n.data as any).ntype === ntype);
+      if (existing) return { selectedNodeId: existing.id };
+      const k = s.nodes.length;
+      const id = `${ntype}_${Date.now().toString(36)}_${Math.floor(Math.random() * 1000)}`;
+      const node: Node = {
+        id, type: "ascore",
+        position: { x: 80 + (k * 48) % 480, y: 70 + (k * 56) % 360 },
+        data: { ntype, label: "", config: {} },
+      };
+      return { nodes: [...s.nodes, node], selectedNodeId: id, dirty: true };
+    }),
   updateConfig: (nodeId, config) =>
     set((s) => ({
       dirty: true,
