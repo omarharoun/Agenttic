@@ -52,6 +52,8 @@ observability:
   log_level: INFO
   log_json: true
   otel_enabled: false                     # set true + OTEL_EXPORTER_OTLP_ENDPOINT to export traces
+anthropic:
+  retry: {max_attempts: 5, base_delay: 0.5, max_delay: 30.0, jitter: true}
 database:
   url: ""                                 # blank => SQLite (paths.registry_db); else read ASCORE_DB env
 events:

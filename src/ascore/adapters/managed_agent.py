@@ -68,11 +68,14 @@ class ManagedAgentAdapter(AgentAdapter):
         pricing_per_mtok: dict | None = None,
         max_events: int = 500,
         archive_sessions: bool = True,
+        retry_policy=None,
     ):
         if client is None:  # real client only when not injected (tests inject a fake)
             import anthropic
             client = anthropic.Anthropic()
         self.client = client
+        from ascore.retry import RetryPolicy
+        self.retry_policy = retry_policy or RetryPolicy()
         self.managed_agent_id = managed_agent_id
         self.environment_id = environment_id
         self.agent_id = agent_id
@@ -80,7 +83,9 @@ class ManagedAgentAdapter(AgentAdapter):
         self.max_events = max_events
         self.archive_sessions = archive_sessions
         # Pin the exact agent version under test (GET /v1/agents/{id}).
-        agent = client.beta.agents.retrieve(managed_agent_id)
+        from ascore.retry import with_retry
+        agent = with_retry(lambda: client.beta.agents.retrieve(managed_agent_id),
+                           self.retry_policy, op="managed-retrieve")
         self.model = getattr(agent, "model", None)
         if not isinstance(self.model, str):  # {id, speed} object form
             self.model = getattr(self.model, "id", str(self.model))
@@ -103,12 +108,13 @@ class ManagedAgentAdapter(AgentAdapter):
         final_text = ""
         t_wall = time.monotonic()
 
-        session = self.client.beta.sessions.create(
+        from ascore.retry import with_retry
+        session = with_retry(lambda: self.client.beta.sessions.create(
             agent={"type": "agent", "id": self.managed_agent_id,
                    **({"version": self.agent_version} if self.agent_version else {})},
             environment_id=self.environment_id,
             title=f"ascore {test_case_id or 'adhoc'}",
-        )
+        ), self.retry_policy, op="managed-session")
 
         pending_llm: dict[str, datetime] = {}   # model_request_start id -> t0
         open_tools: dict[str, Span] = {}        # tool_use event id -> span

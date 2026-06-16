@@ -12,6 +12,7 @@ harness:
   max_steps: 10
   max_parallel: 5
   transport_retries: 2
+  resume: true        # reuse successful persisted traces on re-run (no re-spend)
 scoring:
   calibration_threshold: 0.8
   advisor_max_tokens: 2048   # per-consult cap on advisor output (API minimum 1024)
@@ -48,6 +49,12 @@ budget:               # spend ceilings (0 = unlimited)
 quotas:               # per-tenant spend quotas (0 = unlimited); enforced pre-run
   default: {daily_usd: 0.0, monthly_usd: 0.0}   # applies to tenants without a tier
   tiers: {}                                      # {tenant: {daily_usd, monthly_usd}}
+anthropic:
+  retry:              # transient-error resilience for all Anthropic SDK calls
+    max_attempts: 5   # total tries (1 + 4 retries) on 5xx/429/overloaded/timeout
+    base_delay: 0.5   # seconds; exponential backoff with full jitter
+    max_delay: 30.0
+    jitter: true
 database:
   url: ""             # blank => SQLite (paths.registry_db, DB-per-tenant).
                       # Set a postgresql+psycopg:// URL (or ASCORE_DB env) for a
