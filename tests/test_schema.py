@@ -106,6 +106,31 @@ class TestSchemaVersion:
         assert "MAJOR" in m.__doc__ and "MINOR" in m.__doc__
 
 
+class TestCriterionNoneCoercion:
+    """Regression: an explicit null for anchors/tags (LLM output or an older
+    record) must coerce to empty, not crash with a dict/list type error.
+    default_factory only fills a MISSING key, so None needs a before-validator."""
+
+    def test_anchors_none_coerced_to_empty_dict(self):
+        c = Criterion(criterion_id="x", description="d", scorer="code",
+                      scale="binary", check_ref="f", anchors=None)
+        assert c.anchors == {}
+
+    def test_tags_none_coerced_to_empty_list(self):
+        c = Criterion(criterion_id="x", description="d", scorer="code",
+                      scale="binary", check_ref="f", tags=None)
+        assert c.tags == []
+
+    def test_judge_with_none_anchors_raises_hard_rule_2_not_type_error(self):
+        # None -> {} then Hard Rule 2 rejects it with a clear message, NOT the
+        # cryptic "Input should be a valid dictionary" the live bug produced.
+        with pytest.raises(ValidationError) as ei:
+            Criterion(criterion_id="x", description="d", scorer="judge",
+                      scale="binary", anchors=None)
+        assert "Hard Rule 2" in str(ei.value)
+        assert "valid dictionary" not in str(ei.value)
+
+
 class TestValidationFailures:
     def test_judge_criterion_without_anchors_raises(self):
         with pytest.raises(ValidationError, match="Hard Rule 2"):
