@@ -3,3 +3,7 @@ __pycache__/
 .venv/
 ascore.db
 report.md
+# secrets & host-generated deploy artifacts — never commit
+.env
+docker-compose.override.yml
+backups/
