@@ -170,8 +170,12 @@ def managed_agents(request: Request):
 
 @router.get("/me")
 def whoami(request: Request):
-    """The caller's resolved role (admin when auth is disabled)."""
-    return {"role": getattr(request.state, "role", "admin")}
+    """The caller's identity: role, tenant, email (for session login), and how
+    they authenticated (token | session | open)."""
+    return {"role": getattr(request.state, "role", "admin"),
+            "tenant": getattr(request.state, "tenant", "default"),
+            "email": getattr(request.state, "user_email", None),
+            "auth_method": getattr(request.state, "auth_method", "open")}
 
 
 @router.get("/agents/catalog")

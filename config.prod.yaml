@@ -57,15 +57,22 @@ database:
 events:
   backend: redis                          # multi-worker SSE; redis_url from ASCORE_REDIS_URL
 auth:
-  required: true                          # fail closed: refuse to start without a token
+  required: true                          # fail closed: refuse to start without auth
   token: ""                               # set via ASCORE_API_TOKEN (do NOT hardcode)
   tokens: {}                              # {token: {role, tenant}} for additional principals
   admin_tenant: default
+  session_secret: ""                      # set via ASCORE_SESSION_SECRET (else derives from the token)
+  session_ttl_hours: 168                  # 7-day login session
+  cookie_secure: true                     # session cookie only over HTTPS (edge TLS via the tunnel)
+  allow_signup: true                      # open signup; each signup gets its own tenant workspace
+  signup_role: admin                      # self-signup is admin of their own workspace
 security:
   rate_limit_per_minute: 120
   rate_limit_backend: redis               # shared across workers (ASCORE_REDIS_URL)
   redis_url: ""
   blackbox_block_private: true
+  login_max_attempts: 5                   # failed logins per email before lockout
+  login_lockout_seconds: 900
 retention:                                # run `ascore retention --apply` on a schedule (cron/k8s CronJob)
   trace_redact_days: 30                    # strip inputs/outputs from traces older than N days (PII); 0 = off
   trace_prune_days: 90                     # delete traces older than N days; scorecards keep aggregates; 0 = off

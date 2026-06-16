@@ -441,5 +441,53 @@ def agents_retire(agent_id: str, config: str = "config.yaml"):
     console.print(f"[yellow]Retired[/] {agent_id}.")
 
 
+users_app = typer.Typer(help="Manage login accounts (Postgres/SQLite users).")
+app.add_typer(users_app, name="users")
+
+
+@users_app.command("create")
+def users_create(
+    email: str,
+    password: str = typer.Option(..., "--password", "-p",
+                                 prompt=True, hide_input=True,
+                                 help="min 8 chars (prompted, hidden)"),
+    role: str = typer.Option("admin", "--role", help="viewer | operator | admin"),
+    tenant: str = typer.Option("default", "--tenant-id",
+                               help="workspace this user belongs to"),
+    config: str = "config.yaml",
+):
+    """Create a login account (use this to bootstrap the first admin)."""
+    from ascore.server.users import DuplicateUserError, UserStore
+
+    _, reg = _ctx(config)
+    try:
+        u = UserStore(reg.engine).create_user(email, password, role=role,
+                                              tenant=tenant)
+    except DuplicateUserError:
+        raise typer.BadParameter(f"user {email} already exists")
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc))
+    console.print(f"[green]Created[/] {u.email} (role={u.role}, "
+                  f"tenant={u.tenant_id}).")
+
+
+@users_app.command("list")
+def users_list(config: str = "config.yaml"):
+    """List login accounts (emails + roles; no password material)."""
+    from sqlmodel import Session, select
+
+    from ascore.registry.sqlite_store import UserRow
+    _, reg = _ctx(config)
+    with Session(reg.engine) as s:
+        rows = s.exec(select(UserRow).order_by(UserRow.email)).all()
+    if not rows:
+        console.print("No users. Create one with `uv run ascore users create`.")
+        return
+    table = Table("email", "role", "tenant", "created")
+    for u in rows:
+        table.add_row(u.email, u.role, u.tenant_id, u.created_at.strftime("%Y-%m-%d"))
+    console.print(table)
+
+
 if __name__ == "__main__":
     app()
