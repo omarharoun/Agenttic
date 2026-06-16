@@ -1,4 +1,34 @@
-# Operations: backups, restore, retention
+# Operations: public access, backups, restore, retention
+
+## Public access via Cloudflare Tunnel (cloudflared)
+
+The app binds to `127.0.0.1:8700` only — never a public port. Public access is
+via a **Cloudflare Tunnel**: `cloudflared` runs on the host as a systemd
+service, makes an **outbound-only** connection to Cloudflare, and routes a
+hostname → `http://localhost:8700`. TLS is terminated at Cloudflare's edge; no
+inbound ports are opened on the VM. (This replaces a Caddy/nginx reverse proxy.)
+
+**Remote-managed (dashboard) tunnel — recommended, headless:**
+1. Cloudflare **Zero Trust** → **Networks → Tunnels → Create a tunnel** →
+   connector **Cloudflared** → name it (e.g. `agenttic-node1`).
+2. Copy the **connector token** from the install command Cloudflare shows
+   (the long string after `--token`).
+3. On the host: `cloudflared service install <TOKEN>` (installs + starts the
+   systemd service). Verify: `systemctl status cloudflared`.
+4. In the tunnel's **Public Hostname** tab: add `agenttic.io` (and/or
+   `www.agenttic.io`) → **Service: HTTP → `localhost:8700`**. Cloudflare creates
+   the proxied DNS record and issues the cert automatically.
+
+The app keeps its own bearer-token auth (`auth.required: true`) behind the
+tunnel; optionally layer Cloudflare Access for SSO/identity.
+
+**Locally-managed alternative** (needs a Cloudflare **API token** scoped
+*Account: Cloudflare Tunnel: Edit* + *Zone: DNS: Edit* + *Zone: Zone: Read* on
+the domain): `cloudflared tunnel create agenttic`, add ingress
+`agenttic.io → http://localhost:8700` to the config, `cloudflared tunnel route
+dns agenttic agenttic.io`, then install the service.
+
+# Backups, restore, retention
 
 State lives entirely in the database (SQLite files by default, or Postgres when
 `ASCORE_DB` is set). Uploaded business docs live under `paths.uploads_dir`.

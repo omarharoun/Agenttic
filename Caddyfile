@@ -1,9 +1,0 @@
-# Caddy reverse proxy for Agenttic — auto-HTTPS (opt-in, profile "caddy").
-# Set ASCORE_DOMAIN to a DNS name pointing at this host and bring up the caddy
-# profile; Caddy provisions a Let's Encrypt cert and terminates TLS, proxying
-# to the app over the compose network. Until then this stays unused and the app
-# is reachable only on 127.0.0.1 (tunnel to it).
-{$ASCORE_DOMAIN} {
-	encode zstd gzip
-	reverse_proxy app:8700
-}
