@@ -55,7 +55,7 @@ observability:
 database:
   url: ""                                 # blank => SQLite (paths.registry_db); else read ASCORE_DB env
 events:
-  backend: memory                         # memory | redis (multi-worker); redis_url from ASCORE_REDIS_URL
+  backend: redis                          # multi-worker SSE; redis_url from ASCORE_REDIS_URL
 auth:
   required: true                          # fail closed: refuse to start without a token
   token: ""                               # set via ASCORE_API_TOKEN (do NOT hardcode)
@@ -63,7 +63,7 @@ auth:
   admin_tenant: default
 security:
   rate_limit_per_minute: 120
-  rate_limit_backend: memory              # redis for multi-worker (ASCORE_REDIS_URL)
+  rate_limit_backend: redis               # shared across workers (ASCORE_REDIS_URL)
   redis_url: ""
   blackbox_block_private: true
 retention:                                # run `ascore retention --apply` on a schedule (cron/k8s CronJob)
