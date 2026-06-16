@@ -4,6 +4,8 @@
 #   docker compose --profile postgres up   # app + Postgres
 #   docker compose --profile redis up      # app + Redis (multi-worker events + rate limit)
 #   docker compose --profile postgres --profile redis up
+#   docker compose --profile postgres --profile redis --profile caddy up
+#     ^ adds the Caddy reverse proxy for auto-HTTPS (needs ASCORE_DOMAIN set).
 services:
   app:
     build: .
@@ -47,7 +49,28 @@ services:
       timeout: 5s
       retries: 5
 
+  # Opt-in TLS reverse proxy. Enable with `--profile caddy` AND set ASCORE_DOMAIN
+  # to a DNS name pointing at this host; Caddy then auto-provisions HTTPS and
+  # proxies to the app over the internal network (app need not be published).
+  # Leave it off until a hostname exists (the app stays on 127.0.0.1 only).
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["caddy"]
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      ASCORE_DOMAIN: ${ASCORE_DOMAIN:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
 volumes:
   ascore-data:
   pg-data:
   redis-data:
+  caddy-data:
+  caddy-config:
