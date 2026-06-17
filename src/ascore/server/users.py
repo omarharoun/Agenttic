@@ -58,6 +58,20 @@ class UserStore:
             s.refresh(row)
             return row
 
+    def set_password(self, email: str, password: str) -> bool:
+        """Reset an existing user's password. Returns False if no such user."""
+        if not password or len(password) < 8:
+            raise ValueError("password must be at least 8 characters")
+        with Session(self.engine) as s:
+            row = s.exec(select(UserRow).where(
+                UserRow.email == _norm(email))).first()
+            if row is None:
+                return False
+            row.password_hash = hash_password(password)
+            s.add(row)
+            s.commit()
+            return True
+
     def authenticate(self, email: str, password: str) -> UserRow | None:
         user = self.get_by_email(email)
         if user and verify_password(password, user.password_hash):

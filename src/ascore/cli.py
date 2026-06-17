@@ -471,6 +471,27 @@ def users_create(
                   f"tenant={u.tenant_id}).")
 
 
+@users_app.command("set-password")
+def users_set_password(
+    email: str,
+    password: str = typer.Option(..., "--password", "-p",
+                                 prompt=True, hide_input=True,
+                                 help="new password, min 8 chars (prompted, hidden)"),
+    config: str = "config.yaml",
+):
+    """Reset an existing account's password."""
+    from ascore.server.users import UserStore
+
+    _, reg = _ctx(config)
+    try:
+        ok = UserStore(reg.engine).set_password(email, password)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc))
+    if not ok:
+        raise typer.BadParameter(f"user {email} not found")
+    console.print(f"[green]Password reset[/] for {email}.")
+
+
 @users_app.command("list")
 def users_list(config: str = "config.yaml"):
     """List login accounts (emails + roles; no password material)."""

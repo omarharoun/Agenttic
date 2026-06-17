@@ -79,6 +79,17 @@ class TestUserStore:
         assert store.get_by_email("admin@x.com").role == "admin"
         assert store.count() == 1
 
+    def test_set_password_resets_and_validates(self, tmp_path):
+        store = UserStore(Registry(tmp_path / "u.db").engine)
+        store.create_user("a@b.com", "password1", role="admin")
+        assert store.authenticate("a@b.com", "password1")
+        assert store.set_password("a@b.com", "newpassword2") is True
+        assert store.authenticate("a@b.com", "newpassword2")
+        assert store.authenticate("a@b.com", "password1") is None  # old revoked
+        assert store.set_password("nobody@b.com", "whatever9") is False
+        with pytest.raises(ValueError):
+            store.set_password("a@b.com", "short")
+
 
 def test_migration_v3_creates_users_table(tmp_path):
     reg = Registry(tmp_path / "m.db")
