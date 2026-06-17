@@ -33,17 +33,17 @@
   --t-display: 56px; --t-h1: 34px; --t-h2: 26px; --t-h3: 20px; --t-title: 17px;
   --t-lg: 16px; --t-base: 14px; --t-sm: 13px; --t-xs: 12px; --t-label: 11px;
 
-  /* ===== warm-dark neutrals (default) — derived to stay in the Clay family ===== */
-  --bg: #1b1613;
-  --panel: #241d19;
-  --panel-2: #2e2620;
-  --field: #16110e;
-  --border: #3b322b;
-  --border-soft: #2f2722;
-  --border-strong: #4a3f37;
-  --text: #f1e8dd;
-  --muted: #ab9b8c;
-  --faint: #8b857a;            /* ink-3, used for uppercase micro-labels */
+  /* ===== true-black dark (default) — near-#000 base, warm ink for Noor character ===== */
+  --bg: #000000;
+  --panel: #0c0c0d;
+  --panel-2: #161617;
+  --field: #0a0a0b;
+  --border: #272528;
+  --border-soft: #1a1a1c;
+  --border-strong: #38353a;
+  --text: #f1ece4;
+  --muted: #9d958b;
+  --faint: #6e6a64;            /* ink-3, used for uppercase micro-labels */
 
   /* accent */
   --accent: var(--clay);
@@ -70,7 +70,7 @@
   --cat-delivery: var(--clay-400);
 
   /* inline code */
-  --code-bg: #2e2620; --code-text: var(--clay-200);
+  --code-bg: #161617; --code-text: var(--clay-200);
 
   /* shadows (dark) + focus ring */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.30);
@@ -296,17 +296,29 @@ table.data th,
 
 /* =============================== app nav ================================== */
 .app-nav {
-  width: 56px; background: var(--panel); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; align-items: center; padding-top: var(--sp-3);
-  gap: 6px; flex-shrink: 0;
+  width: 196px; background: var(--panel); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; padding: var(--sp-3) var(--sp-2); gap: 2px;
+  flex-shrink: 0;
 }
-.app-nav .logo { font-size: 20px; margin-bottom: var(--sp-3); color: var(--accent); text-decoration: none; }
+.app-nav .logo {
+  display: flex; align-items: center; gap: 10px; padding: 6px var(--sp-2);
+  margin-bottom: var(--sp-3); color: var(--text); text-decoration: none;
+  font: 500 18px/1 var(--font-serif);
+}
+.app-nav .logo .ic { color: var(--accent); font-size: 18px; }
 .app-nav a {
-  width: 40px; height: 40px; display: grid; place-items: center;
-  border-radius: var(--r-sm); color: var(--muted); text-decoration: none; font-size: var(--t-title);
-  transition: background 0.12s, color 0.12s;
+  display: flex; align-items: center; gap: 11px; padding: 9px 10px;
+  border-radius: var(--r-sm); color: var(--muted); text-decoration: none;
+  font: 500 var(--t-base) / 1 var(--font-ui); transition: background 0.12s, color 0.12s;
+}
+.app-nav a .ic {
+  width: 20px; text-align: center; font-size: var(--t-lg);
+  color: var(--faint);                 /* grey icons by default */
+  filter: grayscale(1); opacity: 0.85;
 }
 .app-nav a.active, .app-nav a:hover { background: var(--accent-soft); color: var(--accent); }
+.app-nav a.active .ic, .app-nav a:hover .ic { color: var(--accent); filter: none; opacity: 1; }
+.app-nav .nav-foot { display: flex; align-items: center; gap: 8px; padding: 6px 8px 2px; }
 
 .page { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
@@ -447,7 +459,12 @@ button.approve { background: var(--wait); border-color: var(--wait); color: #2a1
 .opt-chip:hover { border-color: var(--accent-line); color: var(--accent); }
 .opt-chip.on { border-style: solid; border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 
-.engine-toggle { margin: 2px 0 4px; }
+.step-note {
+  margin: 2px 0 0; color: var(--muted); font-size: var(--t-sm);
+  background: var(--panel-2); border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm); padding: 10px 12px;
+}
+.step-hint { margin: 0 0 8px; color: var(--muted); font-size: var(--t-sm); }
 
 /* generic config form (shared by guided steps + side panel) */
 .cfg label, .side-panel label {

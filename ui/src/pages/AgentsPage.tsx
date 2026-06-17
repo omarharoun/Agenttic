@@ -67,9 +67,8 @@ export function AgentsPage() {
               <label>variant</label>
               <select value={form.variant}
                       onChange={(e) => setForm({ ...form, variant: e.target.value })}>
-                <option value="reference">reference</option>
-                <option value="blackbox">blackbox</option>
-                <option value="managed">managed</option>
+                <option value="reference">Built-in reference agent</option>
+                <option value="blackbox">Your API agent (external endpoint)</option>
               </select>
             </div>
             {form.variant === "reference" && (
