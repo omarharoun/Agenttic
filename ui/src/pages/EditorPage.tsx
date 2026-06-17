@@ -5,7 +5,7 @@ import { Canvas } from "../canvas/Canvas";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { ConfigPanel } from "../panels/ConfigPanel";
 import { Palette } from "../panels/Palette";
-import { useExecutionEvents } from "../sse";
+import { ensureNotifyPermission } from "../notify";
 import {
   emptyExec,
   fromWorkflowDoc,
@@ -66,7 +66,20 @@ export function EditorPage() {
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [results, setResults] = useState<any | null>(null);
   const [estimate, setEstimate] = useState<any | null>(null);
-  useExecutionEvents(store.exec.executionId);
+
+  // Reconnect to a run that's still executing server-side for this workflow —
+  // leaving the page never loses it; the run is owned by the server and we just
+  // re-subscribe. SSE replay (after=0) rebuilds the progress on return.
+  const reconnect = async (workflowId: string) => {
+    try {
+      const rows = await api.listExecutions(workflowId);
+      const active = rows.find((r) =>
+        ["running", "waiting_approval"].includes(r.status));
+      if (active)
+        store.setExec({ ...emptyExec(), executionId: active.execution_id,
+                        status: active.status });
+    } catch { /* no active run */ }
+  };
 
   const setEditorMode = (m: Mode) => {
     setMode(m);
@@ -100,6 +113,7 @@ export function EditorPage() {
   const openWorkflow = async (id: string) => {
     load((await api.getWorkflow(id)).workflow);
     refreshEstimate(id);
+    reconnect(id);
   };
 
   useEffect(() => {
@@ -111,7 +125,10 @@ export function EditorPage() {
       load(existing.length
         ? (await api.getWorkflow(existing[0].workflow_id)).workflow
         : EMPTY);
-      if (existing.length) refreshEstimate(existing[0].workflow_id);
+      if (existing.length) {
+        refreshEstimate(existing[0].workflow_id);
+        reconnect(existing[0].workflow_id);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -183,6 +200,7 @@ export function EditorPage() {
   };
 
   const run = async () => {
+    ensureNotifyPermission();  // ask once, on the user gesture
     const probs = await save();
     if (probs.length) return;
     store.setExec(emptyExec());

@@ -133,7 +133,9 @@ export const api = {
     afetch(`/api/executions/${id}`).then((r) => json<any>(r)),
   executionResults: (id: string) =>
     afetch(`/api/executions/${id}/results`).then((r) => json<any>(r)),
-  listExecutions: () => afetch("/api/executions").then((r) => json<any[]>(r)),
+  listExecutions: (workflowId?: string) =>
+    afetch(`/api/executions${workflowId ? `?workflow_id=${encodeURIComponent(workflowId)}` : ""}`)
+      .then((r) => json<any[]>(r)),
   approve: (executionId: string) =>
     afetch(`/api/executions/${executionId}/approve`, { method: "POST" }).then(
       (r) => json<any>(r)),
