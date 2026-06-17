@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import { api, auth, type Me } from "./api";
 import { AccountMenu } from "./components/AccountMenu";
-import { ThemeToggle } from "./components/ThemeToggle";
 import { useRunNotifications } from "./notify";
 import { useExecutionEvents } from "./sse";
 import { useFlowStore } from "./store";
@@ -96,7 +95,6 @@ export function AppShell() {
             <span className="topbar-ws-name mono">{me?.tenant ?? "default"}</span>
           </div>
           <span style={{ flex: 1 }} />
-          <ThemeToggle />
           <AccountMenu me={me} onLogout={logout} />
         </header>
         <div className="app-routes">

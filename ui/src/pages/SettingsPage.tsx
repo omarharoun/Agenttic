@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api, type Me } from "../api";
 import { PageHeader, Spinner } from "../components/ui";
+import { type ThemePref, useThemePref } from "../theme";
 
 type Section = "account" | "api-keys" | "billing";
 const SECTIONS: { key: Section; label: string; icon: string }[] = [
@@ -55,15 +56,40 @@ function AccountSection() {
   const [me, setMe] = useState<Me | null>(null);
   useEffect(() => { api.me().then(setMe).catch(() => setMe(null)); }, []);
   return (
-    <Card title="Account" desc="Your identity and workspace.">
-      {!me ? <Spinner /> : (
-        <dl className="kv-grid">
-          <dt>Email</dt><dd>{me.email ?? "—"}</dd>
-          <dt>Role</dt><dd><span className="pill">{me.role}</span></dd>
-          <dt>Workspace</dt><dd className="mono">{me.tenant}</dd>
-          <dt>Auth</dt><dd>{me.auth_method}</dd>
-        </dl>
-      )}
+    <>
+      <Card title="Account" desc="Your identity and workspace.">
+        {!me ? <Spinner /> : (
+          <dl className="kv-grid">
+            <dt>Email</dt><dd>{me.email ?? "—"}</dd>
+            <dt>Role</dt><dd><span className="pill">{me.role}</span></dd>
+            <dt>Workspace</dt><dd className="mono">{me.tenant}</dd>
+            <dt>Auth</dt><dd>{me.auth_method}</dd>
+          </dl>
+        )}
+      </Card>
+      <AppearanceCard />
+    </>
+  );
+}
+
+const APPEARANCE: { key: ThemePref; label: string; icon: string }[] = [
+  { key: "dark", label: "Dark", icon: "☾" },
+  { key: "light", label: "Light", icon: "☀" },
+  { key: "system", label: "System", icon: "🖥" },
+];
+
+function AppearanceCard() {
+  const [pref, setPref] = useThemePref();
+  return (
+    <Card title="Appearance" desc="Choose how Agenttic looks. Applies on all your devices.">
+      <div className="seg appearance-seg">
+        {APPEARANCE.map((a) => (
+          <button key={a.key} className={pref === a.key ? "on" : ""}
+                  onClick={() => setPref(a.key)}>
+            <span style={{ marginRight: 6 }}>{a.icon}</span>{a.label}
+          </button>
+        ))}
+      </div>
     </Card>
   );
 }

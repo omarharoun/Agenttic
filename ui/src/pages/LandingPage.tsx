@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { ThemeToggle } from "../components/ThemeToggle";
 
 const STEPS = [
   ["01", "Describe", "Tell us the agent's job and its rules. We turn those requirements into a benchmark of realistic and adversarial tests."],
@@ -27,7 +26,6 @@ export function LandingPage() {
           <span className="spacer" />
           <a className="navlink" href="/api-docs">API docs</a>
           <Link className="navlink" to="/login">Log in</Link>
-          <ThemeToggle />
           <Link className="btn-primary" to="/signup">Get started</Link>
         </nav>
       </header>

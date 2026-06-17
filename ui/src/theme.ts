@@ -1,25 +1,45 @@
 import { useEffect, useState } from "react";
 
-export type Theme = "dark" | "light";
+export type ThemePref = "dark" | "light" | "system";
 const KEY = "ascore_theme";
 
-/** Persisted theme; dark is the default (Noor warm-dark). */
-export function getTheme(): Theme {
+/** Persisted appearance preference; dark is the default (Noor warm-dark). */
+export function getThemePref(): ThemePref {
   try {
-    return localStorage.getItem(KEY) === "light" ? "light" : "dark";
+    const v = localStorage.getItem(KEY);
+    return v === "light" || v === "system" ? v : "dark";
   } catch {
     return "dark";
   }
 }
 
-export function applyTheme(t: Theme) {
-  document.documentElement.setAttribute("data-theme", t);
-  try { localStorage.setItem(KEY, t); } catch { /* ignore */ }
+export function systemTheme(): "dark" | "light" {
+  return typeof matchMedia !== "undefined" &&
+    matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
 }
 
-/** Small hook + a toggle for components that flip the theme. */
-export function useTheme(): [Theme, () => void] {
-  const [theme, setTheme] = useState<Theme>(getTheme);
-  useEffect(() => { applyTheme(theme); }, [theme]);
-  return [theme, () => setTheme((t) => (t === "dark" ? "light" : "dark"))];
+export function resolveTheme(pref: ThemePref): "dark" | "light" {
+  return pref === "system" ? systemTheme() : pref;
+}
+
+/** Apply (set <html data-theme>) and persist the preference. */
+export function applyThemePref(pref: ThemePref) {
+  document.documentElement.setAttribute("data-theme", resolveTheme(pref));
+  try { localStorage.setItem(KEY, pref); } catch { /* ignore */ }
+}
+
+/** Hook for the single Appearance control in Settings: returns the saved
+ *  preference and a setter that applies app-wide. Follows the OS when set to
+ *  "system". */
+export function useThemePref(): [ThemePref, (p: ThemePref) => void] {
+  const [pref, setPref] = useState<ThemePref>(getThemePref);
+  useEffect(() => { applyThemePref(pref); }, [pref]);
+  useEffect(() => {
+    if (pref !== "system" || typeof matchMedia === "undefined") return;
+    const mq = matchMedia("(prefers-color-scheme: light)");
+    const on = () => applyThemePref("system");
+    mq.addEventListener?.("change", on);
+    return () => mq.removeEventListener?.("change", on);
+  }, [pref]);
+  return [pref, setPref];
 }
