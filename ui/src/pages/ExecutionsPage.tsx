@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { ReplayCanvas } from "../canvas/ReplayCanvas";
+import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 import { ResultsPanel } from "../panels/ResultsPanel";
 import { useFlowStore } from "../store";
 
@@ -13,6 +14,7 @@ const STATE_COLOR: Record<string, string> = {
 
 export function ExecutionsPage() {
   const [rows, setRows] = useState<any[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [detail, setDetail] = useState<any | null>(null);
   const [results, setResults] = useState<any | null>(null);
 
@@ -23,7 +25,7 @@ export function ExecutionsPage() {
   const catalog = useFlowStore((s) => s.catalog);
   const setCatalog = useFlowStore((s) => s.setCatalog);
 
-  const refresh = () => api.listExecutions().then(setRows);
+  const refresh = () => api.listExecutions().then((r) => { setRows(r); setLoaded(true); });
   useEffect(() => {
     if (!Object.keys(catalog).length) api.nodeTypes().then(setCatalog);
     refresh();
@@ -35,7 +37,12 @@ export function ExecutionsPage() {
   return (
     <div className="page">
       <div className="list-page">
-        <h2>Executions</h2>
+        <PageHeader title="Runs"
+                    subtitle="Every safety test you've run — live progress, results, and replays." />
+        {!loaded ? <Skeleton rows={6} /> : rows.length === 0 ? (
+          <EmptyState icon="▶" title="No runs yet"
+                      hint="Build a workflow and hit Run — it'll show up here with live progress." />
+        ) : (
         <table className="data">
           <thead>
             <tr><th>execution</th><th>workflow</th><th>status</th>
@@ -65,6 +72,7 @@ export function ExecutionsPage() {
             ))}
           </tbody>
         </table>
+        )}
         {detail && (
           <>
             <h2 style={{ marginTop: 22 }}>
