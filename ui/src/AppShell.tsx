@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import { api, auth, type Me } from "./api";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { useRunNotifications } from "./notify";
+import { useExecutionEvents } from "./sse";
+import { useFlowStore } from "./store";
 import { AgentsPage } from "./pages/AgentsPage";
 import { EditorPage } from "./pages/EditorPage";
 import { ExecutionsPage } from "./pages/ExecutionsPage";
@@ -41,6 +44,11 @@ export function AppShell() {
   const nav = useNavigate();
   const [me, setMe] = useState<Me | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "denied">("loading");
+  // Subscribe to the active run here (above the router) so progress keeps
+  // updating and notifications keep firing as the user navigates between pages.
+  const execId = useFlowStore((s) => s.exec.executionId);
+  useExecutionEvents(execId);
+  useRunNotifications();
 
   useEffect(() => {
     api.me()
@@ -68,18 +76,22 @@ export function AppShell() {
   return (
     <div className="app-shell">
       <nav className="app-nav">
-        <a className="logo" href="/" title="Agenttic home">⬡</a>
-        <NavLink to="/app" end title="Workflow editor">▦</NavLink>
-        <NavLink to="/app/executions" title="Executions">▶</NavLink>
-        <NavLink to="/app/leaderboard" title="Agenttic Index leaderboard">🏆</NavLink>
-        <NavLink to="/app/agents" title="Agents (declared + discovered)">🤖</NavLink>
-        <NavLink to="/app/resources" title="Suites / scorecards / traces">▤</NavLink>
-        <a href="/api-docs" title="API documentation">📖</a>
+        <a className="logo" href="/" title="Agenttic home">
+          <span className="ic">⬡</span> Agenttic
+        </a>
+        <NavLink to="/app" end><span className="ic">▦</span> Workflows</NavLink>
+        <NavLink to="/app/executions"><span className="ic">▶</span> Runs</NavLink>
+        <NavLink to="/app/leaderboard"><span className="ic">🏆</span> Leaderboard</NavLink>
+        <NavLink to="/app/agents"><span className="ic">🤖</span> Agents</NavLink>
+        <NavLink to="/app/resources"><span className="ic">▤</span> Resources</NavLink>
+        <a href="/api-docs"><span className="ic">📖</span> API docs</a>
         <span style={{ flex: 1 }} />
-        <ThemeToggle />
-        <TokenControl />
-        <button title={me ? `${me.email ?? me.auth_method} · ${me.role} · ${me.tenant}` : "account"}
-                onClick={logout} style={{ fontSize: 15 }}>⎋</button>
+        <div className="nav-foot">
+          <ThemeToggle />
+          <TokenControl />
+          <button title={me ? `${me.email ?? me.auth_method} · ${me.role} · ${me.tenant}` : "account"}
+                  onClick={logout} className="icon-btn">⎋</button>
+        </div>
       </nav>
       <Routes>
         <Route path="/" element={<EditorPage />} />
