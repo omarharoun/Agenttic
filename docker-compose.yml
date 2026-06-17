@@ -49,6 +49,31 @@ services:
       timeout: 5s
       retries: 5
 
+  # Lightweight self-hosted mail server (Go, single binary — fits the small VM
+  # where docker-mailserver would not). RECEIVES support@agenttic.io (inbound 25
+  # is open) and serves it over IMAP 993; provides submission on 587. Outbound
+  # to the public internet is blocked on this droplet (25/465/587), so direct
+  # delivery is impossible — the APP sends via a configurable relay instead
+  # (see config email.smtp / SMTP_* env). Opt-in: `--profile mail`; bring up
+  # only AFTER the mail DNS records exist (ACME needs mail.agenttic.io to
+  # resolve). See docs/MAIL.md.
+  mail:
+    image: foxcpp/maddy:0.7
+    profiles: ["mail"]
+    hostname: mail.agenttic.io
+    environment:
+      MADDY_HOSTNAME: mail.agenttic.io
+      MADDY_DOMAIN: agenttic.io
+    ports:
+      - "25:25"      # inbound SMTP — receive mail for support@agenttic.io
+      - "587:587"    # submission (STARTTLS) — clients/app send
+      - "993:993"    # IMAP over TLS — read the mailbox
+    volumes:
+      - maddy-data:/data
+      # pre-generated DKIM key (selector "mail"); host-only secret, never in git
+      - ./mail/dkim/mail.key:/data/dkim_keys/agenttic.io_mail.key:ro
+    restart: unless-stopped
+
 # Public exposure / TLS: front the app with a Cloudflare Tunnel (cloudflared)
 # running as a host systemd service — outbound-only, TLS terminated at
 # Cloudflare's edge, no inbound ports opened on the VM. The app stays bound to
@@ -59,3 +84,4 @@ volumes:
   ascore-data:
   pg-data:
   redis-data:
+  maddy-data:
