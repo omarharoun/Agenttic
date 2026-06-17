@@ -61,11 +61,33 @@ def _users_table(conn) -> None:
     UserRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _email_verification(conn) -> None:
+    """v4 — email verification. Add ``users.verified`` and the email_tokens
+    table. Existing accounts predate verification, so they're backfilled to
+    verified=1 (never locks out the bootstrapped admin)."""
+    from sqlalchemy import inspect
+
+    import ascore.registry.sqlite_store  # noqa: F401 (registers EmailTokenRow)
+    from ascore.registry.sqlite_store import EmailTokenRow
+
+    is_pg = conn.dialect.name == "postgresql"
+    default, truth = ("false", "true") if is_pg else ("0", "1")
+    insp = inspect(conn)
+    if "users" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("users")}
+        if "verified" not in cols:
+            conn.execute(text(
+                f"ALTER TABLE users ADD COLUMN verified BOOLEAN DEFAULT {default}"))
+            conn.execute(text(f"UPDATE users SET verified = {truth}"))  # trust pre-existing
+    EmailTokenRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
     (2, "add_tenant_id", _add_tenant_id),
     (3, "users_table", _users_table),
+    (4, "email_verification", _email_verification),
 ]
 
 

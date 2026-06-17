@@ -39,7 +39,7 @@ class UserStore:
                 UserRow.email == _norm(email))).first()
 
     def create_user(self, email: str, password: str, *, role: str = "viewer",
-                    tenant: str = "default") -> UserRow:
+                    tenant: str = "default", verified: bool = True) -> UserRow:
         if role not in ROLES:
             raise ValueError(f"invalid role {role!r}")
         if not password or len(password) < 8:
@@ -51,7 +51,7 @@ class UserStore:
             if s.exec(select(UserRow).where(UserRow.email == email)).first():
                 raise DuplicateUserError(f"user {email} already exists")
             row = UserRow(email=email, password_hash=hash_password(password),
-                          role=role, tenant_id=tenant,
+                          role=role, tenant_id=tenant, verified=verified,
                           created_at=datetime.now(timezone.utc))
             s.add(row)
             s.commit()

@@ -152,6 +152,21 @@ class UserRow(SQLModel, table=True):
     role: str = "viewer"                       # viewer | operator | admin
     tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
     created_at: datetime
+    verified: bool = Field(default=False)      # email confirmed via a token
+
+
+class EmailTokenRow(SQLModel, table=True):
+    """A single-use, expiring email token (account verification). GLOBAL, like
+    users. Consumed by setting ``used_at``; rows are safe to prune past expiry."""
+    __tablename__ = "email_tokens"
+    __table_args__ = (UniqueConstraint("token"),)
+    id: int | None = Field(default=None, primary_key=True)
+    token: str = Field(index=True)
+    email: str = Field(index=True)
+    purpose: str = "verify"
+    created_at: datetime
+    expires_at: datetime
+    used_at: datetime | None = None
 
 
 def _now() -> datetime:

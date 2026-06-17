@@ -27,6 +27,56 @@ def _client(tmp_path, role="admin"):
     return TestClient(create_app(str(cfg), registry=Registry(tmp_path / "a.db")))
 
 
+VERIFY_CONFIG = CONFIG + "email: {require_verification: true, enabled: false}\n"
+
+
+def _client_verify(tmp_path):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(VERIFY_CONFIG % {"db": tmp_path / "a.db", "r": tmp_path / "r",
+                                    "c": tmp_path / "c", "role": "admin"})
+    return TestClient(create_app(str(cfg), registry=Registry(tmp_path / "a.db")))
+
+
+class TestEmailVerificationGate:
+    def test_signup_unverified_then_verify_unlocks_login(self, tmp_path):
+        from ascore.registry.sqlite_store import EmailTokenRow, Registry
+        from sqlmodel import Session, select
+        with _client_verify(tmp_path) as c:
+            r = c.post("/api/auth/signup",
+                       json={"email": "v@x.com", "password": "password123"})
+            assert r.status_code == 200 and r.json()["needs_verification"] is True
+            assert not c.cookies.get("ascore_session")     # no session yet
+
+            # login is blocked until verified
+            r = c.post("/api/auth/login",
+                       json={"email": "v@x.com", "password": "password123"})
+            assert r.status_code == 403
+            assert r.json()["detail"]["needs_verification"] is True
+
+            # grab the token the server issued (console mode -> stored in DB)
+            reg = Registry(tmp_path / "a.db")
+            with Session(reg.engine) as s:
+                token = s.exec(select(EmailTokenRow.token).where(
+                    EmailTokenRow.email == "v@x.com")).first()
+            r = c.post("/api/auth/verify", json={"token": token})
+            assert r.status_code == 200 and r.json()["verified"] is True
+
+            # now login works
+            c.post("/api/auth/logout")
+            assert c.post("/api/auth/login",
+                          json={"email": "v@x.com", "password": "password123"}
+                          ).status_code == 200
+
+    def test_resend_always_ok(self, tmp_path):
+        with _client_verify(tmp_path) as c:
+            c.post("/api/auth/signup", json={"email": "v@x.com", "password": "password123"})
+            assert c.post("/api/auth/resend-verification",
+                          json={"email": "v@x.com"}).status_code == 200
+            # unknown address also returns 200 (no account enumeration)
+            assert c.post("/api/auth/resend-verification",
+                          json={"email": "nobody@x.com"}).status_code == 200
+
+
 class TestSignupLogin:
     def test_signup_sets_session_and_me(self, tmp_path):
         with _client(tmp_path) as c:
