@@ -50,6 +50,7 @@ def build_adapter(
     cost_per_call_usd: float = 0.0,
     expected_input_tokens: int = 0,
     expected_output_tokens: int = 0,
+    headers: dict | None = None,
 ) -> AgentAdapter:
     """Instantiate the adapter for one agent under test. ``system_prompt``
     overrides the reference agent's task instructions and ``model`` overrides
@@ -76,6 +77,7 @@ def build_adapter(
         allow_private = not cfg.get("security", {}).get("blackbox_block_private", True)
         return BlackBoxHTTPAgent(
             agent_id=agent_id, url=url, allow_private_url=allow_private,
+            headers=headers or None,
             cost_per_call_usd=blackbox_call_cost(
                 cfg, cost_per_call_usd=cost_per_call_usd, model=model,
                 expected_input_tokens=expected_input_tokens,
@@ -257,8 +259,10 @@ async def run_and_score_op(
 
 def generate_op(cfg: dict, reg: Registry, business_doc: str, suite_id: str,
                 client=None, on_progress: ProgressFn | None = None,
-                cases_per_task: int = 5) -> TestSuite:
-    """Generator step: business doc → DRAFT suite + review file (human gate)."""
+                cases_per_task: int = 8) -> TestSuite:
+    """Generator step: business doc → DRAFT suite + review file (human gate).
+    ``cases_per_task`` is an upper bound; the generator decides the actual
+    count per task within the pipeline's MIN_CASES..bound range."""
     kw = {"client": client} if client is not None else {}
     from ascore.pricing import model_price
     from ascore.retry import RetryPolicy

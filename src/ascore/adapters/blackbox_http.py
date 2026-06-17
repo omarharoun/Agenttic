@@ -28,7 +28,8 @@ _OPENER = urllib.request.build_opener(_NoRedirect)
 
 
 def _http_transport(url: str, payload: dict, timeout: float,
-                    allow_private: bool = False) -> dict:
+                    allow_private: bool = False,
+                    headers: dict | None = None) -> dict:
     # request-time SSRF check: must resolve to a public address to be dialed
     # (unless the operator explicitly allowed private targets for this agent)
     validate_blackbox_url(
@@ -36,7 +37,8 @@ def _http_transport(url: str, payload: dict, timeout: float,
         cfg={"security": {"blackbox_block_private": not allow_private}})
     req = urllib.request.Request(
         url, data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json"}, method="POST",
+        headers={"Content-Type": "application/json", **(headers or {})},
+        method="POST",
     )
     with _OPENER.open(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode())
@@ -59,6 +61,7 @@ class BlackBoxHTTPAgent(AgentAdapter):
         timeout: float = 60.0,
         allow_private_url: bool = False,  # opt-in to hit private/loopback hosts
         cost_per_call_usd: float = 0.0,   # declared cost (black-box has no usage)
+        headers: dict | None = None,      # auth / custom headers for the endpoint
         transport=None,  # injectable for tests; defaults to real HTTP
     ):
         self.agent_id = agent_id
@@ -67,9 +70,10 @@ class BlackBoxHTTPAgent(AgentAdapter):
         self.timeout = timeout
         self.allow_private_url = allow_private_url
         self.cost_per_call_usd = cost_per_call_usd
+        self.headers = headers or {}
         self._transport = transport or (
             lambda payload: _http_transport(self.url, payload, self.timeout,
-                                            self.allow_private_url)
+                                            self.allow_private_url, self.headers)
         )
 
     def describe(self) -> dict:

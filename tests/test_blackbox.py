@@ -78,6 +78,22 @@ class TestBlackBoxAdapter:
         assert trace.spans[0].kind == "error"
         assert "private/reserved" in (trace.spans[0].error or "")
 
+    def test_custom_headers_forwarded_to_endpoint(self, monkeypatch):
+        # external API agents can carry auth/custom headers; they must reach
+        # the HTTP transport alongside Content-Type.
+        captured = {}
+
+        def fake(url, payload, timeout, allow_private=False, headers=None):
+            captured["headers"] = headers
+            return {"output": "ok"}
+
+        monkeypatch.setattr(
+            "ascore.adapters.blackbox_http._http_transport", fake)
+        agent = BlackBoxHTTPAgent(agent_id="x", url="http://unused",
+                                  headers={"Authorization": "Bearer t"})
+        agent.run({"q": 1})
+        assert captured["headers"] == {"Authorization": "Bearer t"}
+
     def test_missing_output_field_is_data_not_crash(self):
         agent = BlackBoxHTTPAgent(agent_id="x", url="http://unused",
                                   transport=lambda p: {"wrong_key": 1})
