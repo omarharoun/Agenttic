@@ -17,8 +17,17 @@ from pydantic import BaseModel
 
 from ascore.server.auth import CSRF_COOKIE, SESSION_COOKIE
 from ascore.server.users import DuplicateUserError, UserStore
+from ascore.server.verification import VerificationStore, send_verification
 
 router = APIRouter(tags=["auth"])
+
+
+def _email_cfg(cfg: dict) -> dict:
+    return cfg.get("email", {}) or {}
+
+
+def _require_verification(cfg: dict) -> bool:
+    return bool(_email_cfg(cfg).get("require_verification", False))
 
 # per-email failed-login tracker (in-process; multi-worker uses per-worker
 # counts — acceptable alongside the global rate limiter).
@@ -84,16 +93,70 @@ def signup(creds: Credentials, request: Request, response: Response):
         raise HTTPException(403, "signup is disabled")
     role = str((cfg.get("auth", {}) or {}).get("signup_role", "admin"))
     tenant = _new_tenant_slug(creds.email)  # each signup gets its own workspace
+    require_verify = _require_verification(cfg)
     try:
-        user = _store(request).create_user(str(creds.email), creds.password,
-                                           role=role, tenant=tenant)
+        user = _store(request).create_user(
+            str(creds.email), creds.password, role=role, tenant=tenant,
+            verified=not require_verify)  # unverified only when we'll gate on it
     except DuplicateUserError:
         raise HTTPException(409, "an account with that email already exists")
     except ValueError as exc:
         raise HTTPException(422, str(exc))
+
+    # always send a verification email; when required, we DON'T start a session
+    # until the address is confirmed.
+    if _email_cfg(cfg).get("enabled", False) or require_verify:
+        try:
+            send_verification(cfg, request.app.state.reg.engine, user.email)
+        except Exception:  # noqa: BLE001 — mail issues must not fail signup
+            pass
+
+    if require_verify:
+        return {"email": user.email, "needs_verification": True}
     csrf = _issue_session(response, cfg, user)
     return {"email": user.email, "role": user.role, "tenant": user.tenant_id,
-            "csrf_token": csrf}
+            "verified": user.verified, "csrf_token": csrf}
+
+
+class VerifyToken(BaseModel):
+    token: str
+
+
+@router.post("/auth/verify")
+def verify_email(body: VerifyToken, request: Request, response: Response):
+    cfg = _cfg(request)
+    status_, email = VerificationStore(
+        request.app.state.reg.engine).consume(body.token)
+    if status_ != "ok":
+        msg = {"invalid": "this verification link is not valid",
+               "expired": "this verification link has expired — request a new one",
+               "used": "this email is already verified — please log in"}[status_]
+        code = 410 if status_ in ("expired", "used") else 400
+        raise HTTPException(code, msg)
+    # convenience: start a session straight away on successful verification
+    user = _store(request).get_by_email(email or "")
+    if user is not None:
+        csrf = _issue_session(response, cfg, user)
+        return {"verified": True, "email": user.email, "role": user.role,
+                "tenant": user.tenant_id, "csrf_token": csrf}
+    return {"verified": True, "email": email}
+
+
+class ResendBody(BaseModel):
+    email: str
+
+
+@router.post("/auth/resend-verification")
+def resend_verification(body: ResendBody, request: Request):
+    cfg = _cfg(request)
+    user = _store(request).get_by_email(body.email)
+    # only send for a real, still-unverified account; always 200 (no enumeration)
+    if user is not None and not user.verified:
+        try:
+            send_verification(cfg, request.app.state.reg.engine, user.email)
+        except Exception:  # noqa: BLE001
+            pass
+    return {"ok": True}
 
 
 @router.post("/auth/login")
@@ -106,9 +169,15 @@ def login(creds: Credentials, request: Request, response: Response):
         _record_fail(email, cfg)
         raise HTTPException(401, "invalid email or password")
     _attempts.pop(email, None)  # reset on success
+    if _require_verification(cfg) and not user.verified:
+        # credentials are correct but the address isn't confirmed yet
+        raise HTTPException(403, detail={
+            "error": "email not verified",
+            "email": user.email,
+            "needs_verification": True})
     csrf = _issue_session(response, cfg, user)
     return {"email": user.email, "role": user.role, "tenant": user.tenant_id,
-            "csrf_token": csrf}
+            "verified": user.verified, "csrf_token": csrf}
 
 
 @router.post("/auth/logout")

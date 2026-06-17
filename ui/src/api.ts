@@ -112,6 +112,16 @@ export const api = {
       body: JSON.stringify({ email, password }),
     }).then((r) => json<any>(r)),
   logout: () => afetch("/api/auth/logout", { method: "POST" }).then((r) => json<any>(r)),
+  verifyEmail: (token: string) =>
+    afetch("/api/auth/verify", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    }).then((r) => json<any>(r)),
+  resendVerification: (email: string) =>
+    afetch("/api/auth/resend-verification", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    }).then((r) => json<any>(r)),
 
   nodeTypes: () => afetch("/api/node-types").then((r) => json<NodeTypeSpec[]>(r)),
   listWorkflows: () => afetch("/api/workflows").then((r) => json<any[]>(r)),

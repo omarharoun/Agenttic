@@ -81,6 +81,20 @@ auth:
   allow_signup: true        # open signup; each signup gets its own tenant workspace
   signup_role: admin        # role a self-signup receives (admin of their own tenant)
   admin_tenant: default
+
+email:
+  enabled: false                     # send mail (verification, etc.)
+  require_verification: false        # gate login until the address is confirmed
+  from: "noreply@agenttic.io"        # sender address
+  verify_url_base: "https://agenttic.io/verify"
+  token_ttl_hours: 24                # verification link lifetime
+  smtp:                              # env SMTP_HOST/PORT/USER/PASS/FROM override these
+    host: ""                         # relay/smarthost; "" => console fallback (logs the link)
+    port: 587                        # NOTE: on the node1 droplet 25/465/587 are blocked; use 2525
+    user: ""
+    password: ""                     # via SMTP_PASS / a *_FILE secret — never commit
+    starttls: true
+    ssl: false
 security:
   rate_limit_per_minute: 0          # 0 = off; per-client (token or IP) request cap
   rate_limit_backend: memory        # memory (default) | redis (multi-worker)

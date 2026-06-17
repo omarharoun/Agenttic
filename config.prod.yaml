@@ -68,6 +68,22 @@ auth:
   cookie_secure: true                     # session cookie only over HTTPS (edge TLS via the tunnel)
   allow_signup: true                      # open signup; each signup gets its own tenant workspace
   signup_role: admin                      # self-signup is admin of their own workspace
+email:
+  # Mail is OFF until an outbound relay is configured (node1 blocks 25/465/587;
+  # use a relay on 2525 or an HTTP-API provider). Flip enabled + require_verification
+  # to true once SMTP_HOST/SMTP_USER/SMTP_PASS are set in the host .env.
+  enabled: false
+  require_verification: false
+  from: "noreply@agenttic.io"
+  verify_url_base: "https://agenttic.io/verify"
+  token_ttl_hours: 24
+  smtp:
+    host: ""                              # env SMTP_HOST (relay); use port 2525 on this droplet
+    port: 2525
+    user: ""                              # env SMTP_USER
+    password: ""                          # env SMTP_PASS / *_FILE secret — never commit
+    starttls: true
+    ssl: false
 security:
   rate_limit_per_minute: 120
   rate_limit_backend: redis               # shared across workers (ASCORE_REDIS_URL)
