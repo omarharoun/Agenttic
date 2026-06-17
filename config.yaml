@@ -85,12 +85,14 @@ auth:
 email:
   enabled: false                     # send mail (verification, etc.)
   require_verification: false        # gate login until the address is confirmed
+  provider: auto                     # resend | smtp | console | auto
   from: "noreply@agenttic.io"        # sender address
   verify_url_base: "https://agenttic.io/verify"
   token_ttl_hours: 24                # verification link lifetime
+  # resend (HTTPS API, works where SMTP ports are blocked): set RESEND_API_KEY env
   smtp:                              # env SMTP_HOST/PORT/USER/PASS/FROM override these
     host: ""                         # relay/smarthost; "" => console fallback (logs the link)
-    port: 587                        # NOTE: on the node1 droplet 25/465/587 are blocked; use 2525
+    port: 587
     user: ""
     password: ""                     # via SMTP_PASS / a *_FILE secret — never commit
     starttls: true

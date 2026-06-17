@@ -61,16 +61,50 @@ class TestVerificationTokens:
 
 
 class TestMailerFallback:
-    def test_console_mode_when_unconfigured(self):
-        # no SMTP host -> logs instead of sending, returns False, never raises
+    def test_console_mode_when_unconfigured(self, monkeypatch):
+        # nothing configured -> provider resolves to console, logs, returns False
+        monkeypatch.delenv("RESEND_API_KEY", raising=False)
+        monkeypatch.delenv("SMTP_HOST", raising=False)
         m = Mailer({"email": {"from": "noreply@agenttic.io"}})
-        assert m.settings.configured is False
+        assert m.settings.provider == "console"
         assert m.send("a@b.com", "hi", "body") is False
 
-    def test_env_overrides_config(self, monkeypatch):
+    def test_smtp_env_overrides_config(self, monkeypatch):
         monkeypatch.setenv("SMTP_HOST", "relay.example.com")
         monkeypatch.setenv("SMTP_PORT", "2525")
         monkeypatch.setenv("SMTP_FROM", "noreply@agenttic.io")
-        m = Mailer({"email": {"smtp": {"host": "ignored", "port": 587}}})
+        m = Mailer({"email": {"provider": "smtp", "smtp": {"host": "ignored", "port": 587}}})
         assert m.settings.host == "relay.example.com"
-        assert m.settings.port == 2525 and m.settings.configured is True
+        assert m.settings.port == 2525 and m.settings.provider == "smtp"
+
+
+class TestResendProvider:
+    def test_auto_selects_resend_when_key_present(self, monkeypatch):
+        monkeypatch.setenv("RESEND_API_KEY", "re_test_123")
+        assert Mailer({"email": {"provider": "auto"}}).settings.provider == "resend"
+
+    def test_resend_posts_to_https_api(self, monkeypatch):
+        import ascore.server.mailer as mod
+        monkeypatch.setenv("RESEND_API_KEY", "re_test_123")
+        captured = {}
+
+        def fake_post(url, headers, payload, timeout=15.0):
+            captured.update(url=url, headers=headers, payload=payload)
+            return 200, '{"id":"abc"}'
+
+        monkeypatch.setattr(mod, "_http_post_json", fake_post)
+        m = Mailer({"email": {"provider": "resend", "from": "noreply@agenttic.io"}})
+        assert m.send("u@x.com", "Hi", "body", "<b>body</b>") is True
+        assert captured["url"] == mod.RESEND_ENDPOINT
+        assert captured["headers"]["Authorization"] == "Bearer re_test_123"
+        assert captured["payload"]["from"] == "noreply@agenttic.io"
+        assert captured["payload"]["to"] == ["u@x.com"]
+        assert captured["payload"]["subject"] == "Hi"
+
+    def test_resend_failure_returns_false_no_raise(self, monkeypatch):
+        import ascore.server.mailer as mod
+        monkeypatch.setenv("RESEND_API_KEY", "re_test_123")
+        monkeypatch.setattr(mod, "_http_post_json",
+                            lambda *a, **k: (422, '{"error":"bad domain"}'))
+        m = Mailer({"email": {"provider": "resend"}})
+        assert m.send("u@x.com", "Hi", "body") is False
