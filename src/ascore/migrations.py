@@ -82,12 +82,20 @@ def _email_verification(conn) -> None:
     EmailTokenRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _api_keys_table(conn) -> None:
+    """v5 — per-tenant provider API keys (encrypted at rest)."""
+    import ascore.registry.sqlite_store  # noqa: F401 (registers ApiKeyRow)
+    from ascore.registry.sqlite_store import ApiKeyRow
+    ApiKeyRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
     (2, "add_tenant_id", _add_tenant_id),
     (3, "users_table", _users_table),
     (4, "email_verification", _email_verification),
+    (5, "api_keys_table", _api_keys_table),
 ]
 
 

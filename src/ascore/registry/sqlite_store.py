@@ -155,6 +155,22 @@ class UserRow(SQLModel, table=True):
     verified: bool = Field(default=False)      # email confirmed via a token
 
 
+class ApiKeyRow(SQLModel, table=True):
+    """A tenant's own provider API key, ENCRYPTED at rest. GLOBAL table keyed by
+    (tenant_id, provider). The ciphertext is never returned by the API; only a
+    masked ``…last4`` is surfaced. Every Anthropic call for a tenant's run uses
+    this key — the platform key is never used for tenant runs."""
+    __tablename__ = "api_keys"
+    __table_args__ = (UniqueConstraint("tenant_id", "provider"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(index=True)
+    provider: str = "anthropic"
+    ciphertext: str
+    last4: str
+    created_at: datetime
+    updated_at: datetime
+
+
 class EmailTokenRow(SQLModel, table=True):
     """A single-use, expiring email token (account verification). GLOBAL, like
     users. Consumed by setting ``used_at``; rows are safe to prune past expiry."""
