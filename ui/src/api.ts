@@ -123,6 +123,23 @@ export const api = {
       body: JSON.stringify({ email }),
     }).then((r) => json<any>(r)),
 
+  // --- settings: BYO Anthropic key (never returns the raw key) ---
+  anthropicKeyStatus: () =>
+    afetch("/api/settings/anthropic-key").then((r) =>
+      json<{ set: boolean; masked: string | null; updated_at: string | null }>(r)),
+  testAnthropicKey: (key: string) =>
+    afetch("/api/settings/anthropic-key/test", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key }),
+    }).then((r) => json<{ valid: boolean; error: string | null }>(r)),
+  setAnthropicKey: (key: string) =>
+    afetch("/api/settings/anthropic-key", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key }),
+    }).then((r) => json<any>(r)),
+  deleteAnthropicKey: () =>
+    afetch("/api/settings/anthropic-key", { method: "DELETE" }).then((r) => json<any>(r)),
+
   nodeTypes: () => afetch("/api/node-types").then((r) => json<NodeTypeSpec[]>(r)),
   listWorkflows: () => afetch("/api/workflows").then((r) => json<any[]>(r)),
   getWorkflow: (id: string) =>
