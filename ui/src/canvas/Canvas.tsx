@@ -22,6 +22,15 @@ export function Canvas() {
   const { nodes, edges, catalog, setGraph, select, markDirty } = useFlowStore();
   const { screenToFlowPosition } = useReactFlow();
 
+  // make the canvas mesh + background follow the active theme (true-black dark
+  // / cream light) by reading the resolved Noor tokens
+  const rootStyle = typeof window !== "undefined"
+    ? getComputedStyle(document.documentElement) : null;
+  const themeMode = (document.documentElement.getAttribute("data-theme") as
+    "dark" | "light") || "dark";
+  const dotColor = rootStyle?.getPropertyValue("--border-strong").trim() || "#38353a";
+  const bgColor = rootStyle?.getPropertyValue("--bg").trim() || "#000000";
+
   const onNodesChange = useCallback(
     (changes: any) => {
       setGraph(applyNodeChanges(changes, useFlowStore.getState().nodes),
@@ -109,11 +118,11 @@ export function Canvas() {
         isValidConnection={isValidConnection}
         onNodeClick={(_, n) => select(n.id)}
         onPaneClick={() => select(null)}
-        colorMode="dark"
+        colorMode={themeMode}
         fitView
         deleteKeyCode={["Backspace", "Delete"]}
       >
-        <Background gap={18} size={1.2} />
+        <Background gap={18} size={1.4} color={dotColor} bgColor={bgColor} />
         <Controls />
         <MiniMap pannable zoomable />
       </ReactFlow>
