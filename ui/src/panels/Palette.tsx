@@ -17,6 +17,7 @@ export function Palette() {
   for (const spec of Object.values(catalog)) {
     // helper/test node types are not draggable UI citizens
     if (!CAT_ORDER.includes(spec.category)) continue;
+    if (spec.type === "fi_eval") continue;  // FI is off the product surface
     (byCat[spec.category] ??= []).push(spec);
   }
   return (

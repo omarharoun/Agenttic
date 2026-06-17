@@ -2,20 +2,20 @@ import { Link } from "react-router-dom";
 import { ThemeToggle } from "../components/ThemeToggle";
 
 const STEPS = [
-  ["01", "Generate", "Turn a business doc into a versioned benchmark suite — LLM drafts, a human gate approves."],
-  ["02", "Run", "Drive any agent (reference, black-box HTTP, or hosted Managed Agent) against the suite."],
-  ["03", "Score", "Deterministic checks + a tiered LLM judge grade every run against the rubric."],
-  ["04", "Report", "Client-ready scorecards with cost, latency, regressions, and judge rationale."],
-  ["05", "Monitor", "Sample production traffic, detect drift vs the batch baseline, trigger re-evaluation."],
+  ["01", "Describe", "Tell us the agent's job and its rules. We turn those requirements into a benchmark of realistic and adversarial tests."],
+  ["02", "Test", "Run your agent — your own API endpoint or a built-in one — against every case, capturing each tool call and decision."],
+  ["03", "Check safety", "Does it refuse dangerous or destructive commands? Are its tool calls correct, in-bounds, and safe to execute?"],
+  ["04", "Check correctness", "Does the final output actually match the stated requirements? Deterministic checks plus a calibrated judge."],
+  ["05", "Keep watching", "Monitor the agent in production and get alerted the moment its safety or quality starts to drift."],
 ];
 
 const FEATURES = [
-  ["🧪", "A testbench for agents", "A UVM-style verification harness where the device under test is an AI agent: adapters drive it, the harness captures traces, the scoreboard grades them.", "glass-box & black-box"],
-  ["🏆", "The Agenttic Index", "Rank agents across suites artificialanalysis-style — a weighted task-success Index with blended $/case, p95 latency, and honest coverage.", "leaderboard"],
-  ["⚖️", "Tiered LLM judge", "A cheap executor model consults a stronger advisor only on borderline calls — calibrated against human labels, with provisional scores flagged.", "calibrated"],
-  ["📈", "Live drift monitoring", "Sample live traffic, score on a light judge, compare rolling means to the batch baseline, and raise a re-eval request when quality slips.", "production"],
-  ["💸", "Cost estimation & ceilings", "Project spend before a run, track real token cost (agent + judge), and abort cleanly at per-run / daily / per-tenant budget caps.", "$ guardrails"],
-  ["🔒", "Multi-tenant & secured", "Per-tenant workspaces, viewer/operator/admin roles, token + session auth, rate limiting, and a versioned, migratable store.", "production-ready"],
+  ["🛡️", "Catch unsafe actions", "Test whether your agent refuses destructive or dangerous commands instead of blindly executing them — before it does it for real.", "safety first"],
+  ["🧰", "Verify tool-calling", "Check that the agent calls the right tools with the right arguments and stays inside the boundaries you set — no rogue calls.", "tool correctness"],
+  ["✅", "Match the requirements", "Confirm the agent's output does what you actually asked — graded by deterministic checks and a calibrated LLM judge.", "correctness"],
+  ["🎯", "Adversarial & red-team tests", "Every benchmark includes edge cases and adversarial / unsafe-request prompts that try to make the agent misbehave.", "red-team"],
+  ["📊", "Clear scorecards", "See exactly what passed, what broke and why — with pass rates, cost, and latency — so you know if it's safe to ship.", "shareable"],
+  ["📈", "Live drift monitoring", "Keep sampling production traffic and get alerted when safety or quality regresses against your tested baseline.", "production"],
 ];
 
 export function LandingPage() {
@@ -34,23 +34,24 @@ export function LandingPage() {
 
       <main className="lp">
         <section className="hero">
-          <span className="badge">UVM-style testbench · for AI agents</span>
-          <h1>Score and benchmark your agents.<br /><span className="grad">Know what breaks, and why.</span></h1>
+          <span className="badge">Ship AI agents you can trust</span>
+          <h1>Test your AI agents for safety<br /><span className="grad">before you ship them.</span></h1>
           <p className="sub">
-            Agenttic turns business requirements into versioned benchmark suites,
-            runs any agent against them, and scores each run with deterministic
-            checks plus a calibrated LLM judge — with a live path that catches
-            production drift before your users do.
+            Agenttic puts your agent through realistic and adversarial tests:
+            does it refuse dangerous or destructive commands, are its tool calls
+            correct and safe, and does its output match what you asked for? You
+            get a clear safety scorecard — before your users, or your
+            infrastructure, find the answer the hard way.
           </p>
           <div className="cta">
-            <Link className="btn-primary" to="/signup">Start free</Link>
+            <Link className="btn-primary" to="/signup">Test your agent free</Link>
             <a className="btn-ghost" href="/api-docs">View the API</a>
           </div>
         </section>
 
         <section className="section">
-          <h2>The evaluation loop</h2>
-          <p className="lede">From a business doc to a client-ready scorecard — and back again as drift feeds new tests.</p>
+          <h2>How it works</h2>
+          <p className="lede">From your agent's requirements to a safety scorecard — and a live watch that keeps checking.</p>
           <div className="steps">
             {STEPS.map(([n, h, p]) => (
               <div className="step" key={n}>
@@ -63,8 +64,8 @@ export function LandingPage() {
         </section>
 
         <section className="section">
-          <h2>What you get</h2>
-          <p className="lede">Everything to run agent evaluation as real engineering — not vibes.</p>
+          <h2>What we check</h2>
+          <p className="lede">The three questions that decide whether an agent is safe to ship — plus the tools to keep it that way.</p>
           <div className="features">
             {FEATURES.map(([ico, h, p, tag]) => (
               <div className="feat" key={h}>
@@ -78,12 +79,13 @@ export function LandingPage() {
         </section>
 
         <section className="section" style={{ textAlign: "center" }}>
-          <h2>Ship agents you can trust</h2>
+          <h2>Make your agents safer</h2>
           <p className="lede" style={{ margin: "0 auto 24px" }}>
-            Create a workspace, draft a suite, and run your first scorecard in minutes.
+            Create a workspace and run your first safety scorecard in minutes —
+            know what your agent does before your users do.
           </p>
           <div className="cta">
-            <Link className="btn-primary" to="/signup">Create your workspace</Link>
+            <Link className="btn-primary" to="/signup">Test your agent free</Link>
             <Link className="btn-ghost" to="/login">Log in</Link>
           </div>
         </section>
@@ -96,7 +98,7 @@ export function LandingPage() {
           <Link to="/login">Log in</Link>
           <Link to="/signup">Sign up</Link>
           <span style={{ flex: 1 }} />
-          <span>Agentic scoring &amp; benchmarking platform</span>
+          <span>Safety testing for AI agents</span>
         </div>
       </footer>
     </>
