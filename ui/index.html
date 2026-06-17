@@ -10,7 +10,10 @@
       (function () {
         try {
           var t = localStorage.getItem("ascore_theme");
-          document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
+          var resolved = t === "light" ? "light"
+            : t === "system" ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+            : "dark";
+          document.documentElement.setAttribute("data-theme", resolved);
         } catch (e) {}
       })();
     </script>

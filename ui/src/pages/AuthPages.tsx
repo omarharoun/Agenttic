@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
-import { ThemeToggle } from "../components/ThemeToggle";
 
 function Brand() {
   return (
@@ -147,7 +146,6 @@ export function VerifyPage() {
           <div className="alt"><Link to="/login">Back to log in</Link></div>
         )}
       </div>
-      <div style={{ position: "fixed", top: 16, right: 16 }}><ThemeToggle /></div>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ThemeToggle } from "../components/ThemeToggle";
 
 const GROUP_TITLES: Record<string, string> = {
   auth: "Authentication", workflows: "Workflows", executions: "Executions",
@@ -60,7 +59,6 @@ export function ApiDocsPage() {
         <span className="spacer" />
         <a className="navlink" href="/openapi.json">openapi.json</a>
         <a className="navlink" href="/docs">Swagger</a>
-        <ThemeToggle />
       </nav>
       <div className="docs">
         <h1>API Reference</h1>
