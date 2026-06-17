@@ -53,8 +53,11 @@ class BusinessDocConfig(BaseModel):
 
 
 class GeneratorConfig(BaseModel):
-    suite_id: str
-    cases_per_task: int = 5
+    suite_id: str = "generated-suite"
+    # No fixed per-task count: the generator decides how many cases each task
+    # warrants (bounded by the pipeline). ``max_cases_per_task`` is an optional
+    # upper bound, not surfaced in the guided UI.
+    max_cases_per_task: int = 8
 
 
 class HumanGateConfig(BaseModel):
@@ -66,7 +69,8 @@ class AgentConfig(BaseModel):
     agent_id: str = "agent-under-test"
     system_prompt: str = ""     # reference variant: the DUT's task instructions
     model: str = ""             # reference: model override; blackbox: pricing hint
-    url: str = ""
+    url: str = ""               # external (blackbox) variant: the POST endpoint
+    headers: dict = Field(default_factory=dict)  # external variant: auth/custom headers
     managed_agent_id: str = ""
     environment_id: str = ""
     agent_yaml_path: str = ""
@@ -136,7 +140,7 @@ async def _run_generator(ctx: NodeContext, cfg: GeneratorConfig,
 
     suite = await asyncio.to_thread(
         ops.generate_op, ctx.cfg, ctx.reg, inputs["doc"], cfg.suite_id,
-        ctx.clients.get("generator"), progress, cfg.cases_per_task)
+        ctx.clients.get("generator"), progress, cfg.max_cases_per_task)
     ctx.emit("node_progress", {"message": f"draft suite {suite.suite_id} "
                                           f"v{suite.version}: {len(suite.test_ids)} cases"})
     return {"suite": {"suite_id": suite.suite_id, "version": suite.version,
@@ -182,6 +186,7 @@ async def _run_run_suite(ctx: NodeContext, cfg: RunSuiteConfig,
         client=ctx.clients.get("agent"),
         system_prompt=agent_ref.get("system_prompt", ""),
         model=agent_ref.get("model", ""),
+        headers=agent_ref.get("headers") or None,
         cost_per_call_usd=agent_ref.get("cost_per_call_usd", 0.0),
         expected_input_tokens=agent_ref.get("expected_input_tokens", 0),
         expected_output_tokens=agent_ref.get("expected_output_tokens", 0))

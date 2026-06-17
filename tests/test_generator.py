@@ -116,6 +116,24 @@ class TestGeneration:
         rubric = gen.define_criteria(TASKS["tasks"][0], rubric_id="r")
         assert [c.criterion_id for c in rubric.criteria] == ["ok"]
 
+    def test_generator_decides_count_capped_to_bound(self):
+        # the model returns 12 cases; the pipeline honours the upper bound (8)
+        # rather than a fixed per-task count.
+        from ascore.generator.pipeline import MAX_CASES
+        rubric = make_generator([reply(criteria_payload("triage"))]) \
+            .define_criteria(TASKS["tasks"][0], rubric_id="r")
+        gen = make_generator([reply(cases_payload("triage", n=12))])
+        cases = gen.generate_cases(TASKS["tasks"][0], suite_id="s", rubric=rubric)
+        assert len(cases) == MAX_CASES == 8
+
+    def test_generator_keeps_agent_chosen_smaller_count(self):
+        # a simple task: the model returns just 3 — kept as-is, not padded.
+        rubric = make_generator([reply(criteria_payload("triage"))]) \
+            .define_criteria(TASKS["tasks"][0], rubric_id="r")
+        gen = make_generator([reply(cases_payload("triage", n=3))])
+        cases = gen.generate_cases(TASKS["tasks"][0], suite_id="s", rubric=rubric)
+        assert len(cases) == 3
+
     def test_null_anchors_in_generated_criteria_tolerated(self):
         # the live bug: LLM emits "anchors": null on a code criterion. Must
         # coerce to {} and keep the criterion, not raise dict_type.

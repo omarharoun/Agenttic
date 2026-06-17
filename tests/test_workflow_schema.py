@@ -42,8 +42,11 @@ class TestValidation:
         assert any("unknown node type" in p for p in validate_workflow(wf))
 
     def test_invalid_config(self):
+        # generator now defaults suite_id (the step needs no config); a
+        # wrong-typed field still fails config validation.
         wf = Workflow(workflow_id="w", name="t",
-                      nodes=[node("g", "generator")], edges=[])  # missing suite_id
+                      nodes=[node("g", "generator", max_cases_per_task="lots")],
+                      edges=[])
         assert any("invalid config" in p for p in validate_workflow(wf))
 
     def test_dangling_edge(self):
