@@ -212,16 +212,16 @@ class ExecutionManager:
         self.clients = clients or {}
         self._handles: dict[str, _Handles] = {}
 
-    def start(self, wf: Workflow) -> str:
+    def start(self, wf: Workflow, clients: dict | None = None) -> str:
         problems = validate_workflow(wf)
         if problems:
             raise WorkflowValidationError(problems)
         execution_id = uuid.uuid4().hex[:12]
         self.store.create_execution(execution_id, wf)
-        self._launch(wf, execution_id, seeded=None)
+        self._launch(wf, execution_id, seeded=None, clients=clients)
         return execution_id
 
-    def resume(self, execution_id: str) -> None:
+    def resume(self, execution_id: str, clients: dict | None = None) -> None:
         """Relaunch a gated/interrupted execution seeded with persisted node
         outputs; completed nodes replay instantly, the gate re-checks."""
         ex = self.store.get_execution(execution_id)
@@ -231,14 +231,16 @@ class ExecutionManager:
         wf = Workflow.model_validate(ex["workflow"])
         self.store.update_execution(execution_id, status="running",
                                     waiting_node_id=None)
-        self._launch(wf, execution_id, seeded=ex["node_outputs"])
+        self._launch(wf, execution_id, seeded=ex["node_outputs"], clients=clients)
 
     def _launch(self, wf: Workflow, execution_id: str,
-                seeded: dict | None) -> None:
+                seeded: dict | None, clients: dict | None = None) -> None:
         handles = _Handles()
         self.bus.open(execution_id)  # live before the task's first publish
+        # per-run clients (the tenant's own Anthropic key) override the
+        # manager's defaults; falls back to injected test clients
         executor = WorkflowExecutor(self.cfg, self.reg, self.store, self.bus,
-                                    self.clients)
+                                    clients or self.clients)
         handles.task = asyncio.create_task(
             executor.run(wf, execution_id, handles, seeded_outputs=seeded))
         self._handles[execution_id] = handles

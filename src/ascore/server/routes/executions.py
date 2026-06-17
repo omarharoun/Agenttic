@@ -13,8 +13,26 @@ from sse_starlette.sse import EventSourceResponse
 from ascore.registry.sqlite_store import NotFoundError
 from ascore.server.auth import require_operator
 from ascore.server.executor import WorkflowValidationError
+from ascore.server.keys import KeyStore, build_tenant_clients
 
 router = APIRouter(tags=["executions"])
+
+_NO_KEY_MSG = ("Add your Anthropic API key in Settings to run tests — "
+               "Agenttic runs your agents with your own key.")
+
+
+def _run_clients(request) -> dict | None:
+    """Clients for this run. Test/dev injection (app.state.clients) wins so the
+    suite keeps working. Otherwise build from THIS tenant's own Anthropic key;
+    raise 400 if it isn't set (never fall back to the platform key)."""
+    injected = getattr(request.state, "clients", None) or {}
+    if injected:
+        return None  # manager already holds the injected clients
+    tenant = getattr(request.state, "tenant", "default")
+    key = KeyStore(request.state.reg.engine, request.state.cfg).get_key(tenant)
+    if not key:
+        raise HTTPException(400, _NO_KEY_MSG)
+    return build_tenant_clients(key)
 
 
 @router.post("/workflows/{workflow_id}/executions",
@@ -26,8 +44,9 @@ async def start_execution(workflow_id: str, request: Request):
         wf = state.store.get_workflow(workflow_id)
     except NotFoundError:
         raise HTTPException(404, f"workflow {workflow_id} not found")
+    clients = _run_clients(request)  # tenant key (or None for injected clients)
     try:
-        execution_id = state.manager.start(wf)
+        execution_id = state.manager.start(wf, clients=clients)
     except WorkflowValidationError as exc:
         raise HTTPException(422, detail={"problems": exc.problems})
     return {"execution_id": execution_id}
@@ -154,7 +173,7 @@ async def approve_execution(execution_id: str, request: Request):
     info = waiting[-1]["data"]
     state.reg.approve_suite(info["suite_id"], info["version"])
     if not state.manager.approve_gate(execution_id):
-        state.manager.resume(execution_id)
+        state.manager.resume(execution_id, clients=_run_clients(request))
     return {"approved": {"suite_id": info["suite_id"],
                          "version": info["version"]}}
 
@@ -170,7 +189,7 @@ async def cancel_execution(execution_id: str, request: Request):
              dependencies=[Depends(require_operator)])
 async def resume_execution(execution_id: str, request: Request):
     try:
-        request.state.manager.resume(execution_id)
+        request.state.manager.resume(execution_id, clients=_run_clients(request))
     except (NotFoundError, ValueError) as exc:
         raise HTTPException(409, str(exc))
     return {"resumed": execution_id}
