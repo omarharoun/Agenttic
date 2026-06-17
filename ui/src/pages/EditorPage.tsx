@@ -1,8 +1,8 @@
 import { ReactFlowProvider } from "@xyflow/react";
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 import { Canvas } from "../canvas/Canvas";
-import { ThemeToggle } from "../components/ThemeToggle";
 import { ConfigPanel } from "../panels/ConfigPanel";
 import { Palette } from "../panels/Palette";
 import { ensureNotifyPermission } from "../notify";
@@ -265,11 +265,6 @@ export function EditorPage() {
           <button className={mode === "advanced" ? "on" : ""} onClick={() => setEditorMode("advanced")}>Advanced</button>
         </div>
 
-        {problems.length > 0 && (
-          <span style={{ color: "var(--fail)", fontSize: 12 }} title={problems.join("\n")}>
-            {problems.length} problem{problems.length > 1 ? "s" : ""}
-          </span>
-        )}
         {store.exec.status !== "idle" && (
           <span className={`status-chip ${store.exec.status}`}>{store.exec.status.replace("_", " ")}</span>
         )}
@@ -295,8 +290,9 @@ export function EditorPage() {
         ) : (
           <button className="primary" onClick={run} disabled={!hasNodes}>▶ Run</button>
         )}
-        <ThemeToggle />
       </div>
+
+      {problems.length > 0 && <RunProblems problems={problems} onDismiss={() => setProblems([])} />}
 
       {mode === "guided" ? (
         <GuidedFlow results={results} onPickTemplate={pickTemplate} />
@@ -309,6 +305,31 @@ export function EditorPage() {
           <ConfigPanel results={results} />
         </div>
       )}
+    </div>
+  );
+}
+
+/** Visible, actionable error banner for run/validation failures — replaces the
+ *  old bare "N problems" count. Surfaces the real backend message; when the run
+ *  was blocked for a missing Anthropic key, links straight to Settings. */
+function RunProblems({ problems, onDismiss }: { problems: string[]; onDismiss: () => void }) {
+  const clean = (s: string) => s.replace(/^"+|"+$/g, "").replace(/^\d+\s*—?\s*/, "");
+  const needsKey = problems.some((p) => /Anthropic API key/i.test(p));
+  return (
+    <div className="run-problems">
+      <span className="rp-ico">⚠</span>
+      <div className="rp-body">
+        <div className="rp-title">{needsKey ? "Can't run yet" : `Couldn't run — ${problems.length} problem${problems.length > 1 ? "s" : ""}`}</div>
+        <ul className="rp-list">
+          {problems.map((p, i) => <li key={i}>{clean(p)}</li>)}
+        </ul>
+        {needsKey && (
+          <Link className="rp-cta" to="/app/settings?section=api-keys">
+            Add your Anthropic API key in Settings →
+          </Link>
+        )}
+      </div>
+      <button className="rp-x" onClick={onDismiss} title="Dismiss">✕</button>
     </div>
   );
 }
