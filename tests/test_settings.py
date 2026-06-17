@@ -47,6 +47,24 @@ def test_key_status_empty_then_set_masked(tmp_path, monkeypatch):
         assert "supersecretkey" not in c.get("/api/settings/anthropic-key").text
 
 
+def test_raw_key_never_in_responses_or_logs(tmp_path, monkeypatch, caplog):
+    import logging
+    monkeypatch.setattr(keys, "validate_anthropic_key", lambda k: (True, ""))
+    SECRET = "sk-ant-DONOTLEAKvalue-0001"
+    with _client(tmp_path) as c, caplog.at_level(logging.DEBUG):
+        _signup(c)
+        r_put = c.put("/api/settings/anthropic-key", json={"key": SECRET})
+        r_get = c.get("/api/settings/anthropic-key")
+        r_test = c.post("/api/settings/anthropic-key/test", json={"key": SECRET})
+    # the secret must not appear in ANY response body...
+    for r in (r_put, r_get, r_test):
+        assert "DONOTLEAK" not in r.text
+    # ...nor in any log line
+    assert "DONOTLEAK" not in caplog.text
+    # only the masked last4 is surfaced
+    assert r_get.json()["masked"] == "sk-ant-…0001"
+
+
 def test_invalid_key_rejected(tmp_path, monkeypatch):
     monkeypatch.setattr(keys, "validate_anthropic_key",
                         lambda k: (False, "authentication failed"))

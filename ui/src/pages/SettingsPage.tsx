@@ -40,7 +40,7 @@ export function SettingsPage() {
   );
 }
 
-function Card({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
+function Card({ title, desc, children }: { title: React.ReactNode; desc?: string; children: React.ReactNode }) {
   return (
     <section className="card">
       <div className="card-head">
@@ -129,8 +129,8 @@ function ApiKeysSection() {
   };
 
   return (
-    <Card title="Anthropic API key"
-          desc="Agenttic runs your agents with your own Anthropic key. It's encrypted at rest and never shown again.">
+    <Card title={<>Anthropic API key <span className="req-pill">Required</span></>}
+          desc="Required to run tests. Agenttic runs your agents with your own Anthropic key — you're never charged for model usage, Anthropic bills you directly.">
       <div className="key-status">
         {status === null ? <Spinner /> : status.set ? (
           <div className="key-set">
@@ -140,13 +140,18 @@ function ApiKeysSection() {
             <button className="ghost-sm" disabled={busy === "remove"} onClick={remove}>Remove</button>
           </div>
         ) : (
-          <div className="key-unset"><span className="key-dot" /> No key set — add one to run tests.</div>
+          <div className="key-unset key-required">
+            <span className="key-dot req" /> No key set — required to run tests. Add yours below.
+          </div>
         )}
       </div>
 
-      <label>{status?.set ? "Replace key" : "Add key"}</label>
+      <label>{status?.set ? "Replace key" : "Add your key"}</label>
       <input type="password" value={key} placeholder="sk-ant-…"
              autoComplete="off" onChange={(e) => setKey(e.target.value)} />
+      <p className="key-safety">
+        🔒 Your API key is <b>encrypted at rest, never logged, never shared</b>, and only used to run your own tests.
+      </p>
       <div className="key-actions">
         <button disabled={!key.trim() || busy === "test"} onClick={test}>
           {busy === "test" ? "Testing…" : "Test key"}

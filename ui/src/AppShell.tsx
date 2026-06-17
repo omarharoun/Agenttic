@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, Route, Routes, useNavigate } from "react-router-dom";
+import { Link, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { api, auth, type Me } from "./api";
 import { AccountMenu } from "./components/AccountMenu";
 import { useRunNotifications } from "./notify";
@@ -42,11 +42,29 @@ function TokenControl() {
  * /api/me — a 401 bounces to /login. */
 export function AppShell() {
   const nav = useNavigate();
+  const loc = useLocation();
   const [me, setMe] = useState<Me | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "denied">("loading");
+  const [keySet, setKeySet] = useState<boolean | null>(null);
+  const [nudgeDismissed, setNudgeDismissed] = useState(
+    () => sessionStorage.getItem("ascore_key_nudge_dismissed") === "1");
   const execId = useFlowStore((s) => s.exec.executionId);
   useExecutionEvents(execId);   // subscribe above the router so runs survive nav
   useRunNotifications();
+
+  // first-run onboarding: re-check whether the tenant has an Anthropic key
+  // whenever the route changes (so the nudge clears right after one is added)
+  useEffect(() => {
+    if (state !== "ok") return;
+    api.anthropicKeyStatus().then((s) => setKeySet(s.set)).catch(() => setKeySet(null));
+  }, [state, loc.pathname]);
+
+  const onSettings = loc.pathname.startsWith("/app/settings");
+  const showNudge = state === "ok" && keySet === false && !nudgeDismissed && !onSettings;
+  const dismissNudge = () => {
+    sessionStorage.setItem("ascore_key_nudge_dismissed", "1");
+    setNudgeDismissed(true);
+  };
 
   useEffect(() => {
     api.me()
@@ -97,6 +115,18 @@ export function AppShell() {
           <span style={{ flex: 1 }} />
           <AccountMenu me={me} onLogout={logout} />
         </header>
+        {showNudge && (
+          <div className="key-nudge">
+            <span className="kn-ico">🔑</span>
+            <span className="kn-text">
+              <b>Add your Anthropic API key to start running tests.</b> Agenttic
+              runs your agents with your own key — it's encrypted at rest and
+              never shared.
+            </span>
+            <Link className="kn-cta" to="/app/settings?section=api-keys">Add key</Link>
+            <button className="kn-x" onClick={dismissNudge} title="Dismiss">✕</button>
+          </div>
+        )}
         <div className="app-routes">
           <Routes>
             <Route path="/" element={<EditorPage />} />
