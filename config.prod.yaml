@@ -69,19 +69,22 @@ auth:
   allow_signup: true                      # open signup; each signup gets its own tenant workspace
   signup_role: admin                      # self-signup is admin of their own workspace
 email:
-  # Mail is OFF until an outbound relay is configured (node1 blocks 25/465/587;
-  # use a relay on 2525 or an HTTP-API provider). Flip enabled + require_verification
-  # to true once SMTP_HOST/SMTP_USER/SMTP_PASS are set in the host .env.
+  # Sending uses Resend over HTTPS (443 is open; SMTP ports are blocked on this
+  # droplet). Mail stays OFF until RESEND_API_KEY is set in the host .env and the
+  # agenttic.io domain is verified in Resend. Then flip enabled +
+  # require_verification to true. Receiving (support@) is Cloudflare Email
+  # Routing — not handled here. See docs/MAIL.md.
   enabled: false
   require_verification: false
+  provider: resend
   from: "noreply@agenttic.io"
   verify_url_base: "https://agenttic.io/verify"
   token_ttl_hours: 24
-  smtp:
-    host: ""                              # env SMTP_HOST (relay); use port 2525 on this droplet
+  smtp:                                   # fallback relay if ever needed (use 2525 here)
+    host: ""
     port: 2525
-    user: ""                              # env SMTP_USER
-    password: ""                          # env SMTP_PASS / *_FILE secret — never commit
+    user: ""
+    password: ""
     starttls: true
     ssl: false
 security:
