@@ -1,5 +1,6 @@
 import {
   Background,
+  BackgroundVariant,
   Connection,
   Controls,
   MiniMap,
@@ -122,7 +123,8 @@ export function Canvas() {
         fitView
         deleteKeyCode={["Backspace", "Delete"]}
       >
-        <Background gap={18} size={1.4} color={dotColor} bgColor={bgColor} />
+        <Background variant={BackgroundVariant.Dots} gap={18} size={1.4}
+                    color={dotColor} bgColor={bgColor} />
         <Controls />
         <MiniMap pannable zoomable />
       </ReactFlow>
