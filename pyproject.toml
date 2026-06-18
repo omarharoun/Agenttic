@@ -16,6 +16,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "bcrypt>=4.0",
     "cryptography>=42",
+    "fpdf2>=2.7",
 ]
 
 [project.optional-dependencies]

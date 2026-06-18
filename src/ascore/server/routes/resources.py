@@ -9,7 +9,7 @@ import re
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
 from fastapi.responses import PlainTextResponse
 
 from ascore import ops
@@ -100,6 +100,19 @@ def scorecard_report(scorecard_id: str, request: Request):
         return ops.report_op(request.state.reg, scorecard_id)
     except NotFoundError:
         raise HTTPException(404, f"scorecard {scorecard_id} not found")
+
+
+@router.get("/scorecards/{scorecard_id}/report.pdf")
+def scorecard_report_pdf(scorecard_id: str, request: Request):
+    """The same scorecard report as a polished, on-brand PDF download."""
+    try:
+        pdf = ops.report_pdf_op(request.state.reg, scorecard_id)
+    except NotFoundError:
+        raise HTTPException(404, f"scorecard {scorecard_id} not found")
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition":
+                 f'attachment; filename="scorecard-{scorecard_id}.pdf"'})
 
 
 @router.get("/agents")

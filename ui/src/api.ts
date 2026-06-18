@@ -73,6 +73,16 @@ function afetch(url: string, opts: RequestInit = {}) {
   });
 }
 
+/** Trigger a browser download for a fetched blob (used for PDF export). */
+export function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /** Append the token to an SSE URL (EventSource has no header API). */
 export function sseUrl(path: string): string {
   const t = auth.get();
@@ -200,6 +210,11 @@ export const api = {
   listScorecards: () => afetch("/api/scorecards").then((r) => json<any[]>(r)),
   scorecardReport: (id: string) =>
     afetch(`/api/scorecards/${id}/report`).then((r) => r.text()),
+  scorecardPdf: (id: string) =>
+    afetch(`/api/scorecards/${id}/report.pdf`).then(async (r) => {
+      if (!r.ok) throw new Error(`${r.status}`);
+      return r.blob();
+    }),
   listTraces: () => afetch("/api/traces").then((r) => json<any[]>(r)),
   getTrace: (id: string) => afetch(`/api/traces/${id}`).then((r) => json<any>(r)),
   upload: (file: File) => {

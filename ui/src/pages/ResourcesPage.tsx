@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import { api, downloadBlob } from "../api";
 
 type Tab = "suites" | "scorecards" | "traces";
 
@@ -72,10 +72,18 @@ export function ResourcesPage() {
                   <td>{Math.round((s.task_success_rate ?? 0) * 100)}%</td>
                   <td>${(s.mean_cost_usd ?? 0).toFixed(4)}</td>
                   <td>{s.visibility_tier}</td>
-                  <td><button onClick={() =>
-                    api.scorecardReport(s.scorecard_id).then(setDoc)}>
-                    report
-                  </button></td>
+                  <td>
+                    <button onClick={() =>
+                      api.scorecardReport(s.scorecard_id).then(setDoc)}>
+                      report
+                    </button>
+                    <button style={{ marginLeft: 6 }} title="Download as PDF"
+                            onClick={() => api.scorecardPdf(s.scorecard_id)
+                              .then((b) => downloadBlob(b, `scorecard-${s.scorecard_id}.pdf`))
+                              .catch(() => {})}>
+                      ⤓ PDF
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
