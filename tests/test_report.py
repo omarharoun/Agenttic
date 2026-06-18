@@ -44,6 +44,36 @@ def make_scorecard(sid="sc-new", runs=None):
     )
 
 
+def errored_run(i):
+    return RunScore(
+        trace_id=f"e-{i}", test_id=f"err-{i}", criterion_scores=[], passed=False,
+        cost_usd=0.02, latency_ms=120.0, steps=3,
+        scoring_error="CheckConfigError: test err: check requires expected['forbidden_tools']")
+
+
+class TestErroredReporting:
+    def test_all_errored_not_zero_percent(self):
+        # the red-team bug: cases all errored on a bad check config. The report
+        # must NOT call this 0% / all-FAIL — it's a scoring config error.
+        sc = make_scorecard(runs=[errored_run(0), errored_run(1)])
+        assert sc.errored_test_ids == ["err-0", "err-1"]
+        assert sc.per_criterion_means == {}      # nothing scored
+        md = render_markdown(sc, RUBRIC)
+        assert "No test cases could be scored" in md
+        assert "0%" not in md                    # not reported as 0% passed
+        assert "Errored cases" in md             # surfaced distinctly
+        assert "ERROR" in md                     # per-case result, not FAIL
+        assert "no criteria scored" in md.lower()  # breakdown explains emptiness
+
+    def test_mixed_scored_and_errored(self):
+        sc = make_scorecard(runs=[run_score(0, 1.0, 1.0), errored_run(1)])
+        md = render_markdown(sc, RUBRIC)
+        assert "1 of 1 scored" in md             # denominator excludes the errored one
+        assert "1 case(s) errored" in md
+        assert "ERROR" in md
+        assert sc.task_success_rate == 1.0       # rate over the scored subset only
+
+
 class TestReport:
     def test_client_presentable_no_placeholders(self):
         md = render_markdown(make_scorecard(), RUBRIC)

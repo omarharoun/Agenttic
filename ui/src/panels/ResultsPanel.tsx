@@ -18,14 +18,23 @@ export function ResultsPanel({ results }: { results: any }) {
     <div className="results">
       {scorecards.map((sc: any) => (
         <div key={sc.scorecard_id} className="results-summary">
-          <span className={sc.task_success_rate >= 0.7 ? "ok" : "err"}
-                style={{ fontSize: 15, fontWeight: 700 }}>
-            {Math.round(sc.task_success_rate * 100)}%
-          </span>
-          <span>{passed}/{scored.length} passed{scored.length !== cases.length
-            ? " of scored" : ""}</span>
+          {scored.length === 0 ? (
+            <span className="err" style={{ fontSize: 14, fontWeight: 700 }}
+                  title="No cases could be scored — see errored cases">
+              Not scored
+            </span>
+          ) : (
+            <>
+              <span className={sc.task_success_rate >= 0.7 ? "ok" : "err"}
+                    style={{ fontSize: 15, fontWeight: 700 }}>
+                {Math.round(sc.task_success_rate * 100)}%
+              </span>
+              <span>{passed}/{scored.length} passed{scored.length !== cases.length
+                ? " of scored" : ""}</span>
+            </>
+          )}
           {errored.length > 0 && (
-            <span className="err" title="excluded from the rate">
+            <span className="err" title="scoring/config errors — excluded from the rate">
               {errored.length} errored
             </span>
           )}
