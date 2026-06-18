@@ -31,13 +31,34 @@ def render_markdown(
         if not s.calibrated
     }
     n = len(sc.run_scores)
-    n_pass = sum(1 for r in sc.run_scores if r.passed)
+    errored = [r for r in sc.run_scores if r.scoring_error]
+    scored = [r for r in sc.run_scores if not r.scoring_error]
+    n_err = len(errored)
+    n_scored = len(scored)
+    n_pass = sum(1 for r in scored if r.passed)
     tier_note = (
         "Full trajectory-level scoring (glass-box instrumentation)."
         if sc.visibility_tier == "glass_box"
         else "**Black-box tier**: input/output scoring only; trajectory criteria "
              "were not assessable. Instrumenting the agent unlocks deeper diagnostics."
     )
+
+    cost_note = (f"Mean cost ${sc.mean_cost_usd:.4f} per run, p95 latency "
+                 f"{sc.p95_latency_ms:.0f} ms. {tier_note}")
+    if n_scored == 0:
+        # Nothing scored — do NOT report this as 0% / all-failed; it's a scoring
+        # configuration failure, not the agent failing the task.
+        summary = (
+            f"⚠ **No test cases could be scored.** All {n} case(s) errored during "
+            f"scoring (the agent ran, but the scoring config was invalid — see "
+            f"**Errored cases** below). Task success rate is not available. "
+            f"{cost_note}")
+    else:
+        err_note = (f" {n_err} case(s) errored during scoring and were excluded "
+                    f"from the rate (see **Errored cases**)." if n_err else "")
+        summary = (
+            f"The agent passed {n_pass} of {n_scored} scored case(s) "
+            f"(task success rate {_pct(sc.task_success_rate)}).{err_note} {cost_note}")
 
     lines = [
         f"# Agent Evaluation Scorecard — `{sc.agent_id}`",
@@ -47,10 +68,7 @@ def render_markdown(
         "",
         "## Executive summary",
         "",
-        f"The agent passed {n_pass} of {n} test cases "
-        f"(task success rate {_pct(sc.task_success_rate)}), at a mean cost of "
-        f"${sc.mean_cost_usd:.4f} per run and p95 latency of "
-        f"{sc.p95_latency_ms:.0f} ms. {tier_note}",
+        summary,
         "",
         "## Cost",
         "",
@@ -65,13 +83,25 @@ def render_markdown(
         "|---|---|---|---|---|",
     ]
     for r in sc.run_scores:
+        result = "ERROR" if r.scoring_error else ("PASS" if r.passed else "FAIL")
         lines.append(
-            f"| `{r.test_id}` | {'PASS' if r.passed else 'FAIL'} "
+            f"| `{r.test_id}` | {result} "
             f"| {r.cost_usd:.4f} | {r.latency_ms:.0f} | {r.steps} |"
         )
 
+    if errored:
+        lines += ["", "## Errored cases", "",
+                  f"{n_err} case(s) could not be scored. These are scoring/config "
+                  "failures, **not** agent task failures, and are excluded from the "
+                  "success rate:", "",
+                  "| Test case | Error |", "|---|---|"]
+        for r in errored:
+            lines.append(f"| `{r.test_id}` | {(r.scoring_error or '').replace('|', '\\|')[:160]} |")
+
     lines += ["", "## Criterion breakdown", "",
               "| Criterion | Scorer | Mean score | Status |", "|---|---|---|---|"]
+    if not sc.per_criterion_means:
+        lines.append("| _(no criteria scored — all cases errored)_ | — | — | — |")
     for cid, mean in sorted(sc.per_criterion_means.items()):
         crit = crit_by_id.get(cid)
         scorer = crit.scorer if crit else "?"
