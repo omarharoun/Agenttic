@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api } from "../api";
+import { api, downloadBlob } from "../api";
 
 /** Post-run scoreboard: scorecard summary + one row per test case showing
  * the agent's prediction vs expected, expandable to per-criterion scores
@@ -52,6 +52,12 @@ export function ResultsPanel({ results }: { results: any }) {
                   onClick={() => report ? setReport("")
                     : api.scorecardReport(sc.scorecard_id).then(setReport)}>
             {report ? "hide report" : "report"}
+          </button>
+          <button title="Download as PDF"
+                  onClick={() => api.scorecardPdf(sc.scorecard_id)
+                    .then((b) => downloadBlob(b, `scorecard-${sc.scorecard_id}.pdf`))
+                    .catch(() => {})}>
+            ⤓ PDF
           </button>
         </div>
       ))}

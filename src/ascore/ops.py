@@ -314,11 +314,21 @@ def deploy_op(spec: dict, env_name: str = "ascore-workflows", client=None) -> di
     }
 
 
-def report_op(reg: Registry, scorecard_id: str) -> str:
-    """Render a scorecard to client-ready Markdown (with regression diff)."""
+def _scorecard_with_context(reg: Registry, scorecard_id: str):
     sc = reg.get_scorecard(scorecard_id)
     rubric = reg.get_rubric(sc.rubric_id, sc.rubric_version)
     history = reg.scorecards_for(sc.agent_id, sc.suite_id)
     previous = next((h for h in reversed(history)
                      if h.scorecard_id != sc.scorecard_id), None)
-    return render_markdown(sc, rubric, previous)
+    return sc, rubric, previous
+
+
+def report_op(reg: Registry, scorecard_id: str) -> str:
+    """Render a scorecard to client-ready Markdown (with regression diff)."""
+    return render_markdown(*_scorecard_with_context(reg, scorecard_id))
+
+
+def report_pdf_op(reg: Registry, scorecard_id: str) -> bytes:
+    """Render a scorecard to a polished, on-brand PDF (same content as Markdown)."""
+    from ascore.reporting.pdf_report import render_pdf
+    return render_pdf(*_scorecard_with_context(reg, scorecard_id))
