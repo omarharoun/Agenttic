@@ -6,6 +6,7 @@ import { useRunNotifications } from "./notify";
 import { useExecutionEvents } from "./sse";
 import { useFlowStore } from "./store";
 import { AgentsPage } from "./pages/AgentsPage";
+import { ComparePage } from "./pages/ComparePage";
 import { EditorPage } from "./pages/EditorPage";
 import { ExecutionsPage } from "./pages/ExecutionsPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
@@ -97,6 +98,7 @@ export function AppShell() {
         </a>
         <NavLink to="/app" end><span className="ic">▦</span> Workflows</NavLink>
         <NavLink to="/app/executions"><span className="ic">▶</span> Runs</NavLink>
+        <NavLink to="/app/compare"><span className="ic">⚖</span> Compare</NavLink>
         <NavLink to="/app/leaderboard"><span className="ic">🏆</span> Leaderboard</NavLink>
         <NavLink to="/app/agents"><span className="ic">🤖</span> Agents</NavLink>
         <NavLink to="/app/resources"><span className="ic">▤</span> Resources</NavLink>
@@ -131,6 +133,7 @@ export function AppShell() {
           <Routes>
             <Route path="/" element={<EditorPage />} />
             <Route path="executions" element={<ExecutionsPage />} />
+            <Route path="compare" element={<ComparePage />} />
             <Route path="leaderboard" element={<LeaderboardPage />} />
             <Route path="agents" element={<AgentsPage />} />
             <Route path="resources" element={<ResourcesPage />} />

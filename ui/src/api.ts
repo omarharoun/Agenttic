@@ -215,6 +215,24 @@ export const api = {
       if (!r.ok) throw new Error(`${r.status}`);
       return r.blob();
     }),
+  // --- A/B comparison (two variants, head-to-head on one suite) ---
+  startAbRun: (body: {
+    suite_id: string; version?: number | null;
+    variant_a: Record<string, any>; variant_b: Record<string, any>;
+  }) =>
+    afetch("/api/ab/runs", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<{ comparison_id: string }>(r)),
+  listAbRuns: () => afetch("/api/ab/runs").then((r) => json<any[]>(r)),
+  getAbRun: (id: string) => afetch(`/api/ab/runs/${id}`).then((r) => json<any>(r)),
+  abReport: (id: string) => afetch(`/api/ab/runs/${id}/report`).then((r) => r.text()),
+  abPdf: (id: string) =>
+    afetch(`/api/ab/runs/${id}/report.pdf`).then(async (r) => {
+      if (!r.ok) throw new Error(`${r.status}`);
+      return r.blob();
+    }),
+
   listTraces: () => afetch("/api/traces").then((r) => json<any[]>(r)),
   getTrace: (id: string) => afetch(`/api/traces/${id}`).then((r) => json<any>(r)),
   upload: (file: File) => {
