@@ -597,6 +597,25 @@ def standard_run(
     console.print(f"  calibration mode: {res['calibration_mode']}")
 
 
+@standard_app.command("ingest")
+def standard_ingest(dataset: str = typer.Argument("bfcl", help="dataset id (e.g. bfcl)"),
+                    full: bool = typer.Option(False, "--full",
+                        help="fetch the full split from the source (else vendored sample)"),
+                    config: str = "config.yaml"):
+    """Ingest a real public dataset into a labeled standard suite (e.g. BFCL)."""
+    from ascore.metrics.datasets import get_adapter
+    _, reg = _ctx(config)
+    try:
+        res = get_adapter(dataset).ingest(reg, full=full)
+    except KeyError as exc:
+        raise typer.BadParameter(str(exc))
+    if res.get("already_present"):
+        console.print(f"[yellow]{res['suite_id']}[/] already ingested.")
+    else:
+        console.print(f"[green]Ingested[/] {res['ingested']} {dataset} cases into "
+                      f"{res['suite_id']} ({res['license']}).")
+
+
 @standard_app.command("metrics")
 def standard_metrics():
     """List the canonical metrics, the methodology each implements, and weights."""

@@ -66,7 +66,16 @@ def tool_param_accuracy(trace: Trace, tc: TestCase) -> float:
         call = next((inp for (n, inp) in calls if n == tool), None)
         for k, v in args.items():
             total += 1
-            if call is not None and str(call.get(k)) == str(v):
+            present = call is not None and k in call
+            if isinstance(v, list):
+                # BFCL ground truth: any value in the list is acceptable; an empty
+                # string in the list marks the arg optional (absent is OK too).
+                allowed = {str(x) for x in v}
+                ok = (present and str(call.get(k)) in allowed) or \
+                     ("" in allowed and not present)
+            else:
+                ok = present and str(call.get(k)) == str(v)
+            if ok:
                 matched += 1
     if total == 0:
         return 1.0

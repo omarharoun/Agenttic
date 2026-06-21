@@ -95,6 +95,39 @@ async def run_standard(body: RunBody, request: Request):
                     "Results appear on the standard leaderboard when done."}
 
 
+@router.get("/standard/datasets")
+def standard_datasets(request: Request):
+    """Real public datasets available to ingest (BFCL now), with license +
+    citation + whether each is present in this workspace."""
+    from ascore.metrics.datasets import dataset_infos
+    out = []
+    for info in dataset_infos():
+        try:
+            request.state.reg.get_suite(info.suite_id)
+            present = True
+        except Exception:  # noqa: BLE001
+            present = False
+        out.append({"dataset_id": info.dataset_id, "suite_id": info.suite_id,
+                    "name": info.name, "citation": info.citation,
+                    "license": info.license, "source_url": info.source_url,
+                    "present": present})
+    return {"datasets": out}
+
+
+@router.post("/standard/ingest/{dataset_id}", dependencies=[Depends(require_operator)])
+def ingest_dataset(dataset_id: str, request: Request, full: bool = False):
+    """Ingest a real public dataset (e.g. BFCL) into a labeled standard suite."""
+    from ascore.metrics.datasets import get_adapter
+    try:
+        adapter = get_adapter(dataset_id)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc))
+    try:
+        return adapter.ingest(request.state.reg, full=full)
+    except Exception as exc:  # noqa: BLE001 — network/parse failure is a 502
+        raise HTTPException(502, f"ingest failed: {type(exc).__name__}: {exc}")
+
+
 @router.get("/standard/leaderboard")
 def standard_leaderboard(request: Request):
     """Per-agent Agenttic Index across the standard metrics (components shown).
