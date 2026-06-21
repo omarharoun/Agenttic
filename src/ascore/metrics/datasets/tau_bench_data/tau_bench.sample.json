@@ -1,0 +1,1111 @@
+[
+  {
+    "domain": "retail",
+    "task_index": 0,
+    "annotator": "0",
+    "user_id": "yusuf_rossi_9620",
+    "instruction": "You are Yusuf Rossi in 19122. You received your order #W2378156 and wish to exchange the mechanical keyboard for a similar one but with clicky switches and the smart thermostat for one compatible with Google Home instead of Apple HomeKit. If there is no keyboard that is clicky, RGB backlight, full size, you'd go for no backlight. You are detail-oriented and want to make sure everything is addressed in one go.",
+    "actions": [
+      {
+        "name": "find_user_id_by_name_zip",
+        "kwargs": {
+          "first_name": "Yusuf",
+          "last_name": "Rossi",
+          "zip": "19122"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W2378156"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "1656367028"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "4896585277"
+        }
+      },
+      {
+        "name": "exchange_delivered_order_items",
+        "kwargs": {
+          "order_id": "#W2378156",
+          "item_ids": [
+            "1151293680",
+            "4983901480"
+          ],
+          "new_item_ids": [
+            "7706410293",
+            "7747408585"
+          ],
+          "payment_method_id": "credit_card_9513926"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "retail",
+    "task_index": 1,
+    "annotator": "0",
+    "user_id": "yusuf_rossi_9620",
+    "instruction": "You are Yusuf Rossi in 19122. You received your order #W2378156 and wish to exchange the mechanical keyboard for a similar one but with clicky switches and the smart thermostat for one compatible with Google Home instead of Apple HomeKit. If there is no keyboard that is clicky, RGB backlight, full size, you'd rather only exchange the thermostat. You are detail-oriented and want to make sure everything is addressed in one go.",
+    "actions": [
+      {
+        "name": "find_user_id_by_name_zip",
+        "kwargs": {
+          "first_name": "Yusuf",
+          "last_name": "Rossi",
+          "zip": "19122"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W2378156"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "1656367028"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "4896585277"
+        }
+      },
+      {
+        "name": "exchange_delivered_order_items",
+        "kwargs": {
+          "order_id": "#W2378156",
+          "item_ids": [
+            "4983901480"
+          ],
+          "new_item_ids": [
+            "7747408585"
+          ],
+          "payment_method_id": "credit_card_9513926"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "retail",
+    "task_index": 2,
+    "annotator": "0",
+    "user_id": "yusuf_rossi_9620",
+    "instruction": "You are Yusuf Rossi in 19122. You want to know how many tshirt options are available in the online store right now. You want to also return the cleaner, headphone, and smart watch.",
+    "actions": [
+      {
+        "name": "find_user_id_by_name_zip",
+        "kwargs": {
+          "first_name": "Yusuf",
+          "last_name": "Rossi",
+          "zip": "19122"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "6086499569"
+        }
+      },
+      {
+        "name": "list_all_product_types",
+        "kwargs": {}
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "9523456873"
+        }
+      },
+      {
+        "name": "get_user_details",
+        "kwargs": {
+          "user_id": "yusuf_rossi_9620"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W6247578"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W9711842"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W4776164"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W6679257"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W2378156"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "9523456873"
+        }
+      },
+      {
+        "name": "return_delivered_order_items",
+        "kwargs": {
+          "order_id": "#W2378156",
+          "item_ids": [
+            "4602305039",
+            "4202497723",
+            "9408160950"
+          ],
+          "payment_method_id": "credit_card_9513926"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "retail",
+    "task_index": 3,
+    "annotator": "0",
+    "user_id": "yusuf_rossi_9620",
+    "instruction": "You are Yusuf Rossi in 19122. You want to know how many tshirt options are available in the online store right now. You want to modify all your pending small tshirt to purple, same size, same v-neck, and prefer polyester. You are a private person that does not want to reveal much about yourself.",
+    "actions": [
+      {
+        "name": "find_user_id_by_name_zip",
+        "kwargs": {
+          "first_name": "Yusuf",
+          "last_name": "Rossi",
+          "zip": "19122"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "6086499569"
+        }
+      },
+      {
+        "name": "list_all_product_types",
+        "kwargs": {}
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "9523456873"
+        }
+      },
+      {
+        "name": "get_user_details",
+        "kwargs": {
+          "user_id": "yusuf_rossi_9620"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W6247578"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W9711842"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W4776164"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W6679257"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W2378156"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "9523456873"
+        }
+      },
+      {
+        "name": "get_user_details",
+        "kwargs": {
+          "user_id": "yusuf_rossi_9620"
+        }
+      },
+      {
+        "name": "modify_pending_order_items",
+        "kwargs": {
+          "order_id": "#W4776164",
+          "item_ids": [
+            "8349118980"
+          ],
+          "new_item_ids": [
+            "9647292434"
+          ],
+          "payment_method_id": "credit_card_9513926"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "retail",
+    "task_index": 4,
+    "annotator": "0",
+    "user_id": "yusuf_rossi_9620",
+    "instruction": "You are Yusuf Rossi in 19122. You want to know how many tshirt options are available in the online store right now. You want to modify all your pending tshirts (i.e., your 2 relevant orders) to purple, s size, same v-neck, and prefer polyester. You are a private person that does not want to reveal much about yourself.",
+    "actions": [
+      {
+        "name": "find_user_id_by_name_zip",
+        "kwargs": {
+          "first_name": "Yusuf",
+          "last_name": "Rossi",
+          "zip": "19122"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "6086499569"
+        }
+      },
+      {
+        "name": "list_all_product_types",
+        "kwargs": {}
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "9523456873"
+        }
+      },
+      {
+        "name": "get_user_details",
+        "kwargs": {
+          "user_id": "yusuf_rossi_9620"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W6247578"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W9711842"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W4776164"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W6679257"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W2378156"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "9523456873"
+        }
+      },
+      {
+        "name": "get_user_details",
+        "kwargs": {
+          "user_id": "yusuf_rossi_9620"
+        }
+      },
+      {
+        "name": "modify_pending_order_items",
+        "kwargs": {
+          "order_id": "#W6247578",
+          "item_ids": [
+            "3799046073"
+          ],
+          "new_item_ids": [
+            "9647292434"
+          ],
+          "payment_method_id": "credit_card_9513926"
+        }
+      },
+      {
+        "name": "modify_pending_order_items",
+        "kwargs": {
+          "order_id": "#W4776164",
+          "item_ids": [
+            "8349118980"
+          ],
+          "new_item_ids": [
+            "9647292434"
+          ],
+          "payment_method_id": "credit_card_9513926"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "retail",
+    "task_index": 5,
+    "annotator": "0",
+    "user_id": "mei_kovacs_8020",
+    "instruction": "You are mei_kovacs_8020 (zip code 28236) and you want to exchange the water bottle and the desk lamp. You want to exchange the water bottle to a bigger one, and the desk lamp to a less bright one (prefer battery > USB > AC). If the agent asks for confirmation, only exchange the desk lamp. If the agent asks for confirmation again, do not exchange anything, and return the water bottle instead.",
+    "actions": [
+      {
+        "name": "find_user_id_by_name_zip",
+        "kwargs": {
+          "first_name": "Mei",
+          "last_name": "Kovacs",
+          "zip": "28236"
+        }
+      },
+      {
+        "name": "get_user_details",
+        "kwargs": {
+          "user_id": "mei_kovacs_8020"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W6390527"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "6817146515"
+        }
+      },
+      {
+        "name": "return_delivered_order_items",
+        "kwargs": {
+          "order_id": "#W6390527",
+          "item_ids": [
+            "8538875209"
+          ],
+          "payment_method_id": "paypal_7644869"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "retail",
+    "task_index": 6,
+    "annotator": "0",
+    "user_id": "mei_kovacs_8020",
+    "instruction": "You are mei_kovacs_8020 (zip code 28236) and you want to exchange the water bottle and the desk lamp. You want to exchange the water bottle to a bigger one, and the desk lamp to a less bright one (prefer battery > USB > AC). If the agent asks for confirmation, only exchange the desk lamp.",
+    "actions": [
+      {
+        "name": "find_user_id_by_name_zip",
+        "kwargs": {
+          "first_name": "Mei",
+          "last_name": "Kovacs",
+          "zip": "28236"
+        }
+      },
+      {
+        "name": "get_user_details",
+        "kwargs": {
+          "user_id": "mei_kovacs_8020"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W6390527"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "8310926033"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "6817146515"
+        }
+      },
+      {
+        "name": "exchange_delivered_order_items",
+        "kwargs": {
+          "order_id": "#W6390527",
+          "item_ids": [
+            "8384507844"
+          ],
+          "new_item_ids": [
+            "7453605304"
+          ],
+          "payment_method_id": "paypal_7644869"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "retail",
+    "task_index": 7,
+    "annotator": "0",
+    "user_id": "mei_kovacs_8020",
+    "instruction": "You are mei_kovacs_8020 (zip code 28236) and you want to exchange the water bottle and the desk lamp. You want to exchange the water bottle to a bigger one, and the desk lamp to a less bright one (prefer AC adapter > battery > USB). If the agent asks for confirmation, only exchange the desk lamp.",
+    "actions": [
+      {
+        "name": "find_user_id_by_name_zip",
+        "kwargs": {
+          "first_name": "Mei",
+          "last_name": "Kovacs",
+          "zip": "28236"
+        }
+      },
+      {
+        "name": "get_user_details",
+        "kwargs": {
+          "user_id": "mei_kovacs_8020"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W6390527"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "8310926033"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "6817146515"
+        }
+      },
+      {
+        "name": "exchange_delivered_order_items",
+        "kwargs": {
+          "order_id": "#W6390527",
+          "item_ids": [
+            "8384507844"
+          ],
+          "new_item_ids": [
+            "1569765161"
+          ],
+          "payment_method_id": "paypal_7644869"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "retail",
+    "task_index": 8,
+    "annotator": "0",
+    "user_id": "mei_kovacs_8020",
+    "instruction": "You are mei_kovacs_8020 (zip code 28236) and you want to exchange the water bottle and the desk lamp. You want to exchange the water bottle to a bigger one, and the desk lamp to a brighter one (prefer battery > USB > AC). If the agent asks for confirmation, only exchange the desk lamp.",
+    "actions": [
+      {
+        "name": "find_user_id_by_name_zip",
+        "kwargs": {
+          "first_name": "Mei",
+          "last_name": "Kovacs",
+          "zip": "28236"
+        }
+      },
+      {
+        "name": "get_user_details",
+        "kwargs": {
+          "user_id": "mei_kovacs_8020"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W6390527"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "8310926033"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "6817146515"
+        }
+      },
+      {
+        "name": "exchange_delivered_order_items",
+        "kwargs": {
+          "order_id": "#W6390527",
+          "item_ids": [
+            "8384507844"
+          ],
+          "new_item_ids": [
+            "9083642334"
+          ],
+          "payment_method_id": "paypal_7644869"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "retail",
+    "task_index": 9,
+    "annotator": "0",
+    "user_id": "mei_kovacs_8020",
+    "instruction": "You are mei_kovacs_8020 (zip code 28236) and you want to exchange the water bottle and the desk lamp. You want to exchange the water bottle to a bigger one, and the desk lamp to a brighter one (prefer AC adapter > battery > USB). If the agent asks for confirmation, only exchange the desk lamp.",
+    "actions": [
+      {
+        "name": "find_user_id_by_name_zip",
+        "kwargs": {
+          "first_name": "Mei",
+          "last_name": "Kovacs",
+          "zip": "28236"
+        }
+      },
+      {
+        "name": "get_user_details",
+        "kwargs": {
+          "user_id": "mei_kovacs_8020"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W6390527"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "8310926033"
+        }
+      },
+      {
+        "name": "get_product_details",
+        "kwargs": {
+          "product_id": "6817146515"
+        }
+      },
+      {
+        "name": "exchange_delivered_order_items",
+        "kwargs": {
+          "order_id": "#W6390527",
+          "item_ids": [
+            "8384507844"
+          ],
+          "new_item_ids": [
+            "7624783998"
+          ],
+          "payment_method_id": "paypal_7644869"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "retail",
+    "task_index": 10,
+    "annotator": "0",
+    "user_id": "mia_garcia_4516",
+    "instruction": "You are mia_garcia_4516 (mia.garcia2723@example.com). For some reason, you want to return all things ordered. You have two payment methods and two orders, and you want to refund each order to the opposite order's payment method. If not possible, you are angry and swear for a few times, then asks for human representative. You are a mysterious person and do not want to reveal much about yourself or speak too many words at the same time.",
+    "actions": [
+      {
+        "name": "find_user_id_by_email",
+        "kwargs": {
+          "email": "mia.garcia2723@example.com"
+        }
+      },
+      {
+        "name": "get_user_details",
+        "kwargs": {
+          "user_id": "mia_garcia_4516"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W5490111"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W7387996"
+        }
+      },
+      {
+        "name": "transfer_to_human_agents",
+        "kwargs": {
+          "summary": "The user wants to refund each order to the opposite order's payment method, but the agent cannot help."
+        }
+      }
+    ]
+  },
+  {
+    "domain": "retail",
+    "task_index": 11,
+    "annotator": "0",
+    "user_id": "mia_garcia_4516",
+    "instruction": "You are mia_garcia_4516 (mia.garcia2723@example.com). For some reason, you want to return all things ordered. You have two payment methods and two orders, and you want to refund each order to the opposite order's payment method. If not possible, you are angry and swear for a few times, then agree to return all things with the original payment method. You are a mysterious person and do not want to reveal much about yourself or speak too many words at the same time.",
+    "actions": [
+      {
+        "name": "find_user_id_by_email",
+        "kwargs": {
+          "email": "mia.garcia2723@example.com"
+        }
+      },
+      {
+        "name": "get_user_details",
+        "kwargs": {
+          "user_id": "mia_garcia_4516"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W5490111"
+        }
+      },
+      {
+        "name": "get_order_details",
+        "kwargs": {
+          "order_id": "#W7387996"
+        }
+      },
+      {
+        "name": "return_delivered_order_items",
+        "kwargs": {
+          "order_id": "#W5490111",
+          "item_ids": [
+            "4579334072",
+            "1421289881",
+            "6117189161",
+            "4947717507"
+          ],
+          "payment_method_id": "credit_card_3124723"
+        }
+      },
+      {
+        "name": "return_delivered_order_items",
+        "kwargs": {
+          "order_id": "#W7387996",
+          "item_ids": [
+            "5796612084"
+          ],
+          "payment_method_id": "paypal_9497703"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "airline",
+    "task_index": 0,
+    "annotator": "0",
+    "user_id": "mia_li_3668",
+    "instruction": "Your user id is mia_li_3668. You want to fly from New York to Seattle on May 20 (one way). You do not want to fly before 11am est. You want to fly in economy. You prefer direct flights but one stopover also fine. If there are multiple options, you prefer the one with the lowest price. You have 3 baggages. You do not want insurance. You want to use your two certificates to pay. If only one certificate can be used, you prefer using the larger one, and pay the rest with your 7447 card. You are reactive to the agent and will not say anything that is not asked. Your birthday is in your user profile so you do not prefer to provide it.",
+    "actions": [
+      {
+        "name": "book_reservation",
+        "kwargs": {
+          "user_id": "mia_li_3668",
+          "origin": "JFK",
+          "destination": "SEA",
+          "flight_type": "one_way",
+          "cabin": "economy",
+          "flights": [
+            {
+              "flight_number": "HAT136",
+              "date": "2024-05-20"
+            },
+            {
+              "flight_number": "HAT039",
+              "date": "2024-05-20"
+            }
+          ],
+          "passengers": [
+            {
+              "first_name": "Mia",
+              "last_name": "Li",
+              "dob": "1990-04-05"
+            }
+          ],
+          "payment_methods": [
+            {
+              "payment_id": "certificate_7504069",
+              "amount": 250
+            },
+            {
+              "payment_id": "credit_card_4421486",
+              "amount": 5
+            }
+          ],
+          "total_baggages": 3,
+          "nonfree_baggages": 0,
+          "insurance": "no"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "airline",
+    "task_index": 1,
+    "annotator": "0",
+    "user_id": "olivia_gonzalez_2305",
+    "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+    "actions": [
+      {
+        "name": "cancel_reservation",
+        "kwargs": {
+          "reservation_id": "Z7GOZK"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "airline",
+    "task_index": 2,
+    "annotator": "0",
+    "user_id": "omar_davis_3817",
+    "instruction": "Your user id is omar_davis_3817, you just faced some money issue and want to downgrade all business flights to economy, without changing the flights or passengers. You are fine with refunding to original payment for each reservation. You want to know how much money you have saved in total. You are emotional and a bit angry, but you are willing to cooperate with the agent.",
+    "actions": [
+      {
+        "name": "update_reservation_flights",
+        "kwargs": {
+          "reservation_id": "JG7FMM",
+          "cabin": "economy",
+          "flights": [
+            {
+              "flight_number": "HAT028",
+              "date": "2024-05-21"
+            },
+            {
+              "flight_number": "HAT277",
+              "date": "2024-05-21"
+            }
+          ],
+          "payment_id": "credit_card_2929732"
+        }
+      },
+      {
+        "name": "update_reservation_flights",
+        "kwargs": {
+          "reservation_id": "2FBBAH",
+          "cabin": "economy",
+          "flights": [
+            {
+              "flight_number": "HAT080",
+              "date": "2024-05-28"
+            },
+            {
+              "flight_number": "HAT076",
+              "date": "2024-05-28"
+            },
+            {
+              "flight_number": "HAT255",
+              "date": "2024-05-30"
+            },
+            {
+              "flight_number": "HAT148",
+              "date": "2024-05-30"
+            }
+          ],
+          "payment_id": "gift_card_3481935"
+        }
+      },
+      {
+        "name": "update_reservation_flights",
+        "kwargs": {
+          "reservation_id": "X7BYG1",
+          "cabin": "economy",
+          "flights": [
+            {
+              "flight_number": "HAT232",
+              "date": "2024-05-24"
+            },
+            {
+              "flight_number": "HAT228",
+              "date": "2024-05-24"
+            }
+          ],
+          "payment_id": "credit_card_2929732"
+        }
+      },
+      {
+        "name": "update_reservation_flights",
+        "kwargs": {
+          "reservation_id": "EQ1G6C",
+          "cabin": "economy",
+          "flights": [
+            {
+              "flight_number": "HAT084",
+              "date": "2024-05-23"
+            },
+            {
+              "flight_number": "HAT175",
+              "date": "2024-05-23"
+            }
+          ],
+          "payment_id": "gift_card_6847880"
+        }
+      },
+      {
+        "name": "update_reservation_flights",
+        "kwargs": {
+          "reservation_id": "BOH180",
+          "cabin": "economy",
+          "flights": [
+            {
+              "flight_number": "HAT276",
+              "date": "2024-05-21"
+            },
+            {
+              "flight_number": "HAT279",
+              "date": "2024-05-22"
+            }
+          ],
+          "payment_id": "credit_card_9525117"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "airline",
+    "task_index": 3,
+    "annotator": "0",
+    "user_id": "sofia_kim_7287",
+    "instruction": "Your user id is sofia_kim_7287, and you want to change for your Houston to Denver trip (reservation id not remembered), the fastest return trip (including stopover time) possible on the same day as the departure trip (May 27). You don't care about money but want to stay in economy. You also want to add one checked bag. You want to use your gift card with the smallest balance to pay. You are reactive to the agent and will not say anything that is not asked. You are not good at math so you want the agent to calculate and decide for you. Try to paraphrase instead of repeating this instruction. It is urgent.",
+    "actions": [
+      {
+        "name": "update_reservation_flights",
+        "kwargs": {
+          "reservation_id": "OBUT9V",
+          "cabin": "economy",
+          "flights": [
+            {
+              "flight_number": "HAT078",
+              "date": "2024-05-27"
+            },
+            {
+              "flight_number": "HAT118",
+              "date": "2024-05-27"
+            },
+            {
+              "flight_number": "HAT290",
+              "date": "2024-05-27"
+            },
+            {
+              "flight_number": "HAT175",
+              "date": "2024-05-27"
+            }
+          ],
+          "payment_id": "gift_card_6276644"
+        }
+      },
+      {
+        "name": "update_reservation_baggages",
+        "kwargs": {
+          "reservation_id": "OBUT9V",
+          "total_baggages": 2,
+          "nonfree_baggages": 0,
+          "payment_id": "gift_card_6276644"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "airline",
+    "task_index": 4,
+    "annotator": "0",
+    "user_id": "omar_rossi_1241",
+    "instruction": "Your user id is omar_rossi_1241. For your upcoming trip from New York to Chicago, you want to change the passenger to yourself, upgrade it to economy class, and have 3 checked bags. You prefer gift card payment. Your birthday is in your user profile so you do not prefer to provide it. You are reactive to the agent and will not say anything that is not asked.",
+    "actions": [
+      {
+        "name": "update_reservation_flights",
+        "kwargs": {
+          "reservation_id": "FQ8APE",
+          "cabin": "economy",
+          "flights": [
+            {
+              "flight_number": "HAT056",
+              "date": "2024-05-25"
+            },
+            {
+              "flight_number": "HAT138",
+              "date": "2024-05-25"
+            }
+          ],
+          "payment_id": "gift_card_8190333"
+        }
+      },
+      {
+        "name": "update_reservation_passengers",
+        "kwargs": {
+          "reservation_id": "FQ8APE",
+          "passengers": [
+            {
+              "first_name": "Omar",
+              "last_name": "Rossi",
+              "dob": "1970-06-06"
+            }
+          ]
+        }
+      },
+      {
+        "name": "update_reservation_baggages",
+        "kwargs": {
+          "reservation_id": "FQ8APE",
+          "total_baggages": 3,
+          "nonfree_baggages": 0,
+          "payment_id": "gift_card_8190333"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "airline",
+    "task_index": 5,
+    "annotator": "0",
+    "user_id": "omar_rossi_1241",
+    "instruction": "Your user id is omar_rossi_1241. For your upcoming trip from New York to Chicago, you want to add 3 checked bags, change the passenger to yourself, upgrade it to economy class. Make sure to mention all three things at once in the order. You prefer gift card payment. Your birthday is in your user profile so you do not prefer to provide it.",
+    "actions": [
+      {
+        "name": "update_reservation_flights",
+        "kwargs": {
+          "reservation_id": "FQ8APE",
+          "cabin": "economy",
+          "flights": [
+            {
+              "flight_number": "HAT056",
+              "date": "2024-05-25"
+            },
+            {
+              "flight_number": "HAT138",
+              "date": "2024-05-25"
+            }
+          ],
+          "payment_id": "gift_card_8190333"
+        }
+      },
+      {
+        "name": "update_reservation_passengers",
+        "kwargs": {
+          "reservation_id": "FQ8APE",
+          "passengers": [
+            {
+              "first_name": "Omar",
+              "last_name": "Rossi",
+              "dob": "1970-06-06"
+            }
+          ]
+        }
+      },
+      {
+        "name": "update_reservation_baggages",
+        "kwargs": {
+          "reservation_id": "FQ8APE",
+          "total_baggages": 3,
+          "nonfree_baggages": 0,
+          "payment_id": "gift_card_8190333"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "airline",
+    "task_index": 6,
+    "annotator": "0",
+    "user_id": "aarav_garcia_1177",
+    "instruction": "Your user id is aarav_garcia_1177. For your upcoming trip from ATL to PHL, you want to change for the cheapest economy flight and for the day after the original reservation. You are happy with original payment for refund.",
+    "actions": [
+      {
+        "name": "update_reservation_flights",
+        "kwargs": {
+          "reservation_id": "M05KNL",
+          "cabin": "economy",
+          "flights": [
+            {
+              "flight_number": "HAT110",
+              "date": "2024-05-24"
+            },
+            {
+              "flight_number": "HAT172",
+              "date": "2024-05-24"
+            }
+          ],
+          "payment_id": "gift_card_8887175"
+        }
+      }
+    ]
+  },
+  {
+    "domain": "airline",
+    "task_index": 7,
+    "annotator": "0",
+    "user_id": "aarav_garcia_1177",
+    "instruction": "Your user id is aarav_garcia_1177. For your upcoming trip from ATL to PHL, you want to change for the cheapest economy flight and for the day after the original reservation. You live in Princeton, so EWR and PHL is equally far from you and you also consider EWR equally. You are happy with original payment for refund.",
+    "actions": [
+      {
+        "name": "update_reservation_flights",
+        "kwargs": {
+          "reservation_id": "M05KNL",
+          "cabin": "economy",
+          "flights": [
+            {
+              "flight_number": "HAT110",
+              "date": "2024-05-24"
+            },
+            {
+              "flight_number": "HAT172",
+              "date": "2024-05-24"
+            }
+          ],
+          "payment_id": "gift_card_8887175"
+        }
+      }
+    ]
+  }
+]
