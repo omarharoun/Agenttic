@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import { EmptyState, Spinner } from "../components/ui";
+import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 
 /** Standard benchmarking — canonical, literature-anchored metrics rolled into
  *  the normalized Agenttic Index (the "Artificial Analysis for agents" spine). */
@@ -12,13 +12,46 @@ const COMPONENT_COLS: [string, string][] = [
   ["calibration_ece", "Calibration"],
 ];
 
+/** Score (0–100) → semantic colour, shared by the index bar + scatter. */
+function barColor(index: number) {
+  if (index >= 70) return "var(--ok)";
+  if (index >= 40) return "var(--wait)";
+  return "var(--fail)";
+}
+
+/** Compact horizontal score bar used in the index column. */
+function IndexBar({ value, small }: { value: number; small?: boolean }) {
+  const c = barColor(value);
+  const pct = Math.max(0, Math.min(100, value));
+  return (
+    <div className="idx-cell" title={`Agenttic Index ${value}`}>
+      <span className="idx-track">
+        <span className="idx-fill" style={{ width: `${pct}%`, background: c }} />
+      </span>
+      <b className={`idx-val${small ? " sm" : ""}`} style={{ color: c }}>{value}</b>
+    </div>
+  );
+}
+
+/** A component score (0–1) rendered as a percentage with a micro-bar. */
+function ComponentCell({ value }: { value: number | null | undefined }) {
+  if (value == null) return <span className="muted-sm">—</span>;
+  const pct = Math.round(value * 100);
+  return (
+    <div className="comp-cell">
+      <span className="comp-val">{pct}%</span>
+      <span className="comp-track"><span className="comp-fill" style={{ width: `${pct}%` }} /></span>
+    </div>
+  );
+}
+
 function StandardBenchmarks() {
   const [cat, setCat] = useState<any | null>(null);
-  const [board, setBoard] = useState<any | null>(null);
+  const [board, setBoard] = useState<any | null | undefined>(undefined);
   const [datasets, setDatasets] = useState<any[]>([]);
   const [busy, setBusy] = useState("");
   const [showMethod, setShowMethod] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   const load = () => {
     api.standardMetrics().then(setCat).catch(() => setCat(null));
@@ -33,18 +66,18 @@ function StandardBenchmarks() {
   };
   const ingest = async (id: string) => {
     setBusy("ingest-" + id); setMsg(null);
-    try { const r = await api.ingestDataset(id); setMsg(`Ingested ${id} (${r.ingested ?? 0} cases).`); load(); }
-    catch (e: any) { setMsg(`Ingest failed: ${String(e.message ?? e)}`); }
+    try { const r = await api.ingestDataset(id); setMsg({ kind: "ok", text: `Ingested ${id} (${r.ingested ?? 0} cases).` }); load(); }
+    catch (e: any) { setMsg({ kind: "err", text: `Ingest failed: ${String(e.message ?? e)}` }); }
     finally { setBusy(""); }
   };
   const runBench = async () => {
     setBusy("run"); setMsg(null);
-    try { const r = await api.runStandard({ k: 3 }); setMsg(r.note || "Standard run started."); }
+    try { const r = await api.runStandard({ k: 3 }); setMsg({ kind: "ok", text: r.note || "Standard run started." }); }
     catch (e: any) {
       const d = e?.message ?? e;
       setMsg(String(d).includes("Anthropic API key")
-        ? "Add your Anthropic API key in Settings to run the standard benchmarks."
-        : `Could not start: ${String(d)}`);
+        ? { kind: "err", text: "Add your Anthropic API key in Settings to run the standard benchmarks." }
+        : { kind: "err", text: `Could not start: ${String(d)}` });
     } finally { setBusy(""); }
   };
 
@@ -53,91 +86,116 @@ function StandardBenchmarks() {
   const cols = COMPONENT_COLS.filter(([k]) => present.has(k));
 
   return (
-    <div style={{ marginBottom: 34 }}>
-      <h2>Standard benchmarks — Agenttic Index</h2>
-      <p style={{ color: "var(--muted)", marginTop: -6, maxWidth: 760 }}>
-        Canonical, literature-anchored metrics on agenttic's own seed data,
-        normalized into one Agenttic Index — components always shown. We implement
-        the published <i>methodology</i>; these are <b>not</b> the public
-        BFCL / τ-bench / AgentHarm datasets (direct dataset comparability is a
-        next phase).
-        <button className="ghost-sm" style={{ marginLeft: 10 }}
-                onClick={() => setShowMethod((s) => !s)}>
-          {showMethod ? "hide methodology" : "methodology & weights"}
-        </button>
-      </p>
+    <div style={{ marginBottom: 36 }}>
+      <header className="std-hero">
+        <span className="eyebrow">Standard benchmarks</span>
+        <h2>
+          Agenttic Index
+          {agents.length > 0 && <span className="pill-count">{agents.length} agent{agents.length === 1 ? "" : "s"} ranked</span>}
+        </h2>
+        <p style={{ color: "var(--muted)", margin: "6px 0 0", maxWidth: 760 }}>
+          Canonical, literature-anchored metrics on agenttic's own seed data,
+          normalized into one Agenttic Index — components always shown. We implement
+          the published <i>methodology</i>; these are <b>not</b> the public
+          BFCL / τ-bench / AgentHarm datasets (direct dataset comparability is a
+          next phase).{" "}
+          <button className="ghost-sm" style={{ marginLeft: 4 }}
+                  aria-expanded={showMethod}
+                  onClick={() => setShowMethod((s) => !s)}>
+            {showMethod ? "Hide methodology" : "Methodology & weights"}
+          </button>
+        </p>
+      </header>
 
       {showMethod && cat && (
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="card-body" style={{ padding: 0 }}>
-            <table className="data">
-              <thead><tr><th>Metric</th><th>Implements</th><th>Index weight</th></tr></thead>
-              <tbody>
-                {cat.metrics.map((m: any) => (
-                  <tr key={m.id}>
-                    <td><b>{m.name}</b></td>
-                    <td style={{ color: "var(--muted)", maxWidth: 520 }}>{m.methodology}</td>
-                    <td>{m.status === "deferred"
-                      ? <span className="muted-sm">deferred</span>
-                      : `${Math.round(m.weight * 100)}%`}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="table-wrap">
+              <table className="data">
+                <thead><tr><th>Metric</th><th>Implements</th><th className="num">Index weight</th></tr></thead>
+                <tbody>
+                  {cat.metrics.map((m: any) => (
+                    <tr key={m.id}>
+                      <td><b>{m.name}</b></td>
+                      <td style={{ color: "var(--muted)", maxWidth: 520 }}>{m.methodology}</td>
+                      <td className="num">{m.status === "deferred"
+                        ? <span className="muted-sm">deferred</span>
+                        : `${Math.round(m.weight * 100)}%`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
+      )}
+
+      {/* dataset provenance — license + source for each canonical suite */}
+      {datasets.length > 0 && (
+        <>
+          <div className="eyebrow" style={{ margin: "4px 0 2px" }}>Datasets</div>
+          <div className="dataset-grid">
+            {datasets.map((d) => (
+              <div key={d.dataset_id} className="dataset-card">
+                <div className="dc-top">
+                  <span className="dc-name">{d.name}</span>
+                  {d.license && <span className="dc-lic" title="License">{d.license}</span>}
+                </div>
+                {d.citation && <div className="dc-meta">{d.citation}</div>}
+                <div className="dc-foot">
+                  {d.source_url
+                    ? <a className="dc-src" href={d.source_url} target="_blank" rel="noreferrer">Source ↗</a>
+                    : <span />}
+                  {d.present
+                    ? <span className="dc-status in"><span className="d" />Ingested</span>
+                    : <button className="ghost-sm"
+                              disabled={busy === "ingest-" + d.dataset_id}
+                              onClick={() => ingest(d.dataset_id)}>
+                        {busy === "ingest-" + d.dataset_id ? "Ingesting…" : "Ingest"}
+                      </button>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <div className="std-toolbar">
         <button className="primary" disabled={busy === "run"} onClick={runBench}>
           {busy === "run" ? "Starting…" : "▶ Run standard benchmark (k=3)"}
         </button>
-        {datasets.map((d) => (
-          <span key={d.dataset_id} className="dataset-chip"
-                title={`${d.citation} · ${d.license}`}>
-            <a href={d.source_url} target="_blank" rel="noreferrer">{d.name}</a>
-            <span className="muted-sm"> · {d.license}</span>
-            {d.present
-              ? <span className="ok" style={{ marginLeft: 6 }}>ingested ✓</span>
-              : <button className="ghost-sm" style={{ marginLeft: 6 }}
-                        disabled={busy === "ingest-" + d.dataset_id}
-                        onClick={() => ingest(d.dataset_id)}>
-                  {busy === "ingest-" + d.dataset_id ? "…" : "ingest"}
-                </button>}
-          </span>
-        ))}
       </div>
-      {msg && <div className="note-ok" style={{ marginBottom: 14 }}>{msg}</div>}
+      {msg && <div className={msg.kind === "ok" ? "note-ok" : "note-err"} style={{ margin: "0 0 14px" }}>{msg.text}</div>}
 
-      {board === null ? <Spinner /> : agents.length === 0 ? (
+      {board === undefined ? <Skeleton rows={4} /> : agents.length === 0 ? (
         <EmptyState icon="◇" title="No standard runs yet"
-          hint="Install the canonical suites, then run them against an agent (Workflows → run suite) to populate the Agenttic Index."
+          hint="Install the canonical suites, then run a benchmark to populate the Agenttic Index."
           action={<button className="primary" disabled={busy === "seed"} onClick={seed}>
             {busy === "seed" ? "Seeding…" : "Install standard suites"}
           </button>} />
       ) : (
-        <table className="data">
-          <thead>
-            <tr><th>#</th><th>agent</th><th>Agenttic Index</th>
-              {cols.map(([, label]) => <th key={label}>{label}</th>)}
-              <th>suites</th></tr>
-          </thead>
-          <tbody>
-            {agents.map((a, i) => (
-              <tr key={a.agent_id}>
-                <td>{i + 1}</td>
-                <td>{a.agent_id}</td>
-                <td><b style={{ color: "var(--accent)" }}>{a.index}</b></td>
-                {cols.map(([k]) => (
-                  <td key={k}>{a.components?.[k] != null
-                    ? `${Math.round(a.components[k] * 100)}%`
-                    : <span className="muted-sm">—</span>}</td>
-                ))}
-                <td className="muted-sm">{(a.suites_run ?? []).length}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
+              <tr><th className="num">#</th><th>Agent</th><th>Agenttic Index</th>
+                {cols.map(([, label]) => <th key={label}>{label}</th>)}
+                <th className="num">Suites</th></tr>
+            </thead>
+            <tbody>
+              {agents.map((a, i) => (
+                <tr key={a.agent_id}>
+                  <td className="num">{i + 1}</td>
+                  <td>{a.agent_id}</td>
+                  <td><IndexBar value={a.index} /></td>
+                  {cols.map(([k]) => (
+                    <td key={k}><ComponentCell value={a.components?.[k]} /></td>
+                  ))}
+                  <td className="num muted-sm">{(a.suites_run ?? []).length}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
@@ -160,7 +218,7 @@ const COLUMNS: [string, string, 1 | -1, boolean][] = [
 ];
 
 export function LeaderboardPage() {
-  const [board, setBoard] = useState<any | null>(null);
+  const [board, setBoard] = useState<any | null | undefined>(undefined);
   const [filter, setFilter] = useState<string[]>([]);
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>(
     { key: "index", dir: -1 });
@@ -168,9 +226,6 @@ export function LeaderboardPage() {
   const load = (suites: string[]) =>
     api.leaderboard(suites).then(setBoard).catch(() => setBoard(null));
   useEffect(() => { load(filter); }, [filter]);
-
-  if (!board) return <div className="page"><div className="list-page">…</div></div>;
-  const { suites } = board;
 
   const toggle = (s: string) =>
     setFilter((f) => f.includes(s) ? f.filter((x) => x !== s) : [...f, s]);
@@ -180,94 +235,92 @@ export function LeaderboardPage() {
       ? { key, dir: (cur.dir * -1) as 1 | -1 }   // toggle direction
       : { key, dir: def });
 
-  const agents = [...board.agents].sort((a: any, b: any) => {
+  const agents = board ? [...board.agents].sort((a: any, b: any) => {
     const va = a[sort.key], vb = b[sort.key];
     const cmp = typeof va === "string"
       ? String(va).localeCompare(String(vb))
       : (va ?? 0) - (vb ?? 0);
     return cmp * sort.dir;
-  });
+  }) : [];
 
   return (
     <div className="page">
       <div className="list-page">
         <StandardBenchmarks />
 
-        <h2>All suites — task-success leaderboard</h2>
-        <p style={{ color: "var(--muted)", marginTop: -6 }}>
-          Composite score per agent across <i>all</i> suites (incl. your own) —
-          weighted mean of per-suite task success (0–100), latest run per suite.
-          Cost and latency are blended across suites; coverage shows how many
-          suites each agent has run.
-        </p>
+        <PageHeader title="All suites — task-success leaderboard"
+          subtitle={<>Composite score per agent across <i>all</i> suites (incl. your own) —
+            weighted mean of per-suite task success (0–100), latest run per suite.
+            Cost and latency are blended across suites; coverage shows how many
+            suites each agent has run.</>} />
 
-        {suites.length > 1 && (
-          <div style={{ margin: "10px 0" }}>
-            <span style={{ color: "var(--muted)", marginRight: 8 }}>
-              common set:
-            </span>
-            {suites.map((s: string) => (
-              <button key={s}
-                      className={filter.includes(s) || !filter.length ? "active" : ""}
-                      style={{ marginRight: 6 }}
-                      onClick={() => toggle(s)}>{s}</button>
-            ))}
-            {filter.length > 0 && (
-              <button onClick={() => setFilter([])}>reset</button>
-            )}
-          </div>
-        )}
-
-        {agents.length === 0 ? (
-          <p style={{ color: "var(--muted)" }}>
-            No scorecards yet — run a workflow, then agents appear here.
-          </p>
-        ) : (
+        {board === undefined ? <Skeleton rows={6} /> : (
           <>
-            <Scatter agents={agents} />
-            <table className="data" style={{ marginTop: 16 }}>
-              <thead>
-                <tr>
-                  {COLUMNS.map(([key, label, def]) => (
-                    <th key={key} className="sortable"
-                        onClick={() => sortBy(key, def)}>
-                      {label}{sort.key === key ? (sort.dir === 1 ? " ▲" : " ▼") : ""}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {agents.map((a: any) => (
-                  <tr key={a.agent_id}>
-                    <td>{a.rank}</td>
-                    <td>{a.agent_id}</td>
-                    <td style={a.agent_type === "discovered"
-                      ? { color: "var(--muted)" } : undefined}>{a.agent_type}</td>
-                    <td><b style={{ color: barColor(a.index) }}>{a.index}</b></td>
-                    <td>${a.mean_cost_usd.toFixed(4)}</td>
-                    <td title="execution + judge cost per case">
-                      {a.all_in_cost_per_case_usd == null
-                        ? <span style={{ color: "var(--muted)" }}>n/a</span>
-                        : `$${a.all_in_cost_per_case_usd.toFixed(4)}`}</td>
-                    <td>{Math.round(a.p95_latency_ms)}</td>
-                    <td>{a.coverage}/{a.total_suites}</td>
-                    <td>{a.visibility_tier.replace("_", "-")}</td>
-                    <td>{a.n_errored || ""}</td>
-                  </tr>
+            {board && board.suites.length > 1 && (
+              <div style={{ margin: "0 0 12px", display: "flex", alignItems: "center",
+                            gap: 6, flexWrap: "wrap" }}>
+                <span className="eyebrow" style={{ marginRight: 2 }}>Common set</span>
+                {board.suites.map((s: string) => (
+                  <button key={s}
+                          className={filter.includes(s) || !filter.length ? "active" : ""}
+                          onClick={() => toggle(s)}>{s}</button>
                 ))}
-              </tbody>
-            </table>
+                {filter.length > 0 && (
+                  <button onClick={() => setFilter([])}>reset</button>
+                )}
+              </div>
+            )}
+
+            {agents.length === 0 ? (
+              <EmptyState icon="🏆" title="No scorecards yet"
+                hint="Run a workflow or a standard benchmark — agents appear here once they have a scored run." />
+            ) : (
+              <>
+                <Scatter agents={agents} />
+                <div className="table-wrap" style={{ marginTop: 16 }}>
+                  <table className="data">
+                    <thead>
+                      <tr>
+                        {COLUMNS.map(([key, label, def, numeric]) => (
+                          <th key={key} className={`sortable${numeric ? " num" : ""}`}
+                              tabIndex={0} role="button"
+                              aria-sort={sort.key === key ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
+                              onClick={() => sortBy(key, def)}
+                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sortBy(key, def); } }}>
+                            {label}{sort.key === key ? (sort.dir === 1 ? " ▲" : " ▼") : ""}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {agents.map((a: any) => (
+                        <tr key={a.agent_id}>
+                          <td className="num">{a.rank}</td>
+                          <td>{a.agent_id}</td>
+                          <td style={a.agent_type === "discovered"
+                            ? { color: "var(--muted)" } : undefined}>{a.agent_type}</td>
+                          <td><IndexBar value={a.index} small /></td>
+                          <td className="num">${a.mean_cost_usd.toFixed(4)}</td>
+                          <td className="num" title="execution + judge cost per case">
+                            {a.all_in_cost_per_case_usd == null
+                              ? <span style={{ color: "var(--muted)" }}>n/a</span>
+                              : `$${a.all_in_cost_per_case_usd.toFixed(4)}`}</td>
+                          <td className="num">{Math.round(a.p95_latency_ms)}</td>
+                          <td className="num">{a.coverage}/{a.total_suites}</td>
+                          <td>{a.visibility_tier.replace("_", "-")}</td>
+                          <td className="num">{a.n_errored || ""}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
     </div>
   );
-}
-
-function barColor(index: number) {
-  if (index >= 70) return "var(--ok)";
-  if (index >= 40) return "var(--wait)";
-  return "var(--fail)";
 }
 
 /** Lightweight Index-vs-cost scatter (no charting dep). Higher + left is better. */
@@ -278,9 +331,9 @@ function Scatter({ agents }: { agents: any[] }) {
   const x = (c: number) => pad + (c / maxCost) * (W - 2 * pad);
   const y = (idx: number) => H - pad - (idx / 100) * (H - 2 * pad);
   return (
-    <svg width={W} height={H} style={{
-      background: "var(--panel)", border: "1px solid var(--border)",
-      borderRadius: 8 }}>
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: W, height: "auto",
+      background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 8 }}
+      role="img" aria-label="Scatter plot of Agenttic Index versus mean cost per case; up and to the left is better.">
       {[0, 25, 50, 75, 100].map((g) => (
         <g key={g}>
           <line x1={pad} x2={W - pad} y1={y(g)} y2={y(g)} stroke="var(--viz-grid)" />

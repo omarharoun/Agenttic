@@ -762,3 +762,187 @@ th.sortable:hover { color: var(--accent); }
 
 .spinner { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid var(--border); border-top-color: var(--accent); display: inline-block; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ========================================================================== */
+/* ===  Polish pass: a11y, responsive, and shared analytics primitives    === */
+/* ========================================================================== */
+
+/* --- accessibility: a single, consistent keyboard focus ring everywhere --- */
+:focus-visible { outline: none; }
+a:focus-visible,
+button:focus-visible,
+.btn-primary:focus-visible, .btn-ghost:focus-visible,
+.seg button:focus-visible, .tabs button:focus-visible,
+.icon-btn:focus-visible, .opt-chip:focus-visible,
+.app-nav a:focus-visible, .settings-nav button:focus-visible,
+.acct-btn:focus-visible, .acct-item:focus-visible,
+.tpl-card:focus-visible, .case-head:focus-visible,
+th.sortable:focus-visible, .dataset-chip a:focus-visible {
+  outline: none; box-shadow: var(--ring); border-radius: var(--r-sm);
+  position: relative; z-index: 1;
+}
+.btn-primary:focus-visible, .btn-ghost:focus-visible,
+.seg button:focus-visible, .icon-btn:focus-visible,
+.opt-chip:focus-visible { border-radius: var(--r-pill); }
+.tpl-card:focus-visible { border-radius: var(--r-lg); border-color: var(--accent); }
+
+/* visually-hidden, screen-reader-only text */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* honour reduced-motion: kill the loops, keep the meaning */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important; scroll-behavior: auto !important;
+  }
+  .skel-bar { animation: none; opacity: 0.7; }
+}
+
+/* --- horizontal-scroll wrapper so wide data tables never clip on narrow vw - */
+.table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-wrap > table.data { min-width: 560px; }
+table.data td.num, table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data tbody tr { transition: background 0.1s; }
+
+/* --- Agenttic Index visual bar (leaderboard score cell) ------------------- */
+.idx-cell { display: flex; align-items: center; gap: 9px; min-width: 116px; }
+.idx-track {
+  flex: 1; height: 6px; min-width: 48px; border-radius: var(--r-pill);
+  background: var(--panel-2); overflow: hidden;
+}
+.idx-fill { display: block; height: 100%; border-radius: var(--r-pill); transition: width 0.4s ease; }
+.idx-val {
+  font: 500 14px/1 var(--font-serif); font-variant-numeric: tabular-nums;
+  min-width: 26px; text-align: right;
+}
+.idx-val.sm { font-size: 12.5px; min-width: 22px; }
+
+/* component micro-bar (standard-benchmark breakdown cells) */
+.comp-cell { display: flex; flex-direction: column; gap: 3px; min-width: 64px; }
+.comp-val { font-variant-numeric: tabular-nums; font-size: 12.5px; }
+.comp-track { height: 4px; border-radius: var(--r-pill); background: var(--panel-2); overflow: hidden; }
+.comp-fill { display: block; height: 100%; background: var(--accent); border-radius: var(--r-pill); }
+
+/* --- standard-benchmark hero header -------------------------------------- */
+.std-hero { margin-bottom: var(--sp-4); }
+.std-hero .eyebrow { display: block; margin-bottom: 6px; }
+.std-hero h2 { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.std-hero .pill-count {
+  font: 600 11px/1 var(--font-mono); color: var(--accent);
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+  border-radius: var(--r-pill); padding: 4px 9px; letter-spacing: 0.02em;
+}
+
+/* --- dataset provenance cards (BFCL / τ-bench / AgentHarm) ---------------- */
+.dataset-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: 10px; margin: 10px 0 14px;
+}
+.dataset-card {
+  border: 1px solid var(--border); border-radius: var(--r); background: var(--panel);
+  padding: 12px 13px; display: flex; flex-direction: column; gap: 7px;
+  box-shadow: var(--shadow-xs);
+}
+.dataset-card .dc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dataset-card .dc-name { font: 600 var(--t-base)/1.2 var(--font-ui); }
+.dataset-card .dc-meta { font-size: 12px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.dataset-card .dc-lic {
+  font: 600 10px/1 var(--font-mono); color: var(--faint); text-transform: uppercase;
+  letter-spacing: 0.04em; border: 1px solid var(--border); border-radius: var(--r-pill); padding: 3px 7px;
+}
+.dataset-card .dc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
+.dataset-card a.dc-src { color: var(--accent); text-decoration: none; font: 500 12px/1 var(--font-ui); }
+.dataset-card a.dc-src:hover { text-decoration: underline; }
+.dc-status { display: inline-flex; align-items: center; gap: 5px; font: 600 11.5px/1 var(--font-ui); }
+.dc-status.in { color: var(--ok); }
+.dc-status .d { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+/* --- results scorecard stat strip ---------------------------------------- */
+.score-strip {
+  display: flex; align-items: stretch; gap: 0; flex-wrap: wrap;
+  border: 1px solid var(--border); border-radius: var(--r); background: var(--panel-2);
+  overflow: hidden; margin-bottom: 12px;
+}
+.score-strip .stat { padding: 10px 16px; border-right: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 3px; }
+.score-strip .stat:last-child { border-right: none; }
+.score-strip .stat .lab { font: 600 var(--t-label)/1 var(--font-ui); text-transform: uppercase; letter-spacing: 0.06em; color: var(--faint); }
+.score-strip .stat .val { font: 500 var(--t-h3)/1 var(--font-serif); font-variant-numeric: tabular-nums; }
+.score-strip .stat .val.sm { font-size: var(--t-lg); }
+.score-strip .stat .val.ok { color: var(--ok); }
+.score-strip .stat .val.err { color: var(--fail); }
+.score-strip .stat .val.wait { color: var(--wait); }
+.score-strip .spacer { flex: 1; border-right: none; }
+.score-strip .actions { display: flex; align-items: center; gap: 8px; padding: 10px 14px; }
+/* pass/fail/errored proportion bar */
+.passbar { display: flex; height: 7px; border-radius: var(--r-pill); overflow: hidden; background: var(--panel-2); margin: 2px 0 12px; }
+.passbar > span { display: block; height: 100%; }
+.passbar .p { background: var(--ok); }
+.passbar .f { background: var(--fail); }
+.passbar .e { background: var(--wait); }
+
+/* --- A/B verdict banner --------------------------------------------------- */
+.verdict {
+  border: 1px solid var(--border); border-left-width: 4px; border-radius: var(--r);
+  padding: 12px 15px; background: var(--panel-2); margin-bottom: 14px;
+}
+.verdict.win { border-left-color: var(--ok); }
+.verdict.tie { border-left-color: var(--wait); }
+.verdict .v-lab {
+  font: 600 var(--t-label)/1 var(--font-ui); text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--faint); display: flex; align-items: center; gap: 7px;
+}
+.verdict .v-lab .tag {
+  font-size: 10px; padding: 2px 7px; border-radius: var(--r-pill);
+  background: var(--field); border: 1px solid var(--border); letter-spacing: 0.04em;
+}
+.verdict.win .v-lab .tag { color: var(--ok); border-color: var(--ok-border); background: var(--ok-soft); }
+.verdict.tie .v-lab .tag { color: var(--wait); border-color: var(--wait-border); background: var(--wait-soft); }
+.verdict .v-text { font: 600 var(--t-lg)/1.4 var(--font-ui); margin-top: 5px; }
+
+/* flipped-case direction chips */
+.flip { font: 600 11px/1 var(--font-ui); padding: 3px 8px; border-radius: var(--r-pill); display: inline-block; }
+.flip.gain { color: var(--ok); background: var(--ok-soft); border: 1px solid var(--ok-border); }
+.flip.loss { color: var(--fail); background: var(--fail-soft); border: 1px solid var(--fail-border); }
+
+/* =============================== responsive =============================== */
+@media (max-width: 860px) {
+  .app-shell { flex-direction: column; height: auto; min-height: 100vh; }
+  .app-nav {
+    width: 100%; flex-direction: row; align-items: center; overflow-x: auto;
+    border-right: none; border-bottom: 1px solid var(--border); padding: 8px var(--sp-3);
+    gap: 4px; position: sticky; top: 0; z-index: 20; scrollbar-width: thin;
+  }
+  .app-nav .logo { margin-bottom: 0; margin-right: 6px; white-space: nowrap; }
+  .app-nav a { white-space: nowrap; padding: 8px 11px; }
+  .app-nav > span[style] { display: none; }      /* the flex spacer */
+  .app-nav .nav-foot { padding: 0; margin-left: 4px; }
+  .page, .app-body { min-height: 0; }
+
+  .list-page, .settings { padding: var(--sp-5) var(--sp-4); }
+  .settings-body { flex-direction: column; gap: var(--sp-4); }
+  .settings-nav {
+    width: 100%; flex-direction: row; overflow-x: auto; position: static; gap: 4px;
+  }
+  .settings-nav button { white-space: nowrap; }
+
+  .guided { padding: var(--sp-5) var(--sp-4) var(--sp-16); }
+  .tpl-grid { grid-template-columns: 1fr; }
+  .step-body { padding-left: var(--sp-4); }
+  .step-card::after { left: 30px; }
+
+  .page-header { flex-direction: column; gap: 10px; }
+  .page-actions { width: 100%; }
+}
+
+@media (max-width: 560px) {
+  .hero h1 { font-size: 40px; }
+  .hero .cta { flex-direction: column; align-items: stretch; }
+  .auth-card { width: 100%; padding: var(--sp-6); }
+  .score-strip { flex-direction: column; }
+  .score-strip .stat { border-right: none; border-bottom: 1px solid var(--border-soft); }
+  .score-strip .actions { padding: 10px 16px; }
+  .std-toolbar > button.primary { width: 100%; }
+}
