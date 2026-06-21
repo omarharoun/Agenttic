@@ -1,16 +1,17 @@
-"""Real public-dataset ingestion adapters (BFCL + τ-bench + AgentHarm via the
-same DatasetAdapter pattern)."""
+"""Real public-dataset ingestion adapters (BFCL + τ-bench + AgentHarm +
+InjecAgent via the same DatasetAdapter pattern)."""
 
 from __future__ import annotations
 
 from ascore.metrics.datasets.agentharm import AgentHarmAdapter
 from ascore.metrics.datasets.base import DatasetAdapter, DatasetInfo
 from ascore.metrics.datasets.bfcl import BFCLAdapter
+from ascore.metrics.datasets.injecagent import InjecAgentAdapter
 from ascore.metrics.datasets.tau_bench import TauBenchAdapter
 
-# dataset_id -> adapter factory (union of all three sibling branches)
+# dataset_id -> adapter factory (union of all sibling branches)
 ADAPTERS = {"bfcl": BFCLAdapter, "tau-bench": TauBenchAdapter,
-            "agentharm": AgentHarmAdapter}
+            "agentharm": AgentHarmAdapter, "injecagent": InjecAgentAdapter}
 
 
 def get_adapter(dataset_id: str) -> DatasetAdapter:
