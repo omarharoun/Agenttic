@@ -207,6 +207,10 @@ export const api = {
   leaderboard: (suites: string[] = []) =>
     afetch(`/api/leaderboard${suites.length ? `?suites=${suites.join(",")}` : ""}`)
       .then((r) => json<any>(r)),
+  // canonical standard benchmarking
+  standardMetrics: () => afetch("/api/standard/metrics").then((r) => json<any>(r)),
+  standardLeaderboard: () => afetch("/api/standard/leaderboard").then((r) => json<any>(r)),
+  seedStandard: () => afetch("/api/standard/seed", { method: "POST" }).then((r) => json<any>(r)),
   listScorecards: () => afetch("/api/scorecards").then((r) => json<any[]>(r)),
   scorecardReport: (id: string) =>
     afetch(`/api/scorecards/${id}/report`).then((r) => r.text()),
