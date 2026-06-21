@@ -3,14 +3,15 @@ same DatasetAdapter pattern)."""
 
 from __future__ import annotations
 
+from ascore.metrics.datasets.agentdojo import AgentDojoAdapter
 from ascore.metrics.datasets.agentharm import AgentHarmAdapter
 from ascore.metrics.datasets.base import DatasetAdapter, DatasetInfo
 from ascore.metrics.datasets.bfcl import BFCLAdapter
 from ascore.metrics.datasets.tau_bench import TauBenchAdapter
 
-# dataset_id -> adapter factory (union of all three sibling branches)
+# dataset_id -> adapter factory (union of all sibling branches)
 ADAPTERS = {"bfcl": BFCLAdapter, "tau-bench": TauBenchAdapter,
-            "agentharm": AgentHarmAdapter}
+            "agentharm": AgentHarmAdapter, "agentdojo": AgentDojoAdapter}
 
 
 def get_adapter(dataset_id: str) -> DatasetAdapter:
