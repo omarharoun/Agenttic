@@ -495,6 +495,17 @@ class Registry:
             rows = s.exec(q.order_by(ScorecardRow.created_at)).all()
             return [Scorecard.model_validate_json(r.payload) for r in rows]
 
+    def scorecards_in(self, suite_ids) -> list["Scorecard"]:
+        """All scorecards (any agent) for the given suites, oldest-first."""
+        ids = list(suite_ids)
+        if not ids:
+            return []
+        with Session(self.engine) as s:
+            rows = s.exec(select(ScorecardRow).where(
+                ScorecardRow.tenant_id == self.tenant,
+                ScorecardRow.suite_id.in_(ids)).order_by(ScorecardRow.created_at)).all()
+            return [Scorecard.model_validate_json(r.payload) for r in rows]
+
     def suites_scored_for(self, agent_id: str) -> list[str]:
         with Session(self.engine) as s:
             rows = s.exec(select(ScorecardRow.suite_id).where(

@@ -564,5 +564,30 @@ def users_list(config: str = "config.yaml"):
     console.print(table)
 
 
+standard_app = typer.Typer(help="Canonical standard benchmark suites + metrics.")
+app.add_typer(standard_app, name="standard")
+
+
+@standard_app.command("seed")
+def standard_seed(config: str = "config.yaml"):
+    """Install the canonical standard suites (tool-use + safety) — idempotent."""
+    from ascore.metrics.standard_suites import seed_standard_suites
+    _, reg = _ctx(config)
+    added = seed_standard_suites(reg)
+    console.print(f"[green]Seeded[/] {len(added)} standard suite(s): "
+                  f"{', '.join(added) or '(already present)'}")
+
+
+@standard_app.command("metrics")
+def standard_metrics():
+    """List the canonical metrics, the methodology each implements, and weights."""
+    from ascore.metrics.catalog import METRICS
+    table = Table("metric", "category", "weight", "methodology")
+    for m in METRICS:
+        w = f"{m.weight:.3f}" + ("" if m.status == "implemented" else " (deferred)")
+        table.add_row(m.name, m.category, w, m.methodology[:70] + "…")
+    console.print(table)
+
+
 if __name__ == "__main__":
     app()
