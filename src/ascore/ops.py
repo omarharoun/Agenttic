@@ -332,3 +332,15 @@ def report_pdf_op(reg: Registry, scorecard_id: str) -> bytes:
     """Render a scorecard to a polished, on-brand PDF (same content as Markdown)."""
     from ascore.reporting.pdf_report import render_pdf
     return render_pdf(*_scorecard_with_context(reg, scorecard_id))
+
+
+def ab_report_op(reg: Registry, comparison_id: str) -> str:
+    """Render an A/B comparison to client-ready Markdown."""
+    from ascore.reporting.ab_report import render_ab_markdown
+    return render_ab_markdown(reg.get_ab_comparison(comparison_id))
+
+
+def ab_report_pdf_op(reg: Registry, comparison_id: str) -> bytes:
+    """Render an A/B comparison to a polished, on-brand PDF."""
+    from ascore.reporting.ab_report import render_ab_pdf
+    return render_ab_pdf(reg.get_ab_comparison(comparison_id))
