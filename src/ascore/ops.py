@@ -334,6 +334,35 @@ def report_pdf_op(reg: Registry, scorecard_id: str) -> bytes:
     return render_pdf(*_scorecard_with_context(reg, scorecard_id))
 
 
+def standard_index_op(reg: Registry) -> list[dict]:
+    """Per-agent canonical Agenttic Index over the standard suites — the latest
+    scorecard per (agent, suite), per-criterion means averaged into the named
+    metrics, rolled into one normalized index (components always shown)."""
+    from ascore.metrics.index import compute_index, rollup_metrics_from_means
+    from ascore.metrics.standard_suites import standard_suite_ids
+
+    latest: dict[tuple[str, str], object] = {}
+    for sc in reg.scorecards_in(standard_suite_ids()):  # oldest-first => last wins
+        latest[(sc.agent_id, sc.suite_id)] = sc
+
+    by_agent: dict[str, list] = {}
+    for (agent, _suite), sc in latest.items():
+        by_agent.setdefault(agent, []).append(sc)
+
+    out = []
+    for agent, scs in by_agent.items():
+        acc: dict[str, list[float]] = {}
+        for sc in scs:
+            for cid, mean in sc.per_criterion_means.items():
+                acc.setdefault(cid, []).append(mean)
+        means = {cid: sum(v) / len(v) for cid, v in acc.items()}
+        idx = compute_index(rollup_metrics_from_means(means))
+        out.append({"agent_id": agent, "suites_run": sorted({sc.suite_id for sc in scs}),
+                    **idx})
+    out.sort(key=lambda r: r["index"], reverse=True)
+    return out
+
+
 def ab_report_op(reg: Registry, comparison_id: str) -> str:
     """Render an A/B comparison to client-ready Markdown."""
     from ascore.reporting.ab_report import render_ab_markdown

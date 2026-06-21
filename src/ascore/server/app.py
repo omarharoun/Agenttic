@@ -234,6 +234,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     from ascore.server.routes.live import router as live_router
     from ascore.server.routes.resources import router as resources_router
     from ascore.server.routes.settings import router as settings_router
+    from ascore.server.routes.standard import router as standard_router
     from ascore.server.routes.workflows import router as workflows_router
 
     # every /api route authenticates (sets role + tenant) then binds the
@@ -251,6 +252,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(cost_router, prefix="/api", dependencies=protected)
     app.include_router(settings_router, prefix="/api", dependencies=protected)
     app.include_router(ab_router, prefix="/api", dependencies=protected)
+    app.include_router(standard_router, prefix="/api", dependencies=protected)
 
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"),
