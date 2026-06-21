@@ -89,6 +89,13 @@ def _api_keys_table(conn) -> None:
     ApiKeyRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _ab_comparisons_table(conn) -> None:
+    """v6 — A/B comparison runs (two variants, head-to-head on one suite)."""
+    import ascore.registry.sqlite_store  # noqa: F401 (registers ABComparisonRow)
+    from ascore.registry.sqlite_store import ABComparisonRow
+    ABComparisonRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -96,6 +103,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (3, "users_table", _users_table),
     (4, "email_verification", _email_verification),
     (5, "api_keys_table", _api_keys_table),
+    (6, "ab_comparisons_table", _ab_comparisons_table),
 ]
 
 
