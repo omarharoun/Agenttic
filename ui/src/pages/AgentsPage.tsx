@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 
 const SOURCE_COLOR: Record<string, string> = {
   scored: "var(--ok)", traced: "var(--cat-input)",
@@ -41,18 +42,23 @@ export function AgentsPage() {
     }
   };
 
-  if (!data) return <div className="page"><div className="list-page">…</div></div>;
+  if (!data) {
+    return (
+      <div className="page"><div className="list-page">
+        <PageHeader title="Agents" subtitle="Declared catalog + agents discovered from runs." />
+        <Skeleton rows={6} />
+      </div></div>
+    );
+  }
   const { agents, warning } = data;
 
   return (
     <div className="page">
       <div className="list-page">
-        <h2>Agents</h2>
-        <p style={{ color: "var(--muted)", marginTop: -6 }}>
-          Pre-register agents in the <b>catalog</b> so they're pickable when
-          configuring a run; everything else is <b>discovered</b> from runs (the
-          agent set is open-ended). The table below merges both.
-        </p>
+        <PageHeader title="Agents"
+          subtitle={<>Pre-register agents in the <b>catalog</b> so they're pickable when
+            configuring a run; everything else is <b>discovered</b> from runs (the
+            agent set is open-ended). The table below merges both.</>} />
 
         <section className="policy-box" style={{ marginBottom: 16 }}>
           <div className="policy-title">register an agent</div>
@@ -132,33 +138,35 @@ export function AgentsPage() {
         </section>
 
         {catalog.length > 0 && (
-          <table className="data" style={{ marginBottom: 20 }}>
-            <thead>
-              <tr><th>declared agent</th><th>type</th><th>version</th>
-                  <th>connection</th><th></th></tr>
-            </thead>
-            <tbody>
-              {catalog.map((a: any) => (
-                <tr key={a.agent_id}>
-                  <td>{a.agent_id}
-                    {a.description && (
-                      <div style={{ color: "var(--muted)", fontSize: 11 }}>
-                        {a.description}</div>)}
-                  </td>
-                  <td>{a.variant}</td>
-                  <td>v{a.version}</td>
-                  <td style={{ fontFamily: "monospace", fontSize: 11 }}>
-                    {a.url || a.managed_agent_id || a.model || "config default"}
-                  </td>
-                  <td>
-                    <button onClick={() => api.retireAgent(a.agent_id).then(reload)}>
-                      retire
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-wrap" style={{ marginBottom: 20 }}>
+            <table className="data">
+              <thead>
+                <tr><th>declared agent</th><th>type</th><th>version</th>
+                    <th>connection</th><th></th></tr>
+              </thead>
+              <tbody>
+                {catalog.map((a: any) => (
+                  <tr key={a.agent_id}>
+                    <td>{a.agent_id}
+                      {a.description && (
+                        <div style={{ color: "var(--muted)", fontSize: 11 }}>
+                          {a.description}</div>)}
+                    </td>
+                    <td><span className="pill">{a.variant}</span></td>
+                    <td>v{a.version}</td>
+                    <td className="mono" style={{ fontSize: 11 }}>
+                      {a.url || a.managed_agent_id || a.model || "config default"}
+                    </td>
+                    <td>
+                      <button onClick={() => api.retireAgent(a.agent_id).then(reload)}>
+                        retire
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
         <h3 style={{ color: "var(--muted)" }}>all agents (declared + discovered)</h3>
@@ -166,15 +174,14 @@ export function AgentsPage() {
           <p style={{ color: "var(--wait)", fontSize: 12 }}>⚠ {warning}</p>
         )}
         {agents.length === 0 ? (
-          <p style={{ color: "var(--muted)" }}>
-            No agents yet — register one above, or run a workflow and they
-            appear here automatically.
-          </p>
+          <EmptyState icon="🤖" title="No agents yet"
+            hint="Register one above, or run a workflow — agents appear here automatically." />
         ) : (
+          <div className="table-wrap">
           <table className="data">
             <thead>
-              <tr><th>agent</th><th>type</th><th>sources</th><th>scorecards</th>
-                  <th>traces</th><th>suites</th><th>last seen</th></tr>
+              <tr><th>agent</th><th>type</th><th>sources</th><th className="num">scorecards</th>
+                  <th className="num">traces</th><th>suites</th><th>last seen</th></tr>
             </thead>
             <tbody>
               {agents.map((a: any) => (
@@ -196,8 +203,8 @@ export function AgentsPage() {
                         fontSize: 11 }}>{s}</span>
                     ))}
                   </td>
-                  <td>{a.n_scorecards}</td>
-                  <td>{a.n_traces}</td>
+                  <td className="num">{a.n_scorecards}</td>
+                  <td className="num">{a.n_traces}</td>
                   <td>{a.suites.join(", ") || "—"}</td>
                   <td>{a.last_seen
                     ? new Date(a.last_seen).toLocaleString() : "—"}</td>
@@ -205,6 +212,7 @@ export function AgentsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

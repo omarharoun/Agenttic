@@ -14,53 +14,79 @@ export function ResultsPanel({ results }: { results: any }) {
   const scored = cases.filter((c: any) => !c.scoring_error);
   const passed = scored.filter((c: any) => c.passed).length;
 
+  const failed = scored.length - passed;
+  const total = scored.length + errored.length;
+  const wpct = (n: number) => total ? `${(n / total) * 100}%` : "0%";
+
   return (
     <div className="results">
-      {scorecards.map((sc: any) => (
-        <div key={sc.scorecard_id} className="results-summary">
-          {scored.length === 0 ? (
-            <span className="err" style={{ fontSize: 14, fontWeight: 700 }}
-                  title="No cases could be scored — see errored cases">
-              Not scored
-            </span>
-          ) : (
-            <>
-              <span className={sc.task_success_rate >= 0.7 ? "ok" : "err"}
-                    style={{ fontSize: 15, fontWeight: 700 }}>
-                {Math.round(sc.task_success_rate * 100)}%
-              </span>
-              <span>{passed}/{scored.length} passed{scored.length !== cases.length
-                ? " of scored" : ""}</span>
-            </>
+      {scorecards.map((sc: any) => {
+        const allIn = (sc.total_cost_usd ?? 0) + (sc.total_scoring_cost_usd ?? 0);
+        return (
+        <div key={sc.scorecard_id}>
+          <div className="score-strip">
+            <div className="stat">
+              <span className="lab">Task success</span>
+              {scored.length === 0 ? (
+                <span className="val sm err" title="No cases could be scored — see errored cases">
+                  Not scored
+                </span>
+              ) : (
+                <span className={`val ${sc.task_success_rate >= 0.7 ? "ok" : "err"}`}>
+                  {Math.round(sc.task_success_rate * 100)}%
+                </span>
+              )}
+            </div>
+            <div className="stat">
+              <span className="lab">Passed</span>
+              <span className="val sm">{passed}<span className="muted-sm"> / {scored.length || 0}</span></span>
+            </div>
+            {errored.length > 0 && (
+              <div className="stat">
+                <span className="lab">Errored</span>
+                <span className="val sm wait" title="scoring/config errors — excluded from the rate">{errored.length}</span>
+              </div>
+            )}
+            <div className="stat">
+              <span className="lab">Cost / case</span>
+              <span className="val sm">${(sc.mean_cost_usd ?? 0).toFixed(4)}</span>
+            </div>
+            {allIn > 0 && (
+              <div className="stat" title={`agent execution $${(sc.total_cost_usd ?? 0).toFixed(4)} + judge $${(sc.total_scoring_cost_usd ?? 0).toFixed(4)}`}>
+                <span className="lab">All-in total</span>
+                <span className="val sm">${allIn.toFixed(4)}</span>
+              </div>
+            )}
+            <div className="stat">
+              <span className="lab">Visibility</span>
+              <span className="val sm" style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600 }}>
+                {sc.visibility_tier.replace("_", "-")}</span>
+            </div>
+            <div className="spacer" />
+            <div className="actions">
+              <button onClick={() => report ? setReport("")
+                  : api.scorecardReport(sc.scorecard_id).then(setReport)}>
+                {report ? "Hide report" : "Report"}
+              </button>
+              <button title="Download as PDF"
+                      onClick={() => api.scorecardPdf(sc.scorecard_id)
+                        .then((b) => downloadBlob(b, `scorecard-${sc.scorecard_id}.pdf`))
+                        .catch(() => {})}>
+                ⤓ PDF
+              </button>
+            </div>
+          </div>
+          {total > 0 && (
+            <div className="passbar" role="img"
+                 aria-label={`${passed} passed, ${failed} failed, ${errored.length} errored of ${total}`}>
+              {passed > 0 && <span className="p" style={{ width: wpct(passed) }} title={`${passed} passed`} />}
+              {failed > 0 && <span className="f" style={{ width: wpct(failed) }} title={`${failed} failed`} />}
+              {errored.length > 0 && <span className="e" style={{ width: wpct(errored.length) }} title={`${errored.length} errored`} />}
+            </div>
           )}
-          {errored.length > 0 && (
-            <span className="err" title="scoring/config errors — excluded from the rate">
-              {errored.length} errored
-            </span>
-          )}
-          <span title="agent execution cost / case">
-            ${(sc.mean_cost_usd ?? 0).toFixed(4)}/case</span>
-          {(sc.total_cost_usd != null || sc.total_scoring_cost_usd != null) && (
-            <span title={`agent execution $${(sc.total_cost_usd ?? 0).toFixed(4)} + `
-                         + `judge $${(sc.total_scoring_cost_usd ?? 0).toFixed(4)}`}>
-              total ${((sc.total_cost_usd ?? 0)
-                       + (sc.total_scoring_cost_usd ?? 0)).toFixed(4)}
-            </span>
-          )}
-          <span>{sc.visibility_tier.replace("_", "-")}</span>
-          <button style={{ marginLeft: "auto" }}
-                  onClick={() => report ? setReport("")
-                    : api.scorecardReport(sc.scorecard_id).then(setReport)}>
-            {report ? "hide report" : "report"}
-          </button>
-          <button title="Download as PDF"
-                  onClick={() => api.scorecardPdf(sc.scorecard_id)
-                    .then((b) => downloadBlob(b, `scorecard-${sc.scorecard_id}.pdf`))
-                    .catch(() => {})}>
-            ⤓ PDF
-          </button>
         </div>
-      ))}
+        );
+      })}
       {report && <pre className="doc" style={{ margin: "8px 0" }}>{report}</pre>}
       {cases.map((c: any) => (
         <div key={`${c.node_id}-${c.test_id}`} className="case-row">
