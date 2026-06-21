@@ -15,18 +15,37 @@ const COMPONENT_COLS: [string, string][] = [
 function StandardBenchmarks() {
   const [cat, setCat] = useState<any | null>(null);
   const [board, setBoard] = useState<any | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [datasets, setDatasets] = useState<any[]>([]);
+  const [busy, setBusy] = useState("");
   const [showMethod, setShowMethod] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
 
   const load = () => {
     api.standardMetrics().then(setCat).catch(() => setCat(null));
     api.standardLeaderboard().then(setBoard).catch(() => setBoard(null));
+    api.standardDatasets().then((d) => setDatasets(d.datasets ?? [])).catch(() => setDatasets([]));
   };
   useEffect(load, []);
 
   const seed = async () => {
-    setBusy(true);
-    try { await api.seedStandard(); load(); } finally { setBusy(false); }
+    setBusy("seed");
+    try { await api.seedStandard(); load(); } finally { setBusy(""); }
+  };
+  const ingest = async (id: string) => {
+    setBusy("ingest-" + id); setMsg(null);
+    try { const r = await api.ingestDataset(id); setMsg(`Ingested ${id} (${r.ingested ?? 0} cases).`); load(); }
+    catch (e: any) { setMsg(`Ingest failed: ${String(e.message ?? e)}`); }
+    finally { setBusy(""); }
+  };
+  const runBench = async () => {
+    setBusy("run"); setMsg(null);
+    try { const r = await api.runStandard({ k: 3 }); setMsg(r.note || "Standard run started."); }
+    catch (e: any) {
+      const d = e?.message ?? e;
+      setMsg(String(d).includes("Anthropic API key")
+        ? "Add your Anthropic API key in Settings to run the standard benchmarks."
+        : `Could not start: ${String(d)}`);
+    } finally { setBusy(""); }
   };
 
   const agents: any[] = board?.agents ?? [];
@@ -69,11 +88,32 @@ function StandardBenchmarks() {
         </div>
       )}
 
+      <div className="std-toolbar">
+        <button className="primary" disabled={busy === "run"} onClick={runBench}>
+          {busy === "run" ? "Starting…" : "▶ Run standard benchmark (k=3)"}
+        </button>
+        {datasets.map((d) => (
+          <span key={d.dataset_id} className="dataset-chip"
+                title={`${d.citation} · ${d.license}`}>
+            <a href={d.source_url} target="_blank" rel="noreferrer">{d.name}</a>
+            <span className="muted-sm"> · {d.license}</span>
+            {d.present
+              ? <span className="ok" style={{ marginLeft: 6 }}>ingested ✓</span>
+              : <button className="ghost-sm" style={{ marginLeft: 6 }}
+                        disabled={busy === "ingest-" + d.dataset_id}
+                        onClick={() => ingest(d.dataset_id)}>
+                  {busy === "ingest-" + d.dataset_id ? "…" : "ingest"}
+                </button>}
+          </span>
+        ))}
+      </div>
+      {msg && <div className="note-ok" style={{ marginBottom: 14 }}>{msg}</div>}
+
       {board === null ? <Spinner /> : agents.length === 0 ? (
         <EmptyState icon="◇" title="No standard runs yet"
           hint="Install the canonical suites, then run them against an agent (Workflows → run suite) to populate the Agenttic Index."
-          action={<button className="primary" disabled={busy} onClick={seed}>
-            {busy ? "Seeding…" : "Install standard suites"}
+          action={<button className="primary" disabled={busy === "seed"} onClick={seed}>
+            {busy === "seed" ? "Seeding…" : "Install standard suites"}
           </button>} />
       ) : (
         <table className="data">

@@ -211,6 +211,14 @@ export const api = {
   standardMetrics: () => afetch("/api/standard/metrics").then((r) => json<any>(r)),
   standardLeaderboard: () => afetch("/api/standard/leaderboard").then((r) => json<any>(r)),
   seedStandard: () => afetch("/api/standard/seed", { method: "POST" }).then((r) => json<any>(r)),
+  standardDatasets: () => afetch("/api/standard/datasets").then((r) => json<any>(r)),
+  ingestDataset: (id: string) =>
+    afetch(`/api/standard/ingest/${id}`, { method: "POST" }).then((r) => json<any>(r)),
+  runStandard: (body: { agent_id?: string; system_prompt?: string; k?: number }) =>
+    afetch("/api/standard/run", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<any>(r)),
   listScorecards: () => afetch("/api/scorecards").then((r) => json<any[]>(r)),
   scorecardReport: (id: string) =>
     afetch(`/api/scorecards/${id}/report`).then((r) => r.text()),

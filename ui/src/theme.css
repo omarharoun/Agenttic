@@ -750,5 +750,15 @@ th.sortable:hover { color: var(--accent); }
 .empty-title { font: 500 var(--t-title)/1.2 var(--font-serif); color: var(--text); }
 .empty-hint { font-size: 13.5px; margin-top: 6px; }
 .empty-action { margin-top: 14px; }
+/* standard-benchmark toolbar + dataset chips */
+.std-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 6px 0 12px; }
+.dataset-chip {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px;
+  border: 1px solid var(--border); border-radius: 999px; padding: 5px 11px;
+  background: var(--panel);
+}
+.dataset-chip a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.dataset-chip a:hover { text-decoration: underline; }
+
 .spinner { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid var(--border); border-top-color: var(--accent); display: inline-block; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
