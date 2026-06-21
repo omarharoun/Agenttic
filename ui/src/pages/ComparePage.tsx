@@ -110,47 +110,49 @@ function Comparison({ c, id }: { c: any; id: string }) {
   const mc = c.mcnemar || {};
   const la = c.label_a, lb = c.label_b;
   const sig = mc.significant;
-  const banner = c.winner === "tie"
-    ? (sig ? "var(--ok)" : "var(--wait)")
-    : "var(--ok)";
+  const isTie = c.winner === "tie";
+  const winnerLabel = isTie ? "No clear winner"
+    : `Winner: ${c.winner === "B" ? lb : c.winner === "A" ? la : c.winner}`;
 
   return (
     <div style={{ marginTop: 18 }}>
-      <div style={{ border: `1px solid ${banner}`, borderRadius: 10, padding: "12px 14px",
-                    background: "var(--panel-2)", marginBottom: 14 }}>
-        <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase",
-                      letterSpacing: 0.5 }}>Verdict</div>
-        <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>{c.verdict}</div>
+      <div className={`verdict ${isTie ? "tie" : "win"}`}>
+        <div className="v-lab">
+          Verdict <span className="tag">{winnerLabel}</span>
+        </div>
+        <div className="v-text">{c.verdict}</div>
       </div>
 
-      <table className="data">
-        <thead>
-          <tr><th></th><th>{la} ({c.variant_a?.agent_id})</th>
-              <th>{lb} ({c.variant_b?.agent_id})</th><th>Δ ({lb}−{la})</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><b>Success (paired, n={c.n_paired})</b></td>
-            <td>{pct(c.success_rate_a)}</td>
-            <td>{pct(c.success_rate_b)}</td>
-            <td style={{ color: c.success_delta > 0 ? "var(--ok)"
-              : c.success_delta < 0 ? "var(--fail)" : "var(--muted)" }}>
-              {signedPct(c.success_delta)}</td>
-          </tr>
-          <tr><td>Mean cost / run</td>
-            <td>${(c.mean_cost_a ?? 0).toFixed(4)}</td>
-            <td>${(c.mean_cost_b ?? 0).toFixed(4)}</td>
-            <td>${((c.mean_cost_b - c.mean_cost_a) || 0).toFixed(4)}</td></tr>
-          <tr><td>Total cost</td>
-            <td>${(c.total_cost_a ?? 0).toFixed(4)}</td>
-            <td>${(c.total_cost_b ?? 0).toFixed(4)}</td>
-            <td>${((c.total_cost_b - c.total_cost_a) || 0).toFixed(4)}</td></tr>
-          <tr><td>p95 latency</td>
-            <td>{Math.round(c.p95_latency_a ?? 0)} ms</td>
-            <td>{Math.round(c.p95_latency_b ?? 0)} ms</td>
-            <td>{Math.round((c.p95_latency_b - c.p95_latency_a) || 0)} ms</td></tr>
-        </tbody>
-      </table>
+      <div className="table-wrap">
+        <table className="data">
+          <thead>
+            <tr><th></th><th>{la} ({c.variant_a?.agent_id})</th>
+                <th>{lb} ({c.variant_b?.agent_id})</th><th className="num">Δ ({lb}−{la})</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Success (paired, n={c.n_paired})</b></td>
+              <td className="num">{pct(c.success_rate_a)}</td>
+              <td className="num">{pct(c.success_rate_b)}</td>
+              <td className="num" style={{ color: c.success_delta > 0 ? "var(--ok)"
+                : c.success_delta < 0 ? "var(--fail)" : "var(--muted)" }}>
+                {signedPct(c.success_delta)}</td>
+            </tr>
+            <tr><td>Mean cost / run</td>
+              <td className="num">${(c.mean_cost_a ?? 0).toFixed(4)}</td>
+              <td className="num">${(c.mean_cost_b ?? 0).toFixed(4)}</td>
+              <td className="num">${((c.mean_cost_b - c.mean_cost_a) || 0).toFixed(4)}</td></tr>
+            <tr><td>Total cost</td>
+              <td className="num">${(c.total_cost_a ?? 0).toFixed(4)}</td>
+              <td className="num">${(c.total_cost_b ?? 0).toFixed(4)}</td>
+              <td className="num">${((c.total_cost_b - c.total_cost_a) || 0).toFixed(4)}</td></tr>
+            <tr><td>p95 latency</td>
+              <td className="num">{Math.round(c.p95_latency_a ?? 0)} ms</td>
+              <td className="num">{Math.round(c.p95_latency_b ?? 0)} ms</td>
+              <td className="num">{Math.round((c.p95_latency_b - c.p95_latency_a) || 0)} ms</td></tr>
+          </tbody>
+        </table>
+      </div>
 
       <div style={{ fontSize: 12, color: "var(--muted)", margin: "6px 2px" }}>
         McNemar's paired test: {mc.b} case(s) only {la} passed, {mc.c} only {lb} passed →
@@ -161,43 +163,49 @@ function Comparison({ c, id }: { c: any; id: string }) {
 
       <h3 style={{ marginTop: 16 }}>Per-criterion deltas</h3>
       {c.per_criterion?.length ? (
-        <table className="data">
-          <thead><tr><th>criterion</th><th>{la}</th><th>{lb}</th><th>Δ</th>
-            <th>favors</th><th>significance</th><th>n</th></tr></thead>
-          <tbody>
-            {c.per_criterion.map((cc: any) => (
-              <tr key={cc.criterion_id}>
-                <td style={{ fontFamily: "monospace" }}>{cc.criterion_id}</td>
-                <td>{pct(cc.mean_a)}</td><td>{pct(cc.mean_b)}</td>
-                <td style={{ color: cc.delta > 0 ? "var(--ok)" : cc.delta < 0
-                  ? "var(--fail)" : "var(--muted)" }}>{signedPct(cc.delta)}</td>
-                <td>{cc.direction === "tie" ? "—" : cc.direction === "B" ? lb : la}</td>
-                <td style={{ color: cc.significant ? "var(--ok)" : "var(--muted)" }}>
-                  {cc.significant ? "significant" : "n.s."} (p={(cc.p_value ?? 0).toFixed(2)})</td>
-                <td>{cc.n}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="table-wrap">
+          <table className="data">
+            <thead><tr><th>criterion</th><th className="num">{la}</th><th className="num">{lb}</th><th className="num">Δ</th>
+              <th>favors</th><th>significance</th><th className="num">n</th></tr></thead>
+            <tbody>
+              {c.per_criterion.map((cc: any) => (
+                <tr key={cc.criterion_id}>
+                  <td className="mono">{cc.criterion_id}</td>
+                  <td className="num">{pct(cc.mean_a)}</td><td className="num">{pct(cc.mean_b)}</td>
+                  <td className="num" style={{ color: cc.delta > 0 ? "var(--ok)" : cc.delta < 0
+                    ? "var(--fail)" : "var(--muted)" }}>{signedPct(cc.delta)}</td>
+                  <td>{cc.direction === "tie" ? "—" : cc.direction === "B" ? lb : la}</td>
+                  <td style={{ color: cc.significant ? "var(--ok)" : "var(--muted)" }}>
+                    {cc.significant ? "significant" : "n.s."} (p={(cc.p_value ?? 0).toFixed(2)})</td>
+                  <td className="num">{cc.n}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : <p style={{ color: "var(--muted)" }}>No criteria scored on paired cases.</p>}
 
       <h3 style={{ marginTop: 16 }}>Flipped cases</h3>
       {c.flipped_cases?.length ? (
-        <table className="data">
-          <thead><tr><th>test case</th><th>{la}</th><th>{lb}</th><th>direction</th></tr></thead>
-          <tbody>
-            {c.flipped_cases.map((f: any) => (
-              <tr key={f.test_id}>
-                <td style={{ fontFamily: "monospace" }}>{f.test_id}</td>
-                <td className={f.a_passed ? "ok" : "err"}>{f.a_passed ? "PASS" : "FAIL"}</td>
-                <td className={f.b_passed ? "ok" : "err"}>{f.b_passed ? "PASS" : "FAIL"}</td>
-                <td style={{ color: f.direction === "gain" ? "var(--ok)" : "var(--fail)" }}>
-                  {f.direction === "gain" ? `${la} fail → ${lb} pass`
-                    : `${la} pass → ${lb} fail`}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="table-wrap">
+          <table className="data">
+            <thead><tr><th>test case</th><th>{la}</th><th>{lb}</th><th>direction</th></tr></thead>
+            <tbody>
+              {c.flipped_cases.map((f: any) => (
+                <tr key={f.test_id}>
+                  <td className="mono">{f.test_id}</td>
+                  <td className={f.a_passed ? "ok" : "err"}>{f.a_passed ? "PASS" : "FAIL"}</td>
+                  <td className={f.b_passed ? "ok" : "err"}>{f.b_passed ? "PASS" : "FAIL"}</td>
+                  <td>
+                    <span className={`flip ${f.direction === "gain" ? "gain" : "loss"}`}>
+                      {f.direction === "gain" ? `${la} fail → ${lb} pass`
+                        : `${la} pass → ${lb} fail`}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : <p style={{ color: "var(--muted)" }}>No cases changed outcome between the variants.</p>}
 
       {c.excluded_test_ids?.length > 0 && (
@@ -339,22 +347,24 @@ export function ComparePage() {
           <EmptyState icon="⚖" title="No comparisons yet"
             hint="Pick a suite, configure two variants, and run a comparison." />
         ) : (
-          <table className="data">
-            <thead><tr><th>id</th><th>suite</th><th>status</th>
-              <th>verdict</th><th>when</th><th></th></tr></thead>
-            <tbody>
-              {runs.map((r) => (
-                <tr key={r.comparison_id}>
-                  <td style={{ fontFamily: "monospace" }}>{r.comparison_id}</td>
-                  <td>{r.suite_id}</td>
-                  <td style={{ color: STATUS_COLOR[r.status] }}>{r.status}</td>
-                  <td style={{ maxWidth: 360, fontSize: 12 }}>{r.verdict ?? "—"}</td>
-                  <td>{new Date(r.created_at).toLocaleString()}</td>
-                  <td><button onClick={() => setSelected(r.comparison_id)}>view</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="data">
+              <thead><tr><th>id</th><th>suite</th><th>status</th>
+                <th>verdict</th><th>when</th><th></th></tr></thead>
+              <tbody>
+                {runs.map((r) => (
+                  <tr key={r.comparison_id}>
+                    <td className="mono">{r.comparison_id}</td>
+                    <td>{r.suite_id}</td>
+                    <td style={{ color: STATUS_COLOR[r.status] }}>{r.status}</td>
+                    <td style={{ maxWidth: 360, fontSize: 12 }}>{r.verdict ?? "—"}</td>
+                    <td>{new Date(r.created_at).toLocaleString()}</td>
+                    <td><button onClick={() => setSelected(r.comparison_id)}>view</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

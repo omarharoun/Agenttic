@@ -43,35 +43,37 @@ export function ExecutionsPage() {
           <EmptyState icon="▶" title="No runs yet"
                       hint="Build a workflow and hit Run — it'll show up here with live progress." />
         ) : (
-        <table className="data">
-          <thead>
-            <tr><th>execution</th><th>workflow</th><th>status</th>
-                <th>started</th><th>nodes</th><th></th></tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.execution_id}>
-                <td style={{ fontFamily: "monospace" }}>{r.execution_id}</td>
-                <td>{r.workflow_id}</td>
-                <td style={{ color: STATE_COLOR[r.status] }}>{r.status}</td>
-                <td>{new Date(r.started_at).toLocaleTimeString()}</td>
-                <td>{Object.entries(r.node_states as Record<string, string>)
-                  .map(([n, s]) => `${n}:${s}`).join("  ")}</td>
-                <td>
-                  <button onClick={() => inspect(r.execution_id)}>
-                    inspect
-                  </button>
-                  {r.status === "waiting_approval" && (
-                    <button className="approve" style={{ marginLeft: 6 }}
-                            onClick={() => api.approve(r.execution_id).then(refresh)}>
-                      approve
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
+              <tr><th>execution</th><th>workflow</th><th>status</th>
+                  <th>started</th><th>nodes</th><th></th></tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.execution_id}>
+                  <td className="mono">{r.execution_id}</td>
+                  <td>{r.workflow_id}</td>
+                  <td><span className={`status-chip ${r.status}`}>{r.status.replace(/_/g, " ")}</span></td>
+                  <td>{new Date(r.started_at).toLocaleTimeString()}</td>
+                  <td>{Object.entries(r.node_states as Record<string, string>)
+                    .map(([n, s]) => `${n}:${s}`).join("  ")}</td>
+                  <td>
+                    <button onClick={() => inspect(r.execution_id)}>
+                      inspect
                     </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    {r.status === "waiting_approval" && (
+                      <button className="approve" style={{ marginLeft: 6 }}
+                              onClick={() => api.approve(r.execution_id).then(refresh)}>
+                        approve
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         )}
         {detail && (
           <>
