@@ -7,16 +7,23 @@ AgentHarm / AgentDojo *methodology*), distinct from user-generated suites.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+import asyncio
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 
 from ascore import ops
 from ascore.metrics.catalog import catalog_payload, index_weights
+from ascore.metrics.runner import MAX_K
 from ascore.metrics.standard_suites import (
     seed_standard_suites, standard_suite_ids,
 )
 from ascore.server.auth import require_operator
+from ascore.server.keys import KeyStore
 
 router = APIRouter(tags=["standard"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/standard/metrics")
@@ -42,6 +49,50 @@ def standard_suites(request: Request):
 def seed(request: Request):
     """Install the canonical standard suites into this workspace (idempotent)."""
     return {"seeded": seed_standard_suites(request.state.reg)}
+
+
+class RunBody(BaseModel):
+    agent_id: str = "standard-agent"
+    variant: str = "reference"
+    url: str = ""
+    system_prompt: str = ""
+    model: str = ""
+    k: int = 3
+
+
+@router.post("/standard/run", dependencies=[Depends(require_operator)])
+async def run_standard(body: RunBody, request: Request):
+    """Run the canonical suites k times for an agent (background) and persist the
+    full Agenttic Index incl. pass^k + ECE. Uses the tenant's own Anthropic key.
+    Cost note: k runs cost k x the tokens."""
+    cfg, reg = request.state.cfg, request.state.reg
+    injected = getattr(request.state, "clients", None) or {}
+    if injected:
+        client = injected.get("agent")
+        judge = injected.get("judge") or client
+    else:
+        key = KeyStore(reg.engine, cfg).get_key(getattr(request.state, "tenant", "default"))
+        if not key:
+            raise HTTPException(400, "Add your Anthropic API key in Settings to run "
+                                     "the standard benchmarks.")
+        import anthropic
+        client = anthropic.Anthropic(api_key=key)
+        judge = client
+    k = max(1, min(int(body.k), MAX_K))
+
+    async def _bg():
+        try:
+            await ops.run_standard_op(
+                cfg, reg, agent_id=body.agent_id, k=k, variant=body.variant,
+                url=body.url, system_prompt=body.system_prompt, model=body.model,
+                client=client, judge_client=judge)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("standard run failed for %s: %s", body.agent_id, exc)
+
+    asyncio.create_task(_bg())
+    return {"started": True, "agent_id": body.agent_id, "k": k,
+            "note": f"Running the canonical suites {k}x — k runs cost k x tokens. "
+                    "Results appear on the standard leaderboard when done."}
 
 
 @router.get("/standard/leaderboard")

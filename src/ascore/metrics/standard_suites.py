@@ -18,9 +18,30 @@ from ascore.schema.testcase import TestCase, TestSuite
 
 STANDARD_PREFIX = "std-"
 
+# Real public-dataset suites (ingested separately, e.g. BFCL) that also feed the
+# canonical metrics. Present only after ingestion; included in the index rollup.
+DATASET_SUITE_IDS = ["bfcl-simple-v3"]
+
 
 def is_standard(suite_id: str) -> bool:
     return suite_id.startswith(STANDARD_PREFIX)
+
+
+def is_canonical(suite_id: str) -> bool:
+    return is_standard(suite_id) or suite_id in DATASET_SUITE_IDS
+
+
+def canonical_suite_ids(reg) -> list[str]:
+    """Canonical suite ids present in this workspace (std seeds + ingested
+    datasets) — the set the standard run + index roll up over."""
+    out = []
+    for sid in standard_suite_ids() + DATASET_SUITE_IDS:
+        try:
+            reg.get_suite(sid)
+            out.append(sid)
+        except NotFoundError:
+            continue
+    return out
 
 
 def _rubric(rid: str, checks: list[tuple[str, str, str]]) -> Rubric:

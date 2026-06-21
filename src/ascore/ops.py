@@ -334,10 +334,38 @@ def report_pdf_op(reg: Registry, scorecard_id: str) -> bytes:
     return render_pdf(*_scorecard_with_context(reg, scorecard_id))
 
 
+async def run_standard_op(cfg: dict, reg: Registry, *, agent_id: str, k: int = 3,
+                          variant: str = "reference", url: str = "",
+                          system_prompt: str = "", model: str = "",
+                          client=None, judge_client=None, fi_evaluate_fn=None,
+                          on_progress=None, persist: bool = True) -> dict:
+    """Run the canonical suites k times for an agent and persist the full
+    Agenttic Index (incl. pass^k + ECE). Seeds the standard suites if absent."""
+    import json
+
+    from ascore.metrics.runner import run_standard
+    from ascore.metrics.standard_suites import seed_standard_suites
+    seed_standard_suites(reg)  # ensure the std suites exist (idempotent)
+    adapter = build_adapter(cfg, variant=variant, agent_id=agent_id, url=url,
+                            system_prompt=system_prompt, model=model, client=client)
+    result = await run_standard(cfg, reg, adapter, k=k,
+                                judge_client=judge_client or client,
+                                fi_evaluate_fn=fi_evaluate_fn, on_progress=on_progress)
+    if persist:
+        reg.save_canonical_run(result["run_id"], agent_id, json.dumps(result))
+    return result
+
+
 def standard_index_op(reg: Registry) -> list[dict]:
-    """Per-agent canonical Agenttic Index over the standard suites — the latest
-    scorecard per (agent, suite), per-criterion means averaged into the named
-    metrics, rolled into one normalized index (components always shown)."""
+    """Per-agent canonical Agenttic Index over the standard suites.
+
+    Prefers a full canonical run (with pass^k + ECE) when one exists; otherwise
+    falls back to a partial index rolled from the latest standard scorecards
+    (the rubric-based metrics only — pass^k/ECE reported as missing)."""
+    canonical = reg.latest_canonical_runs()
+    if canonical:
+        return canonical
+
     from ascore.metrics.index import compute_index, rollup_metrics_from_means
     from ascore.metrics.standard_suites import standard_suite_ids
 

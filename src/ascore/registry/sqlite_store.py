@@ -127,6 +127,18 @@ class ABComparisonRow(SQLModel, table=True):
     payload: str = ""                        # ABComparison JSON when done
 
 
+class CanonicalRunRow(SQLModel, table=True):
+    """One standard-benchmark run for an agent: the full canonical metric bundle
+    (tool-call accuracy, refusal, injection, pass^k, calibration) + the Agenttic
+    Index, computed from k repeated runs of the standard/dataset suites."""
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    run_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    created_at: datetime
+    payload: str = ""                        # canonical result JSON
+
+
 class LiveScoreRow(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
@@ -505,6 +517,28 @@ class Registry:
                 ScorecardRow.tenant_id == self.tenant,
                 ScorecardRow.suite_id.in_(ids)).order_by(ScorecardRow.created_at)).all()
             return [Scorecard.model_validate_json(r.payload) for r in rows]
+
+    def save_canonical_run(self, run_id: str, agent_id: str, payload: str) -> None:
+        with Session(self.engine) as s:
+            s.add(CanonicalRunRow(tenant_id=self.tenant, run_id=run_id,
+                                  agent_id=agent_id, created_at=_now(),
+                                  payload=payload))
+            s.commit()
+
+    def latest_canonical_runs(self) -> list[dict]:
+        """Latest canonical run per agent (newest first), as parsed payloads."""
+        import json as _json
+        with Session(self.engine) as s:
+            rows = s.exec(select(CanonicalRunRow).where(
+                CanonicalRunRow.tenant_id == self.tenant
+            ).order_by(CanonicalRunRow.created_at)).all()
+        latest: dict[str, dict] = {}
+        for r in rows:  # oldest-first => last write per agent wins
+            try:
+                latest[r.agent_id] = _json.loads(r.payload)
+            except Exception:  # noqa: BLE001
+                continue
+        return sorted(latest.values(), key=lambda d: d.get("index", 0), reverse=True)
 
     def suites_scored_for(self, agent_id: str) -> list[str]:
         with Session(self.engine) as s:
