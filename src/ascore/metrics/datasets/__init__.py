@@ -3,11 +3,12 @@ via the same DatasetAdapter pattern)."""
 
 from __future__ import annotations
 
+from ascore.metrics.datasets.agentharm import AgentHarmAdapter
 from ascore.metrics.datasets.base import DatasetAdapter, DatasetInfo
 from ascore.metrics.datasets.bfcl import BFCLAdapter
 
 # dataset_id -> adapter factory
-ADAPTERS = {"bfcl": BFCLAdapter}
+ADAPTERS = {"bfcl": BFCLAdapter, "agentharm": AgentHarmAdapter}
 
 
 def get_adapter(dataset_id: str) -> DatasetAdapter:
