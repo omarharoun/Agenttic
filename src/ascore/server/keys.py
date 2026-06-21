@@ -102,3 +102,23 @@ def build_tenant_clients(key: str) -> dict:
     import anthropic
     client = anthropic.Anthropic(api_key=key)
     return {"agent": client, "judge": client, "generator": client, "anthropic": client}
+
+
+NO_KEY_MSG = ("Add your Anthropic API key in Settings to run tests — "
+              "Agenttic runs your agents with your own key.")
+
+
+def tenant_run_clients(request) -> dict | None:
+    """Clients for a run started from ``request``. Test/dev injection
+    (app.state.clients, surfaced on request.state.clients) wins → returns None so
+    the manager uses its injected clients. Otherwise build from THIS tenant's own
+    Anthropic key; raise 400 if it isn't set (never fall back to a platform key)."""
+    from fastapi import HTTPException
+    injected = getattr(request.state, "clients", None) or {}
+    if injected:
+        return None
+    tenant = getattr(request.state, "tenant", "default")
+    key = KeyStore(request.state.reg.engine, request.state.cfg).get_key(tenant)
+    if not key:
+        raise HTTPException(400, NO_KEY_MSG)
+    return build_tenant_clients(key)

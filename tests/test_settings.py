@@ -91,7 +91,7 @@ def test_run_allowed_once_key_set(tmp_path, monkeypatch):
     # with a key set, the gate passes and the run starts (build clients stubbed
     # so no network); we only assert the gate no longer blocks.
     monkeypatch.setattr(keys, "validate_anthropic_key", lambda k: (True, ""))
-    monkeypatch.setattr("ascore.server.routes.executions.build_tenant_clients",
+    monkeypatch.setattr("ascore.server.keys.build_tenant_clients",
                         lambda key: {"agent": object()})
     with _client(tmp_path) as c:
         _signup(c)
