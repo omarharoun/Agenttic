@@ -118,3 +118,9 @@ def steps_under_limit(trace: Trace, tc: TestCase) -> float:
 @check("cost_under_limit")
 def cost_under_limit(trace: Trace, tc: TestCase) -> float:
     return 1.0 if trace.total_cost_usd <= float(_need(tc, "max_cost_usd")) else 0.0
+
+
+# Register the canonical (literature-anchored) checks into the same CHECKS
+# registry so standard suites score through the normal pipeline. Imported at the
+# bottom to avoid a cycle (the module imports `check`/`_need` defined above).
+from ascore.metrics import canonical_checks as _canonical_checks  # noqa: E402,F401
