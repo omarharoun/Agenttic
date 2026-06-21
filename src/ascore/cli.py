@@ -578,6 +578,25 @@ def standard_seed(config: str = "config.yaml"):
                   f"{', '.join(added) or '(already present)'}")
 
 
+@standard_app.command("run")
+def standard_run(
+    agent: str = typer.Option("standard-agent", "--agent", "-a", help="agent id (label)"),
+    k: int = typer.Option(3, "--k", help="repeated runs per case for pass^k (cost is k x)"),
+    system_prompt: str = "", url: str = "", config: str = "config.yaml"):
+    """Run the canonical suites k times for an agent and record the Agenttic Index
+    (incl. pass^k + ECE). Needs ANTHROPIC_API_KEY. NOTE: k runs cost k x tokens."""
+    cfg, reg = _ctx(config)
+    variant = "blackbox" if url else "reference"
+    res = asyncio.run(ops.run_standard_op(cfg, reg, agent_id=agent, k=k,
+                                          variant=variant, url=url,
+                                          system_prompt=system_prompt))
+    console.print(f"[bold]Agenttic Index {res['index']}[/]  (agent {agent}, k={k}, "
+                  f"{res['n_cases']} cases, cost ${res['k_runs_cost_usd']:.4f})")
+    for mid, v in res["components"].items():
+        console.print(f"  {res['names'].get(mid, mid)}: {v}")
+    console.print(f"  calibration mode: {res['calibration_mode']}")
+
+
 @standard_app.command("metrics")
 def standard_metrics():
     """List the canonical metrics, the methodology each implements, and weights."""

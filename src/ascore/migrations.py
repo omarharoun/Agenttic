@@ -96,6 +96,13 @@ def _ab_comparisons_table(conn) -> None:
     ABComparisonRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _canonical_runs_table(conn) -> None:
+    """v7 — standard-benchmark canonical runs (pass^k + ECE + index per agent)."""
+    import ascore.registry.sqlite_store  # noqa: F401 (registers CanonicalRunRow)
+    from ascore.registry.sqlite_store import CanonicalRunRow
+    CanonicalRunRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -104,6 +111,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (4, "email_verification", _email_verification),
     (5, "api_keys_table", _api_keys_table),
     (6, "ab_comparisons_table", _ab_comparisons_table),
+    (7, "canonical_runs_table", _canonical_runs_table),
 ]
 
 
