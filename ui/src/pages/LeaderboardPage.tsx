@@ -1,5 +1,107 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { EmptyState, Spinner } from "../components/ui";
+
+/** Standard benchmarking — canonical, literature-anchored metrics rolled into
+ *  the normalized Agenttic Index (the "Artificial Analysis for agents" spine). */
+const COMPONENT_COLS: [string, string][] = [
+  ["tool_call_accuracy", "Tool-call acc"],
+  ["harmful_refusal_rate", "Refusal rate"],
+  ["injection_robustness", "Injection robust"],
+  ["reliability_pass_k", "pass^k"],
+  ["calibration_ece", "Calibration"],
+];
+
+function StandardBenchmarks() {
+  const [cat, setCat] = useState<any | null>(null);
+  const [board, setBoard] = useState<any | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [showMethod, setShowMethod] = useState(false);
+
+  const load = () => {
+    api.standardMetrics().then(setCat).catch(() => setCat(null));
+    api.standardLeaderboard().then(setBoard).catch(() => setBoard(null));
+  };
+  useEffect(load, []);
+
+  const seed = async () => {
+    setBusy(true);
+    try { await api.seedStandard(); load(); } finally { setBusy(false); }
+  };
+
+  const agents: any[] = board?.agents ?? [];
+  const present = new Set<string>(agents.flatMap((a) => Object.keys(a.components ?? {})));
+  const cols = COMPONENT_COLS.filter(([k]) => present.has(k));
+
+  return (
+    <div style={{ marginBottom: 34 }}>
+      <h2>Standard benchmarks — Agenttic Index</h2>
+      <p style={{ color: "var(--muted)", marginTop: -6, maxWidth: 760 }}>
+        Canonical, literature-anchored metrics on agenttic's own seed data,
+        normalized into one Agenttic Index — components always shown. We implement
+        the published <i>methodology</i>; these are <b>not</b> the public
+        BFCL / τ-bench / AgentHarm datasets (direct dataset comparability is a
+        next phase).
+        <button className="ghost-sm" style={{ marginLeft: 10 }}
+                onClick={() => setShowMethod((s) => !s)}>
+          {showMethod ? "hide methodology" : "methodology & weights"}
+        </button>
+      </p>
+
+      {showMethod && cat && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-body" style={{ padding: 0 }}>
+            <table className="data">
+              <thead><tr><th>Metric</th><th>Implements</th><th>Index weight</th></tr></thead>
+              <tbody>
+                {cat.metrics.map((m: any) => (
+                  <tr key={m.id}>
+                    <td><b>{m.name}</b></td>
+                    <td style={{ color: "var(--muted)", maxWidth: 520 }}>{m.methodology}</td>
+                    <td>{m.status === "deferred"
+                      ? <span className="muted-sm">deferred</span>
+                      : `${Math.round(m.weight * 100)}%`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {board === null ? <Spinner /> : agents.length === 0 ? (
+        <EmptyState icon="◇" title="No standard runs yet"
+          hint="Install the canonical suites, then run them against an agent (Workflows → run suite) to populate the Agenttic Index."
+          action={<button className="primary" disabled={busy} onClick={seed}>
+            {busy ? "Seeding…" : "Install standard suites"}
+          </button>} />
+      ) : (
+        <table className="data">
+          <thead>
+            <tr><th>#</th><th>agent</th><th>Agenttic Index</th>
+              {cols.map(([, label]) => <th key={label}>{label}</th>)}
+              <th>suites</th></tr>
+          </thead>
+          <tbody>
+            {agents.map((a, i) => (
+              <tr key={a.agent_id}>
+                <td>{i + 1}</td>
+                <td>{a.agent_id}</td>
+                <td><b style={{ color: "var(--accent)" }}>{a.index}</b></td>
+                {cols.map(([k]) => (
+                  <td key={k}>{a.components?.[k] != null
+                    ? `${Math.round(a.components[k] * 100)}%`
+                    : <span className="muted-sm">—</span>}</td>
+                ))}
+                <td className="muted-sm">{(a.suites_run ?? []).length}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
 
 /** Agenttic Index — ranks agents across suites (artificialanalysis.ai style):
  * a leaderboard table + an Index-vs-cost scatter, with a common-set filter. */
@@ -49,11 +151,14 @@ export function LeaderboardPage() {
   return (
     <div className="page">
       <div className="list-page">
-        <h2>Agenttic Index</h2>
+        <StandardBenchmarks />
+
+        <h2>All suites — task-success leaderboard</h2>
         <p style={{ color: "var(--muted)", marginTop: -6 }}>
-          Composite score per agent — weighted mean of per-suite task success
-          (0–100), latest run per suite. Cost and latency are blended across
-          suites; coverage shows how many suites each agent has run.
+          Composite score per agent across <i>all</i> suites (incl. your own) —
+          weighted mean of per-suite task success (0–100), latest run per suite.
+          Cost and latency are blended across suites; coverage shows how many
+          suites each agent has run.
         </p>
 
         {suites.length > 1 && (
