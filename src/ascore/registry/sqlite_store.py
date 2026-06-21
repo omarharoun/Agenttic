@@ -112,6 +112,21 @@ class ScorecardRow(SQLModel, table=True):
     payload: str
 
 
+class ABComparisonRow(SQLModel, table=True):
+    """One A/B comparison run. ``status`` tracks the background run lifecycle
+    (running -> succeeded/failed); ``payload`` holds the serialized
+    :class:`ascore.schema.ab.ABComparison` once the run completes."""
+    __table_args__ = (UniqueConstraint("tenant_id", "comparison_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    comparison_id: str = Field(index=True)
+    suite_id: str = Field(index=True)
+    status: str = Field(default="running")   # running | succeeded | failed
+    error: str = ""
+    created_at: datetime
+    payload: str = ""                        # ABComparison JSON when done
+
+
 class LiveScoreRow(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
@@ -486,6 +501,102 @@ class Registry:
                 ScorecardRow.tenant_id == self.tenant,
                 ScorecardRow.agent_id == agent_id).distinct()).all()
             return list(rows)
+
+    # -- A/B comparisons -------------------------------------------------------
+
+    def create_ab_run(self, comparison_id: str, suite_id: str) -> None:
+        """Insert a 'running' placeholder so the UI can track an in-flight A/B
+        run before its comparison artifact exists."""
+        with Session(self.engine) as s:
+            s.add(ABComparisonRow(
+                tenant_id=self.tenant, comparison_id=comparison_id,
+                suite_id=suite_id, status="running", created_at=_now()))
+            s.commit()
+
+    def save_ab_comparison(self, comparison) -> None:
+        """Persist a finished comparison. Upserts: completes the 'running' row
+        the manager created, or inserts a new 'succeeded' row (CLI/direct use)."""
+        from ascore.schema.ab import ABComparison
+        assert isinstance(comparison, ABComparison)
+        with Session(self.engine) as s:
+            row = s.exec(select(ABComparisonRow).where(
+                ABComparisonRow.tenant_id == self.tenant,
+                ABComparisonRow.comparison_id == comparison.comparison_id)).first()
+            if row is None:
+                row = ABComparisonRow(
+                    tenant_id=self.tenant,
+                    comparison_id=comparison.comparison_id,
+                    suite_id=comparison.suite_id, created_at=comparison.created_at)
+            row.status = "succeeded"
+            row.error = ""
+            row.suite_id = comparison.suite_id
+            row.payload = comparison.model_dump_json()
+            s.add(row)
+            s.commit()
+
+    def fail_ab_run(self, comparison_id: str, error: str) -> None:
+        with Session(self.engine) as s:
+            row = s.exec(select(ABComparisonRow).where(
+                ABComparisonRow.tenant_id == self.tenant,
+                ABComparisonRow.comparison_id == comparison_id)).first()
+            if row is None:
+                return
+            row.status = "failed"
+            row.error = error[:500]
+            s.add(row)
+            s.commit()
+
+    def get_ab_run(self, comparison_id: str) -> dict:
+        """Run status + the comparison artifact (parsed, or None while running)."""
+        from ascore.schema.ab import ABComparison
+        with Session(self.engine) as s:
+            row = s.exec(select(ABComparisonRow).where(
+                ABComparisonRow.tenant_id == self.tenant,
+                ABComparisonRow.comparison_id == comparison_id)).first()
+        if row is None:
+            raise NotFoundError(f"ab comparison {comparison_id}")
+        comp = (ABComparison.model_validate_json(row.payload)
+                if row.payload else None)
+        return {"comparison_id": row.comparison_id, "suite_id": row.suite_id,
+                "status": row.status, "error": row.error,
+                "created_at": row.created_at.isoformat(),
+                "comparison": comp.model_dump(mode="json") if comp else None}
+
+    def get_ab_comparison(self, comparison_id: str):
+        """The finished comparison object (raises if it hasn't completed)."""
+        from ascore.schema.ab import ABComparison
+        with Session(self.engine) as s:
+            row = s.exec(select(ABComparisonRow).where(
+                ABComparisonRow.tenant_id == self.tenant,
+                ABComparisonRow.comparison_id == comparison_id)).first()
+        if row is None or not row.payload:
+            raise NotFoundError(f"ab comparison {comparison_id}")
+        return ABComparison.model_validate_json(row.payload)
+
+    def list_ab_runs(self, suite_id: str | None = None) -> list[dict]:
+        with Session(self.engine) as s:
+            q = select(ABComparisonRow).where(
+                ABComparisonRow.tenant_id == self.tenant)
+            if suite_id:
+                q = q.where(ABComparisonRow.suite_id == suite_id)
+            rows = s.exec(q.order_by(ABComparisonRow.created_at.desc())).all()
+        from ascore.schema.ab import ABComparison
+        out = []
+        for r in rows:
+            summary = {"comparison_id": r.comparison_id, "suite_id": r.suite_id,
+                       "status": r.status, "error": r.error,
+                       "created_at": r.created_at.isoformat(),
+                       "label_a": None, "label_b": None, "winner": None,
+                       "verdict": None}
+            if r.payload:
+                c = ABComparison.model_validate_json(r.payload)
+                summary.update(label_a=c.label_a, label_b=c.label_b,
+                               winner=c.winner, verdict=c.verdict,
+                               success_rate_a=c.success_rate_a,
+                               success_rate_b=c.success_rate_b,
+                               n_paired=c.n_paired)
+            out.append(summary)
+        return out
 
     # -- live path (Step 9) ----------------------------------------------------
 
