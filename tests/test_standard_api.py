@@ -34,7 +34,10 @@ def test_metric_catalog_cites_methodology(tmp_path):
         assert "BFCL" in names["tool_call_accuracy"]["methodology"]
         assert "AgentHarm" in names["harmful_refusal_rate"]["methodology"]
         assert "AgentDojo" in names["injection_robustness"]["methodology"]
-        assert names["faithfulness"]["status"] == "deferred"
+        # faithfulness joined the index this increment (FActScore / RAGAS)
+        assert names["faithfulness"]["status"] == "implemented"
+        assert "FActScore" in names["faithfulness"]["methodology"]
+        assert names["faithfulness"]["weight"] > 0
         # index weights sum to 1 over implemented, weighted metrics
         assert abs(sum(body["index_weights"].values()) - 1.0) < 1e-6
 
