@@ -13,26 +13,9 @@ from sse_starlette.sse import EventSourceResponse
 from ascore.registry.sqlite_store import NotFoundError
 from ascore.server.auth import require_operator
 from ascore.server.executor import WorkflowValidationError
-from ascore.server.keys import KeyStore, build_tenant_clients
+from ascore.server.keys import tenant_run_clients as _run_clients
 
 router = APIRouter(tags=["executions"])
-
-_NO_KEY_MSG = ("Add your Anthropic API key in Settings to run tests — "
-               "Agenttic runs your agents with your own key.")
-
-
-def _run_clients(request) -> dict | None:
-    """Clients for this run. Test/dev injection (app.state.clients) wins so the
-    suite keeps working. Otherwise build from THIS tenant's own Anthropic key;
-    raise 400 if it isn't set (never fall back to the platform key)."""
-    injected = getattr(request.state, "clients", None) or {}
-    if injected:
-        return None  # manager already holds the injected clients
-    tenant = getattr(request.state, "tenant", "default")
-    key = KeyStore(request.state.reg.engine, request.state.cfg).get_key(tenant)
-    if not key:
-        raise HTTPException(400, _NO_KEY_MSG)
-    return build_tenant_clients(key)
 
 
 @router.post("/workflows/{workflow_id}/executions",

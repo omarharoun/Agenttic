@@ -60,9 +60,10 @@ def safe_static_path(base: Path, rel: str) -> Path | None:
 
 class Workspace:
     """One tenant's isolated stack."""
-    def __init__(self, cfg, reg, store, bus, manager, tenant):
+    def __init__(self, cfg, reg, store, bus, manager, tenant, ab=None):
         self.cfg, self.reg, self.store = cfg, reg, store
         self.bus, self.manager, self.tenant = bus, manager, tenant
+        self.ab = ab
 
 
 class Workspaces:
@@ -127,7 +128,10 @@ class Workspaces:
             bus = EventBus(store, loop=self.loop, transport=self._transport)
             manager = ExecutionManager(self.cfg, reg, store, bus,
                                        clients=self.clients)
-            self._ws[tenant] = Workspace(self.cfg, reg, store, bus, manager, tenant)
+            from ascore.server.ab_manager import ABManager
+            ab = ABManager(self.cfg, reg, clients=self.clients)
+            self._ws[tenant] = Workspace(self.cfg, reg, store, bus, manager,
+                                         tenant, ab=ab)
         return self._ws[tenant]
 
 
@@ -140,6 +144,7 @@ def bind_workspace(request: Request) -> None:
     request.state.reg = ws.reg
     request.state.store = ws.store
     request.state.manager = ws.manager
+    request.state.ab = ws.ab
     request.state.bus = ws.bus
     request.state.clients = request.app.state.clients
 
@@ -221,6 +226,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     async def metrics_endpoint():
         return PlainTextResponse(metrics.render())
 
+    from ascore.server.routes.ab import router as ab_router
     from ascore.server.routes.auth import router as auth_router
     from ascore.server.routes.cost import router as cost_router
     from ascore.server.routes.executions import router as executions_router
@@ -244,6 +250,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(leaderboard_router, prefix="/api", dependencies=protected)
     app.include_router(cost_router, prefix="/api", dependencies=protected)
     app.include_router(settings_router, prefix="/api", dependencies=protected)
+    app.include_router(ab_router, prefix="/api", dependencies=protected)
 
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"),

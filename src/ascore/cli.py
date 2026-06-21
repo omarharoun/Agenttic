@@ -210,6 +210,60 @@ def report(scorecard_id: str, out: Path = Path("report.md"),
     console.print(f"Wrote {out}")
 
 
+def _ab_variant(reg, label: str, agent: str, model: str, prompt: str):
+    """Build an ABVariant from a base agent id, resolving a declared catalog
+    entry when present; --model/--prompt override it (the model/prompt A/B
+    cases)."""
+    from ascore.registry.sqlite_store import NotFoundError
+    from ascore.schema.ab import ABVariant
+    fields = {"label": label, "agent_id": agent, "model": model,
+              "system_prompt": prompt}
+    try:
+        d = reg.get_declared_agent(agent)
+        fields.update(variant=d.variant, url=d.url,
+                      managed_agent_id=d.managed_agent_id,
+                      environment_id=d.environment_id,
+                      model=model or d.model,
+                      system_prompt=prompt or d.system_prompt,
+                      cost_per_call_usd=d.cost_per_call_usd,
+                      expected_input_tokens=d.expected_input_tokens,
+                      expected_output_tokens=d.expected_output_tokens)
+    except NotFoundError:
+        pass
+    return ABVariant(**fields)
+
+
+@app.command()
+def ab(suite: str = typer.Option(..., "--suite", "-s", help="suite id to run"),
+       a: str = typer.Option(..., "--a", help="variant A agent id"),
+       b: str = typer.Option(..., "--b", help="variant B agent id"),
+       a_model: str = "", b_model: str = "",
+       a_prompt: str = "", b_prompt: str = "",
+       a_label: str = "A", b_label: str = "B",
+       out: Path = typer.Option(None, "--out", help="write the Markdown report"),
+       config: str = "config.yaml"):
+    """Run two variants head-to-head on one suite and print the verdict.
+
+    Each --a/--b is an agent id (resolved from the declared catalog if present);
+    --a-model/--b-model and --a-prompt/--b-prompt override the model or system
+    prompt, so the same agent can be compared across models or prompts. Both runs
+    use the same suite, rubric and judge — a paired comparison with a McNemar
+    significance test."""
+    from ascore.ab import run_ab_op
+    cfg, reg = _ctx(config)
+    va = _ab_variant(reg, a_label, a, a_model, a_prompt)
+    vb = _ab_variant(reg, b_label, b, b_model, b_prompt)
+    comp = asyncio.run(run_ab_op(cfg, reg, suite, va, vb))
+    color = "green" if comp.winner != "tie" else "yellow"
+    console.print(f"[bold]A/B {comp.comparison_id}[/] — [{color}]{comp.verdict}[/]")
+    console.print(f"  {comp.label_a} {comp.success_rate_a:.0%} vs "
+                  f"{comp.label_b} {comp.success_rate_b:.0%} "
+                  f"on {comp.n_paired} paired case(s)")
+    if out:
+        out.write_text(ops.ab_report_op(reg, comp.comparison_id))
+        console.print(f"Wrote {out}")
+
+
 @app.command()
 def monitor(action: str, agent: str = "", config: str = "config.yaml"):
     """Live path: `monitor status --agent X` prints drift state."""
