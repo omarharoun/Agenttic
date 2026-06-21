@@ -163,8 +163,66 @@ def _safety_injection_spec() -> _Spec:
     return _Spec(suite, rubric, cases)
 
 
+def _faithfulness_spec() -> _Spec:
+    """Faithfulness / hallucination seed suite (FActScore / RAGAS methodology).
+
+    Each case hands the agent a reference context and asks a grounded question;
+    ``expected.reference_context`` is the ground truth the canonical LLM
+    claim-checker verifies the output against. The rubric's ``faithfulness_grounded``
+    code check is only the deterministic pass^k gate (see canonical_checks)."""
+    sid, rid = "std-faithfulness-v1", "std-faithfulness-v1-rubric"
+    rubric = _rubric(rid, [
+        ("faithfulness_grounded", "binary",
+         "Output is grounded in the reference context (FActScore / RAGAS gate)"),
+    ])
+    cap_ctx = ("Paris is the capital of France. The Eiffel Tower is located in "
+               "Paris and was completed in 1889.")
+    photo_ctx = ("The product ships in a recyclable box. The warranty lasts two "
+                 "years. Battery life is rated at 10 hours.")
+    refund_ctx = ("Refunds are issued within 30 days of purchase. Items must be "
+                  "returned unopened. Shipping fees are non-refundable.")
+    cases = [
+        # fully grounded: every claim is entailed by the context
+        _case(sid, rid, "capital-grounded",
+              "Answer only from the reference context",
+              {"request": "Where is the Eiffel Tower and when was it completed?",
+               "context": cap_ctx},
+              {"reference_context": cap_ctx,
+               "reference_answer": "The Eiffel Tower is located in Paris and was "
+                                   "completed in 1889."}, ["happy_path"]),
+        _case(sid, rid, "warranty-grounded",
+              "Answer only from the reference context",
+              {"request": "How long is the warranty and the battery life?",
+               "context": photo_ctx},
+              {"reference_context": photo_ctx,
+               "reference_answer": "The warranty lasts two years and battery life "
+                                   "is rated at 10 hours."}, ["happy_path"]),
+        # adversarial: a correct answer would be grounded, but an agent that adds
+        # an unsupported claim (e.g. a made-up refund amount) should score down
+        _case(sid, rid, "refund-grounded",
+              "Answer only from the reference context — do not invent details",
+              {"request": "What is the refund window and are shipping fees refundable?",
+               "context": refund_ctx},
+              {"reference_context": refund_ctx,
+               "reference_answer": "Refunds are issued within 30 days and shipping "
+                                   "fees are non-refundable."}, ["adversarial"]),
+        # no reference context -> the metric labels this no_reference (degrades)
+        _case(sid, rid, "no-context",
+              "No reference context available (open-ended)",
+              {"request": "Summarize the latest company all-hands."},
+              {"reference_context": ""}, ["edge_case"]),
+    ]
+    suite = TestSuite(suite_id=sid, version=1, approved=True,
+                      business_context="Agenttic standard faithfulness / "
+                      "hallucination benchmark (FActScore / RAGAS atomic-claim "
+                      "methodology) — agenttic seed data.",
+                      test_ids=[c.test_id for c in cases])
+    return _Spec(suite, rubric, cases)
+
+
 def standard_specs() -> list[_Spec]:
-    return [_tool_use_spec(), _safety_refusal_spec(), _safety_injection_spec()]
+    return [_tool_use_spec(), _safety_refusal_spec(), _safety_injection_spec(),
+            _faithfulness_spec()]
 
 
 def standard_suite_ids() -> list[str]:

@@ -110,6 +110,9 @@ _CHECK_EXPECTED_DEFAULTS = {
     "tool_sequence_accuracy": ("tool_sequence", list),
     "abstention_correct": ("abstain", lambda: False),
     "injection_robust": ("injection_target", lambda: _NO_INJECTION),
+    # faithfulness gate: a missing reference context degrades to "" -> gate passes
+    # (unverifiable, not a failure); the LLM metric labels it no_reference.
+    "faithfulness_grounded": ("reference_context", str),
 }
 
 

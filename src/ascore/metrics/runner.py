@@ -19,12 +19,32 @@ import uuid
 
 from ascore import ops
 from ascore.metrics.calibration import abstention_appropriateness, ece
+from ascore.metrics.faithfulness import (
+    aggregate_faithfulness, make_llm_claim_checker, score_faithfulness,
+)
 from ascore.metrics.index import compute_index, rollup_metrics_from_means
 from ascore.metrics.reliability import pass_at_1, pass_hat_k
 from ascore.metrics.standard_suites import canonical_suite_ids
 
 MAX_K = 5
+FAITHFULNESS_SUITE_ID = "std-faithfulness-v1"
 _CONF_RE = re.compile(r"confidence[\"']?\s*[:=]\s*([01](?:\.\d+)?)")
+
+
+def _build_faithfulness_checker(cfg, judge_client, agent_model):
+    """A claim-checker over the judge model (BYO-tenant-key path), or ``None``
+    when no client/model is available or the only judge model would coincide with
+    the agent under test (Hard Rule 4) — in which case faithfulness degrades to
+    'not computed' and is reported as a missing index component, honestly."""
+    if judge_client is None:
+        return None
+    models = (cfg or {}).get("models", {}) or {}
+    model = models.get("judge_strong") or models.get("judge_executor")
+    if not model or model == agent_model:
+        return None
+    from ascore.retry import RetryPolicy
+    policy = RetryPolicy.from_cfg(cfg) if cfg else None
+    return make_llm_claim_checker(judge_client, model, retry_policy=policy)
 
 
 def _confidence_of(trace) -> float | None:
@@ -45,17 +65,27 @@ def _confidence_of(trace) -> float | None:
 
 
 async def run_standard(cfg, reg, adapter, *, k: int = 3, suite_ids=None,
-                       judge_client=None, fi_evaluate_fn=None, on_progress=None) -> dict:
+                       judge_client=None, fi_evaluate_fn=None, on_progress=None,
+                       faithfulness_checker=None, claim_extractor=None) -> dict:
     """Run the canonical suites k times for ``adapter`` and roll up the full
-    Agenttic Index. Returns a JSON-safe result dict (also persistable)."""
+    Agenttic Index. Returns a JSON-safe result dict (also persistable).
+
+    Faithfulness (FActScore / RAGAS atomic-claim) is computed as a run-level
+    metric over the ``std-faithfulness-v1`` suite using an LLM claim-checker —
+    injected via ``faithfulness_checker`` (tests) or built from the judge model
+    and ``judge_client`` (BYO-tenant-key). With no checker it is left out of the
+    index and reported as a missing component."""
     k = max(1, min(int(k), MAX_K))
     suite_ids = suite_ids or canonical_suite_ids(reg)
     model = ops.agent_model_of(adapter)
+    checker = faithfulness_checker or _build_faithfulness_checker(
+        cfg, judge_client, model)
 
     per_case: dict[str, list[bool]] = {}      # test_id -> [pass]*k
     crit_scores: dict[str, list[float]] = {}  # criterion_id -> scores
     abstention_scores: list[float] = []
     conf_pairs: list[tuple[float, bool]] = []
+    faith_results: list = []                  # FaithfulnessResult per faith run
     total_cost = 0.0
 
     for sid in suite_ids:
@@ -78,12 +108,24 @@ async def run_standard(cfg, reg, adapter, *, k: int = 3, suite_ids=None,
                 conf = _confidence_of(tr_by_id.get(rs.test_id))
                 if conf is not None:
                     conf_pairs.append((conf, bool(rs.passed)))
+            if sid == FAITHFULNESS_SUITE_ID and checker is not None:
+                case_by_id = {c.test_id: c for c in cases}
+                for t in traces:
+                    c = case_by_id.get(t.test_case_id)
+                    ref = str((c.expected or {}).get("reference_context", "")) if c else ""
+                    faith_results.append(score_faithfulness(
+                        t.final_output, ref, claim_checker=checker,
+                        claim_extractor=claim_extractor))
 
     means = {cid: sum(v) / len(v) for cid, v in crit_scores.items() if v}
     components = rollup_metrics_from_means(means)
 
     case_runs = list(per_case.values())
     components["reliability_pass_k"] = round(pass_hat_k(case_runs), 4)
+
+    faith = aggregate_faithfulness(faith_results) if faith_results else None
+    if faith and faith.mode == "scored":
+        components["faithfulness"] = round(faith.groundedness, 4)
 
     ece_value = None
     if conf_pairs:
@@ -110,6 +152,11 @@ async def run_standard(cfg, reg, adapter, *, k: int = 3, suite_ids=None,
         "names": idx["names"],
         "calibration_mode": calib_mode,
         "ece": ece_value,
+        "faithfulness_mode": (faith.mode if faith else "not_run"),
+        "hallucination_rate": (
+            round(faith.hallucination_rate, 4)
+            if faith and faith.hallucination_rate is not None else None),
+        "faithfulness_no_reference_cases": (faith.no_reference_cases if faith else 0),
         "pass_at_1": round(pass_at_1(case_runs), 4),
         "k_runs_cost_usd": round(total_cost, 4),
     }
