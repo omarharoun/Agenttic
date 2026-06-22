@@ -103,6 +103,14 @@ def _canonical_runs_table(conn) -> None:
     CanonicalRunRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _optimization_runs_table(conn) -> None:
+    """v8 — prompt-optimization runs (baseline→best system-prompt lineage +
+    train/heldout scores from the self-improving loop)."""
+    import ascore.registry.sqlite_store  # noqa: F401 (registers OptimizationRunRow)
+    from ascore.registry.sqlite_store import OptimizationRunRow
+    OptimizationRunRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -112,6 +120,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (5, "api_keys_table", _api_keys_table),
     (6, "ab_comparisons_table", _ab_comparisons_table),
     (7, "canonical_runs_table", _canonical_runs_table),
+    (8, "optimization_runs_table", _optimization_runs_table),
 ]
 
 

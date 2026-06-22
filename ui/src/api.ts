@@ -270,6 +270,25 @@ export const api = {
       body: JSON.stringify(body),
     }).then((r) => json<any>(r)),
 
+  // -- prompt-optimizer (self-improving system prompt; OPRO/ProTeGi) --------
+  startOptimize: (body: {
+    agent_id?: string; suite_id: string; version?: number | null;
+    baseline_prompt?: string; rounds?: number; candidates_per_round?: number;
+    heldout_fraction?: number; seed?: number; variant?: string; model?: string;
+    url?: string; max_agent_runs?: number;
+  }) =>
+    afetch("/api/optimize/runs", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<{
+      run_id: string; projected_agent_runs: number; max_agent_runs: number;
+      note: string;
+    }>(r)),
+  listOptimizeRuns: () =>
+    afetch("/api/optimize/runs").then((r) => json<{ runs: any[] }>(r)),
+  getOptimizeRun: (id: string) =>
+    afetch(`/api/optimize/runs/${encodeURIComponent(id)}`).then((r) => json<any>(r)),
+
   listTraces: () => afetch("/api/traces").then((r) => json<any[]>(r)),
   getTrace: (id: string) => afetch(`/api/traces/${id}`).then((r) => json<any>(r)),
   upload: (file: File) => {

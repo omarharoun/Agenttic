@@ -127,6 +127,23 @@ class ABComparisonRow(SQLModel, table=True):
     payload: str = ""                        # ABComparison JSON when done
 
 
+class OptimizationRunRow(SQLModel, table=True):
+    """One prompt-optimization run. ``status`` tracks the background lifecycle
+    (running -> succeeded/failed); ``payload`` holds the serialized
+    :class:`ascore.schema.optimization.OptimizationRun` (baseline→best prompt
+    lineage + train/heldout scores) once it completes. Append-only."""
+    __table_args__ = (UniqueConstraint("tenant_id", "run_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    run_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    suite_id: str = Field(index=True)
+    status: str = Field(default="running")   # running | succeeded | failed
+    error: str = ""
+    created_at: datetime
+    payload: str = ""                        # OptimizationRun JSON when done
+
+
 class CanonicalRunRow(SQLModel, table=True):
     """One standard-benchmark run for an agent: the full canonical metric bundle
     (tool-call accuracy, refusal, injection, pass^k, calibration) + the Agenttic
@@ -660,6 +677,108 @@ class Registry:
                                success_rate_a=c.success_rate_a,
                                success_rate_b=c.success_rate_b,
                                n_paired=c.n_paired)
+            out.append(summary)
+        return out
+
+    # -- prompt-optimization runs ----------------------------------------------
+
+    def create_optimization_run(self, run_id: str, agent_id: str,
+                                suite_id: str) -> None:
+        """Insert a 'running' placeholder so the UI can track an in-flight
+        optimization before its artifact exists."""
+        with Session(self.engine) as s:
+            s.add(OptimizationRunRow(
+                tenant_id=self.tenant, run_id=run_id, agent_id=agent_id,
+                suite_id=suite_id, status="running", created_at=_now()))
+            s.commit()
+
+    def save_optimization_run(self, run) -> None:
+        """Persist a finished optimization run. Upserts: completes the 'running'
+        row the manager created, or inserts a 'succeeded' row (CLI/direct use)."""
+        from ascore.schema.optimization import OptimizationRun
+        assert isinstance(run, OptimizationRun)
+        with Session(self.engine) as s:
+            row = s.exec(select(OptimizationRunRow).where(
+                OptimizationRunRow.tenant_id == self.tenant,
+                OptimizationRunRow.run_id == run.run_id)).first()
+            if row is None:
+                row = OptimizationRunRow(
+                    tenant_id=self.tenant, run_id=run.run_id,
+                    agent_id=run.agent_id, suite_id=run.suite_id,
+                    created_at=run.created_at)
+            row.status = run.status
+            row.error = run.error[:500] if run.error else ""
+            row.agent_id = run.agent_id
+            row.suite_id = run.suite_id
+            row.payload = run.model_dump_json()
+            s.add(row)
+            s.commit()
+
+    def fail_optimization_run(self, run_id: str, error: str) -> None:
+        with Session(self.engine) as s:
+            row = s.exec(select(OptimizationRunRow).where(
+                OptimizationRunRow.tenant_id == self.tenant,
+                OptimizationRunRow.run_id == run_id)).first()
+            if row is None:
+                return
+            row.status = "failed"
+            row.error = error[:500]
+            s.add(row)
+            s.commit()
+
+    def get_optimization_run(self, run_id: str) -> dict:
+        """Run status + the artifact (parsed, or None while running)."""
+        from ascore.schema.optimization import OptimizationRun
+        with Session(self.engine) as s:
+            row = s.exec(select(OptimizationRunRow).where(
+                OptimizationRunRow.tenant_id == self.tenant,
+                OptimizationRunRow.run_id == run_id)).first()
+        if row is None:
+            raise NotFoundError(f"optimization run {run_id}")
+        run = (OptimizationRun.model_validate_json(row.payload)
+               if row.payload else None)
+        return {"run_id": row.run_id, "agent_id": row.agent_id,
+                "suite_id": row.suite_id, "status": row.status,
+                "error": row.error, "created_at": row.created_at.isoformat(),
+                "run": run.model_dump(mode="json") if run else None}
+
+    def get_optimization_artifact(self, run_id: str):
+        """The finished OptimizationRun object (raises if it hasn't completed)."""
+        from ascore.schema.optimization import OptimizationRun
+        with Session(self.engine) as s:
+            row = s.exec(select(OptimizationRunRow).where(
+                OptimizationRunRow.tenant_id == self.tenant,
+                OptimizationRunRow.run_id == run_id)).first()
+        if row is None or not row.payload:
+            raise NotFoundError(f"optimization run {run_id}")
+        return OptimizationRun.model_validate_json(row.payload)
+
+    def list_optimization_runs(self, agent_id: str | None = None,
+                               suite_id: str | None = None) -> list[dict]:
+        from ascore.schema.optimization import OptimizationRun
+        with Session(self.engine) as s:
+            q = select(OptimizationRunRow).where(
+                OptimizationRunRow.tenant_id == self.tenant)
+            if agent_id:
+                q = q.where(OptimizationRunRow.agent_id == agent_id)
+            if suite_id:
+                q = q.where(OptimizationRunRow.suite_id == suite_id)
+            rows = s.exec(q.order_by(OptimizationRunRow.created_at.desc())).all()
+        out = []
+        for r in rows:
+            summary = {"run_id": r.run_id, "agent_id": r.agent_id,
+                       "suite_id": r.suite_id, "status": r.status,
+                       "error": r.error, "created_at": r.created_at.isoformat()}
+            if r.payload:
+                run = OptimizationRun.model_validate_json(r.payload)
+                summary.update(
+                    best_version=run.best_version, improved=run.improved,
+                    baseline_train_rate=run.baseline_train_rate,
+                    best_train_rate=run.best_train_rate,
+                    baseline_heldout_rate=run.baseline_heldout_rate,
+                    best_heldout_rate=run.best_heldout_rate,
+                    overfit_gap=run.overfit_gap, total_cost_usd=run.total_cost_usd,
+                    n_train=run.n_train, n_heldout=run.n_heldout)
             out.append(summary)
         return out
 
