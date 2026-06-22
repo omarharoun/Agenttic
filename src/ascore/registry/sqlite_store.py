@@ -359,6 +359,26 @@ class Registry:
             s.add(row)
             s.commit()
 
+    def list_suites(self, prefix: str | None = None) -> list[dict]:
+        """Latest version of every suite (optionally filtered by suite_id prefix),
+        with a case count. For discovery surfaces (e.g. regression suites)."""
+        with Session(self.engine) as s:
+            q = select(SuiteRow).where(SuiteRow.tenant_id == self.tenant)
+            if prefix:
+                q = q.where(SuiteRow.suite_id.startswith(prefix))
+            rows = s.exec(q.order_by(SuiteRow.suite_id, SuiteRow.version)).all()
+            latest: dict[str, SuiteRow] = {}
+            for r in rows:  # ordered asc => last write per suite_id wins (latest)
+                latest[r.suite_id] = r
+            out = []
+            for sid, row in latest.items():
+                n = len(s.exec(select(CaseRow.test_id).where(
+                    CaseRow.tenant_id == self.tenant, CaseRow.suite_id == sid,
+                    CaseRow.suite_version == row.version)).all())
+                out.append({"suite_id": sid, "version": row.version,
+                            "approved": row.approved, "n_cases": n})
+            return sorted(out, key=lambda d: d["suite_id"])
+
     # -- rubrics -------------------------------------------------------------
 
     def save_rubric(self, rubric: Rubric) -> None:
