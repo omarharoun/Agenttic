@@ -36,19 +36,36 @@ def _tenant_clients(request: Request) -> dict:
 
 
 class PromoteBody(BaseModel):
-    scorecard_id: str
-    test_ids: list[str] | None = None  # explicit subset; default = all failures
+    # source="scorecard" (default): promote a scorecard's failing cases.
     source: str = "scorecard"
+    scorecard_id: str | None = None    # required for source=scorecard
+    test_ids: list[str] | None = None  # explicit subset; default = all failures
+    # source="live": promote below-threshold live-monitor catches for an agent.
+    agent_id: str | None = None        # required for source=live
+    trace_ids: list[str] | None = None  # explicit subset of catches
+    rubric_id: str = ""                # rubric the reconstructed cases run on
+    threshold: float | None = None     # catch cutoff; default = library default
 
 
 @router.post("/hardening/promote", dependencies=[Depends(require_operator)])
 def promote(body: PromoteBody, request: Request):
-    """Promote a scorecard's failing (non-errored) cases into the agent's
-    regression suite — creating it or version-bumping an existing one."""
+    """Promote caught failures into the agent's regression suite — creating it
+    or version-bumping an existing one. ``source=scorecard`` promotes a
+    scorecard's failing cases; ``source=live`` promotes below-threshold
+    live-monitor catches (reconstructed from production traces, needs-review)."""
+    reg = request.state.reg
     try:
+        if body.source == "live":
+            if not body.agent_id:
+                raise HTTPException(422, "source=live requires agent_id")
+            kw = {} if body.threshold is None else {"threshold": body.threshold}
+            return hardening.promote_live_failures_op(
+                reg, body.agent_id, trace_ids=body.trace_ids,
+                rubric_id=body.rubric_id, **kw)
+        if not body.scorecard_id:
+            raise HTTPException(422, "source=scorecard requires scorecard_id")
         return hardening.promote_failures_op(
-            request.state.reg, body.scorecard_id,
-            test_ids=body.test_ids, source=body.source)
+            reg, body.scorecard_id, test_ids=body.test_ids, source=body.source)
     except NotFoundError as exc:
         raise HTTPException(404, str(exc))
 
@@ -63,6 +80,17 @@ def list_suites(request: Request):
 def candidates(request: Request):
     """Scorecards with at least one failing case — the promotion sources."""
     return {"candidates": hardening.promotion_candidates(request.state.reg)}
+
+
+@router.get("/hardening/live-candidates")
+def live_candidates(request: Request, agent_id: str | None = None,
+                    threshold: float | None = None):
+    """Below-threshold live-monitor catches — promotable, distinct from
+    scorecard candidates. ``agent_id`` narrows to one agent; ``threshold``
+    overrides the default catch cutoff."""
+    kw = {} if threshold is None else {"threshold": threshold}
+    return {"candidates": hardening.live_catch_candidates(
+        request.state.reg, agent_id, **kw)}
 
 
 @router.get("/hardening/suites/{regression_suite_id}")
