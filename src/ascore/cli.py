@@ -311,6 +311,75 @@ def ab(suite: str = typer.Option(..., "--suite", "-s", help="suite id to run"),
 
 
 @app.command()
+def optimize(
+    suite: str = typer.Option(..., "--suite", "-s", help="suite id to optimize against"),
+    agent: str = typer.Option("agent-under-test", "--agent", "-a",
+                              help="agent id under optimization"),
+    prompt: str = typer.Option("", "--prompt", "-p",
+                               help="baseline system prompt (blank = none)"),
+    prompt_file: Path = typer.Option(None, "--prompt-file",
+                                     help="read the baseline prompt from a file"),
+    rounds: int = typer.Option(2, "--rounds", help="optimization rounds"),
+    candidates: int = typer.Option(3, "--candidates",
+                                   help="candidate prompts proposed per round"),
+    heldout: float = typer.Option(0.3, "--heldout",
+                                  help="fraction of the suite held out (overfitting guard)"),
+    model: str = typer.Option("", "--model", help="agent model override (frozen across the run)"),
+    max_runs: int = typer.Option(60, "--max-runs", help="hard cap on suite executions"),
+    out: Path = typer.Option(None, "--out", help="write the best prompt to a file"),
+    config: str = "config.yaml"):
+    """Self-improving system-prompt loop: hold the model frozen, treat the suite
+    score as the reward, and iteratively edit the SYSTEM PROMPT to fix failing
+    criteria (OPRO/ProTeGi reflective optimization).
+
+    A held-out slice is split off that the optimizer never sees, so train vs
+    held-out scores expose overfitting. A candidate is adopted only on a paired
+    pass-rate improvement with NO significantly-regressed criterion. The loop
+    runs the suite many times — your own key pays for each (bounded by
+    --rounds/--candidates/--max-runs)."""
+    from ascore import optimizer as optmod
+    cfg, reg = _ctx(config)
+    baseline = prompt_file.read_text() if prompt_file else prompt
+
+    def _on(event: str, data: dict) -> None:
+        if event == "cost_projection":
+            console.print(f"[yellow]~{data['projected_agent_runs']} suite "
+                          f"executions projected[/] (train={data['n_train']}, "
+                          f"heldout={data['n_heldout']}, cap={data['max_agent_runs']})")
+        elif event == "propose":
+            console.print(f"  round {data['round']}: targeting "
+                          f"{', '.join(data['failing_criteria']) or '—'}")
+        elif event == "candidate":
+            tag = "[green]✓ accept[/]" if data["accepted"] else "[dim]✗ reject[/]"
+            console.print(f"    cand {data['index']}: {tag} — {data['reason']}")
+
+    run = asyncio.run(optmod.optimize(
+        cfg, reg, agent, suite, rounds=rounds, candidates_per_round=candidates,
+        heldout_fraction=heldout, baseline_prompt=baseline, model=model,
+        max_agent_runs=max_runs, on_progress=_on))
+
+    verb = "improved" if run.improved else "no improvement found"
+    console.print(f"\n[bold]Optimization {run.run_id}[/] — {verb}")
+    console.print(f"  train:   {run.baseline_train_rate:.0%} → "
+                  f"{run.best_train_rate:.0%} ([bold]{run.train_gain:+.0%}[/])")
+    if run.best_heldout_rate is not None:
+        gap = run.overfit_gap
+        flag = " [red](overfit risk)[/]" if gap is not None and gap > 0.15 else ""
+        console.print(f"  heldout: {run.baseline_heldout_rate:.0%} → "
+                      f"{run.best_heldout_rate:.0%} "
+                      f"([bold]{run.heldout_gain:+.0%}[/]){flag}")
+        if gap is not None:
+            console.print(f"  overfit gap (train gain − heldout gain): {gap:+.0%}")
+    else:
+        console.print("  heldout: [dim]none (suite too small to hold out)[/]")
+    console.print(f"  {run.n_agent_runs} suite executions, "
+                  f"cost ${run.total_cost_usd:.4f}, {run.best_version} accepted edit(s)")
+    if out and run.best_prompt:
+        out.write_text(run.best_prompt)
+        console.print(f"Wrote best prompt to {out}")
+
+
+@app.command()
 def monitor(action: str, agent: str = "", config: str = "config.yaml"):
     """Live path: `monitor status --agent X` prints drift state."""
     cfg, reg = _ctx(config)

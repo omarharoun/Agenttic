@@ -60,10 +60,12 @@ def safe_static_path(base: Path, rel: str) -> Path | None:
 
 class Workspace:
     """One tenant's isolated stack."""
-    def __init__(self, cfg, reg, store, bus, manager, tenant, ab=None):
+    def __init__(self, cfg, reg, store, bus, manager, tenant, ab=None,
+                 optimizer=None):
         self.cfg, self.reg, self.store = cfg, reg, store
         self.bus, self.manager, self.tenant = bus, manager, tenant
         self.ab = ab
+        self.optimizer = optimizer
 
 
 class Workspaces:
@@ -130,8 +132,10 @@ class Workspaces:
                                        clients=self.clients)
             from ascore.server.ab_manager import ABManager
             ab = ABManager(self.cfg, reg, clients=self.clients)
+            from ascore.server.optimizer_manager import OptimizerManager
+            optimizer = OptimizerManager(self.cfg, reg, clients=self.clients)
             self._ws[tenant] = Workspace(self.cfg, reg, store, bus, manager,
-                                         tenant, ab=ab)
+                                         tenant, ab=ab, optimizer=optimizer)
         return self._ws[tenant]
 
 
@@ -145,6 +149,7 @@ def bind_workspace(request: Request) -> None:
     request.state.store = ws.store
     request.state.manager = ws.manager
     request.state.ab = ws.ab
+    request.state.optimizer = ws.optimizer
     request.state.bus = ws.bus
     request.state.clients = request.app.state.clients
 
@@ -233,6 +238,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     from ascore.server.routes.hardening import router as hardening_router
     from ascore.server.routes.leaderboard import router as leaderboard_router
     from ascore.server.routes.live import router as live_router
+    from ascore.server.routes.optimize import router as optimize_router
     from ascore.server.routes.resources import router as resources_router
     from ascore.server.routes.settings import router as settings_router
     from ascore.server.routes.standard import router as standard_router
@@ -255,6 +261,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(ab_router, prefix="/api", dependencies=protected)
     app.include_router(standard_router, prefix="/api", dependencies=protected)
     app.include_router(hardening_router, prefix="/api", dependencies=protected)
+    app.include_router(optimize_router, prefix="/api", dependencies=protected)
 
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"),
