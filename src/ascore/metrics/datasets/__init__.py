@@ -8,6 +8,7 @@ from ascore.metrics.datasets.agentharm import AgentHarmAdapter
 from ascore.metrics.datasets.assistantbench import AssistantBenchAdapter
 from ascore.metrics.datasets.base import DatasetAdapter, DatasetInfo
 from ascore.metrics.datasets.bfcl import BFCL_SPLIT_ADAPTERS, BFCLAdapter
+from ascore.metrics.datasets.gaia import GAIAAdapter
 from ascore.metrics.datasets.injecagent import InjecAgentAdapter
 from ascore.metrics.datasets.tau_bench import TauBenchAdapter
 
@@ -18,6 +19,8 @@ ADAPTERS = {"bfcl": BFCLAdapter, "tau-bench": TauBenchAdapter,
             # AssistantBench — realistic web-agent QA, fractional answer accuracy
             # + answer rate (Apache-2.0; vendored dev sample).
             "assistantbench": AssistantBenchAdapter,
+            # GAIA general AI-assistant benchmark (gated; validation split).
+            "gaia": GAIAAdapter,
             # additional BFCL v3 splits (parallel / multiple / parallel_multiple
             # / live_*) — share the BFCL vendored data + license.
             **BFCL_SPLIT_ADAPTERS}

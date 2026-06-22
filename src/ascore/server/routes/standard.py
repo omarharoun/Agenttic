@@ -110,7 +110,7 @@ def standard_datasets(request: Request):
         out.append({"dataset_id": info.dataset_id, "suite_id": info.suite_id,
                     "name": info.name, "citation": info.citation,
                     "license": info.license, "source_url": info.source_url,
-                    "present": present})
+                    "gated": info.gated, "present": present})
     return {"datasets": out}
 
 
