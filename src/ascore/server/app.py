@@ -239,6 +239,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     from ascore.server.routes.leaderboard import router as leaderboard_router
     from ascore.server.routes.live import router as live_router
     from ascore.server.routes.optimize import router as optimize_router
+    from ascore.server.routes.quickstart import router as quickstart_router
     from ascore.server.routes.resources import router as resources_router
     from ascore.server.routes.settings import router as settings_router
     from ascore.server.routes.standard import router as standard_router
@@ -262,6 +263,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(standard_router, prefix="/api", dependencies=protected)
     app.include_router(hardening_router, prefix="/api", dependencies=protected)
     app.include_router(optimize_router, prefix="/api", dependencies=protected)
+    app.include_router(quickstart_router, prefix="/api", dependencies=protected)
 
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"),

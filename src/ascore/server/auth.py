@@ -3,6 +3,13 @@
 Auth is config/env driven and simple-but-real. Token resolution:
 * ``ASCORE_API_TOKEN`` (env) or ``auth.token`` (config) — the admin token.
 * ``auth.tokens`` — a {token: role} map for additional principals.
+* personal API tokens (PATs) — self-service ``agt_…`` tokens a logged-in user
+  mints in Settings; presenting one authenticates AS that user (their tenant +
+  role). Stored hashed; see ``server/pats.py``.
+
+Explicit-token precedence: a configured shared/admin or role token is checked
+first (constant-time, no DB hit); otherwise a PAT is resolved from the global
+DB. An explicit token (either kind) always wins over a session cookie.
 
 Roles form a hierarchy: **viewer** < **operator** < **admin**.
 * viewer  — read-only (all GET endpoints).
@@ -111,6 +118,22 @@ def _provided_token(request: Request) -> str | None:
     return tok.strip() if tok else None
 
 
+def _resolve_pat(request: Request, provided: str) -> tuple[str, str, str] | None:
+    """(role, tenant, email) for a personal API token, or None. Looks the token
+    up (hashed) in the GLOBAL engine where users/PATs live."""
+    from ascore.server.pats import PatStore, looks_like_pat
+    if not looks_like_pat(provided):
+        return None
+    try:
+        engine = request.app.state.reg.engine
+    except AttributeError:
+        return None
+    try:
+        return PatStore(engine).resolve(provided)
+    except Exception:  # noqa: BLE001 — a lookup failure must not 500 the request
+        return None
+
+
 def _set_principal(request: Request, role: str, tenant: str,
                    *, email: str | None, method: str) -> None:
     request.state.role = role
@@ -133,15 +156,24 @@ def require_auth(request: Request) -> None:
 
     provided = _provided_token(request)
     if provided is not None:  # explicit token path
+        # Precedence within the explicit-token path: a configured shared/admin
+        # or role token wins (constant-time compare, no DB hit); otherwise try a
+        # personal API token (PAT), which authenticates AS its owning user with
+        # that user's tenant + role.
         principal = resolve_principal(cfg, provided)
-        if principal is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="invalid API token",
-                headers={"WWW-Authenticate": "Bearer"})
-        _set_principal(request, principal[0], principal[1], email=None,
-                       method="token")
-        return
+        if principal is not None:
+            _set_principal(request, principal[0], principal[1], email=None,
+                           method="token")
+            return
+        pat = _resolve_pat(request, provided)
+        if pat is not None:
+            role, tenant, email = pat
+            _set_principal(request, role, tenant, email=email, method="pat")
+            return
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid API token",
+            headers={"WWW-Authenticate": "Bearer"})
 
     token = request.cookies.get(SESSION_COOKIE)
     if token:

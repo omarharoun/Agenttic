@@ -32,6 +32,7 @@ MUTATING_ROUTES = [
     ("delete", "/api/agents/catalog/x"),
     ("post", "/api/uploads"),
     ("post", "/api/documents/extract"),
+    ("post", "/api/quickstart/from-requirement"),
     ("post", "/api/live/ingest?rubric_id=r"),
 ]
 

@@ -385,6 +385,54 @@ run uses the tenant's key — there is no platform fallback — so a missing key
 returns `400 "Add your Anthropic API key in Settings to run tests"`. Code:
 `src/ascore/server/keys.py`.
 
+## Programmatic access: personal API tokens + run-a-test over REST
+
+Drive the whole platform from scripts/CI **as your own account**. In
+**Settings → API keys**, create a *personal API token* (PAT) — an `agt_…` value
+shown once, stored only as a SHA-256 hash, mapped to your tenant + role. Send it
+as `Authorization: Bearer agt_…` and every `/api` endpoint authenticates as you.
+Revoking it in Settings takes effect immediately.
+
+**Auth precedence:** an explicit bearer / `X-API-Key` / `?token=` always wins
+over a session cookie. Among explicit tokens, a configured shared/admin token
+(`ASCORE_API_TOKEN`) is matched first, then PATs. PATs are distinct from your
+Anthropic key (which still powers the actual model calls — set it first or runs
+return `400`). Code: `src/ascore/server/pats.py`; auth wiring in `server/auth.py`.
+
+```bash
+export AGENTTIC_TOKEN=agt_…            # created in Settings → API keys
+AUTH="Authorization: Bearer $AGENTTIC_TOKEN"
+BASE=https://agenttic.io
+
+# 1) generate a benchmark from a business requirement AND start the run
+EXEC=$(curl -s -X POST $BASE/api/quickstart/from-requirement -H "$AUTH" \
+  -H "Content-Type: application/json" \
+  -d '{"requirement":"The support agent must never reveal another customer'\''s data.",
+       "agent_id":"my-agent","system_prompt":"You are a careful support agent."}')
+EID=$(echo "$EXEC" | python -c 'import sys,json;print(json.load(sys.stdin)["execution_id"])')
+
+# 2) poll → the human gate pauses for approval; 3) approve to continue
+curl -s $BASE/api/executions/$EID -H "$AUTH"            # status: waiting_approval
+curl -s -X POST $BASE/api/executions/$EID/approve -H "$AUTH"
+
+# 4) poll until succeeded, then fetch joined results + the scorecard
+curl -s $BASE/api/executions/$EID/results -H "$AUTH"
+curl -s $BASE/api/scorecards/$SC -H "$AUTH"             # JSON scorecard
+curl -s $BASE/api/scorecards/$SC/report.pdf  -H "$AUTH" -o report.pdf
+curl -s $BASE/api/scorecards/$SC/inspect.json -H "$AUTH" -o inspect.json
+
+# --- or skip generation: run the standard (canonical) suites ---
+curl -s -X POST $BASE/api/standard/seed -H "$AUTH"
+curl -s -X POST $BASE/api/standard/run  -H "$AUTH" \
+  -H "Content-Type: application/json" -d '{"agent_id":"my-agent","k":3}'
+curl -s $BASE/api/standard/leaderboard  -H "$AUTH"
+```
+
+`POST /api/quickstart/from-requirement` is a thin convenience endpoint that
+builds the canonical generate→approve→run→score→report pipeline server-side so
+you don't hand-author the graph. The full reference (with copy-paste curl) lives
+at [`/api-docs`](https://agenttic.io/api-docs).
+
 ## Design rules the code enforces
 
 1. **The trace schema is the contract.** Changes bump `SCHEMA_VERSION`.

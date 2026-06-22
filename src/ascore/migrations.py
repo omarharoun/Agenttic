@@ -111,6 +111,14 @@ def _optimization_runs_table(conn) -> None:
     OptimizationRunRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _personal_api_tokens_table(conn) -> None:
+    """v9 — personal API tokens (PATs): per-user programmatic REST access,
+    stored hashed; a PAT authenticates as the owning user's tenant + role."""
+    import ascore.registry.sqlite_store  # noqa: F401 (registers PersonalApiTokenRow)
+    from ascore.registry.sqlite_store import PersonalApiTokenRow
+    PersonalApiTokenRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -121,6 +129,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (6, "ab_comparisons_table", _ab_comparisons_table),
     (7, "canonical_runs_table", _canonical_runs_table),
     (8, "optimization_runs_table", _optimization_runs_table),
+    (9, "personal_api_tokens_table", _personal_api_tokens_table),
 ]
 
 
