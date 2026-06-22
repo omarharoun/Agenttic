@@ -63,7 +63,7 @@ None block production; all are documented in place.
 
 Agenttic is a **well-architected prototype with excellent internal discipline**
 (clean contracts, append-only versioning, the "agent mistakes are data"
-invariant, 220 passing tests with all LLM calls mocked). That discipline is real
+invariant, a deep test suite — 72 modules — with all LLM calls mocked). That discipline is real
 and worth keeping.
 
 It is **not production-ready** and is not close. The gap is not the domain logic —
@@ -573,8 +573,16 @@ production:
 
 ## 10. Test coverage gaps — **Medium**
 
-Coverage is genuinely strong for *logic*: 220 tests, deterministic, LLM calls
-mocked, acceptance criteria per spec step, plus the new catalog tests. Real gaps:
+Coverage is genuinely strong for *logic*: 72 test modules, deterministic, LLM calls
+mocked, acceptance criteria per spec step, plus the canonical-metric/standard-track
+tests. Real gaps (original finding):
+
+> **Status (update):** the first two gaps below have since been closed alongside
+> the fixes in §1/§3.2/§6.1 — security tests now exist (`test_security.py`,
+> `test_security_matrix.py`, `test_auth.py`, `test_auth_endpoints.py`,
+> `test_static_safety.py`, `test_ratelimit.py`) and migrations shipped with
+> `test_migrations.py`. The provider-path, load, and frontend-e2e gaps remain.
+
 - **Zero security tests:** no test for SSRF/URL validation, path traversal,
   authz, or prompt injection — largely because those protections don't exist yet.
 - **No concurrency/load tests:** the SQLite cross-thread write path (§3.1) and
