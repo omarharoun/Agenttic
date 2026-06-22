@@ -803,6 +803,34 @@ class Registry:
                 .order_by(LiveScoreRow.id.desc()).limit(last_n)).all()
             return [r.score for r in rows]
 
+    def live_trace_scores(self, agent_id: str | None = None, *,
+                          last_n: int = 500) -> list[dict]:
+        """Sampled live scores grouped by *trace*, newest-first. Each entry is
+        ``{agent_id, trace_id, scores: {criterion_id: score}, created_at}``.
+
+        ``live_scores`` answers the drift question (rolling mean of one
+        criterion); this answers the *catch* question the hardening loop needs —
+        which individual production traces scored badly and could be promoted
+        into a regression suite. ``agent_id=None`` spans every agent."""
+        with Session(self.engine) as s:
+            q = select(LiveScoreRow).where(LiveScoreRow.tenant_id == self.tenant)
+            if agent_id is not None:
+                q = q.where(LiveScoreRow.agent_id == agent_id)
+            rows = s.exec(q.order_by(LiveScoreRow.id.desc())).all()
+        by_trace: dict[tuple[str, str], dict] = {}
+        order: list[tuple[str, str]] = []
+        for r in rows:                       # rows are newest-first
+            key = (r.agent_id, r.trace_id)
+            entry = by_trace.get(key)
+            if entry is None:
+                entry = {"agent_id": r.agent_id, "trace_id": r.trace_id,
+                         "scores": {}, "created_at": r.created_at}
+                by_trace[key] = entry
+                order.append(key)
+            # first time we see a (trace, criterion) is its latest row
+            entry["scores"].setdefault(r.criterion_id, r.score)
+        return [by_trace[k] for k in order[:last_n]]
+
     def save_reeval_request(self, agent_id: str, reason: str) -> None:
         with Session(self.engine) as s:
             s.add(ReEvalRow(tenant_id=self.tenant, agent_id=agent_id,

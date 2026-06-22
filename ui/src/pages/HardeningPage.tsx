@@ -250,6 +250,93 @@ function SuiteDetail({ suiteId, onBack }: { suiteId: string; onBack: () => void 
   );
 }
 
+/** Live-monitor catches: below-threshold sampled production traces. Promoting
+ * one reconstructs a regression case from the trace's input and lands it in a
+ * needs-review suite — we never fabricate the ground truth a live trace lacks,
+ * so each promoted case wants a human's eyes (verify input + attach a rubric).
+ * Deliberately distinct from the scorecard candidates below. */
+function LiveCatches({ onPromoted }: { onPromoted: (msg: string) => void }) {
+  const [catches, setCatches] = useState<any[] | null>(null);
+  const [rubric, setRubric] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = () => api.hardeningLiveCandidates()
+    .then((r) => setCatches(r.candidates)).catch(() => setCatches([]));
+  useEffect(() => { load(); }, []);
+
+  const promote = async (c: any) => {
+    setBusy(c.trace_id);
+    try {
+      const res = await api.promoteLiveFailures({
+        agent_id: c.agent_id, trace_ids: [c.trace_id], rubric_id: rubric,
+      });
+      const added = res.added?.length ?? 0;
+      onPromoted(added
+        ? `Promoted live catch into ${res.regression_suite_id} (v${res.version}) — needs review before re-run.`
+        : `Already promoted — no new live case added.`);
+      load();
+    } catch (e: any) {
+      onPromoted(`⚠ ${String(e.message ?? e)}`);
+    } finally { setBusy(null); }
+  };
+
+  return (
+    <>
+      <h3 style={{ marginTop: 22 }}>Promote live-monitor catches</h3>
+      <p style={{ color: "var(--muted)", marginTop: -6, fontSize: 13 }}>
+        Sampled production traces that scored below the drift threshold. A live
+        trace has no scripted ground truth, so promoting one reconstructs the
+        case from the trace's <i>input only</i> and lands it{" "}
+        <b>needs-review</b> (no fabricated <code>expected</code>) in a dedicated
+        live regression suite — approve it after verifying the input and rubric.
+      </p>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "8px 0 10px" }}>
+        <label style={{ fontSize: 12, color: "var(--muted)" }}>rubric_id <small>(applied to promoted cases)</small></label>
+        <input value={rubric} placeholder="rubric the reconstructed case runs on"
+               onChange={(e) => setRubric(e.target.value)}
+               style={{ maxWidth: 320 }} />
+      </div>
+      {catches === null ? <Skeleton rows={3} /> : catches.length === 0 ? (
+        <EmptyState icon="📡" title="No live catches"
+          hint="When live monitoring scores a sampled production trace below the drift threshold, it shows up here as promotable." />
+      ) : (
+        <div className="table-wrap">
+          <table className="data">
+            <thead><tr><th>trace</th><th>agent</th><th className="num">mean</th>
+              <th>failing criteria</th><th>input</th><th>when</th><th></th></tr></thead>
+            <tbody>
+              {catches.map((c) => (
+                <tr key={c.trace_id}>
+                  <td className="mono" style={{ maxWidth: 160, overflow: "hidden",
+                    textOverflow: "ellipsis" }}>{c.trace_id}</td>
+                  <td className="mono">{c.agent_id}</td>
+                  <td className="num" style={{ color: "var(--fail)" }}>{pct(c.mean_score)}</td>
+                  <td style={{ fontSize: 12 }}>{(c.failing_criteria ?? []).join(", ") || "—"}</td>
+                  <td style={{ fontSize: 12, color: c.input_reconstructed ? "inherit" : "var(--wait)" }}>
+                    {c.input_reconstructed ? "reconstructed" : "partial"}</td>
+                  <td style={{ fontSize: 12 }}>
+                    {c.created_at ? new Date(c.created_at).toLocaleString() : "—"}</td>
+                  <td>
+                    {c.already_promoted ? (
+                      <span style={{ fontSize: 12, color: "var(--muted)" }}>promoted ✓</span>
+                    ) : (
+                      <button disabled={busy === c.trace_id}
+                              aria-label={`Promote live catch ${c.trace_id}`}
+                              onClick={() => promote(c)}>
+                        {busy === c.trace_id ? "Promoting…" : "Promote (needs review)"}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function HardeningPage() {
   const [params, setParams] = useSearchParams();
   const selected = params.get("suite");
@@ -337,7 +424,11 @@ export function HardeningPage() {
                     <td className="mono" style={{ maxWidth: 260, overflow: "hidden",
                       textOverflow: "ellipsis" }}>{s.regression_suite_id}</td>
                     <td className="mono">{s.agent_id}</td>
-                    <td className="mono" style={{ fontSize: 12 }}>{s.source_suite_id}</td>
+                    <td className="mono" style={{ fontSize: 12 }}>
+                      {s.source === "live" ? (
+                        <span title="reconstructed from live production catches — needs review"
+                              style={{ color: "var(--wait)" }}>📡 live</span>
+                      ) : s.source_suite_id}</td>
                     <td className="num">{s.n_cases}</td>
                     <td className="num">{s.runs}</td>
                     <td><DeltaChips d={s.latest_delta} /></td>
@@ -391,6 +482,11 @@ export function HardeningPage() {
             </table>
           </div>
         )}
+
+        <LiveCatches onPromoted={(text) => {
+          setNote({ ok: !text.startsWith("⚠"), text: text.replace(/^⚠ /, "") });
+          refresh();
+        }} />
       </div>
     </div>
   );

@@ -30,9 +30,18 @@ from ascore import ops
 from ascore.registry.sqlite_store import NotFoundError, Registry
 from ascore.schema.scorecard import RunScore, Scorecard
 from ascore.schema.testcase import TestCase, TestSuite
+from ascore.schema.trace import Trace
 
 REGRESSION_PREFIX = "regress--"
 _MANIFEST_KIND = "regression_suite"
+
+# A live catch has no scorecard/source-suite — production traffic carries no
+# scripted test case. Live-promoted cases land in a per-agent regression suite
+# keyed by this sentinel so they stay *distinct* from scorecard-derived suites.
+LIVE_SOURCE_SUITE = "live"
+# Mean live score (over the live-tagged criteria) at/below which a sampled
+# production trace counts as a caught failure worth promoting.
+DEFAULT_LIVE_CATCH_THRESHOLD = 0.5
 
 
 # -- identity & provenance ---------------------------------------------------
@@ -206,6 +215,245 @@ def promote_failures_op(
     }
 
 
+# -- live-monitor catches as a promotion source ------------------------------
+#
+# The scorecard path above promotes failures that already have a rubric and (via
+# the source suite) trustworthy ground truth. The *live* path is different: a
+# caught production trace has the agent's input and an observed sub-threshold
+# score, but NO scripted expected/rubric. So we reconstruct only what the trace
+# actually carries (the input) and refuse to invent the rest — every live-
+# promoted case is tagged ``needs-review`` and its ``expected`` stays ``None``
+# rather than fabricating a ground truth we don't have.
+
+def live_test_id(trace_id: str) -> str:
+    """Stable, readable test id for a case reconstructed from a live trace."""
+    return f"live-{trace_id[:12]}"
+
+
+def _live_catch(entry: dict, threshold: float) -> Optional[dict]:
+    """Classify one trace's sampled live scores as a *catch* (mean strictly
+    below ``threshold``) or not. Returns a catch descriptor, or None for a
+    healthy trace (so non-catches are never promotable)."""
+    scores = entry.get("scores") or {}
+    if not scores:
+        return None
+    mean = sum(scores.values()) / len(scores)
+    if mean >= threshold:
+        return None
+    failing = sorted(cid for cid, sc in scores.items() if sc < 1.0)
+    return {
+        "agent_id": entry["agent_id"],
+        "trace_id": entry["trace_id"],
+        "scores": scores,
+        "mean_score": mean,
+        "failing_criteria": failing,
+        "created_at": entry.get("created_at"),
+        "threshold": threshold,
+    }
+
+
+def _live_failure_reason(catch: dict) -> str:
+    base = (f"live catch: mean live score {catch['mean_score']:.2f} below "
+            f"{catch['threshold']:g} threshold")
+    if catch["failing_criteria"]:
+        return base + " (failing: " + ", ".join(catch["failing_criteria"]) + ")"
+    return base
+
+
+def _reconstruct_input(trace: Trace) -> tuple[dict, bool]:
+    """Best-effort reconstruction of a case *input* from a production trace.
+
+    Returns ``(input, complete)``. ``complete`` is False when nothing usable
+    could be recovered (e.g. a black-box trace with only a final-output span) —
+    the promoted case is then additionally marked ``partial``. We only ever
+    reconstruct the input; ground truth is never invented from a trace."""
+    for span in trace.spans:
+        if span.input:
+            return dict(span.input), True
+    return {}, False
+
+
+def _already_promoted_live(reg: Registry, reg_id: str, trace_id: str) -> bool:
+    try:
+        _suite, cases = reg.get_suite(reg_id)
+    except NotFoundError:
+        return False
+    return any(c.test_id == live_test_id(trace_id) for c in cases)
+
+
+def live_catch_candidates(
+    reg: Registry,
+    agent_id: Optional[str] = None,
+    *,
+    threshold: float = DEFAULT_LIVE_CATCH_THRESHOLD,
+) -> list[dict]:
+    """Below-threshold sampled production traces — the live promotion sources.
+
+    Distinct from ``promotion_candidates`` (which lists scorecards): these are
+    individual live-monitor catches, each annotated with whether its input can
+    be reconstructed and whether it has already been promoted."""
+    out: list[dict] = []
+    for entry in reg.live_trace_scores(agent_id):
+        catch = _live_catch(entry, threshold)
+        if catch is None:
+            continue
+        reg_id = regression_suite_id(catch["agent_id"], LIVE_SOURCE_SUITE)
+        try:
+            trace = reg.get_trace(catch["trace_id"])
+            _inp, complete = _reconstruct_input(trace)
+            catch["input_reconstructed"] = complete
+            catch["final_output"] = (trace.final_output or "")[:200]
+            catch["visibility"] = trace.visibility
+        except NotFoundError:
+            # scores survive but the trace payload is gone — surfaced, but its
+            # input can't be reconstructed, so it promotes as needs-review/partial
+            catch["input_reconstructed"] = False
+            catch["final_output"] = ""
+            catch["visibility"] = None
+        catch["already_promoted"] = _already_promoted_live(
+            reg, reg_id, catch["trace_id"])
+        catch["regression_suite_id"] = reg_id
+        if catch["created_at"] is not None:
+            catch["created_at"] = catch["created_at"].isoformat()
+        out.append(catch)
+    return out
+
+
+def promote_live_failures_op(
+    reg: Registry,
+    agent_id: str,
+    *,
+    trace_ids: Optional[list[str]] = None,
+    rubric_id: str = "",
+    threshold: float = DEFAULT_LIVE_CATCH_THRESHOLD,
+) -> dict:
+    """Promote below-threshold live-monitor catches into the agent's *live*
+    regression suite (``regress--<agent>--live``).
+
+    Honesty contract: a production trace has no scripted ground truth, so each
+    promoted case (a) reconstructs only the input, (b) keeps ``expected=None``
+    instead of inventing one, (c) is tagged ``needs-review`` (and ``partial``
+    when even the input couldn't be recovered), and (d) carries the observed
+    sub-threshold live scores as provenance. The suite is left **unapproved**
+    so the Step-8 human gate must clear it before it can be re-run — the
+    reconstructed input and chosen rubric want a human's eyes first.
+
+    Create-or-append, version-bumped and de-duped exactly like the scorecard
+    path; an optional ``trace_ids`` allowlist narrows to an explicit subset."""
+    wanted = set(trace_ids) if trace_ids else None
+    catches: list[dict] = []
+    for entry in reg.live_trace_scores(agent_id):
+        catch = _live_catch(entry, threshold)
+        if catch is None:
+            continue
+        if wanted is not None and catch["trace_id"] not in wanted:
+            continue
+        catches.append(catch)
+
+    reg_id = regression_suite_id(agent_id, LIVE_SOURCE_SUITE)
+    try:
+        existing_suite, existing_cases = reg.get_suite(reg_id)
+        base_version = existing_suite.version
+        manifest = _decode_manifest(existing_suite.business_context)
+    except NotFoundError:
+        existing_cases = []
+        base_version = 0
+        manifest = {"kind": _MANIFEST_KIND, "source_suite_id": LIVE_SOURCE_SUITE,
+                    "agent_id": agent_id, "cases": {}}
+
+    new_version = base_version + 1
+    kept: list[TestCase] = [
+        c.model_copy(update={"suite_id": reg_id, "version": new_version})
+        for c in existing_cases
+    ]
+    existing_ids = {c.test_id for c in kept}
+    existing_prints = {fingerprint(c) for c in kept}
+
+    added: list[str] = []
+    skipped: list[str] = []
+    unresolved: list[str] = []
+    for catch in catches:
+        trace_id = catch["trace_id"]
+        tid = live_test_id(trace_id)
+        try:
+            trace = reg.get_trace(trace_id)
+            inp, complete = _reconstruct_input(trace)
+        except NotFoundError:
+            # the live score exists but the trace payload is gone: nothing to
+            # reconstruct an input from — skip rather than fabricate a case
+            unresolved.append(trace_id)
+            continue
+        tags = ["live", "needs-review"] + ([] if complete else ["partial"])
+        case = TestCase(
+            test_id=tid, suite_id=reg_id, version=new_version,
+            task_description=("live production catch — reconstructed from a "
+                              "sampled trace; review input + rubric before "
+                              "trusting as a regression test"),
+            input=inp,
+            expected=None,            # never fabricate production ground truth
+            tags=tags,
+            rubric_id=rubric_id,
+        )
+        fp = fingerprint(case)
+        if tid in existing_ids or fp in existing_prints:
+            skipped.append(trace_id)
+            continue
+        kept.append(case)
+        existing_ids.add(tid)
+        existing_prints.add(fp)
+        added.append(trace_id)
+        manifest["cases"][tid] = {
+            "why": _live_failure_reason(catch),
+            "source": "live",
+            "source_trace_id": trace_id,
+            "observed_scores": catch["scores"],
+            "failing_criteria": catch["failing_criteria"],
+            "mean_score": catch["mean_score"],
+            "threshold": threshold,
+            "needs_review": True,
+            "input_reconstructed": complete,
+            "rubric_id": rubric_id,
+            "fingerprint": fp,
+        }
+
+    if not added:
+        return {
+            "regression_suite_id": reg_id,
+            "version": base_version,
+            "created": False,
+            "added": [],
+            "skipped_duplicates": skipped,
+            "unresolved_traces": unresolved,
+            "needs_review": True,
+            "total_cases": len(existing_cases),
+            "agent_id": agent_id,
+            "source": "live",
+        }
+
+    suite = TestSuite(
+        suite_id=reg_id,
+        version=new_version,
+        business_context=_encode_manifest(manifest),
+        test_ids=[c.test_id for c in kept],
+        # Unapproved on purpose: reconstructed-from-production cases must pass
+        # the human gate (verify input + attach a real rubric) before re-runs.
+        approved=False,
+    )
+    reg.save_suite(suite, kept)
+    return {
+        "regression_suite_id": reg_id,
+        "version": new_version,
+        "created": base_version == 0,
+        "added": added,
+        "skipped_duplicates": skipped,
+        "unresolved_traces": unresolved,
+        "needs_review": True,
+        "total_cases": len(kept),
+        "agent_id": agent_id,
+        "source": "live",
+    }
+
+
 # -- re-run + delta ----------------------------------------------------------
 
 def compute_regression_delta(prev: Optional[Scorecard], cur: Scorecard) -> dict:
@@ -339,12 +587,14 @@ def list_regression_suites(reg: Registry) -> list[dict]:
         if cards:
             prev = cards[-2] if len(cards) >= 2 else None
             latest_delta = compute_regression_delta(prev, cards[-1])["summary"]
+        source_suite_id = manifest.get("source_suite_id", "")
         out.append({
             "regression_suite_id": s["suite_id"],
             "version": s["version"],
             "n_cases": s["n_cases"],
             "agent_id": agent_id,
-            "source_suite_id": manifest.get("source_suite_id", ""),
+            "source_suite_id": source_suite_id,
+            "source": "live" if source_suite_id == LIVE_SOURCE_SUITE else "scorecard",
             "runs": len(cards),
             "latest_delta": latest_delta,
             "latest_success_rate": cards[-1].task_success_rate if cards else None,
@@ -370,12 +620,18 @@ def regression_detail(reg: Registry, regression_suite_id: str) -> dict:
         prev = cards[-2] if len(cards) >= 2 else None
         latest_delta = compute_regression_delta(prev, cards[-1])
 
+    source_suite_id = manifest.get("source_suite_id", "")
+    is_live = source_suite_id == LIVE_SOURCE_SUITE
     return {
         "regression_suite_id": regression_suite_id,
         "version": suite.version,
         "agent_id": agent_id,
-        "source_suite_id": manifest.get("source_suite_id", ""),
+        "source_suite_id": source_suite_id,
+        "source": "live" if is_live else "scorecard",
+        # live suites stay unapproved until a human verifies the reconstructed
+        # cases; surface it so the UI can show the gate + a needs-review banner
         "approved": suite.approved,
+        "needs_review": is_live and not suite.approved,
         "cases": [{
             "test_id": c.test_id,
             "task_description": c.task_description,

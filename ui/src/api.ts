@@ -259,6 +259,19 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then((r) => json<any>(r)),
+  // live-monitor catches: below-threshold sampled production traces, promotable
+  // into a needs-review regression suite (distinct from scorecard candidates).
+  hardeningLiveCandidates: (agentId?: string) =>
+    afetch("/api/hardening/live-candidates" +
+      (agentId ? `?agent_id=${encodeURIComponent(agentId)}` : "")
+    ).then((r) => json<{ candidates: any[] }>(r)),
+  promoteLiveFailures: (body: { agent_id: string; trace_ids?: string[] | null;
+                                rubric_id?: string; threshold?: number }) =>
+    afetch("/api/hardening/promote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source: "live", ...body }),
+    }).then((r) => json<any>(r)),
   rerunRegression: (body: {
     regression_suite_id: string; variant?: string; url?: string;
     system_prompt?: string; model?: string; managed_agent_id?: string;
