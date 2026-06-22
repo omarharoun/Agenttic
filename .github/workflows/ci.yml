@@ -68,4 +68,15 @@ jobs:
         with:
           context: .
           push: false
+          load: true            # load into the local docker so we can size it
           tags: agenttic:ci
+      - name: Image size sanity (advisory)
+        # The app image fills node1's disk over many rebuilds; flag if it bloats.
+        # Advisory only — warns over 800 MB, never fails the build.
+        run: |
+          BYTES=$(docker image inspect agenttic:ci --format '{{.Size}}')
+          MB=$(( BYTES / 1024 / 1024 ))
+          echo "agenttic:ci image size: ${MB} MB"
+          if [ "$MB" -gt 800 ]; then
+            echo "::warning::agenttic:ci image is ${MB} MB (>800 MB) — check Dockerfile layers / .dockerignore."
+          fi
