@@ -17,7 +17,7 @@ from typing import Any, Awaitable, Callable, Literal
 from pydantic import BaseModel, Field
 
 from ascore import ops
-from ascore.registry.sqlite_store import Registry
+from ascore.registry.sqlite_store import NotFoundError, Registry
 from ascore.schema.scorecard import RunScore
 
 
@@ -31,6 +31,7 @@ class NodeContext:
     wait_for_approval: Callable[[str, int], Awaitable[None]]
     cancelled: asyncio.Event
     clients: dict = field(default_factory=dict)             # test injection: agent/judge/anthropic
+    force_refresh: bool = False                             # bypass the result cache
 
 
 @dataclass(frozen=True)
@@ -132,6 +133,21 @@ async def _run_business_doc(ctx: NodeContext, cfg: BusinessDocConfig,
 
 async def _run_generator(ctx: NodeContext, cfg: GeneratorConfig,
                          inputs: dict) -> dict:
+    # Idempotent: if a suite with this id already exists (e.g. a deterministic
+    # quickstart suite_id re-run), reuse it instead of re-generating — no
+    # generator LLM spend, and the gate auto-passes if it was already approved.
+    if not ctx.force_refresh:
+        try:
+            existing, _ = ctx.reg.get_suite(cfg.suite_id)
+            ctx.emit("node_progress", {"cached": True, "message":
+                     f"reusing existing suite {existing.suite_id} "
+                     f"v{existing.version} (no generation)"})
+            return {"suite": {"suite_id": existing.suite_id,
+                              "version": existing.version,
+                              "approved": existing.approved}}
+        except NotFoundError:
+            pass
+
     def progress(t: str, d: dict) -> None:  # runs in the worker thread; emit is thread-safe
         msgs = {
             "tasks_extracted": f"extracted {d.get('total')} tasks",
@@ -201,6 +217,44 @@ async def _run_run_suite(ctx: NodeContext, cfg: RunSuiteConfig,
         cost_per_call_usd=agent_ref.get("cost_per_call_usd", 0.0),
         expected_input_tokens=agent_ref.get("expected_input_tokens", 0),
         expected_output_tokens=agent_ref.get("expected_output_tokens", 0))
+
+    # Result cache: an identical run (same suite+version, agent config_hash,
+    # rubric+version, judge models) reuses the prior scorecard with ZERO agent
+    # or judge calls. The key is computed before any LLM work happens.
+    cache_key = None
+    try:
+        from ascore.result_cache import scorecard_cache_key
+        suite_pre, cases_pre = ctx.reg.get_suite(suite_id, version)
+        rubric_pre = ctx.reg.get_rubric(cases_pre[0].rubric_id)
+        cache_key = scorecard_cache_key(
+            agent_id=adapter.agent_id,
+            suite_id=suite_pre.suite_id, suite_version=suite_pre.version,
+            agent_config_hash=adapter.config_hash(),
+            rubric_id=rubric_pre.rubric_id, rubric_version=rubric_pre.version,
+            cfg=ctx.cfg)
+    except Exception:  # noqa: BLE001 — never let cache setup break a real run
+        cache_key = None
+    if cache_key and not ctx.force_refresh:
+        cached = ctx.reg.get_cached_result(cache_key)
+        if cached and cached["kind"] == "scorecard":
+            try:
+                sc = ctx.reg.get_scorecard(cached["ref_id"])
+            except NotFoundError:
+                sc = None
+            if sc is not None:
+                ctx.emit("node_progress", {"cached": True, "message":
+                         f"cache hit — reusing scorecard {sc.scorecard_id} "
+                         "(no agent or judge calls, $0)"})
+                return {"run": {"cached": True, "cache_key": cache_key,
+                                "scorecard_id": sc.scorecard_id,
+                                "suite_id": suite_pre.suite_id,
+                                "suite_version": suite_pre.version,
+                                "rubric_id": rubric_pre.rubric_id,
+                                "rubric_version": rubric_pre.version,
+                                "agent_id": adapter.agent_id,
+                                "agent_model": ops.agent_model_of(adapter),
+                                "trace_ids": [], "visibility": adapter.visibility}}
+
     from ascore.harness.runner import SuiteNotApprovedError
     try:
         suite, cases, traces = await ops.run_suite_op(
@@ -218,12 +272,15 @@ async def _run_run_suite(ctx: NodeContext, cfg: RunSuiteConfig,
         "rubric_id": rubric.rubric_id, "rubric_version": rubric.version,
         "trace_ids": [t.trace_id for t in traces],
         "agent_id": adapter.agent_id, "agent_model": ops.agent_model_of(adapter),
-        "visibility": adapter.visibility,
+        "visibility": adapter.visibility, "cached": False, "cache_key": cache_key,
     }}
 
 
 async def _run_score(ctx: NodeContext, cfg: ScoreConfig, inputs: dict) -> dict:
     run_ref = inputs["run"]
+    if run_ref.get("cached"):
+        # cache hit upstream — no traces to score, no judge calls; pass through
+        return {"scored": {**run_ref}}
     _, cases = ctx.reg.get_suite(run_ref["suite_id"], run_ref["suite_version"])
     traces = [ctx.reg.get_trace(tid) for tid in run_ref["trace_ids"]]
     runs = await ops.score_op(
@@ -266,14 +323,23 @@ async def _run_fi_eval(ctx: NodeContext, cfg: "FiEvalConfig", inputs: dict) -> d
         on_progress=lambda t, d: ctx.emit("node_progress", {"event": t, **d}),
         rubric_override=rubric, fi_evaluate_fn=ctx.clients.get("fi"),
         pass_threshold=cfg.threshold)
+    # FI uses a synthetic rubric (different scoring identity than the suite
+    # rubric the cache key was built from) — don't let it write/poison the cache.
     return {"scored": {**run_ref, "rubric_id": rubric.rubric_id,
-                       "rubric_version": rubric.version,
+                       "rubric_version": rubric.version, "cache_key": None,
                        "run_scores": [r.model_dump(mode="json") for r in runs]}}
 
 
 async def _run_scorecard(ctx: NodeContext, cfg: ScorecardConfig,
                          inputs: dict) -> dict:
     scored = inputs["scored"]
+    if scored.get("cached"):
+        # cache hit — surface the ORIGINAL scorecard; no aggregation, no spend
+        sc = ctx.reg.get_scorecard(scored["scorecard_id"])
+        return {"scorecard": {"scorecard_id": sc.scorecard_id, "cached": True,
+                              "task_success_rate": sc.task_success_rate,
+                              "mean_cost_usd": sc.mean_cost_usd,
+                              "created_at": sc.created_at.isoformat()}}
     suite, cases = ctx.reg.get_suite(scored["suite_id"], scored["suite_version"])
     # honor an explicit rubric ref (the FI node's synthetic rubric); else the
     # suite's own rubric (the normal score-node path)
@@ -283,7 +349,14 @@ async def _run_scorecard(ctx: NodeContext, cfg: ScorecardConfig,
     sc = ops.aggregate_op(ctx.reg, agent_id=scored["agent_id"], suite=suite,
                           rubric=rubric, runs=runs,
                           visibility=scored["visibility"])
-    return {"scorecard": {"scorecard_id": sc.scorecard_id,
+    # record this fresh result in the cache so an identical re-run reuses it
+    cache_key = scored.get("cache_key")
+    if cache_key:
+        try:
+            ctx.reg.put_cached_result(cache_key, "scorecard", sc.scorecard_id)
+        except Exception:  # noqa: BLE001 — caching is best-effort
+            pass
+    return {"scorecard": {"scorecard_id": sc.scorecard_id, "cached": False,
                           "task_success_rate": sc.task_success_rate,
                           "mean_cost_usd": sc.mean_cost_usd}}
 

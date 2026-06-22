@@ -236,6 +236,21 @@ class PersonalApiTokenRow(SQLModel, table=True):
     revoked_at: datetime | None = None
 
 
+class ResultCacheRow(SQLModel, table=True):
+    """Maps a deterministic run fingerprint -> a completed result, per tenant, so
+    an identical run returns the cached scorecard/canonical-run instead of
+    re-executing (zero agent/judge spend). Tenant-scoped, append-only-consistent
+    (an existing key is updated to the newest result on a forced refresh)."""
+    __tablename__ = "result_cache"
+    __table_args__ = (UniqueConstraint("tenant_id", "cache_key"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    cache_key: str = Field(index=True)     # sha256 of the run's inputs
+    kind: str = "scorecard"                # scorecard | canonical
+    ref_id: str                            # scorecard_id or canonical run_id
+    created_at: datetime
+
+
 class EmailTokenRow(SQLModel, table=True):
     """A single-use, expiring email token (account verification). GLOBAL, like
     users. Consumed by setting ``used_at``; rows are safe to prune past expiry."""
@@ -575,6 +590,51 @@ class Registry:
                 ScorecardRow.tenant_id == self.tenant,
                 ScorecardRow.suite_id.in_(ids)).order_by(ScorecardRow.created_at)).all()
             return [Scorecard.model_validate_json(r.payload) for r in rows]
+
+    # -- result cache (per-tenant; identical inputs reuse a result, $0 spend) --
+
+    def get_cached_result(self, cache_key: str) -> dict | None:
+        """The cached result for a run fingerprint, or None. Tenant-scoped, so a
+        tenant never sees another tenant's cached results."""
+        with Session(self.engine) as s:
+            row = s.exec(select(ResultCacheRow).where(
+                ResultCacheRow.tenant_id == self.tenant,
+                ResultCacheRow.cache_key == cache_key)).first()
+            if row is None:
+                return None
+            return {"kind": row.kind, "ref_id": row.ref_id,
+                    "created_at": row.created_at}
+
+    def put_cached_result(self, cache_key: str, kind: str, ref_id: str) -> None:
+        """Record (or refresh) the result a run fingerprint maps to."""
+        with Session(self.engine) as s:
+            row = s.exec(select(ResultCacheRow).where(
+                ResultCacheRow.tenant_id == self.tenant,
+                ResultCacheRow.cache_key == cache_key)).first()
+            if row is None:
+                s.add(ResultCacheRow(tenant_id=self.tenant, cache_key=cache_key,
+                                     kind=kind, ref_id=ref_id, created_at=_now()))
+            else:
+                row.kind, row.ref_id, row.created_at = kind, ref_id, _now()
+                s.add(row)
+            s.commit()
+
+    def cached_scorecard_ids(self) -> set[str]:
+        """scorecard_ids that are the target of a cache entry (i.e. reusable for
+        free on an identical re-run). Tenant-scoped."""
+        with Session(self.engine) as s:
+            rows = s.exec(select(ResultCacheRow.ref_id).where(
+                ResultCacheRow.tenant_id == self.tenant,
+                ResultCacheRow.kind == "scorecard")).all()
+        return set(rows)
+
+    def get_canonical_run(self, run_id: str) -> dict | None:
+        import json as _json
+        with Session(self.engine) as s:
+            row = s.exec(select(CanonicalRunRow).where(
+                CanonicalRunRow.tenant_id == self.tenant,
+                CanonicalRunRow.run_id == run_id)).first()
+        return _json.loads(row.payload) if row else None
 
     def save_canonical_run(self, run_id: str, agent_id: str, payload: str) -> None:
         with Session(self.engine) as s:

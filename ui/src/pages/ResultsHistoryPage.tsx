@@ -1,0 +1,113 @@
+import { useEffect, useState } from "react";
+import { api, downloadBlob } from "../api";
+import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+
+interface Row {
+  scorecard_id: string;
+  agent_id: string;
+  suite_id: string;
+  suite_version: number;
+  task_success_rate: number | null;
+  mean_cost_usd: number | null;
+  total_cost_usd?: number | null;
+  total_scoring_cost_usd?: number | null;
+  n_runs?: number;
+  visibility_tier?: string;
+  cached?: boolean;
+  created_at: string;
+}
+
+/** Results history — every past scorecard for the tenant, re-openable without
+ *  re-running. A ♻ badge marks results that are cached (an identical re-run is
+ *  served for free). */
+export function ResultsHistoryPage() {
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [report, setReport] = useState<{ id: string; text: string } | null>(null);
+
+  useEffect(() => {
+    api.listScorecards().then((r) => setRows(r as Row[])).catch(() => setRows([]));
+  }, []);
+
+  const open = (id: string) =>
+    api.scorecardReport(id).then((text) => setReport({ id, text }));
+
+  const total = (rows ?? []).reduce(
+    (a, r) => a + (r.total_cost_usd ?? 0) + (r.total_scoring_cost_usd ?? 0), 0);
+
+  return (
+    <div className="page">
+      <div className="list-page">
+        <PageHeader
+          title="Results"
+          subtitle={
+            <>Every test result you've run — browse and re-open without re-running.{" "}
+            <span className="mono">♻</span> marks cached results: an identical re-run
+            is served for free (no agent or judge calls).</>
+          }
+        />
+        {rows === null ? (
+          <Skeleton rows={6} />
+        ) : rows.length === 0 ? (
+          <EmptyState icon="📊" title="No results yet"
+                      hint="Run a test (guided flow, quickstart, or the REST API) — results land here." />
+        ) : (
+          <>
+            <p className="muted-sm" style={{ marginBottom: 10 }}>
+              {rows.length} result{rows.length === 1 ? "" : "s"} · total spend ${total.toFixed(4)}
+            </p>
+            <div className="table-wrap">
+              <table className="data">
+                <thead>
+                  <tr>
+                    <th>result</th><th>agent</th><th>suite</th>
+                    <th className="num">success</th><th className="num">cost</th>
+                    <th>when</th><th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => {
+                    const cost = (r.total_cost_usd ?? 0) + (r.total_scoring_cost_usd ?? 0);
+                    return (
+                      <tr key={r.scorecard_id}>
+                        <td className="mono">
+                          {r.scorecard_id}
+                          {r.cached && (
+                            <span className="pill" title="Cached — identical re-runs are free"
+                                  style={{ marginLeft: 6 }}>♻ cached</span>
+                          )}
+                        </td>
+                        <td>{r.agent_id}</td>
+                        <td className="mono">{r.suite_id} v{r.suite_version}</td>
+                        <td className="num">{Math.round((r.task_success_rate ?? 0) * 100)}%</td>
+                        <td className="num">${cost.toFixed(4)}</td>
+                        <td>{new Date(r.created_at).toLocaleString()}</td>
+                        <td>
+                          <button onClick={() => open(r.scorecard_id)}>report</button>
+                          <button style={{ marginLeft: 6 }} title="Download as PDF"
+                                  onClick={() => api.scorecardPdf(r.scorecard_id)
+                                    .then((b) => downloadBlob(b, `scorecard-${r.scorecard_id}.pdf`))
+                                    .catch(() => {})}>⤓ PDF</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {report && (
+          <div style={{ marginTop: 18 }}>
+            <div className="eyebrow" style={{ marginBottom: 6 }}>
+              Report · <span className="mono">{report.id}</span>
+              <button className="ghost-sm" style={{ marginLeft: 8 }}
+                      onClick={() => setReport(null)}>close</button>
+            </div>
+            <pre className="report-md" style={{ whiteSpace: "pre-wrap" }}>{report.text}</pre>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

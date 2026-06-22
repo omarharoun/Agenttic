@@ -20,8 +20,10 @@ router = APIRouter(tags=["executions"])
 
 @router.post("/workflows/{workflow_id}/executions",
              dependencies=[Depends(require_operator)])
-async def start_execution(workflow_id: str, request: Request):
+async def start_execution(workflow_id: str, request: Request,
+                          force: bool = False):
     # async: the manager calls asyncio.create_task, which needs the loop
+    # ?force=true bypasses the result cache and re-runs fresh.
     state = request.state
     try:
         wf = state.store.get_workflow(workflow_id)
@@ -29,7 +31,7 @@ async def start_execution(workflow_id: str, request: Request):
         raise HTTPException(404, f"workflow {workflow_id} not found")
     clients = _run_clients(request)  # tenant key (or None for injected clients)
     try:
-        execution_id = state.manager.start(wf, clients=clients)
+        execution_id = state.manager.start(wf, clients=clients, force=force)
     except WorkflowValidationError as exc:
         raise HTTPException(422, detail={"problems": exc.problems})
     return {"execution_id": execution_id}
@@ -69,14 +71,17 @@ def execution_results(execution_id: str, request: Request):
                     sc = state.reg.get_scorecard(payload["scorecard_id"])
                 except NotFoundError:
                     continue
+                cached = bool(payload.get("cached"))
                 scorecards.append({
                     "node_id": node_id, "scorecard_id": sc.scorecard_id,
                     "agent_id": sc.agent_id, "suite_id": sc.suite_id,
                     "suite_version": sc.suite_version,
                     "task_success_rate": sc.task_success_rate,
-                    "mean_cost_usd": sc.mean_cost_usd,
-                    "total_cost_usd": sc.total_cost_usd,
-                    "total_scoring_cost_usd": sc.total_scoring_cost_usd,
+                    # on a cache hit this run made no new calls — its run cost is $0
+                    "mean_cost_usd": 0.0 if cached else sc.mean_cost_usd,
+                    "total_cost_usd": 0.0 if cached else sc.total_cost_usd,
+                    "total_scoring_cost_usd": 0.0 if cached else sc.total_scoring_cost_usd,
+                    "cached": cached,
                     "p95_latency_ms": sc.p95_latency_ms,
                     "per_criterion_means": sc.per_criterion_means,
                     "errored_test_ids": sc.errored_test_ids,

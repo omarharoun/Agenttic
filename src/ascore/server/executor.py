@@ -36,12 +36,13 @@ class _Handles:
 
 class WorkflowExecutor:
     def __init__(self, cfg: dict, reg: Registry, store: UIStore, bus: EventBus,
-                 clients: dict | None = None):
+                 clients: dict | None = None, force: bool = False):
         self.cfg = cfg
         self.reg = reg
         self.store = store
         self.bus = bus
         self.clients = clients or {}
+        self.force = force          # bypass the result cache for this run
 
     async def run(self, wf: Workflow, execution_id: str, handles: _Handles,
                   seeded_outputs: dict[str, dict] | None = None) -> None:
@@ -123,7 +124,8 @@ class WorkflowExecutor:
             node_id=node.node_id,
             emit=lambda t, d: self.bus.publish(t, execution_id, node.node_id, d),
             wait_for_approval=self._gate_waiter(execution_id, node.node_id, handles),
-            cancelled=handles.cancelled, clients=self.clients)
+            cancelled=handles.cancelled, clients=self.clients,
+            force_refresh=self.force)
         self._set_state(execution_id, node.node_id, "running")
         self.bus.publish("node_started", execution_id, node.node_id,
                          {"type": node.type, "label": node.label})
@@ -212,13 +214,14 @@ class ExecutionManager:
         self.clients = clients or {}
         self._handles: dict[str, _Handles] = {}
 
-    def start(self, wf: Workflow, clients: dict | None = None) -> str:
+    def start(self, wf: Workflow, clients: dict | None = None,
+              force: bool = False) -> str:
         problems = validate_workflow(wf)
         if problems:
             raise WorkflowValidationError(problems)
         execution_id = uuid.uuid4().hex[:12]
         self.store.create_execution(execution_id, wf)
-        self._launch(wf, execution_id, seeded=None, clients=clients)
+        self._launch(wf, execution_id, seeded=None, clients=clients, force=force)
         return execution_id
 
     def resume(self, execution_id: str, clients: dict | None = None) -> None:
@@ -234,13 +237,14 @@ class ExecutionManager:
         self._launch(wf, execution_id, seeded=ex["node_outputs"], clients=clients)
 
     def _launch(self, wf: Workflow, execution_id: str,
-                seeded: dict | None, clients: dict | None = None) -> None:
+                seeded: dict | None, clients: dict | None = None,
+                force: bool = False) -> None:
         handles = _Handles()
         self.bus.open(execution_id)  # live before the task's first publish
         # per-run clients (the tenant's own Anthropic key) override the
         # manager's defaults; falls back to injected test clients
         executor = WorkflowExecutor(self.cfg, self.reg, self.store, self.bus,
-                                    clients or self.clients)
+                                    clients or self.clients, force=force)
         handles.task = asyncio.create_task(
             executor.run(wf, execution_id, handles, seeded_outputs=seeded))
         self._handles[execution_id] = handles
