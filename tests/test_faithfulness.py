@@ -186,7 +186,10 @@ def test_full_index_includes_faithfulness_no_missing(monkeypatch):
     assert res["faithfulness_mode"] == "scored"
     assert res["hallucination_rate"] == 0.0
     assert "faithfulness" not in res["missing"]
-    assert res["missing"] == []                 # all six components present
+    # every std-suite index component is present; answer_accuracy is the lone
+    # missing one because it comes from the AssistantBench *dataset* suite
+    # (ingested separately), not the std-* suites this run patches in.
+    assert res["missing"] == ["answer_accuracy"]
     assert 0 <= res["index"] <= 100
 
 

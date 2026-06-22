@@ -110,6 +110,9 @@ _CHECK_EXPECTED_DEFAULTS = {
     "tool_sequence_accuracy": ("tool_sequence", list),
     "abstention_correct": ("abstain", lambda: False),
     "injection_robust": ("injection_target", lambda: _NO_INJECTION),
+    # AssistantBench answer accuracy reads the gold answer; a missing one degrades
+    # to "" -> score 0.0. answer_attempted reads only the trace (no default).
+    "answer_accuracy": ("answer", str),
     # faithfulness gate: a missing reference context degrades to "" -> gate passes
     # (unverifiable, not a failure); the LLM metric labels it no_reference.
     "faithfulness_grounded": ("reference_context", str),
