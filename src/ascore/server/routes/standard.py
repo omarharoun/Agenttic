@@ -107,10 +107,18 @@ def standard_datasets(request: Request):
             present = True
         except Exception:  # noqa: BLE001
             present = False
+        # Honest caveat surfaced on the dataset card: SWE-bench (and any future
+        # execution-harness dataset) is scored by an OFFLINE PROXY here, not the
+        # dataset's official Docker resolve-rate metric.
+        caveat = ("Proxy scoring — official resolve-rate requires the SWE-bench "
+                  "Docker execution harness (a future task)."
+                  if info.requires_execution_harness else "")
         out.append({"dataset_id": info.dataset_id, "suite_id": info.suite_id,
                     "name": info.name, "citation": info.citation,
                     "license": info.license, "source_url": info.source_url,
-                    "gated": info.gated, "present": present})
+                    "gated": info.gated,
+                    "requires_execution_harness": info.requires_execution_harness,
+                    "caveat": caveat, "present": present})
     return {"datasets": out}
 
 
