@@ -19,7 +19,8 @@ interface Metric {
 }
 interface Dataset {
   dataset_id: string; suite_id: string; name: string;
-  citation: string; license: string; source_url: string; present?: boolean;
+  citation: string; license: string; source_url: string;
+  present?: boolean; gated?: boolean; caveat?: string;
 }
 
 /** Static mirror of the canonical catalog (src/ascore/metrics/catalog.py) —
@@ -62,6 +63,13 @@ const FALLBACK_DATASETS: Dataset[] = [
   { dataset_id: "injecagent", suite_id: "injecagent-v1", name: "InjecAgent (real dataset)",
     citation: "Zhan, Liang, Ying, Kang, InjecAgent: Benchmarking Indirect Prompt Injection.",
     license: "MIT", source_url: "https://github.com/uiuc-kang-lab/InjecAgent" },
+  { dataset_id: "assistantbench", suite_id: "assistantbench-v1", name: "AssistantBench (real dataset)",
+    citation: "Yoran et al., AssistantBench: Can Web Agents Solve Realistic and Time-Consuming Tasks?",
+    license: "Apache-2.0", source_url: "https://huggingface.co/datasets/AssistantBench/AssistantBench" },
+  { dataset_id: "gaia", suite_id: "gaia-v1", name: "GAIA (real dataset)",
+    citation: "Mialon et al., GAIA: A Benchmark for General AI Assistants.",
+    license: "Gated (accept terms)", gated: true,
+    source_url: "https://huggingface.co/datasets/gaia-benchmark/GAIA" },
 ];
 
 /** Per-metric short literature tag + human category label (static enrichment;
@@ -272,9 +280,22 @@ export function MethodologyPage() {
               <div className="dataset-card" key={d.dataset_id}>
                 <div className="dc-top">
                   <span className="dc-name">{d.name}</span>
-                  <span className="dc-lic">{d.license}</span>
+                  <span className="dc-meta-row">
+                    {d.gated && (
+                      <span className="dc-gated" title="Access-gated upstream — accept the dataset's terms / bring your own access token">
+                        <span aria-hidden="true">🔒</span> Gated
+                      </span>
+                    )}
+                    <span className="dc-lic">{d.license}</span>
+                  </span>
                 </div>
                 <div className="dc-meta">{d.citation}</div>
+                {d.caveat && (
+                  <div className="dc-caveat">
+                    <span className="ic" aria-hidden="true">⚠</span>
+                    <span>{d.caveat}</span>
+                  </div>
+                )}
                 <div className="dc-foot">
                   <code className="muted-sm" style={{ background: "none", border: "none", padding: 0 }}>
                     {d.suite_id}

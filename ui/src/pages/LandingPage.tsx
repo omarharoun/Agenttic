@@ -8,6 +8,13 @@ const STEPS = [
   ["05", "Keep watching", "Monitor the agent in production and get alerted the moment its safety or quality starts to drift."],
 ];
 
+/** The published agent-eval benchmarks whose methodology the Agenttic Index
+ *  implements — shown as a trust strip under the hero CTA. */
+const ANCHORS = [
+  "BFCL", "τ-bench", "AgentHarm", "AgentDojo",
+  "InjecAgent", "GAIA", "AssistantBench",
+];
+
 const FEATURES = [
   ["🛡️", "Catch unsafe actions", "Test whether your agent refuses destructive or dangerous commands instead of blindly executing them — before it does it for real.", "safety first"],
   ["🧰", "Verify tool-calling", "Check that the agent calls the right tools with the right arguments and stays inside the boundaries you set — no rogue calls.", "tool correctness"],
@@ -45,6 +52,17 @@ export function LandingPage() {
           <div className="cta">
             <Link className="btn-primary" to="/signup">Test your agent free</Link>
             <a className="btn-ghost" href="/api-docs">View the API</a>
+          </div>
+
+          <div className="trust-strip">
+            <Link to="/methodology" className="trust-lab" style={{ textDecoration: "none" }}>
+              Anchored to published agent benchmarks
+            </Link>
+            <div className="trust-row">
+              {ANCHORS.map((a) => (
+                <span className="trust-chip" key={a}>{a}</span>
+              ))}
+            </div>
           </div>
         </section>
 
