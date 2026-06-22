@@ -117,10 +117,14 @@ class MonitorConfig(BaseModel):
 
 async def _run_business_doc(ctx: NodeContext, cfg: BusinessDocConfig,
                             inputs: dict) -> dict:
-    if cfg.file_path:
-        doc = Path(cfg.file_path).read_text()
-    elif cfg.text:
+    if cfg.text:
         doc = cfg.text
+    elif cfg.file_path:
+        # Support pdf/docx/txt/md uploads via the shared extractor (a bare
+        # read_text would corrupt/crash on a binary pdf or docx).
+        from ascore.documents import extract_text
+        p = Path(cfg.file_path)
+        doc = extract_text(p.name, p.read_bytes())
     else:
         raise ValueError("business_doc needs text or an uploaded file")
     return {"doc": doc}
@@ -161,6 +165,13 @@ async def _run_human_gate(ctx: NodeContext, cfg: HumanGateConfig,
 
 async def _run_agent(ctx: NodeContext, cfg: AgentConfig, inputs: dict) -> dict:
     ref = cfg.model_dump()
+    # Managed (Anthropic-hosted) agents need a deployed agent + environment. If
+    # one is selected without those IDs (and we're not deploying one now), fail
+    # at this step with a clear, user-facing message rather than letting the
+    # missing IDs surface as an opaque adapter ValueError in Run Suite.
+    if cfg.variant == "managed" and not cfg.deploy and not (
+            cfg.managed_agent_id and cfg.environment_id):
+        raise ops.AgentConfigError(ops.MANAGED_UNAVAILABLE_MSG)
     if cfg.deploy and cfg.agent_yaml_path:
         import yaml
         spec = yaml.safe_load(Path(cfg.agent_yaml_path).read_text())

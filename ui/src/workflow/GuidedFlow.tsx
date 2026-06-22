@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { ExecutionLog } from "../panels/ExecutionLog";
 import { ResultsPanel } from "../panels/ResultsPanel";
-import { SchemaForm } from "../panels/SchemaForm";
 import { useFlowStore } from "../store";
 import { STEPS, type Template, TEMPLATES, isConfigurable, stepById } from "./templates";
 
@@ -26,7 +25,12 @@ function stepStatus(state: string | undefined) {
 function CatalogPicker({ config, onPick }: { config: any; onPick: (a: any) => void }) {
   const [agents, setAgents] = useState<any[]>([]);
   useEffect(() => {
-    api.listCatalog().then((c) => setAgents(c.agents)).catch(() => setAgents([]));
+    // Managed (Anthropic-hosted) agents aren't selectable in the guided flow —
+    // they need a deployed agent/environment the user doesn't have here, and
+    // picking one would otherwise sneak variant="managed" into the config.
+    api.listCatalog()
+      .then((c) => setAgents((c.agents ?? []).filter((a: any) => a.variant !== "managed")))
+      .catch(() => setAgents([]));
   }, []);
   if (agents.length === 0) return null;
   return (
@@ -100,6 +104,56 @@ function AgentConfigCard({ node }: { node: Node }) {
   );
 }
 
+/** Business Requirement input: paste text, or upload a document (pdf/docx/txt/
+ *  md) that the server extracts to text the user can review/edit before
+ *  generating tests. */
+function BusinessDocCard({ node }: { node: Node }) {
+  const updateConfig = useFlowStore((s) => s.updateConfig);
+  const config = (node.data as any).config ?? {};
+  const [fileName, setFileName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (patch: Record<string, any>) =>
+    updateConfig(node.id, { ...config, ...patch });
+
+  async function onFile(f: File | undefined) {
+    if (!f) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const r = await api.extractDocument(f);
+      // populate the requirement text from the file; clear any stale file_path
+      set({ text: r.text, file_path: "" });
+      setFileName(`${r.filename} (${r.chars.toLocaleString()} chars)`);
+    } catch {
+      setErr("Couldn't read that file. Use a pdf, docx, txt, or md under 10 MB.");
+      setFileName("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <label>Business requirement <small>(paste, or upload a document)</small></label>
+      <textarea value={config.text ?? ""} rows={6}
+                placeholder="Describe what the agent should do and the rules it must follow…"
+                onChange={(e) => set({ text: e.target.value })} />
+      <label style={{ marginTop: 8 }}>
+        Upload a document <small>(pdf, docx, txt, md)</small>
+      </label>
+      <input type="file" accept=".pdf,.docx,.txt,.md,.markdown,.text"
+             disabled={busy}
+             onChange={(e) => onFile(e.target.files?.[0])} />
+      {busy && <p className="step-hint">Extracting text…</p>}
+      {fileName && !busy && (
+        <p className="step-hint">Loaded {fileName} — review or edit the text above before generating.</p>
+      )}
+      {err && <p className="step-hint" style={{ color: "var(--bad, #c0392b)" }}>{err}</p>}
+    </div>
+  );
+}
+
 function TemplatePicker({ onPick }: { onPick: (t: Template) => void }) {
   return (
     <div className="guided-inner">
@@ -123,10 +177,9 @@ function TemplatePicker({ onPick }: { onPick: (t: Template) => void }) {
 
 /** One big, deliberately minimal step box. */
 function StepCard({ node }: { node: Node }) {
-  const { exec, catalog, updateConfig } = useFlowStore();
+  const { exec } = useFlowStore();
   const step = stepById(node.id);
   const data = node.data as any;
-  const spec = catalog[data.ntype];
   const state = exec.nodeStates[node.id];
   const progress = exec.progress[node.id];
   const { cls, label, chip } = stepStatus(state);
@@ -168,9 +221,8 @@ function StepCard({ node }: { node: Node }) {
 
         {node.id === "agent" ? (
           <AgentConfigCard node={node} />
-        ) : node.id === "business_doc" && spec ? (
-          <SchemaForm schema={spec.config_schema} value={config}
-                      onChange={(c) => updateConfig(node.id, c)} />
+        ) : node.id === "business_doc" ? (
+          <BusinessDocCard node={node} />
         ) : isConfigurable(node.id) ? null : (
           step.note && <p className="step-note">{step.note}</p>
         )}
