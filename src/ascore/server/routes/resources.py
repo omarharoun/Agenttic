@@ -265,3 +265,21 @@ async def upload(request: Request, file: UploadFile):
     path = uploads_dir / f"{uuid.uuid4().hex[:8]}-{safe}"
     path.write_bytes(await file.read())
     return {"file_path": str(path)}
+
+
+@router.post("/documents/extract", dependencies=[Depends(require_operator)])
+async def extract_document(request: Request, file: UploadFile):
+    """Extract plain text from an uploaded requirement document (pdf, docx, txt,
+    md) so the guided Business Requirement step can be populated from a file
+    instead of pasted text. In-memory only — nothing is written to disk."""
+    from ascore.documents import MAX_DOCUMENT_BYTES, DocumentError, extract_text
+    max_bytes = int(request.state.cfg.get("ui", {})
+                    .get("max_document_mb", 0) or 0) * 1024 * 1024 \
+        or MAX_DOCUMENT_BYTES
+    data = await file.read()
+    try:
+        text = extract_text(file.filename or "", data, max_bytes=max_bytes)
+    except DocumentError as exc:
+        raise HTTPException(422, str(exc))
+    return {"filename": file.filename or "document",
+            "chars": len(text), "text": text}

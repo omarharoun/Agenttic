@@ -310,4 +310,11 @@ export const api = {
     return afetch("/api/uploads", { method: "POST", body: fd }).then((r) =>
       json<{ file_path: string }>(r));
   },
+  // Upload a requirement document (pdf/docx/txt/md); server extracts the text.
+  extractDocument: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return afetch("/api/documents/extract", { method: "POST", body: fd }).then(
+      (r) => json<{ filename: string; chars: number; text: string }>(r));
+  },
 };

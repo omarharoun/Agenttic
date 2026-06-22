@@ -17,6 +17,8 @@ dependencies = [
     "bcrypt>=4.0",
     "cryptography>=42",
     "fpdf2>=2.7",
+    "pypdf>=4.0",            # extract text from uploaded PDF requirement docs
+    "python-docx>=1.1",      # extract text from uploaded DOCX requirement docs
 ]
 
 [project.optional-dependencies]

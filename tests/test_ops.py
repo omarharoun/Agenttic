@@ -98,11 +98,13 @@ class TestBuildAdapter:
         assert isinstance(a, BlackBoxHTTPAgent)
 
     def test_blackbox_requires_url(self):
-        with pytest.raises(ValueError, match="url"):
+        with pytest.raises(ops.AgentConfigError, match="URL"):
             ops.build_adapter(CFG, variant="blackbox", agent_id="x")
 
     def test_managed_requires_ids(self):
-        with pytest.raises(ValueError, match="environment_id"):
+        # A managed agent without its IDs is a clean, user-facing config error
+        # (AgentConfigError <: ValueError), not an opaque crash.
+        with pytest.raises(ops.AgentConfigError, match="managed"):
             ops.build_adapter(CFG, variant="managed", agent_id="x",
                               managed_agent_id="agent_01")
 

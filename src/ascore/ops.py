@@ -35,6 +35,18 @@ ProgressFn = Callable[[str, dict], None]
 
 AdapterVariant = Literal["reference", "blackbox", "managed"]
 
+#: User-facing message when a managed (Anthropic-hosted) agent is selected
+#: without a deployed agent/environment. Shown verbatim in the guided UI.
+MANAGED_UNAVAILABLE_MSG = (
+    "Anthropic-hosted (managed) agents must be deployed first and aren't "
+    "available yet — use the built-in test agent or your own API agent.")
+
+
+class AgentConfigError(ValueError):
+    """A user-facing problem with the agent-under-test configuration (e.g. a
+    managed agent without its IDs, or a black-box agent without a URL). Carries
+    a message safe to show directly in the UI; HTTP callers map it to a 400."""
+
 
 def build_adapter(
     cfg: dict,
@@ -66,14 +78,14 @@ def build_adapter(
         if not environment_id:
             environment_id = cfg.get("managed", {}).get("environment_id", "")
         if not managed_agent_id or not environment_id:
-            raise ValueError("managed adapter needs managed_agent_id and environment_id")
+            raise AgentConfigError(MANAGED_UNAVAILABLE_MSG)
         kw = {"client": client} if client is not None else {}
         return ManagedAgentAdapter(
             managed_agent_id=managed_agent_id, environment_id=environment_id,
             agent_id=agent_id, retry_policy=retry_policy, **kw)
     if variant == "blackbox":
         if not url:
-            raise ValueError("blackbox adapter needs a url")
+            raise AgentConfigError("Add the HTTP endpoint URL for your API agent.")
         allow_private = not cfg.get("security", {}).get("blackbox_block_private", True)
         return BlackBoxHTTPAgent(
             agent_id=agent_id, url=url, allow_private_url=allow_private,
