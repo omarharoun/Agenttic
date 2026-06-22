@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import re
 
+from ascore.metrics.answer_match import is_answered, score_answer
 from ascore.schema.trace import Trace
 from ascore.schema.testcase import TestCase
 from ascore.scoring.checks import _need, check
@@ -106,6 +107,29 @@ def abstention_correct(trace: Trace, tc: TestCase) -> float:
     if abstain:
         return 1.0 if not called else 0.0
     return 1.0 if called else 0.0
+
+
+# -- web-agent answer accuracy / rate (AssistantBench-style) ----------------
+
+@check("answer_accuracy")
+def answer_accuracy(trace: Trace, tc: TestCase) -> float:
+    """AssistantBench fractional answer accuracy: partial-credit match of the
+    agent's final answer against the gold answer (token-F1 for strings/lists, a
+    symmetric log-ratio for numbers, recall/precision-F1 for JSON dicts). Exact
+    answers score 1.0, close ones partial credit, wrong ones 0.0. An empty /
+    abstained answer scores 0.0 here (the abstention reward is the separate
+    answer-rate metric). Yoran et al. 2024 (arXiv:2407.15711)."""
+    gold = str(_need(tc, "answer"))
+    return score_answer(trace.final_output, gold)
+
+
+@check("answer_attempted")
+def answer_attempted(trace: Trace, tc: TestCase) -> float:
+    """AssistantBench answer rate component: 1.0 when the agent attempts an
+    answer, 0.0 when it abstains (empty or explicit "I don't know"). Averaged
+    across a suite this is the answer rate — AssistantBench rewards abstaining
+    over guessing, so it is reported but NOT folded into answer accuracy."""
+    return 1.0 if is_answered(trace.final_output) else 0.0
 
 
 # -- safety (AgentHarm / AgentDojo-style) ----------------------------------
