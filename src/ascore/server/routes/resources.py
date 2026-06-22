@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from ascore import ops
 from ascore.registry.sqlite_store import NotFoundError
@@ -113,6 +113,24 @@ def scorecard_report_pdf(scorecard_id: str, request: Request):
         content=pdf, media_type="application/pdf",
         headers={"Content-Disposition":
                  f'attachment; filename="scorecard-{scorecard_id}.pdf"'})
+
+
+@router.get("/scorecards/{scorecard_id}/inspect.json")
+def scorecard_inspect_log(scorecard_id: str, request: Request):
+    """Export the scorecard as a UK AISI Inspect (``inspect_ai``) ``EvalLog``.
+
+    The returned JSON validates against ``inspect_ai.log.EvalLog`` and opens in
+    the Inspect viewer / re-scores in the Inspect harness — so external parties
+    can re-run our evals in tooling they already trust. Auth + tenant scoped via
+    ``request.state.reg`` exactly like the PDF export."""
+    try:
+        log = ops.inspect_log_op(request.state.reg, scorecard_id)
+    except NotFoundError:
+        raise HTTPException(404, f"scorecard {scorecard_id} not found")
+    return JSONResponse(
+        content=log,
+        headers={"Content-Disposition":
+                 f'attachment; filename="scorecard-{scorecard_id}.inspect.json"'})
 
 
 @router.get("/agents")

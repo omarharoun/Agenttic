@@ -334,6 +334,31 @@ def report_pdf_op(reg: Registry, scorecard_id: str) -> bytes:
     return render_pdf(*_scorecard_with_context(reg, scorecard_id))
 
 
+def inspect_log_op(reg: Registry, scorecard_id: str) -> dict:
+    """Export a scorecard as an Inspect (``inspect_ai``) ``EvalLog`` JSON dict.
+
+    Pulls the scorecard, its rubric, and every referenced trace from the
+    registry and renders them via :func:`ascore.interop.to_inspect_log`. Missing
+    traces are simply omitted (the scores still export). Returns a plain dict
+    that validates against ``inspect_ai.log.EvalLog`` — no runtime dependency on
+    ``inspect_ai``."""
+    from ascore.interop import to_inspect_log
+    from ascore.registry.sqlite_store import NotFoundError
+
+    sc = reg.get_scorecard(scorecard_id)
+    try:
+        rubric = reg.get_rubric(sc.rubric_id, sc.rubric_version)
+    except NotFoundError:
+        rubric = None
+    traces: list[Trace] = []
+    for run in sc.run_scores:
+        try:
+            traces.append(reg.get_trace(run.trace_id))
+        except NotFoundError:
+            continue
+    return to_inspect_log(sc, rubric=rubric, traces=traces)
+
+
 async def run_standard_op(cfg: dict, reg: Registry, *, agent_id: str, k: int = 3,
                           variant: str = "reference", url: str = "",
                           system_prompt: str = "", model: str = "",
