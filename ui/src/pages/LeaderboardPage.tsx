@@ -144,9 +144,21 @@ function StandardBenchmarks() {
               <div key={d.dataset_id} className="dataset-card">
                 <div className="dc-top">
                   <span className="dc-name">{d.name}</span>
-                  {d.license && <span className="dc-lic" title="License">{d.license}</span>}
+                  <span className="dc-meta-row">
+                    {d.gated && (
+                      <span className="dc-gated" title="Access-gated upstream — bring your own access; a vendored sample is ingested offline">
+                        <span aria-hidden="true">🔒</span> Gated
+                      </span>
+                    )}
+                    {d.license && <span className="dc-lic" title="License">{d.license}</span>}
+                  </span>
                 </div>
                 {d.citation && <div className="dc-meta">{d.citation}</div>}
+                {d.caveat && (
+                  <div className="dc-caveat">
+                    <span className="ic" aria-hidden="true">⚠</span><span>{d.caveat}</span>
+                  </div>
+                )}
                 <div className="dc-foot">
                   {d.source_url
                     ? <a className="dc-src" href={d.source_url} target="_blank" rel="noreferrer">Source ↗</a>

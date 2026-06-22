@@ -1032,3 +1032,66 @@ table.data tbody tr { transition: background 0.1s; }
   .weight-name { flex-basis: 92px; }
   .meth-cta .cta { flex-direction: column; align-items: stretch; }
 }
+
+/* ========================================================================== */
+/* ===  UX pass 3: landing trust strip · gated dataset badge · hardening   === */
+/* ========================================================================== */
+
+/* --- landing hero "anchored to" trust strip ------------------------------ */
+.trust-strip {
+  margin-top: var(--sp-10); display: flex; flex-direction: column;
+  align-items: center; gap: var(--sp-3);
+}
+.trust-strip .trust-lab {
+  font: 600 var(--t-label) / 1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--faint);
+}
+.trust-row {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 8px; max-width: 660px;
+}
+.trust-chip {
+  font: 600 12px/1 var(--font-mono); color: var(--muted);
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--r-pill); padding: 7px 13px; white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+.trust-chip:hover { border-color: var(--accent-line); color: var(--text); }
+
+/* --- gated / caveat dataset badges (methodology + leaderboard cards) ------ */
+.dc-gated {
+  font: 600 10px/1 var(--font-ui); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--wait); background: var(--wait-soft); border: 1px solid var(--wait-border);
+  border-radius: var(--r-pill); padding: 3px 8px; display: inline-flex;
+  align-items: center; gap: 4px; white-space: nowrap;
+}
+.dc-caveat {
+  font-size: 11.5px; line-height: 1.5; color: var(--wait);
+  display: flex; align-items: flex-start; gap: 5px;
+}
+.dc-caveat .ic { flex-shrink: 0; }
+.dataset-card .dc-meta-row {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+
+/* --- hardening: reusable delta chip (improved/regressed/same/new/errored) - */
+.delta-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.delta-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font: 600 11px/1 var(--font-ui); border-radius: var(--r-pill);
+  padding: 3px 9px; border: 1px solid currentColor; white-space: nowrap;
+}
+.delta-chip .n { font-variant-numeric: tabular-nums; }
+.delta-empty { color: var(--muted); font-size: 12px; }
+
+/* hardening: the failure→hardening loop motif on the page intro */
+.harden-flow {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 4px 0 var(--sp-6); font-size: 12.5px; color: var(--muted);
+}
+.harden-flow .hf-step {
+  display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px;
+  border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--panel);
+}
+.harden-flow .hf-step .ic { color: var(--accent); }
+.harden-flow .hf-arrow { color: var(--faint); }

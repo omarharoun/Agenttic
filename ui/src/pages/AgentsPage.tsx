@@ -129,9 +129,9 @@ export function AgentsPage() {
               </div>
             )}
           </div>
-          <button className="active" style={{ marginTop: 8 }}
+          <button className="primary" style={{ marginTop: 8 }}
                   disabled={!form.agent_id.trim()} onClick={submit}>
-            register
+            Register agent
           </button>
           {error && <span style={{ color: "var(--fail)", marginLeft: 10,
                                    fontSize: 12 }}>⚠ {error}</span>}
