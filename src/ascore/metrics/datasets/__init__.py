@@ -7,6 +7,7 @@ from ascore.metrics.datasets.agentdojo import AgentDojoAdapter
 from ascore.metrics.datasets.agentharm import AgentHarmAdapter
 from ascore.metrics.datasets.base import DatasetAdapter, DatasetInfo
 from ascore.metrics.datasets.bfcl import BFCL_SPLIT_ADAPTERS, BFCLAdapter
+from ascore.metrics.datasets.gaia import GAIAAdapter
 from ascore.metrics.datasets.injecagent import InjecAgentAdapter
 from ascore.metrics.datasets.tau_bench import TauBenchAdapter
 
@@ -14,6 +15,8 @@ from ascore.metrics.datasets.tau_bench import TauBenchAdapter
 ADAPTERS = {"bfcl": BFCLAdapter, "tau-bench": TauBenchAdapter,
             "agentharm": AgentHarmAdapter, "injecagent": InjecAgentAdapter,
             "agentdojo": AgentDojoAdapter,
+            # GAIA general AI-assistant benchmark (gated; validation split).
+            "gaia": GAIAAdapter,
             # additional BFCL v3 splits (parallel / multiple / parallel_multiple
             # / live_*) — share the BFCL vendored data + license.
             **BFCL_SPLIT_ADAPTERS}

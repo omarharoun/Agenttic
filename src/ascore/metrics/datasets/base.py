@@ -26,6 +26,11 @@ class DatasetInfo:
     citation: str
     license: str          # SPDX, e.g. "Apache-2.0"
     source_url: str
+    #: True when the upstream dataset is access-gated (requires accepting terms /
+    #: auth to fetch). Surfaced so the UI/methodology can show "gated — bring your
+    #: own access" and so ``--full`` ingest documents the auth step. Defaults to
+    #: False (public datasets); set True by gated adapters (e.g. GAIA).
+    gated: bool = False
 
 
 class DatasetAdapter(ABC):
