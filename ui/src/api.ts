@@ -150,6 +150,18 @@ export const api = {
   deleteAnthropicKey: () =>
     afetch("/api/settings/anthropic-key", { method: "DELETE" }).then((r) => json<any>(r)),
 
+  // Personal API tokens (PATs) — programmatic REST access as the user's account.
+  listTokens: () =>
+    afetch("/api/settings/tokens").then((r) =>
+      json<{ tokens: { id: number; name: string; masked: string; created_at: string; last_used_at: string | null }[] }>(r)),
+  createToken: (name: string) =>
+    afetch("/api/settings/tokens", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }).then((r) => json<{ id: number; name: string; token: string; masked: string; created_at: string }>(r)),
+  revokeToken: (id: number) =>
+    afetch(`/api/settings/tokens/${id}`, { method: "DELETE" }).then((r) => json<any>(r)),
+
   nodeTypes: () => afetch("/api/node-types").then((r) => json<NodeTypeSpec[]>(r)),
   listWorkflows: () => afetch("/api/workflows").then((r) => json<any[]>(r)),
   getWorkflow: (id: string) =>

@@ -215,6 +215,27 @@ class ApiKeyRow(SQLModel, table=True):
     updated_at: datetime
 
 
+class PersonalApiTokenRow(SQLModel, table=True):
+    """A user's personal API token (PAT) for programmatic REST access. GLOBAL
+    table (like users): the token is presented as ``Authorization: Bearer`` and
+    authenticates the request AS its owning user — same tenant + role as their
+    login. Only the SHA-256 hash is stored (never plaintext, never logged); the
+    plaintext is shown to the user exactly once at creation. ``revoked_at`` set
+    => immediately rejected."""
+    __tablename__ = "personal_api_tokens"
+    __table_args__ = (UniqueConstraint("token_hash"),)
+    id: int | None = Field(default=None, primary_key=True)
+    token_hash: str = Field(index=True)        # sha256 hex of the full token
+    name: str = ""                              # user-chosen label
+    user_email: str = Field(index=True)         # owning account
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    role: str = "viewer"                        # snapshot of owner's role
+    last4: str = ""                             # for masked display
+    created_at: datetime
+    last_used_at: datetime | None = None
+    revoked_at: datetime | None = None
+
+
 class EmailTokenRow(SQLModel, table=True):
     """A single-use, expiring email token (account verification). GLOBAL, like
     users. Consumed by setting ``used_at``; rows are safe to prune past expiry."""

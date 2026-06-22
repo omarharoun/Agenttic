@@ -71,22 +71,74 @@ export function ApiDocsPage() {
         <div className="group">
           <h2>Authentication</h2>
           <p className="summary">
-            Two ways to authenticate, both honoring viewer / operator / admin roles
-            and tenant scoping. <b>Bearer token</b> (for CI / API clients) takes
-            precedence: send <code>Authorization: Bearer &lt;token&gt;</code>. Or use a{" "}
-            <b>login session</b>: <code>POST /api/auth/login</code> sets an httponly
-            cookie; browser requests then authenticate automatically (cookie-based
-            mutations also need the <code>X-CSRF-Token</code> header, echoed from the
-            <code> ascore_csrf</code> cookie). Get a session by{" "}
-            <Link to="/signup" style={{ color: "var(--accent)" }}>signing up</Link>.
+            Three ways to authenticate, all honoring viewer / operator / admin roles
+            and tenant scoping. A <b>personal API token (PAT)</b> is the recommended
+            way to script the API as your own account — create one in{" "}
+            <Link to="/app/settings?section=api-keys" style={{ color: "var(--accent)" }}>Settings → API keys</Link>{" "}
+            and send <code>Authorization: Bearer agt_…</code>. A configured{" "}
+            <b>shared token</b> (<code>ASCORE_API_TOKEN</code>) works the same way for
+            CI. Or use a <b>login session</b>: <code>POST /api/auth/login</code> sets an
+            httponly cookie; browser requests then authenticate automatically
+            (cookie-based mutations also need the <code>X-CSRF-Token</code> header,
+            echoed from the <code>ascore_csrf</code> cookie).
           </p>
-          <pre className="curl">{`# bearer token (CI / scripts)
-curl ${origin}/api/agents -H "Authorization: Bearer $ASCORE_API_TOKEN"
+          <p className="summary">
+            <b>Precedence:</b> an explicit bearer/<code>X-API-Key</code>/<code>?token=</code>{" "}
+            always wins over a session cookie. Among explicit tokens, a configured
+            shared/admin token is matched first, then PATs. A PAT authenticates as its
+            owning user (their tenant + role); revoking it takes effect immediately.
+          </p>
+          <pre className="curl">{`# personal API token (recommended — acts as your account)
+curl ${origin}/api/me -H "Authorization: Bearer $AGENTTIC_TOKEN"
 
-# session login
+# session login (browser / interactive)
 curl -X POST ${origin}/api/auth/login \\
   -H "Content-Type: application/json" \\
   -d '{"email":"you@example.com","password":"…"}' -c cookies.txt`}</pre>
+        </div>
+
+        <div className="group">
+          <h2>Quickstart: run a test over REST</h2>
+          <p className="summary">
+            End-to-end with a personal API token. Runs use <b>your own stored Anthropic
+            key</b> (set it in{" "}
+            <Link to="/app/settings?section=api-keys" style={{ color: "var(--accent)" }}>Settings</Link>{" "}
+            first, or these calls return <code>400 — Add your Anthropic API key</code>).
+          </p>
+          <pre className="curl">{`# 0) create a token in Settings → API keys, then:
+export AGENTTIC_TOKEN=agt_…
+AUTH="Authorization: Bearer $AGENTTIC_TOKEN"
+
+# 1) generate a benchmark from a business requirement AND start a run
+#    (builds the canonical generate→approve→run→score→report pipeline)
+EXEC=$(curl -s -X POST ${origin}/api/quickstart/from-requirement -H "$AUTH" \\
+  -H "Content-Type: application/json" \\
+  -d '{"requirement":"The support agent must never reveal another customer'\\''s data.",
+       "agent_id":"my-agent","system_prompt":"You are a careful support agent."}')
+echo "$EXEC"   # -> {"workflow_id":"wf-…","execution_id":"ex-…","suite_id":"req-…"}
+EID=$(echo "$EXEC" | python -c 'import sys,json;print(json.load(sys.stdin)["execution_id"])')
+
+# 2) poll until the human gate pauses for approval
+curl -s ${origin}/api/executions/$EID -H "$AUTH"      # status: "waiting_approval"
+
+# 3) review the draft suite, then approve to continue the run
+curl -s -X POST ${origin}/api/executions/$EID/approve -H "$AUTH"
+
+# 4) poll until done, then fetch joined results (scorecard + per-case rows)
+curl -s ${origin}/api/executions/$EID -H "$AUTH"      # status: "succeeded"
+curl -s ${origin}/api/executions/$EID/results -H "$AUTH"
+
+# 5) export: the scorecard JSON, a Markdown/PDF report, or the Inspect log
+SC=…   # scorecard_id from the results
+curl -s ${origin}/api/scorecards/$SC -H "$AUTH"
+curl -s ${origin}/api/scorecards/$SC/report.pdf -H "$AUTH" -o report.pdf
+curl -s ${origin}/api/scorecards/$SC/inspect.json -H "$AUTH" -o inspect.json
+
+# --- or skip generation and run the standard (canonical) suites ---
+curl -s -X POST ${origin}/api/standard/seed -H "$AUTH"
+curl -s -X POST ${origin}/api/standard/run -H "$AUTH" \\
+  -H "Content-Type: application/json" -d '{"agent_id":"my-agent","k":3}'
+curl -s ${origin}/api/standard/leaderboard -H "$AUTH"`}</pre>
         </div>
 
         {err && <p style={{ color: "var(--fail)" }}>{err}</p>}
