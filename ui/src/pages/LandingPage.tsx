@@ -24,6 +24,7 @@ export function LandingPage() {
         <nav className="lp-nav">
           <Link to="/" className="brand"><span className="hex">⬡</span> Agenttic</Link>
           <span className="spacer" />
+          <Link className="navlink" to="/methodology">Methodology</Link>
           <a className="navlink" href="/api-docs">API docs</a>
           <Link className="navlink" to="/login">Log in</Link>
           <Link className="btn-primary" to="/signup">Get started</Link>
@@ -92,6 +93,7 @@ export function LandingPage() {
       <footer className="lp">
         <div className="lp-footer">
           <span><span className="hex" style={{ color: "var(--accent)" }}>⬡</span> Agenttic</span>
+          <Link to="/methodology">Methodology</Link>
           <a href="/api-docs">API docs</a>
           <Link to="/login">Log in</Link>
           <Link to="/signup">Sign up</Link>
