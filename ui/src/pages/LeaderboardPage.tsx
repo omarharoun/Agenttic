@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 
@@ -104,6 +105,10 @@ function StandardBenchmarks() {
                   onClick={() => setShowMethod((s) => !s)}>
             {showMethod ? "Hide methodology" : "Methodology & weights"}
           </button>
+          {" "}
+          <Link to="/methodology" style={{ color: "var(--accent)", fontWeight: 600, marginLeft: 6 }}>
+            Full methodology →
+          </Link>
         </p>
       </header>
 
