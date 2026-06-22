@@ -26,6 +26,10 @@ DATASET_SUITE_IDS = ["bfcl-simple-v3", "tau-bench-v1", "agentharm-harmful-v1",
                      "assistantbench-v1",
                      # GAIA general AI-assistant benchmark (gated; validation)
                      "gaia-v1",
+                     # SWE-bench Verified — real GitHub-issue code-fix benchmark;
+                     # scored by an OFFLINE PROXY, NOT official resolve-rate
+                     # (which needs the Docker execution harness)
+                     "swebench-verified-v1",
                      # additional BFCL v3 splits (harder multi-call / selection)
                      "bfcl-parallel-v3", "bfcl-multiple-v3",
                      "bfcl-parallel-multiple-v3", "bfcl-live-simple-v3",

@@ -31,6 +31,13 @@ class DatasetInfo:
     #: own access" and so ``--full`` ingest documents the auth step. Defaults to
     #: False (public datasets); set True by gated adapters (e.g. GAIA).
     gated: bool = False
+    #: True when official scoring of this dataset requires a heavy *execution*
+    #: harness we do not run here (e.g. SWE-bench's Docker resolve-rate harness:
+    #: apply the patch, run FAIL_TO_PASS / PASS_TO_PASS in the repo's container).
+    #: Surfaced so the UI/methodology can show the honest caveat that the suite
+    #: is scored by an OFFLINE PROXY, not the dataset's official execution metric.
+    #: Defaults to False; set True by execution-gated adapters (e.g. SWE-bench).
+    requires_execution_harness: bool = False
 
 
 class DatasetAdapter(ABC):

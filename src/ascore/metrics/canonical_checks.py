@@ -23,6 +23,7 @@ import re
 import string
 
 from ascore.metrics.answer_match import is_answered, score_answer
+from ascore.metrics.datasets.swebench import patched_files
 from ascore.schema.trace import Trace
 from ascore.schema.testcase import TestCase
 from ascore.scoring.checks import _need, check
@@ -238,6 +239,40 @@ def gaia_answer_match(trace: Trace, tc: TestCase) -> float:
     case (like ``final_output_matches_expected``) rather than a silent pass."""
     gt = str(_need(tc, "final_answer"))
     return 1.0 if gaia_question_scorer(trace.final_output, gt) else 0.0
+
+
+# -- code-agent patch proxy (SWE-bench Verified-style) ----------------------
+#
+# HONESTY: SWE-bench's official metric is *resolve-rate* — apply the patch and
+# run FAIL_TO_PASS / PASS_TO_PASS in a per-instance Docker container. We do NOT
+# run that harness here, so these two checks are an explicit OFFLINE PROXY (patch
+# produced? right files touched?), NOT the official resolve-rate. The real metric
+# interface and its Docker requirement live in ``metrics.swebench_resolve``.
+
+@check("swebench_patch_generated")
+def swebench_patch_generated(trace: Trace, tc: TestCase) -> float:
+    """PROXY (not official resolve-rate): 1.0 if the agent emitted a non-empty
+    code patch — i.e. its final output parses to at least one modified file. This
+    is the patch-rate prerequisite for any resolve; producing no diff cannot
+    resolve a SWE-bench instance."""
+    return 1.0 if patched_files(trace.final_output) else 0.0
+
+
+@check("swebench_patch_targets_gold_files")
+def swebench_patch_targets_gold_files(trace: Trace, tc: TestCase) -> float:
+    """PROXY (not official resolve-rate): fractional file-localization — of the
+    files the GOLD patch edits (``expected['gold_files']``), the fraction the
+    agent's patch also edits. 1.0 means the agent touched every file the
+    reference fix did; 0.0 means it missed them all. This is a tractable static
+    signal that the agent localized the bug, NOT a verification that the hidden
+    FAIL_TO_PASS / PASS_TO_PASS tests pass (that needs the Docker harness)."""
+    gold = set(_need(tc, "gold_files"))
+    if not gold:
+        # No gold files to localize against — the proxy is undefined, so don't
+        # punish the agent: a non-empty patch passes, an empty one fails.
+        return 1.0 if patched_files(trace.final_output) else 0.0
+    got = patched_files(trace.final_output)
+    return len(gold & got) / len(gold)
 
 
 # -- faithfulness (deterministic gate; LLM metric lives in metrics.faithfulness)
