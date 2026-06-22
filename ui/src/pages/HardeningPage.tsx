@@ -15,19 +15,16 @@ const STATUS_COLOR: Record<string, string> = {
 
 /** A compact summary of a regression delta: improved / regressed / same / new. */
 function DeltaChips({ d }: { d: Record<string, number> | null | undefined }) {
-  if (!d) return <span style={{ color: "var(--muted)" }}>not run yet</span>;
+  if (!d) return <span className="delta-empty">not run yet</span>;
   const order = ["improved", "regressed", "same", "new", "errored"] as const;
+  if (order.every((k) => !d[k])) return <span className="delta-empty">no cases</span>;
   return (
-    <span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap" }}>
+    <span className="delta-chips">
       {order.filter((k) => d[k]).map((k) => (
-        <span key={k} className="status-chip" style={{
-          color: STATUS_COLOR[k], borderColor: STATUS_COLOR[k],
-          border: "1px solid", borderRadius: "var(--r-pill)",
-          padding: "1px 8px", fontSize: 11 }}>
-          {d[k]} {k}
+        <span key={k} className="delta-chip" style={{ color: STATUS_COLOR[k] }}>
+          <span className="n">{d[k]}</span> {k}
         </span>
       ))}
-      {order.every((k) => !d[k]) && <span style={{ color: "var(--muted)" }}>no cases</span>}
     </span>
   );
 }
@@ -106,10 +103,10 @@ function RerunForm({ suiteId, onStarted }: {
         )}
       </div>
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
-        <button className="active" disabled={busy} onClick={run}>
-          {busy ? "starting…" : "Re-run regression suite"}
+        <button className="primary" disabled={busy} onClick={run}>
+          {busy ? "Starting…" : "Re-run regression suite"}
         </button>
-        {err && <span style={{ color: "var(--fail)", fontSize: 12 }}>⚠ {err}</span>}
+        {err && <span role="alert" style={{ color: "var(--fail)", fontSize: 12 }}>⚠ {err}</span>}
       </div>
     </div>
   );
@@ -142,15 +139,35 @@ function SuiteDetail({ suiteId, onBack }: { suiteId: string; onBack: () => void 
   if (d === null) return <p style={{ color: "var(--fail)" }}>Could not load suite.</p>;
 
   const delta = d.latest_delta;
+  const runs = d.history?.length ?? 0;
   return (
     <div style={{ marginBottom: 20 }}>
       <button className="ghost-sm" onClick={onBack}>← back to suites</button>
       <h2 className="mono" style={{ marginTop: 8 }}>{d.regression_suite_id}</h2>
       <p style={{ color: "var(--muted)", marginTop: -4 }}>
         agent <b className="mono">{d.agent_id}</b> · hardened from{" "}
-        <span className="mono">{d.source_suite_id || "—"}</span> · v{d.version} ·{" "}
-        {d.cases.length} case(s){pollFrom != null && <> · <span className="spinner" /> re-running…</>}
+        <span className="mono">{d.source_suite_id || "—"}</span>
+        {pollFrom != null && <> · <span className="spinner" /> re-running…</>}
       </p>
+
+      <div className="score-strip" role="group" aria-label="Regression suite summary">
+        <div className="stat"><span className="lab">Cases</span>
+          <span className="val">{d.cases.length}</span></div>
+        <div className="stat"><span className="lab">Version</span>
+          <span className="val">v{d.version}</span></div>
+        <div className="stat"><span className="lab">Re-runs</span>
+          <span className="val">{runs}</span></div>
+        {delta && (
+          <div className="stat"><span className="lab">Latest success</span>
+            <span className="val sm">{pct(delta.task_success_rate)}</span></div>
+        )}
+        {delta && delta.success_delta != null && (
+          <div className="stat"><span className="lab">Δ vs prior</span>
+            <span className={"val sm " + (delta.success_delta > 0 ? "ok"
+              : delta.success_delta < 0 ? "err" : "")}>
+              {signedPct(delta.success_delta)}</span></div>
+        )}
+      </div>
 
       {delta && (
         <>
@@ -288,11 +305,21 @@ export function HardeningPage() {
         <PageHeader title="Hardening"
           subtitle="Turn caught failures into permanent regression cases. Promote a scorecard's failures into a per-agent regression suite, then re-run to prove the fix held — hardening the agent over time, not just measuring it." />
 
-        {note && (
-          <div className={note.ok ? "note-ok" : "note-err"} style={{ marginBottom: 14 }}>
-            {note.ok ? "✓ " : "⚠ "}{note.text}
-          </div>
-        )}
+        <div className="harden-flow" aria-hidden="true">
+          <span className="hf-step"><span className="ic">①</span> Catch a failure</span>
+          <span className="hf-arrow">→</span>
+          <span className="hf-step"><span className="ic">②</span> Promote to a regression suite</span>
+          <span className="hf-arrow">→</span>
+          <span className="hf-step"><span className="ic">③</span> Re-run &amp; prove the fix held</span>
+        </div>
+
+        <div role="status" aria-live="polite">
+          {note && (
+            <div className={note.ok ? "note-ok" : "note-err"} style={{ marginBottom: 14 }}>
+              {note.ok ? "✓ " : "⚠ "}{note.text}
+            </div>
+          )}
+        </div>
 
         <h3>Regression suites</h3>
         {suites === null ? <Skeleton rows={3} /> : suites.length === 0 ? (
@@ -314,8 +341,9 @@ export function HardeningPage() {
                     <td className="num">{s.n_cases}</td>
                     <td className="num">{s.runs}</td>
                     <td><DeltaChips d={s.latest_delta} /></td>
-                    <td><button onClick={() => { params.set("suite", s.regression_suite_id);
-                      setParams(params); }}>view</button></td>
+                    <td><button aria-label={`View regression suite ${s.regression_suite_id}`}
+                      onClick={() => { params.set("suite", s.regression_suite_id);
+                      setParams(params); }}>View</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -351,9 +379,10 @@ export function HardeningPage() {
                       {c.n_errored}</td>
                     <td style={{ fontSize: 12 }}>{new Date(c.created_at).toLocaleString()}</td>
                     <td>
-                      <button className="active" disabled={busy === c.scorecard_id}
+                      <button className="primary" disabled={busy === c.scorecard_id}
+                              aria-label={`Promote failing cases from ${c.scorecard_id}`}
                               onClick={() => promote(c.scorecard_id)}>
-                        {busy === c.scorecard_id ? "promoting…" : "Promote failures"}
+                        {busy === c.scorecard_id ? "Promoting…" : "Promote failures"}
                       </button>
                     </td>
                   </tr>
