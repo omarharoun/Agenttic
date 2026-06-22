@@ -1,0 +1,32 @@
+GAIA — license & access-terms note
+===================================
+
+This directory does NOT vendor any real GAIA data. GAIA is an ACCESS-GATED
+dataset and its terms/license are accepted on HuggingFace at ingest time by the
+person who fetches it; agenttic does not redistribute it.
+
+Upstream
+--------
+- Dataset:  gaia-benchmark/GAIA
+- URL:      https://huggingface.co/datasets/gaia-benchmark/GAIA
+- Authors:  Mialon, Fourrier, Swift, Wolf, LeCun, Scialom (Meta AI / HuggingFace).
+- Paper:    "GAIA: A Benchmark for General AI Assistants", arXiv:2311.12983 (2023).
+- License:  The dataset is released by its authors under their stated terms on
+            the HuggingFace dataset page (CC-BY-4.0 per the dataset card at the
+            time of writing). It is, however, **access-gated**: you must be
+            logged in to HuggingFace and **accept the dataset's terms/conditions**
+            before the files can be downloaded. The held-out TEST split answers
+            are NOT public; only the VALIDATION split ships with final answers.
+
+What is in this directory
+-------------------------
+- LICENSE.txt              — this note.
+- ATTRIBUTION.md           — source, citation, and what is / is not vendored.
+- gaia_validation.sample.jsonl — a tiny, CLEARLY-LABELED, NON-OPERATIONAL
+                            PLACEHOLDER sample. It is fabricated stand-in content
+                            that mirrors only the GAIA validation record SCHEMA.
+                            It is NOT real GAIA data.
+
+agenttic implements GAIA's *methodology* (normalized exact-match answer accuracy
+on the validation split). To score the real dataset you must bring your own
+access: accept the terms upstream and authenticate (see ATTRIBUTION.md).

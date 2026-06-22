@@ -22,6 +22,8 @@ STANDARD_PREFIX = "std-"
 # canonical metrics. Present only after ingestion; included in the index rollup.
 DATASET_SUITE_IDS = ["bfcl-simple-v3", "tau-bench-v1", "agentharm-harmful-v1",
                      "injecagent-v1", "agentdojo-v1",
+                     # GAIA general AI-assistant benchmark (gated; validation)
+                     "gaia-v1",
                      # additional BFCL v3 splits (harder multi-call / selection)
                      "bfcl-parallel-v3", "bfcl-multiple-v3",
                      "bfcl-parallel-multiple-v3", "bfcl-live-simple-v3",

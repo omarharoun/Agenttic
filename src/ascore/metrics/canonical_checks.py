@@ -20,6 +20,7 @@ Methodology anchors (see metrics/catalog.py for the cited names):
 from __future__ import annotations
 
 import re
+import string
 
 from ascore.schema.trace import Trace
 from ascore.schema.testcase import TestCase
@@ -131,6 +132,88 @@ def injection_robust(trace: Trace, tc: TestCase) -> float:
     called = _tool_sequence(trace)
     hijacked = target in called or target.lower() in (trace.final_output or "").lower()
     return 0.0 if hijacked else 1.0
+
+
+# -- answer accuracy (GAIA-style normalized exact match) -------------------
+#
+# GAIA scores a general-assistant final answer with a normalized exact match
+# (its own ``question_scorer``): numbers are compared as floats after stripping
+# ``$ % ,`` separators; comma/semicolon-separated lists are compared element-wise
+# (numbers as floats, strings normalized); plain strings are compared after
+# lowercasing, removing punctuation, and stripping whitespace. We re-implement
+# that normalization here so a GAIA validation case is pass/fail-able in the
+# standard pipeline. This GAIA-normalized matcher is intentionally minimal and
+# self-contained; it can later CONVERGE with the AssistantBench answer-accuracy
+# metric (a sibling adds it in parallel) into one shared normalized-answer check.
+
+_GAIA_ANSWER_PREFIX = re.compile(r"^\s*final answer\s*:\s*", re.IGNORECASE)
+
+
+def _gaia_is_float(s: str) -> bool:
+    try:
+        float(s)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def _gaia_normalize_number(s: str) -> float:
+    for ch in ("$", "%", ","):
+        s = s.replace(ch, "")
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return float("inf")  # un-parseable answer can never equal a finite GT
+
+
+def _gaia_normalize_str(s: str, *, remove_punct: bool = True) -> str:
+    no_ws = re.sub(r"\s", "", s or "")
+    no_ws = no_ws.lower()
+    if remove_punct:
+        no_ws = no_ws.translate(str.maketrans("", "", string.punctuation))
+    return no_ws
+
+
+def _gaia_split(s: str) -> list[str]:
+    return re.split(r"[,;]", s or "")
+
+
+def gaia_question_scorer(model_answer: str, ground_truth: str) -> bool:
+    """GAIA's normalized exact-match: True iff ``model_answer`` matches
+    ``ground_truth`` under GAIA's number/list/string normalization. Mirrors the
+    official ``question_scorer`` so our numbers track the GAIA methodology."""
+    ma = _GAIA_ANSWER_PREFIX.sub("", model_answer or "").strip()
+    gt = (ground_truth or "").strip()
+    # number ground truth -> compare as floats
+    if _gaia_is_float(gt):
+        return _gaia_normalize_number(ma) == float(gt)
+    # list ground truth (comma/semicolon separated) -> element-wise compare
+    if any(c in gt for c in (",", ";")):
+        gt_elems = [e.strip() for e in _gaia_split(gt)]
+        ma_elems = [e.strip() for e in _gaia_split(ma)]
+        if len(gt_elems) != len(ma_elems):
+            return False
+        for ma_e, gt_e in zip(ma_elems, gt_elems):
+            if _gaia_is_float(gt_e):
+                if _gaia_normalize_number(ma_e) != float(gt_e):
+                    return False
+            elif _gaia_normalize_str(ma_e, remove_punct=False) != \
+                    _gaia_normalize_str(gt_e, remove_punct=False):
+                return False
+        return True
+    # plain string ground truth
+    return _gaia_normalize_str(ma) == _gaia_normalize_str(gt)
+
+
+@check("gaia_answer_match")
+def gaia_answer_match(trace: Trace, tc: TestCase) -> float:
+    """GAIA-style answer accuracy: the agent's final output equals the GAIA
+    ground-truth ``expected['final_answer']`` under GAIA's normalized exact
+    match. Works on black-box traces (reads only the final output). No safe
+    default for the ground-truth answer, so a missing one surfaces as an errored
+    case (like ``final_output_matches_expected``) rather than a silent pass."""
+    gt = str(_need(tc, "final_answer"))
+    return 1.0 if gaia_question_scorer(trace.final_output, gt) else 0.0
 
 
 # -- faithfulness (deterministic gate; LLM metric lives in metrics.faithfulness)
