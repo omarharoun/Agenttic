@@ -19,11 +19,28 @@ LOCAL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 say() { printf '\n\033[1;36m== %s\033[0m\n' "$*"; }
 
-say "1/7  Check SSH to $HOST"
+say "1/8  Check SSH to $HOST"
 ssh -o BatchMode=yes -o ConnectTimeout=15 "$HOST" 'echo ok' >/dev/null || {
   echo "ERROR: cannot ssh $HOST non-interactively. Authorize your key first."; exit 1; }
 
-say "2/7  Install Docker Engine + compose plugin (detect distro)"
+say "2/8  Pre-flight disk check on $HOST (warn at >${DISK_THRESHOLD:-85}%)"
+# node1 has filled to 100% during deploys (image + build-cache buildup). Warn
+# early; a heavy build on a near-full disk can fail half-way. Non-fatal here.
+ssh "$HOST" "bash -se -- '${DISK_THRESHOLD:-85}'" <<'REMOTE' || true
+set -euo pipefail
+THRESHOLD="$1"
+USED="$(df -P / | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
+AVAIL="$(df -Ph / | awk 'NR==2 {print $4}')"
+echo "Root fs: ${USED}% used, ${AVAIL} free."
+if [ "${USED:-0}" -ge "$THRESHOLD" ]; then
+  echo "WARNING: disk at ${USED}% (>= ${THRESHOLD}%). Pre-pruning dangling images + build cache..."
+  docker image prune -f   2>/dev/null || sg docker -c 'docker image prune -f'   || true
+  docker builder prune -f 2>/dev/null || sg docker -c 'docker builder prune -f' || true
+  df -Ph /
+fi
+REMOTE
+
+say "3/8  Install Docker Engine + compose plugin (detect distro)"
 ssh "$HOST" 'bash -se' <<'REMOTE'
 set -euo pipefail
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
@@ -38,7 +55,7 @@ sudo usermod -aG docker "$USER" || true
 sudo systemctl enable --now docker || true
 REMOTE
 
-say "3/7  Sync repo -> $HOST:$REMOTE_DIR"
+say "4/8  Sync repo -> $HOST:$REMOTE_DIR"
 ssh "$HOST" "sudo mkdir -p $REMOTE_DIR && sudo chown \$USER $REMOTE_DIR"
 rsync -az --delete \
   --exclude '.git' --exclude '.venv' --exclude 'node_modules' \
@@ -47,7 +64,7 @@ rsync -az --delete \
   --exclude 'backups' --exclude 'uploads' --exclude '.env' \
   -e ssh "$LOCAL_DIR/" "$HOST:$REMOTE_DIR/"
 
-say "4/7  Compose override (port bind + service ordering) + config"
+say "5/8  Compose override (port bind + service ordering) + config"
 ssh "$HOST" "bash -se -- '$REMOTE_DIR' '$BIND' '$PORT'" <<'REMOTE'
 set -euo pipefail
 DIR="$1"; BIND="$2"; PORT="$3"; cd "$DIR"
@@ -63,7 +80,7 @@ YAML
 echo "App will bind ${BIND}:${PORT} on the host."
 REMOTE
 
-say "5/7  Secrets -> $HOST:$REMOTE_DIR/.env  (never committed)"
+say "6/8  Secrets -> $HOST:$REMOTE_DIR/.env  (never committed)"
 ssh "$HOST" "bash -se -- '$REMOTE_DIR'" <<'REMOTE'
 set -euo pipefail
 DIR="$1"; cd "$DIR"; touch .env; chmod 600 .env
@@ -85,7 +102,7 @@ ENV
 echo "Wrote .env (token preserved/generated; ANTHROPIC_API_KEY=$([ "$AKEY" = REPLACE_ME ] && echo MISSING || echo set))"
 REMOTE
 
-say "6/7  Bring up Postgres + Redis, run migrations, then the app"
+say "7/8  Bring up Postgres + Redis, run migrations, then the app"
 ssh "$HOST" "bash -se -- '$REMOTE_DIR'" <<'REMOTE'
 set -euo pipefail
 DIR="$1"; cd "$DIR"
@@ -98,12 +115,24 @@ sg docker -c "cd $DIR && docker compose run --rm app ascore migrate --config /ap
 sg docker -c "cd $DIR && docker compose --profile postgres --profile redis up -d --wait app" \
   || dc up -d --wait app
 docker compose ps || sg docker -c "cd $DIR && docker compose ps"
+
+# Post-ship prune: reclaim the space the just-finished build left behind.
+# SAFE — removes only dangling (untagged) images + the builder cache. It does
+# NOT touch the running app/postgres/redis images, and NEVER touches named
+# volumes (pg-data / redis-data / ascore-data), so no data is at risk. We do
+# NOT run `docker volume prune` or `image prune -a` for that reason.
+echo "Pruning dangling images + build cache (data volumes untouched)..."
+docker image prune -f   2>/dev/null || sg docker -c 'docker image prune -f'   || true
+docker builder prune -f 2>/dev/null || sg docker -c 'docker builder prune -f' || true
+df -Ph / | awk 'NR<=2'
 REMOTE
 
-say "7/7  Verify /health and /ready"
+say "8/8  Verify /health and /ready"
 ssh "$HOST" "bash -se -- '$BIND' '$PORT'" <<'REMOTE'
 set -euo pipefail
 BIND="$1"; PORT="$2"; H="http://127.0.0.1:$PORT"
+# NOTE: /health and /ready are GET-only (FastAPI @app.get; no auto HEAD route),
+# so a HEAD probe returns 405. curl here uses GET — uptime monitors must too.
 for ep in health ready; do
   printf '%s -> ' "$ep"; curl -fsS "$H/$ep" && echo || echo "FAILED"
 done
@@ -111,5 +140,7 @@ echo "Listening:"; ss -ltnp 2>/dev/null | grep ":$PORT" || true
 REMOTE
 
 say "Done. Admin token is in $HOST:$REMOTE_DIR/.env (ASCORE_API_TOKEN)."
+echo "Disk after deploy:"; ssh "$HOST" 'df -Ph / | awk "NR<=2"' || true
+echo "Tip: enable scripts/disk-guard.sh on a timer — see docs/OPERATIONS.md (Disk space)."
 echo "Access (from the host / behind your tunnel or TLS proxy): http://127.0.0.1:$PORT"
 echo "If ANTHROPIC_API_KEY shows MISSING, set it in $REMOTE_DIR/.env and: docker compose up -d app"
