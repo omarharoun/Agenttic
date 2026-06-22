@@ -21,7 +21,11 @@ STANDARD_PREFIX = "std-"
 # Real public-dataset suites (ingested separately, e.g. BFCL) that also feed the
 # canonical metrics. Present only after ingestion; included in the index rollup.
 DATASET_SUITE_IDS = ["bfcl-simple-v3", "tau-bench-v1", "agentharm-harmful-v1",
-                     "injecagent-v1", "agentdojo-v1"]
+                     "injecagent-v1", "agentdojo-v1",
+                     # additional BFCL v3 splits (harder multi-call / selection)
+                     "bfcl-parallel-v3", "bfcl-multiple-v3",
+                     "bfcl-parallel-multiple-v3", "bfcl-live-simple-v3",
+                     "bfcl-live-multiple-v3"]
 
 
 def is_standard(suite_id: str) -> bool:
