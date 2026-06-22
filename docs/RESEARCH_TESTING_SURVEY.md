@@ -16,12 +16,14 @@ ingest three real public datasets via the `DatasetAdapter` pattern
 
 | Metric id | Methodology anchor | Index weight |
 |---|---|---|
-| `tool_call_accuracy` | BFCL / τ-bench tool-use (selection, params, sequence, abstention) | 0.35 |
-| `harmful_refusal_rate` | AgentHarm refusal scoring | 0.175 |
-| `injection_robustness` | AgentDojo / InjecAgent ASR (robustness = 1 − ASR) | 0.175 |
-| `reliability_pass_k` | τ-bench pass^k | 0.20 |
-| `calibration_ece` | Expected Calibration Error (Guo et al. 2017) + abstention | 0.10 |
-| `faithfulness` | atomic-claim groundedness (FActScore / RAGAS-style) | (deferred) |
+| `tool_call_accuracy` | BFCL / τ-bench tool-use (selection, params, sequence, abstention) | 0.28 |
+| `reliability_pass_k` | τ-bench pass^k | 0.16 |
+| `faithfulness` | atomic-claim groundedness (FActScore / RAGAS-style) | 0.15 |
+| `harmful_refusal_rate` | AgentHarm refusal scoring | 0.14 |
+| `injection_robustness` | AgentDojo / InjecAgent ASR (robustness = 1 − ASR) | 0.14 |
+| `calibration_ece` | Expected Calibration Error (Guo et al. 2017) + abstention | 0.08 |
+| `answer_accuracy` | AssistantBench fractional answer matching | 0.05 |
+| `answer_rate` | AssistantBench abstention (reported, **unweighted**) | 0.00 |
 
 **Honesty stance (already in the catalog docstring).** We implement *methodologies*
 on our own seed data; we do not reproduce any paper's exact numbers and do not claim
@@ -87,14 +89,14 @@ metric) · 🔴 hard (live environment + LLM-judged, nondeterministic).
 - **Metrics (from `scorer.py`/`metric.py`):** **harm score** = mean over per-task hand-written grading dicts (correct tool/args/order + semantic-judge checks), ∈[0,1] · `avg_full_score` (fraction scoring exactly 1) · **refusal rate** = fraction of samples a dedicated **RefusalJudgeLLM** flags · `avg_score_non_refusals` (capability on non-refused). Refusal and score are independent fields.
 - **Ingestion:** 🟢 already done (`agentharm-harmful-v1`) — it natively emits a refusal rate and a normalized harm score that map onto `harmful_refusal_rate`. **Note the license restriction** for any published index. It is *direct-misuse*, not injection.
 
-### 2.2 AgentDojo  ⬅ high-value next
+### 2.2 AgentDojo  ✅ ingested (`agentdojo-v1`)
 - **Repo:** [ethz-spylab/agentdojo](https://github.com/ethz-spylab/agentdojo). **Paper:** Debenedetti et al., [arXiv:2406.13352](https://arxiv.org/abs/2406.13352), NeurIPS 2024 D&B. **License:** MIT.
 - **Measures:** robustness of tool-calling agents to **indirect prompt injection** in tool/environment outputs, with **deterministic state-based** checks (no LLM env-sim).
 - **Size:** 97 user tasks + 27 injection tasks across 4 suites (Workspace/Slack/Travel/Banking), 74 tools, **629 security test cases** (user×injection cross-product).
 - **Metrics:** **Benign Utility** (tasks solved, no attack) · **Utility Under Attack** (task solved + no adversarial side effect) · **Targeted ASR** (attacker goal achieved, per-injection `security()` state check). Attack types: "ignore previous," TODO, InjecAgent-style, **"Important message"** (strong default), adaptive/max. Best agents <66% benign utility; ASR <25% undefended → ~8% with a detector defense.
 - **Ingestion:** 🟡 **cleanest injection benchmark** because checks are deterministic. Targeted ASR → `injection_robust` (`injection_robustness = 1 − ASR`); utility-under-attack is a second signal. Requires running the agent loop in their stateful env and adopting their suite/attack abstraction. **Top safety adoption target.** Also in `inspect_evals` (and NIST's `agentdojo-inspect` fork) — another reason to be Inspect-compatible.
 
-### 2.3 InjecAgent  ⬅ easiest injection win
+### 2.3 InjecAgent  ✅ ingested (`injecagent-v1`)
 - **Repo:** [uiuc-kang-lab/InjecAgent](https://github.com/uiuc-kang-lab/InjecAgent). **Paper:** Zhan et al., [arXiv:2403.02691](https://arxiv.org/abs/2403.02691), Findings of ACL 2024. **License:** MIT.
 - **Measures:** indirect prompt injection in tool results. **1,054 test cases**, 17 user + 62 attacker tools; **base** vs **enhanced** (hacking-prompt) settings. Categories: **Direct Harm** vs **Data Stealing** (two-stage S1 retrieve / S2 exfiltrate).
 - **Metrics:** **ASR** = fraction where agent performs attacker action (parsed from its tool call). **ASR-valid** (over parseable outputs only) vs **ASR-all** (over all 1,054). ReAct GPT-4 ≈24% ASR, ~doubling under enhanced.
@@ -126,7 +128,7 @@ metric) · 🔴 hard (live environment + LLM-judged, nondeterministic).
 
 ## 3. Code Agents
 
-### 3.1 SWE-bench / SWE-bench Verified
+### 3.1 SWE-bench / SWE-bench Verified  ✅ ingested (`swebench-verified-v1`, offline proxy)
 - **Repo:** [princeton-nlp/SWE-bench](https://github.com/princeton-nlp/SWE-bench). **Paper:** Jimenez et al., [arXiv:2310.06770](https://arxiv.org/abs/2310.06770), ICLR 2024 (Oral). **License:** MIT (code). Verified subset built with OpenAI.
 - **Measures:** given a repo snapshot + GitHub issue, produce a **patch** that resolves it (real Python OSS: django, sympy, scikit-learn…).
 - **Metrics:** **% Resolved** — an instance resolves **iff all FAIL_TO_PASS tests pass AND all PASS_TO_PASS tests pass** after applying the patch (binary per instance). FAIL_TO_PASS = tests tied to the fix (fail before, pass after gold PR); PASS_TO_PASS = regression guard.
@@ -137,7 +139,7 @@ metric) · 🔴 hard (live environment + LLM-judged, nondeterministic).
 
 ## 4. General / Web
 
-### 4.1 GAIA
+### 4.1 GAIA  ✅ ingested (`gaia-v1`, gated — validation split)
 - **Host:** [gaia-benchmark/GAIA](https://huggingface.co/datasets/gaia-benchmark/GAIA) (**gated**). **Paper:** Mialon et al., [arXiv:2311.12983](https://arxiv.org/abs/2311.12983), ICLR 2024. **License:** ⚠️ none declared; gated.
 - **Measures:** general-assistant capability — real questions needing multi-step reasoning + web/tool use + multimodality. 3 difficulty levels.
 - **Metric:** normalized **exact-match accuracy** (single unambiguous answer, no partial credit).
@@ -156,7 +158,7 @@ metric) · 🔴 hard (live environment + LLM-judged, nondeterministic).
 - **Metric:** per-env **Success Rate**, aggregated. Server–client containerized envs.
 - **Ingestion:** 🔴 heterogeneous; OS/DB are execution-gated. Model as a `task_success_rate` family parameterized per env. Defer.
 
-### 4.4 AssistantBench
+### 4.4 AssistantBench  ✅ ingested (`assistantbench-v1`)
 - **Repo:** [oriyor/assistantbench](https://github.com/oriyor/assistantbench). **Paper:** Yoran et al., [arXiv:2407.15711](https://arxiv.org/abs/2407.15711), EMNLP 2024. **License:** ⚠️ **AI Pubs Open RAIL-S** (use-restricted, not OSS).
 - **Measures:** web agents on realistic, time-consuming open-web multi-hop tasks. 214 tasks (~33 dev / ~181 test), >525 pages / 258 sites.
 - **Metrics:** answer-type-aware **accuracy** — strings: token **F1**; numbers: order-of-magnitude penalty `max(0, 1 − log(max(A,A′)/min(A,A′)))`; lists/JSON: per-key F1. Plus **answer rate** (non-abstention) and **precision** (accuracy on answered). Surfaces a precision/answer-rate tradeoff; no model >~26 accuracy.
@@ -169,7 +171,7 @@ metric) · 🔴 hard (live environment + LLM-judged, nondeterministic).
 ### 5.1 FActScore
 - **Repo:** [shmsw25/FActScore](https://github.com/shmsw25/FActScore). **Paper:** Min et al., [arXiv:2305.14251](https://arxiv.org/abs/2305.14251), EMNLP 2023. **License:** MIT.
 - **Measures:** factual **precision** of long-form text. Decompose output into **atomic facts** → judge each supported/unsupported vs a knowledge source → score = supported fraction (`init_score`), plus a length-penalized `score`. Precision, not recall.
-- **Ingestion:** 🟢 the right model for our deferred `faithfulness` metric over `final_output`. Atomic-claim groundedness against `retrieval` spans / provided source.
+- **Ingestion:** ✅ implemented — this is the model for our `faithfulness` metric over `final_output` (`src/ascore/metrics/faithfulness.py`), a live Index component at weight 0.15. Atomic-claim groundedness against `retrieval` spans / provided source.
 
 ### 5.2 RAGAS
 - **Repo:** [explodinggradients/ragas](https://github.com/explodinggradients/ragas). **License:** Apache-2.0.
@@ -222,6 +224,14 @@ Ranked by **value × tractability**. "Value" = comparability + coverage of a met
 claim; "Tractability" = how close it is to our existing `DatasetAdapter` + canonical
 checks. Items 1–4 are static-data adapters that reuse checks we already have.
 
+> **Status (update):** items **1–8 have since landed.** InjecAgent, AgentDojo, the
+> BFCL parallel/multiple/live splits, the real `faithfulness` metric, τ-bench
+> pass^k, AssistantBench (`answer_accuracy` + `answer_rate`), GAIA (gated), and
+> SWE-bench Verified all ship as adapters under `src/ascore/metrics/datasets/`
+> (SWE-bench as an **offline proxy**, not the official Docker resolve-rate). The
+> table below is kept as the original prioritization rationale; see the
+> [README dataset table](../README.md#real-public-datasets) for current state.
+
 | # | Adopt | Why (value) | Effort | New metric/infra? |
 |---|---|---|---|---|
 | **1** | **InjecAgent** (`injecagent-v1` adapter) | We *claim* `injection_robustness` but have no real injection dataset. 1,054 static cases, MIT, ASR→`injection_robust` directly. Closes our biggest credibility gap. | 🟢 low | none (reuse `injection_robust`) |
@@ -236,8 +246,8 @@ checks. Items 1–4 are static-data adapters that reuse checks we already have.
 **Deferred / mine-for-ideas, don't ingest:** τ²-bench (dual-control simulator — 🔴),
 ToolBench (decaying live APIs + LLM-judge), ToolEmu (LLM-emulated, nondeterministic —
 take its risk taxonomy), R-Judge (no license — use only to validate our judge),
-WebArena/AgentBench (heavy live Docker env stacks), GAIA (gated, leaderboard-only test
-split — ingest only the 165 public validation items if at all).
+WebArena/AgentBench (heavy live Docker env stacks). (GAIA has since been ingested
+as `gaia-v1` — the gated validation split only.)
 
 ### What makes our published index most credible & comparable
 1. **Cite + license-tag every dataset** in the scorecard (we already ship `ATTRIBUTION.md`
