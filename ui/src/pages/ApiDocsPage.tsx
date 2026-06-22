@@ -139,6 +139,16 @@ curl -s -X POST ${origin}/api/standard/seed -H "$AUTH"
 curl -s -X POST ${origin}/api/standard/run -H "$AUTH" \\
   -H "Content-Type: application/json" -d '{"agent_id":"my-agent","k":3}'
 curl -s ${origin}/api/standard/leaderboard -H "$AUTH"`}</pre>
+          <p className="summary" style={{ marginTop: 12 }}>
+            <b>Result caching.</b> Runs are cached by their inputs (suite version,
+            agent config, rubric version, judge models): an identical re-run is
+            served from the prior scorecard with <b>no agent or judge calls — $0</b>,
+            and the response/results carry <code>"cached": true</code>. It needs no
+            human-gate approval and no Anthropic key (nothing runs). To recompute
+            fresh, add <code>?force=true</code> (or <code>"refresh": true</code> in the
+            quickstart body). Browse past results at{" "}
+            <Link to="/app/results" style={{ color: "var(--accent)" }}>Results</Link>.
+          </p>
         </div>
 
         {err && <p style={{ color: "var(--fail)" }}>{err}</p>}

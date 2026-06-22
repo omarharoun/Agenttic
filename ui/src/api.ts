@@ -232,6 +232,8 @@ export const api = {
       body: JSON.stringify(body),
     }).then((r) => json<any>(r)),
   listScorecards: () => afetch("/api/scorecards").then((r) => json<any[]>(r)),
+  getScorecard: (id: string) =>
+    afetch(`/api/scorecards/${id}`).then((r) => json<any>(r)),
   scorecardReport: (id: string) =>
     afetch(`/api/scorecards/${id}/report`).then((r) => r.text()),
   scorecardPdf: (id: string) =>

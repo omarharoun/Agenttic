@@ -11,6 +11,7 @@ Anthropic key (400 if unset).
 
 from __future__ import annotations
 
+import hashlib
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -31,12 +32,17 @@ class FromRequirementBody(BaseModel):
     agent_id: str = "agent-under-test"
     system_prompt: str = ""               # instructions for the reference agent
     model: str = ""                       # optional model override
-    suite_id: str = ""                    # optional; generated if blank
+    suite_id: str = ""                    # optional; derived from requirement if blank
     name: str = "Quickstart from requirement"
+    refresh: bool = False                 # bypass the result cache, run fresh
 
 
 def _build_workflow(body: FromRequirementBody) -> Workflow:
-    suite_id = body.suite_id or f"req-{uuid.uuid4().hex[:8]}"
+    # Deterministic suite id from the requirement text, so re-running the SAME
+    # requirement reuses the generated suite (no re-generation) and lets the run
+    # hit the result cache — instead of minting a fresh suite every time.
+    suite_id = body.suite_id or (
+        "req-" + hashlib.sha256(body.requirement.strip().encode()).hexdigest()[:10])
     nodes = [
         WorkflowNode(node_id="doc", type="business_doc",
                      config={"text": body.requirement}),
@@ -74,10 +80,12 @@ def _build_workflow(body: FromRequirementBody) -> Workflow:
 
 @router.post("/quickstart/from-requirement",
              dependencies=[Depends(require_operator)])
-async def from_requirement(body: FromRequirementBody, request: Request):
+async def from_requirement(body: FromRequirementBody, request: Request,
+                           force: bool = False):
     if not body.requirement.strip():
         raise HTTPException(422, "requirement text is required")
     state = request.state
+    refresh = bool(force or body.refresh)
     wf = _build_workflow(body)
     problems = validate_workflow(wf)
     if problems:  # pragma: no cover - canonical graph is valid by construction
@@ -86,12 +94,15 @@ async def from_requirement(body: FromRequirementBody, request: Request):
     clients = _run_clients(request)
     state.store.save_workflow(wf)
     try:
-        execution_id = state.manager.start(wf, clients=clients)
+        execution_id = state.manager.start(wf, clients=clients, force=refresh)
     except WorkflowValidationError as exc:
         raise HTTPException(422, detail={"problems": exc.problems})
     return {"workflow_id": wf.workflow_id, "execution_id": execution_id,
-            "suite_id": wf.nodes[1].config["suite_id"],
-            "note": "Generation runs, then the workflow pauses at the human "
-                    "gate. Poll GET /api/executions/{execution_id}; when status "
-                    "is 'waiting_approval', review the draft suite and POST "
-                    "/api/executions/{execution_id}/approve to continue."}
+            "suite_id": wf.nodes[1].config["suite_id"], "refresh": refresh,
+            "note": "Generation runs (or is skipped if this requirement was "
+                    "already generated), then the workflow pauses at the human "
+                    "gate unless the suite is already approved. If an identical "
+                    "run is cached, the Run Suite step is served from cache ($0, "
+                    "no agent/judge calls). Poll GET /api/executions/{id}; on "
+                    "'waiting_approval' POST /api/executions/{id}/approve. Pass "
+                    "?force=true (or \"refresh\": true) to bypass the cache."}

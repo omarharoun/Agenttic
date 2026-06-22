@@ -24,6 +24,12 @@ export function ResultsPanel({ results }: { results: any }) {
         const allIn = (sc.total_cost_usd ?? 0) + (sc.total_scoring_cost_usd ?? 0);
         return (
         <div key={sc.scorecard_id}>
+          {sc.cached && (
+            <div className="note-ok" style={{ marginBottom: 8 }}>
+              ♻ Served from cache — identical to a previous run, so no agent or
+              judge calls were made (<b>$0</b>). Re-run with refresh to recompute.
+            </div>
+          )}
           <div className="score-strip">
             <div className="stat">
               <span className="lab">Task success</span>

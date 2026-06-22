@@ -433,6 +433,23 @@ builds the canonical generate→approve→run→score→report pipeline server-s
 you don't hand-author the graph. The full reference (with copy-paste curl) lives
 at [`/api-docs`](https://agenttic.io/api-docs).
 
+### Result caching (don't re-spend on identical runs)
+
+A run's result is fully determined by its inputs, so identical runs are cached
+instead of re-executed. The cache key is `sha256(agent_id + suite_id/version +
+agent config_hash + rubric_id/version + judge models)`, **per tenant** (a tenant
+only ever hits its own results — no cross-tenant leakage). On a hit the prior
+scorecard is returned with **zero agent/judge calls (`$0`)** and `"cached": true`
+in the response — no human-gate approval and no Anthropic key required, since
+nothing runs. Caching is applied on all run paths: the workflow executor
+(Run Suite step short-circuits), `/quickstart/from-requirement` (which also
+derives a deterministic suite id from the requirement so re-runs reuse the
+generated suite), and `/standard/run`. Bypass with `?force=true` (or
+`"refresh": true`). The mapping lives in the append-only registry
+(`result_cache` table, migration v10); browse past results — fresh vs cached, with
+cost — on the **Results** page (`/app/results`) or via `GET /api/scorecards`.
+Code: `src/ascore/result_cache.py`, cache hooks in `src/ascore/server/nodes.py`.
+
 ## Design rules the code enforces
 
 1. **The trace schema is the contract.** Changes bump `SCHEMA_VERSION`.

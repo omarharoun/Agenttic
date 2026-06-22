@@ -375,9 +375,12 @@ async def run_standard_op(cfg: dict, reg: Registry, *, agent_id: str, k: int = 3
                           variant: str = "reference", url: str = "",
                           system_prompt: str = "", model: str = "",
                           client=None, judge_client=None, fi_evaluate_fn=None,
-                          on_progress=None, persist: bool = True) -> dict:
+                          on_progress=None, persist: bool = True,
+                          cache_key: str | None = None) -> dict:
     """Run the canonical suites k times for an agent and persist the full
-    Agenttic Index (incl. pass^k + ECE). Seeds the standard suites if absent."""
+    Agenttic Index (incl. pass^k + ECE). Seeds the standard suites if absent.
+    When ``cache_key`` is given, the completed run is recorded in the result
+    cache so an identical re-run is served for free."""
     import json
 
     from ascore.metrics.runner import run_standard
@@ -390,6 +393,11 @@ async def run_standard_op(cfg: dict, reg: Registry, *, agent_id: str, k: int = 3
                                 fi_evaluate_fn=fi_evaluate_fn, on_progress=on_progress)
     if persist:
         reg.save_canonical_run(result["run_id"], agent_id, json.dumps(result))
+        if cache_key:
+            try:
+                reg.put_cached_result(cache_key, "canonical", result["run_id"])
+            except Exception:  # noqa: BLE001 — caching is best-effort
+                pass
     return result
 
 

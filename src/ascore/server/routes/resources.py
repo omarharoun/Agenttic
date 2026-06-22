@@ -83,7 +83,17 @@ def get_trace(trace_id: str, request: Request):
 @router.get("/scorecards")
 def list_scorecards(request: Request, agent_id: str | None = None,
                     suite_id: str | None = None):
-    return request.state.store.list_scorecards(agent_id, suite_id)
+    """Results history: every persisted scorecard for the tenant (newest first).
+    ``cached`` flags a result that is reusable for free on an identical re-run
+    (it backs a result-cache entry)."""
+    rows = request.state.store.list_scorecards(agent_id, suite_id)
+    try:
+        cached_ids = request.state.reg.cached_scorecard_ids()
+    except Exception:  # noqa: BLE001
+        cached_ids = set()
+    for r in rows:
+        r["cached"] = r.get("scorecard_id") in cached_ids
+    return rows
 
 
 @router.get("/scorecards/{scorecard_id}")

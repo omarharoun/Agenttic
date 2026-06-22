@@ -119,6 +119,14 @@ def _personal_api_tokens_table(conn) -> None:
     PersonalApiTokenRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _result_cache_table(conn) -> None:
+    """v10 — result cache: deterministic run fingerprint -> completed result,
+    per tenant, so identical runs reuse a scorecard instead of re-spending."""
+    import ascore.registry.sqlite_store  # noqa: F401 (registers ResultCacheRow)
+    from ascore.registry.sqlite_store import ResultCacheRow
+    ResultCacheRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -130,6 +138,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (7, "canonical_runs_table", _canonical_runs_table),
     (8, "optimization_runs_table", _optimization_runs_table),
     (9, "personal_api_tokens_table", _personal_api_tokens_table),
+    (10, "result_cache_table", _result_cache_table),
 ]
 
 

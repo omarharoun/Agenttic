@@ -60,12 +60,43 @@ class RunBody(BaseModel):
     k: int = 3
 
 
+def _standard_cache_key(cfg: dict, reg, body: "RunBody", k: int) -> str | None:
+    """Cache key for a standard run: the agent config + the canonical suite set
+    present + k + judge models. None if the adapter can't be fingerprinted."""
+    try:
+        from ascore.metrics.standard_suites import (
+            canonical_suite_ids, seed_standard_suites,
+        )
+        from ascore.result_cache import canonical_cache_key
+        seed_standard_suites(reg)
+        adapter = ops.build_adapter(cfg, variant=body.variant,
+                                    agent_id=body.agent_id, url=body.url,
+                                    system_prompt=body.system_prompt,
+                                    model=body.model)
+        return canonical_cache_key(agent_config_hash=adapter.config_hash(),
+                                   suite_sig=canonical_suite_ids(reg), k=k, cfg=cfg)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 @router.post("/standard/run", dependencies=[Depends(require_operator)])
-async def run_standard(body: RunBody, request: Request):
+async def run_standard(body: RunBody, request: Request, force: bool = False):
     """Run the canonical suites k times for an agent (background) and persist the
     full Agenttic Index incl. pass^k + ECE. Uses the tenant's own Anthropic key.
-    Cost note: k runs cost k x the tokens."""
+    Cost note: k runs cost k x the tokens. An identical run is served from cache
+    (``cached: true``, $0) unless ``?force=true``."""
     cfg, reg = request.state.cfg, request.state.reg
+
+    cache_key = _standard_cache_key(cfg, reg, body, max(1, min(int(body.k), MAX_K)))
+    if cache_key and not force:
+        hit = reg.get_cached_result(cache_key)
+        if hit and hit["kind"] == "canonical" and reg.get_canonical_run(hit["ref_id"]):
+            return {"started": False, "cached": True, "agent_id": body.agent_id,
+                    "run_id": hit["ref_id"], "cost_usd": 0.0,
+                    "created_at": hit["created_at"].isoformat(),
+                    "note": "Identical run served from cache — no agent/judge "
+                            "calls, $0. Pass ?force=true to re-run fresh."}
+
     injected = getattr(request.state, "clients", None) or {}
     if injected:
         client = injected.get("agent")
@@ -85,12 +116,12 @@ async def run_standard(body: RunBody, request: Request):
             await ops.run_standard_op(
                 cfg, reg, agent_id=body.agent_id, k=k, variant=body.variant,
                 url=body.url, system_prompt=body.system_prompt, model=body.model,
-                client=client, judge_client=judge)
+                client=client, judge_client=judge, cache_key=cache_key)
         except Exception as exc:  # noqa: BLE001
             logger.error("standard run failed for %s: %s", body.agent_id, exc)
 
     asyncio.create_task(_bg())
-    return {"started": True, "agent_id": body.agent_id, "k": k,
+    return {"started": True, "cached": False, "agent_id": body.agent_id, "k": k,
             "note": f"Running the canonical suites {k}x — k runs cost k x tokens. "
                     "Results appear on the standard leaderboard when done."}
 

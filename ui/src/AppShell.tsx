@@ -9,6 +9,7 @@ import { AgentsPage } from "./pages/AgentsPage";
 import { ComparePage } from "./pages/ComparePage";
 import { EditorPage } from "./pages/EditorPage";
 import { ExecutionsPage } from "./pages/ExecutionsPage";
+import { ResultsHistoryPage } from "./pages/ResultsHistoryPage";
 import { HardeningPage } from "./pages/HardeningPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { OptimizePage } from "./pages/OptimizePage";
@@ -100,6 +101,7 @@ export function AppShell() {
         </a>
         <NavLink to="/app" end><span className="ic">▦</span> Workflows</NavLink>
         <NavLink to="/app/executions"><span className="ic">▶</span> Runs</NavLink>
+        <NavLink to="/app/results"><span className="ic">📊</span> Results</NavLink>
         <NavLink to="/app/compare"><span className="ic">⚖</span> Compare</NavLink>
         <NavLink to="/app/leaderboard"><span className="ic">🏆</span> Leaderboard</NavLink>
         <NavLink to="/app/hardening"><span className="ic">🛡</span> Hardening</NavLink>
@@ -137,6 +139,7 @@ export function AppShell() {
           <Routes>
             <Route path="/" element={<EditorPage />} />
             <Route path="executions" element={<ExecutionsPage />} />
+            <Route path="results" element={<ResultsHistoryPage />} />
             <Route path="compare" element={<ComparePage />} />
             <Route path="leaderboard" element={<LeaderboardPage />} />
             <Route path="hardening" element={<HardeningPage />} />
