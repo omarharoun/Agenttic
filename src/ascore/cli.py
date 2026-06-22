@@ -210,6 +210,52 @@ def report(scorecard_id: str, out: Path = Path("report.md"),
     console.print(f"Wrote {out}")
 
 
+@app.command(name="inspect-export")
+def inspect_export(scorecard_id: str,
+                   out: Path = typer.Option(None, "--out", "-o",
+                       help="write to this file (default: <scorecard>.inspect.json)"),
+                   config: str = "config.yaml"):
+    """Export a scorecard as a UK AISI Inspect (inspect_ai) EvalLog (JSON).
+
+    The output validates against inspect_ai.log.EvalLog and opens in the Inspect
+    viewer / re-scores in the Inspect harness — no inspect_ai install required."""
+    import json
+    _, reg = _ctx(config)
+    log = ops.inspect_log_op(reg, scorecard_id)
+    out = out or Path(f"{scorecard_id}.inspect.json")
+    out.write_text(json.dumps(log, indent=2))
+    n = len(log.get("samples", []))
+    console.print(f"Wrote {out}  ({n} sample(s), Inspect EvalLog v{log['version']})")
+
+
+@app.command(name="inspect-import")
+def inspect_import(path: Path = typer.Argument(..., help="an Inspect EvalLog .json"),
+                   save: bool = typer.Option(False, "--save",
+                       help="persist the reconstructed scorecard/traces to the registry"),
+                   config: str = "config.yaml"):
+    """Parse an Inspect EvalLog back into an agenttic scorecard (+ traces/rubric).
+
+    Lossless for logs agenttic produced; best-effort for foreign logs (scores
+    snap to {0,0.5,1}, aggregates recomputed). With --save, the recovered
+    records are written to the registry."""
+    import json
+    from ascore.interop import from_inspect_log
+    _, reg = _ctx(config)
+    result = from_inspect_log(json.loads(path.read_text()))
+    sc = result["scorecard"]
+    console.print(f"Recovered scorecard {sc.scorecard_id}: agent={sc.agent_id} "
+                  f"suite={sc.suite_id} v{sc.suite_version} "
+                  f"success={sc.task_success_rate:.2%} "
+                  f"runs={len(sc.run_scores)} traces={len(result['traces'])}")
+    if save:
+        for tr in result["traces"]:
+            reg.save_trace(tr)
+        if result["rubric"]:
+            reg.save_rubric(result["rubric"])
+        reg.save_scorecard(sc)
+        console.print(f"Saved to registry (tenant={_STATE['tenant'] or 'default'}).")
+
+
 def _ab_variant(reg, label: str, agent: str, model: str, prompt: str):
     """Build an ABVariant from a base agent id, resolving a declared catalog
     entry when present; --model/--prompt override it (the model/prompt A/B
