@@ -245,6 +245,31 @@ export const api = {
       return r.blob();
     }),
 
+  // -- hardening loop (failure → regression suite → re-run → delta) --------
+  hardeningCandidates: () =>
+    afetch("/api/hardening/candidates").then((r) => json<{ candidates: any[] }>(r)),
+  hardeningSuites: () =>
+    afetch("/api/hardening/suites").then((r) => json<{ suites: any[] }>(r)),
+  hardeningDetail: (id: string) =>
+    afetch(`/api/hardening/suites/${encodeURIComponent(id)}`).then((r) => json<any>(r)),
+  promoteFailures: (body: { scorecard_id: string; test_ids?: string[] | null;
+                            source?: string }) =>
+    afetch("/api/hardening/promote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<any>(r)),
+  rerunRegression: (body: {
+    regression_suite_id: string; variant?: string; url?: string;
+    system_prompt?: string; model?: string; managed_agent_id?: string;
+    environment_id?: string;
+  }) =>
+    afetch("/api/hardening/rerun", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<any>(r)),
+
   listTraces: () => afetch("/api/traces").then((r) => json<any[]>(r)),
   getTrace: (id: string) => afetch(`/api/traces/${id}`).then((r) => json<any>(r)),
   upload: (file: File) => {

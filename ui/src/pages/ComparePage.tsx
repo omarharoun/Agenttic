@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, downloadBlob } from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 
@@ -224,6 +225,18 @@ function Comparison({ c, id }: { c: any; id: string }) {
                   .then((b) => downloadBlob(b, `ab-comparison-${id}.pdf`)).catch(() => {})}>
           ⤓ PDF
         </button>
+        {c.scorecard_a_id && (
+          <Link className="btn" to={`/app/hardening?promote=${c.scorecard_a_id}`}
+                title={`Promote ${la}'s failing cases into a regression suite`}>
+            🛡 Harden {la}'s failures
+          </Link>
+        )}
+        {c.scorecard_b_id && (
+          <Link className="btn" to={`/app/hardening?promote=${c.scorecard_b_id}`}
+                title={`Promote ${lb}'s failing cases into a regression suite`}>
+            🛡 Harden {lb}'s failures
+          </Link>
+        )}
       </div>
       {report && <pre className="doc" style={{ marginTop: 8 }}>{report}</pre>}
     </div>
