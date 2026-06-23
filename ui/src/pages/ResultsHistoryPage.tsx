@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, downloadBlob } from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 
@@ -87,6 +88,11 @@ export function ResultsHistoryPage() {
                                   onClick={() => api.scorecardPdf(r.scorecard_id)
                                     .then((b) => downloadBlob(b, `scorecard-${r.scorecard_id}.pdf`))
                                     .catch(() => {})}>⤓ PDF</button>
+                          <Link className="btn-cell" style={{ marginLeft: 6 }}
+                                title="Issue a safety certificate from this scorecard"
+                                to={`/app/certifications?scorecard=${encodeURIComponent(r.scorecard_id)}`}>
+                            🏅 Certify
+                          </Link>
                         </td>
                       </tr>
                     );

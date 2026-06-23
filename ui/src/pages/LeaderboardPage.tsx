@@ -109,6 +109,10 @@ function StandardBenchmarks() {
           <Link to="/methodology" style={{ color: "var(--accent)", fontWeight: 600, marginLeft: 6 }}>
             Full methodology →
           </Link>
+          {" "}
+          <Link to="/app/certifications" style={{ color: "var(--accent)", fontWeight: 600, marginLeft: 6 }}>
+            🏅 Certify an agent →
+          </Link>
         </p>
       </header>
 
