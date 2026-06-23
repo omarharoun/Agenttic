@@ -233,6 +233,10 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
 
     from ascore.server.routes.ab import router as ab_router
     from ascore.server.routes.auth import router as auth_router
+    from ascore.server.routes.certifications import (
+        public_router as certifications_public_router,
+    )
+    from ascore.server.routes.certifications import router as certifications_router
     from ascore.server.routes.cost import router as cost_router
     from ascore.server.routes.executions import router as executions_router
     from ascore.server.routes.hardening import router as hardening_router
@@ -251,6 +255,11 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     # the middleware + per-email lockout.
     app.include_router(auth_router, prefix="/api")
 
+    # Public, UNAUTHENTICATED certificate verification (powers the public
+    # "Tested with Agenttic" page + embeddable badges). Mounted before the
+    # auth-protected routers; looked up by cert id regardless of tenant.
+    app.include_router(certifications_public_router, prefix="/api")
+
     protected = [Depends(require_auth), Depends(bind_workspace)]
     app.include_router(workflows_router, prefix="/api", dependencies=protected)
     app.include_router(executions_router, prefix="/api", dependencies=protected)
@@ -264,6 +273,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(hardening_router, prefix="/api", dependencies=protected)
     app.include_router(optimize_router, prefix="/api", dependencies=protected)
     app.include_router(quickstart_router, prefix="/api", dependencies=protected)
+    app.include_router(certifications_router, prefix="/api", dependencies=protected)
 
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"),

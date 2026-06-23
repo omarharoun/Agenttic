@@ -251,6 +251,32 @@ class ResultCacheRow(SQLModel, table=True):
     created_at: datetime
 
 
+class CertificationRow(SQLModel, table=True):
+    """An issued Agent Safety Certificate. GLOBAL table (like users / PATs):
+    issuance is tenant-scoped (``tenant_id``), but a certificate is publicly
+    verifiable by ``cert_id`` alone — the public endpoints look it up regardless
+    of tenant. The signed canonical payload (grade, scores, config_hash, dates)
+    lives in ``payload`` with its HMAC ``signature``; ``revoked_at`` is the only
+    mutable field and is deliberately OUTSIDE the signed payload, so revoking a
+    cert never invalidates its signature. The denormalised columns are for
+    querying/listing only — the payload is the source of truth."""
+    __tablename__ = "certifications"
+    __table_args__ = (UniqueConstraint("cert_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    cert_id: str = Field(index=True)              # public certificate id
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    agent_id: str = Field(index=True)
+    config_hash: str = Field(index=True)          # ties the cert to that agent version
+    scorecard_id: str = Field(index=True)         # the safety run it was issued from
+    grade: str                                    # A | B | C | D | F (cached from payload)
+    payload: str                                  # canonical signed JSON
+    signature: str                                # HMAC-SHA256 hex over the payload
+    issued_at: datetime
+    expires_at: datetime
+    revoked_at: datetime | None = None
+    created_at: datetime
+
+
 class EmailTokenRow(SQLModel, table=True):
     """A single-use, expiring email token (account verification). GLOBAL, like
     users. Consumed by setting ``used_at``; rows are safe to prune past expiry."""
