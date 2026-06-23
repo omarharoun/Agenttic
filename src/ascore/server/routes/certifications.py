@@ -1,0 +1,131 @@
+"""Agent Safety Certification endpoints.
+
+Two routers:
+
+* **Authed + tenant-scoped** (``/api/certifications``) — issue a certificate from
+  a completed safety scorecard, list the tenant's certs, and revoke one. Mounted
+  under the standard auth + workspace binding.
+
+* **Public, no auth** (``/api/public/certifications``) — the verification surface
+  that powers the public "Tested with Agenttic" page: fetch a certificate by id,
+  verify its signature, and render an embeddable SVG badge. Looked up by id
+  regardless of tenant; cache-friendly.
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel
+
+from ascore import certification as cert
+from ascore.registry.sqlite_store import NotFoundError
+from ascore.server.auth import require_operator
+from ascore.server.certifications import CertStore, issue_certificate
+
+# ----------------------------------------------------------------------------- #
+# Authenticated, tenant-scoped router.
+# ----------------------------------------------------------------------------- #
+
+router = APIRouter(tags=["certifications"])
+
+
+class IssueBody(BaseModel):
+    scorecard_id: str
+    expires_days: int = cert.DEFAULT_EXPIRY_DAYS
+
+
+@router.post("/certifications", dependencies=[Depends(require_operator)])
+def issue(body: IssueBody, request: Request):
+    """Issue a signed safety certificate from a completed safety scorecard. The
+    scorecard must cover the required safety dimensions (refusal + injection);
+    otherwise this returns 422 with a clear explanation. The certificate pins the
+    agent's config_hash and is signed (tamper-evident)."""
+    if not body.scorecard_id.strip():
+        raise HTTPException(422, "scorecard_id is required")
+    global_engine = request.app.state.reg.engine
+    try:
+        return issue_certificate(
+            global_engine=global_engine, cfg=request.state.cfg,
+            reg=request.state.reg, tenant=request.state.tenant,
+            scorecard_id=body.scorecard_id.strip(),
+            expires_days=body.expires_days)
+    except NotFoundError as exc:
+        raise HTTPException(404, str(exc))
+    except cert.CertificationError as exc:
+        raise HTTPException(422, str(exc))
+
+
+@router.get("/certifications")
+def list_certifications(request: Request):
+    """Every certificate issued by the caller's tenant (newest first)."""
+    store = CertStore(request.app.state.reg.engine)
+    return {"certifications": store.list_for_tenant(request.state.tenant,
+                                                    cfg=request.state.cfg)}
+
+
+@router.delete("/certifications/{cert_id}",
+               dependencies=[Depends(require_operator)])
+def revoke(cert_id: str, request: Request):
+    """Revoke a certificate the tenant owns (immediate; revoked certs verify as
+    'revoked'). 404 if it isn't the tenant's or is already revoked."""
+    store = CertStore(request.app.state.reg.engine)
+    if not store.revoke(tenant=request.state.tenant, cert_id=cert_id):
+        raise HTTPException(404, f"certification {cert_id} not found, already "
+                                 "revoked, or not owned by this tenant")
+    return {"cert_id": cert_id, "status": "revoked"}
+
+
+# ----------------------------------------------------------------------------- #
+# Public, unauthenticated verification router.
+# ----------------------------------------------------------------------------- #
+
+public_router = APIRouter(tags=["certifications-public"])
+
+# Public reads are immutable enough to cache briefly; the badge a bit longer.
+_CACHE = "public, max-age=300"
+_BADGE_CACHE = "public, max-age=600"
+
+
+def _store(request: Request) -> CertStore:
+    # The certifications table is GLOBAL (default-tenant engine in SQLite, the
+    # shared engine in Postgres) — same place users/PATs live.
+    return CertStore(request.app.state.reg.engine)
+
+
+def _cfg(request: Request) -> dict:
+    return request.app.state.cfg
+
+
+@public_router.get("/public/certifications/{cert_id}")
+def public_get(cert_id: str, request: Request):
+    """The public certificate: grade, agent, the real per-dimension safety
+    breakdown, methodology version, issue/expiry/revocation status, and whether
+    the signature verifies. No auth."""
+    try:
+        view = _store(request).public_view(cert_id, cfg=_cfg(request))
+    except NotFoundError:
+        raise HTTPException(404, f"certification {cert_id} not found")
+    return JSONResponse(view, headers={"Cache-Control": _CACHE})
+
+
+@public_router.get("/public/certifications/{cert_id}/verify")
+def public_verify(cert_id: str, request: Request):
+    """Signature-verification + lifecycle status only (lightweight). No auth."""
+    try:
+        result = _store(request).verify(cert_id, cfg=_cfg(request))
+    except NotFoundError:
+        raise HTTPException(404, f"certification {cert_id} not found")
+    return JSONResponse(result, headers={"Cache-Control": _CACHE})
+
+
+@public_router.get("/public/certifications/{cert_id}/badge.svg")
+def public_badge(cert_id: str, request: Request):
+    """An embeddable shields.io-style SVG badge ("Agenttic Safety: A"), coloured
+    by grade. Revoked/expired/tampered certs render accordingly. No auth."""
+    try:
+        svg = _store(request).badge(cert_id, cfg=_cfg(request))
+    except NotFoundError:
+        raise HTTPException(404, f"certification {cert_id} not found")
+    return Response(content=svg, media_type="image/svg+xml",
+                    headers={"Cache-Control": _BADGE_CACHE})

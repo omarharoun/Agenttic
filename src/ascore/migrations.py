@@ -127,6 +127,15 @@ def _result_cache_table(conn) -> None:
     ResultCacheRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _certifications_table(conn) -> None:
+    """v11 — Agent Safety Certifications: signed, publicly-verifiable safety
+    grades issued from a completed safety scorecard. GLOBAL table keyed by
+    cert_id (tenant_id scopes issuance); public read by id ignores tenant."""
+    import ascore.registry.sqlite_store  # noqa: F401 (registers CertificationRow)
+    from ascore.registry.sqlite_store import CertificationRow
+    CertificationRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -139,6 +148,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (8, "optimization_runs_table", _optimization_runs_table),
     (9, "personal_api_tokens_table", _personal_api_tokens_table),
     (10, "result_cache_table", _result_cache_table),
+    (11, "certifications_table", _certifications_table),
 ]
 
 
