@@ -231,6 +231,25 @@ export const api = {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then((r) => json<any>(r)),
+  // --- agent safety certification ---------------------------------------
+  // Public reads (unauthenticated) — back the /certified pages + badge.
+  publicCertification: (id: string) =>
+    fetch(`/api/public/certifications/${encodeURIComponent(id)}`)
+      .then((r) => json<any>(r)),
+  publicCertifiedDirectory: () =>
+    fetch("/api/public/certifications").then((r) => json<any>(r)),
+  // Authenticated — issue from a scorecard, list, revoke.
+  listCertifications: () =>
+    afetch("/api/certifications").then((r) => json<any>(r)),
+  issueCertification: (body: { scorecard_id: string; agent_name?: string }) =>
+    afetch("/api/certifications", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<any>(r)),
+  revokeCertification: (id: string) =>
+    afetch(`/api/certifications/${encodeURIComponent(id)}`, { method: "DELETE" })
+      .then((r) => json<any>(r)),
+
   listScorecards: () => afetch("/api/scorecards").then((r) => json<any[]>(r)),
   getScorecard: (id: string) =>
     afetch(`/api/scorecards/${id}`).then((r) => json<any>(r)),

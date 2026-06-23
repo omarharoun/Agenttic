@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { GRADE_BANDS, gradeColor } from "../cert";
+import { Seal } from "../components/Seal";
 
 /* ============================================================================
    Methodology & Index — the public, unauthenticated explainer for how the
@@ -128,9 +130,10 @@ export function MethodologyPage() {
       <nav className="lp-nav">
         <Link to="/" className="brand"><span className="hex">⬡</span> Agenttic</Link>
         <span className="spacer" />
+        <Link className="navlink" to="/certified">Certified agents</Link>
         <Link className="navlink" to="/api-docs">API docs</Link>
         <Link className="navlink" to="/app/leaderboard">Leaderboard</Link>
-        <Link className="btn-primary" to="/signup">Get started</Link>
+        <Link className="btn-primary" to="/signup">Get certified</Link>
       </nav>
 
       <main className="meth">
@@ -316,6 +319,77 @@ export function MethodologyPage() {
           </p>
         </section>
 
+        {/* ---------- certification ---------- */}
+        <section className="meth-section" id="certification">
+          <span className="eyebrow">Certification</span>
+          <h2>From Index to a safety grade</h2>
+          <div className="cert-meth-head">
+            <Seal grade="A" size={104} />
+            <p style={{ margin: 0 }}>
+              An <b>Agent Safety Certification</b> turns a scored run into a single
+              letter grade you can publish. The grade is drawn from the 0–100
+              Agenttic Index above, but it never stands alone: the certificate
+              always shows the per-dimension safety breakdown next to it, so a
+              grade can't hide a weak injection-robustness or refusal number.
+            </p>
+          </div>
+
+          <h3 className="meth-sub">What the grade bands mean</h3>
+          <div className="grade-bands">
+            {GRADE_BANDS.map((b, i) => {
+              const next = GRADE_BANDS[i - 1];
+              const range = next ? `${b.min}–${next.min - 1}` : `≥ ${b.min}`;
+              const top = i === 0 ? `${b.min}–100` : range;
+              return (
+                <div className="grade-band" key={b.grade}>
+                  <span className="gb-letter" style={{ color: gradeColor(b.grade),
+                        borderColor: gradeColor(b.grade) }}>{b.grade}</span>
+                  <div className="gb-body">
+                    <div className="gb-top">
+                      <span className="gb-label">{b.label}</span>
+                      <span className="gb-range">Index {top}</span>
+                    </div>
+                    <p className="gb-blurb">{b.blurb}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <h3 className="meth-sub">Which dimensions are tested</h3>
+          <p>
+            The same literature-anchored components that feed the Index decide the
+            grade — weighted toward safety: <b>prompt-injection robustness</b>{" "}
+            (AgentDojo / InjecAgent), <b>harmful-action refusal</b> (AgentHarm),{" "}
+            <b>secret-leak resistance</b>, <b>tool-call correctness</b> (BFCL /
+            τ-bench), <b>reliability across runs</b> (pass^k), and{" "}
+            <b>calibration</b>. Every one is shown on the public certificate.
+          </p>
+
+          <h3 className="meth-sub">Pinned, signed, and verifiable</h3>
+          <ul className="meth-callout-list">
+            <li>
+              <b>Pinned to a version.</b> A grade is bound to the exact agent
+              version it was earned on (a <code>config_hash</code> over model,
+              prompt, and tools). Change any of those and the certificate no longer
+              applies — re-test to re-certify. No silent grade inflation.
+            </li>
+            <li>
+              <b>Signed and checkable.</b> The certificate payload is
+              cryptographically signed, so the grade and scores on the public{" "}
+              <code>/certified/&#123;id&#125;</code> page can be verified as issued
+              by Agenttic and unaltered. Each page carries a clear status —{" "}
+              ✓&nbsp;Valid, ⚠&nbsp;Expired, or ⛔&nbsp;Revoked.
+            </li>
+            <li>
+              <b>Honest by construction.</b> Grades populate only from runs that
+              actually happened on Agenttic's suites — an agent with no run has no
+              grade, never an assumed pass. Revocation is one click and is
+              reflected publicly immediately.
+            </li>
+          </ul>
+        </section>
+
         {/* ---------- close ---------- */}
         <section className="meth-section meth-cta" id="cta">
           <h2>See the Index in action</h2>
@@ -324,8 +398,8 @@ export function MethodologyPage() {
             through the canonical suites.
           </p>
           <div className="cta" style={{ justifyContent: "center" }}>
-            <Link className="btn-primary" to="/app/leaderboard">View the leaderboard</Link>
-            <Link className="btn-ghost" to="/signup">Test your agent free</Link>
+            <Link className="btn-primary" to="/certified">Browse certified agents</Link>
+            <Link className="btn-ghost" to="/signup">Get certified free</Link>
           </div>
         </section>
       </main>
