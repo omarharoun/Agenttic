@@ -36,6 +36,54 @@ export interface WorkflowDoc {
   edges: WorkflowEdge[];
 }
 
+/** A safety dimension as the scan reports it (plain-language). */
+export interface ScanCheck {
+  criterion_id: string;
+  label: string;
+  status: "pending" | "pass" | "warn" | "fail";
+  passed: boolean | null;
+  detail: string;
+  percent?: number;
+  critical: boolean;
+}
+
+export interface ScanResult {
+  scorecard_id: string;
+  agent_id: string;
+  grade: string;
+  composite_score: number;
+  grade_capped: boolean;
+  cap_reason: string;
+  dimensions: ScanCheck[];
+  missing_required: string[];
+  n_cases: number;
+  errored: number;
+  cost_usd: number;
+}
+
+/** A live scan job (GET /api/scan/{id}). */
+export interface ScanJob {
+  scan_id: string;
+  target: string;
+  agent_name: string;
+  status: "running" | "done" | "error";
+  phase: string;
+  progress: number;
+  n_cases: number;
+  cases_done: number;
+  checks: ScanCheck[];
+  result: ScanResult | null;
+  certificate: any | null;
+  cert_note: string | null;
+  error: string | null;
+}
+
+export interface ScanPreview {
+  dimensions: { criterion_id: string; label: string; critical: boolean }[];
+  endpoint: { needs_key: boolean; note: string };
+  demo: { needs_key: boolean; key_set: boolean; note: string };
+}
+
 const TOKEN_KEY = "ascore_token";
 
 /** API token store (shared bearer key). EventSource can't send headers, so
@@ -231,6 +279,20 @@ export const api = {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then((r) => json<any>(r)),
+  // --- safety scan ("Scan my agent") — the consumer on-ramp -------------
+  scanPreview: () =>
+    afetch("/api/scan/preview").then((r) => json<ScanPreview>(r)),
+  startScan: (body: {
+    target: "endpoint" | "demo"; url?: string;
+    header_name?: string; header_value?: string; agent_name?: string;
+  }) =>
+    afetch("/api/scan", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<{ scan_id: string; target: string; n_dimensions: number }>(r)),
+  scanStatus: (scanId: string) =>
+    afetch(`/api/scan/${encodeURIComponent(scanId)}`).then((r) => json<ScanJob>(r)),
+
   // --- agent safety certification ---------------------------------------
   // Public reads (unauthenticated) — back the /certified pages + badge.
   publicCertification: (id: string) =>
