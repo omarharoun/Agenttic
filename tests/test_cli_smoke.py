@@ -89,11 +89,24 @@ def test_agents_catalog_cli_roundtrip(tmp_path):
 
 def test_run_uses_named_agent_suite_options():
     """`ascore run` accepts --agent/--suite (README form), not positionals."""
+    import re
+
+    import typer
     from typer.testing import CliRunner
-    r = CliRunner().invoke(app, ["run", "--help"])
-    assert r.exit_code == 0
-    assert "--agent" in r.output and "--suite" in r.output
-    # missing required options -> clear error, not a crash
+
+    # Assert on the command's registered parameters, not the rendered --help
+    # text: newer Typer/Rich versions wrap/truncate the options column (and
+    # inject ANSI) at narrow terminal widths, which broke a naive substring
+    # check in CI. Introspection is rendering-independent.
+    cmd = typer.main.get_command(app).commands["run"]
+    names = {p.name for p in cmd.params}
+    assert {"agent", "suite"} <= names
+
+    # help still exits 0
+    assert CliRunner().invoke(app, ["run", "--help"]).exit_code == 0
+
+    # missing required options -> clear error, not a crash (strip ANSI first)
     missing = CliRunner().invoke(app, ["run"])
     assert missing.exit_code != 0
-    assert "--agent" in missing.output
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", missing.output)
+    assert "agent" in plain.lower()
