@@ -106,3 +106,8 @@ security:
   blackbox_allowed_schemes: [http, https]
   blackbox_block_private: true      # block private/loopback/link-local/metadata IPs
   blackbox_url_allowlist: []        # if non-empty, only these host suffixes allowed
+
+# "Connect your agent" — gentle-traffic limits for scanning a user's live agent.
+connect:
+  timeout_s: 20                     # per-request timeout against the user's endpoint
+  rate_limit_s: 0.5                 # min seconds between requests (sequential/1 in-flight)

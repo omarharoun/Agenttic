@@ -84,6 +84,43 @@ export interface ScanPreview {
   demo: { needs_key: boolean; key_set: boolean; note: string };
 }
 
+/** The saved "Connect your agent" config (masked — never carries the secret). */
+export interface ConnectionStatus {
+  connected: boolean;
+  agent_name?: string;
+  endpoint_url?: string;
+  preset?: "openai" | "generic" | "custom";
+  request_field?: string;
+  response_path?: string;
+  model?: string;
+  auth_header_name?: string;
+  auth_set?: boolean;
+  auth_masked?: string;
+  consent?: boolean;
+  consent_at?: string | null;
+  updated_at?: string | null;
+}
+
+/** What the user enters to configure / test / save a connection. */
+export interface ConnectionInput {
+  endpoint_url: string;
+  agent_name?: string;
+  preset?: "openai" | "generic" | "custom";
+  request_field?: string;
+  response_path?: string;
+  model?: string;
+  auth_header_name?: string;
+  auth_header_value?: string;
+  consent?: boolean;
+}
+
+export interface ConnectionTestResult {
+  ok: boolean;
+  reply: string;
+  error: string | null;
+  mapping: { preset: string; request_field: string; response_path: string; model: string };
+}
+
 const TOKEN_KEY = "ascore_token";
 
 /** API token store (shared bearer key). EventSource can't send headers, so
@@ -283,7 +320,7 @@ export const api = {
   scanPreview: () =>
     afetch("/api/scan/preview").then((r) => json<ScanPreview>(r)),
   startScan: (body: {
-    target: "endpoint" | "demo"; url?: string;
+    target: "endpoint" | "demo" | "connection"; url?: string;
     header_name?: string; header_value?: string; agent_name?: string;
   }) =>
     afetch("/api/scan", {
@@ -292,6 +329,27 @@ export const api = {
     }).then((r) => json<{ scan_id: string; target: string; n_dimensions: number }>(r)),
   scanStatus: (scanId: string) =>
     afetch(`/api/scan/${encodeURIComponent(scanId)}`).then((r) => json<ScanJob>(r)),
+
+  // --- "Connect your agent" — the reusable, safe webhook connection ------
+  getConnection: () =>
+    afetch("/api/connect").then((r) => json<ConnectionStatus>(r)),
+  saveConnection: (body: ConnectionInput) =>
+    afetch("/api/connect", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<ConnectionStatus>(r)),
+  deleteConnection: () =>
+    afetch("/api/connect", { method: "DELETE" }).then((r) => json<ConnectionStatus>(r)),
+  testConnection: (body: ConnectionInput) =>
+    afetch("/api/connect/test", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<ConnectionTestResult>(r)),
+  setConnectionConsent: (consent: boolean) =>
+    afetch("/api/connect/consent", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ consent }),
+    }).then((r) => json<ConnectionStatus>(r)),
 
   // --- agent safety certification ---------------------------------------
   // Public reads (unauthenticated) — back the /certified pages + badge.

@@ -136,6 +136,15 @@ def _certifications_table(conn) -> None:
     CertificationRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _agent_connections_table(conn) -> None:
+    """v12 — "Connect your agent" configs: a tenant's live HTTP endpoint +
+    request/response mapping for the Safety Battery scan. The auth header value
+    is stored encrypted; ``consent`` gates scanning."""
+    import ascore.registry.sqlite_store  # noqa: F401 (registers AgentConnectionRow)
+    from ascore.registry.sqlite_store import AgentConnectionRow
+    AgentConnectionRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -149,6 +158,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (9, "personal_api_tokens_table", _personal_api_tokens_table),
     (10, "result_cache_table", _result_cache_table),
     (11, "certifications_table", _certifications_table),
+    (12, "agent_connections_table", _agent_connections_table),
 ]
 
 
