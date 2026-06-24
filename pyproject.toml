@@ -2,7 +2,7 @@
 name = "ascore"
 version = "0.1.0"
 description = "Agenttic — agentic scoring & benchmarking platform (UVM-style testbench for AI agents)"
-requires-python = ">=3.11"
+requires-python = ">=3.12"   # uses 3.12-only syntax (PEP 701 f-strings); CI runs 3.12
 dependencies = [
     "pydantic>=2.7",
     "sqlmodel>=0.0.16",
@@ -40,6 +40,11 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ascore"]
+
+[tool.ruff]
+# Match the runtime (CI + Docker run Python 3.12). Keeps lint consistent with
+# the 3.12-only syntax the code relies on (e.g. PEP 701 f-strings).
+target-version = "py312"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
