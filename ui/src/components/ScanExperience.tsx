@@ -12,7 +12,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  api, type ScanCheck, type ScanJob, type ScanPreview,
+  api, type ConnectionInput, type ConnectionStatus, type ConnectionTestResult,
+  type ScanCheck, type ScanJob, type ScanPreview,
 } from "../api";
 import { badgeUrl, certUrl, gradeColor } from "../cert";
 import { Seal } from "./Seal";
@@ -114,7 +115,7 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
     }).catch((e) => { setErr(explainError(e)); setPhase("error"); });
   };
 
-  const start = (target: "endpoint" | "demo") => {
+  const start = (target: "endpoint" | "demo" | "connection") => {
     setErr(null); setJob(null);
     if (target === "endpoint" && !url.trim()) {
       setErr({ kind: "other", msg: "Paste your agent's API endpoint URL first." });
@@ -122,9 +123,13 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
     }
     setPhase("scanning");
     api.startScan({
-      target, url: url.trim(), agent_name: agentName.trim(),
-      ...(showAuth && headerValue.trim()
-        ? { header_name: headerName.trim(), header_value: headerValue.trim() } : {}),
+      target,
+      // a saved connection carries its own url/auth/mapping server-side
+      ...(target === "connection" ? {} : {
+        url: url.trim(), agent_name: agentName.trim(),
+        ...(showAuth && headerValue.trim()
+          ? { header_name: headerName.trim(), header_value: headerValue.trim() } : {}),
+      }),
     }).then((r) => poll(r.scan_id))
       .catch((e) => {
         const ex = explainError(e);
@@ -185,6 +190,8 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
             We send a battery of safety probes to your endpoint and grade the answers.
             <b> No Anthropic key needed</b> — your agent runs on your own infrastructure.
           </p>
+
+          <ConnectPanel onScan={() => start("connection")} />
         </form>
       )}
 
@@ -242,6 +249,186 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+type Preset = "openai" | "generic" | "custom";
+
+/* ---------------------------------------------------------------------------
+   Connect your agent — the reusable, safe webhook connection. A step-by-step
+   panel: endpoint → optional auth → preset / mapping → Test connection → authorize
+   → scan. The connection is saved so repeat scans don't re-enter it. End-user
+   voice; every guard (SSRF, consent, gentle traffic) is enforced server-side.
+   ------------------------------------------------------------------------- */
+function ConnectPanel({ onScan }: { onScan: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [saved, setSaved] = useState<ConnectionStatus | null>(null);
+  const [url, setUrl] = useState("");
+  const [agentName, setAgentName] = useState("");
+  const [preset, setPreset] = useState<Preset>("openai");
+  const [requestField, setRequestField] = useState("input");
+  const [responsePath, setResponsePath] = useState("");
+  const [model, setModel] = useState("");
+  const [authName, setAuthName] = useState("Authorization");
+  const [authValue, setAuthValue] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [test, setTest] = useState<ConnectionTestResult | null>(null);
+  const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>("");
+
+  // load any previously-saved connection so repeat scans skip re-entry
+  useEffect(() => {
+    if (!open) return;
+    api.getConnection().then((s) => {
+      if (!s.connected) return;
+      setSaved(s);
+      setUrl(s.endpoint_url || "");
+      setAgentName(s.agent_name || "");
+      setPreset((s.preset as Preset) || "openai");
+      setRequestField(s.request_field || "input");
+      setResponsePath(s.response_path || "");
+      setModel(s.model || "");
+      setAuthName(s.auth_header_name || "Authorization");
+      setConsent(!!s.consent);
+    }).catch(() => {});
+  }, [open]);
+
+  const body = (): ConnectionInput => ({
+    endpoint_url: url.trim(), agent_name: agentName.trim(), preset,
+    request_field: requestField.trim(), response_path: responsePath.trim(),
+    model: model.trim(), auth_header_name: authName.trim(),
+    auth_header_value: authValue.trim(),
+  });
+
+  const runTest = () => {
+    setError(""); setTest(null);
+    if (!url.trim()) { setError("Paste your agent's endpoint URL first."); return; }
+    setTesting(true);
+    api.testConnection(body())
+      .then(setTest)
+      .catch((e) => setError(String(e?.detail ?? e?.message ?? "Test failed.")))
+      .finally(() => setTesting(false));
+  };
+
+  const saveAndScan = () => {
+    setError("");
+    if (!url.trim()) { setError("Paste your agent's endpoint URL first."); return; }
+    if (!consent) { setError("Please confirm you're authorized to test this agent."); return; }
+    setBusy(true);
+    api.saveConnection({ ...body(), consent: true })
+      .then(() => onScan())
+      .catch((e) => { setError(String(e?.detail ?? e?.message ?? "Couldn't save.")); setBusy(false); });
+  };
+
+  if (!open) {
+    return (
+      <button type="button" className="scan-link connect-open" onClick={() => setOpen(true)}>
+        + Connect a reusable agent (presets, mapping, test connection)
+      </button>
+    );
+  }
+
+  return (
+    <div className="connect-panel">
+      <div className="connect-head">
+        <h4>Connect your agent</h4>
+        <button type="button" className="scan-link" onClick={() => setOpen(false)}>− Close</button>
+      </div>
+      {saved?.connected && (
+        <p className="connect-saved">Saved connection: <b>{saved.agent_name}</b>
+          {saved.auth_set && <> · auth {saved.auth_masked}</>} · you can re-test or scan again.</p>
+      )}
+
+      {/* 1 · endpoint */}
+      <label className="scan-input-label" htmlFor="conn-url">1 · Your agent's endpoint URL</label>
+      <input id="conn-url" type="url" className="connect-input" placeholder="https://your-agent.com/v1/chat"
+             value={url} onChange={(e) => setUrl(e.target.value)} />
+
+      {/* 2 · preset / mapping */}
+      <label className="scan-input-label" htmlFor="conn-preset">2 · How to talk to it</label>
+      <select id="conn-preset" className="connect-input" value={preset}
+              onChange={(e) => { setPreset(e.target.value as Preset); setTest(null); }}>
+        <option value="openai">OpenAI-compatible (one click)</option>
+        <option value="generic">Generic webhook ({"{input}"} → {"{output}"})</option>
+        <option value="custom">Custom mapping</option>
+      </select>
+      {preset === "openai" && (
+        <div className="scan-auth">
+          <div className="scan-auth-field grow">
+            <label htmlFor="conn-model">Model</label>
+            <input id="conn-model" value={model} placeholder="gpt-4o-mini / claude-…"
+                   onChange={(e) => setModel(e.target.value)} />
+          </div>
+        </div>
+      )}
+      {(preset === "generic" || preset === "custom") && (
+        <div className="scan-auth">
+          <div className="scan-auth-field grow">
+            <label htmlFor="conn-rf">Request field (prompt goes here)</label>
+            <input id="conn-rf" value={requestField} placeholder="input"
+                   onChange={(e) => setRequestField(e.target.value)} />
+          </div>
+          <div className="scan-auth-field grow">
+            <label htmlFor="conn-rp">Reply path in the response</label>
+            <input id="conn-rp" value={responsePath} placeholder="output"
+                   onChange={(e) => setResponsePath(e.target.value)} />
+          </div>
+        </div>
+      )}
+
+      {/* 3 · optional auth header (secret — stored encrypted) */}
+      <label className="scan-input-label">3 · Auth header (optional — stored encrypted)</label>
+      <div className="scan-auth">
+        <div className="scan-auth-field">
+          <label htmlFor="conn-an">Header name</label>
+          <input id="conn-an" value={authName} placeholder="Authorization"
+                 onChange={(e) => setAuthName(e.target.value)} />
+        </div>
+        <div className="scan-auth-field grow">
+          <label htmlFor="conn-av">Header value</label>
+          <input id="conn-av" type="password" value={authValue}
+                 placeholder={saved?.auth_set ? "•••• (saved — leave blank to keep)" : "Bearer sk-…"}
+                 onChange={(e) => setAuthValue(e.target.value)} />
+        </div>
+      </div>
+
+      {/* 4 · test connection */}
+      <div className="connect-actions">
+        <button type="button" className="btn-ghost" onClick={runTest} disabled={testing}>
+          {testing ? "Testing…" : "Test connection"}
+        </button>
+      </div>
+      {test && test.ok && (
+        <div className="connect-test ok">
+          <b>✓ Connected.</b> Your agent replied:
+          <blockquote>{test.reply.slice(0, 240) || "(empty reply)"}</blockquote>
+        </div>
+      )}
+      {test && !test.ok && (
+        <div className="connect-test err"><b>Couldn't connect.</b> {test.error}</div>
+      )}
+
+      {/* 5 · authorize */}
+      <label className="connect-consent">
+        <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+        <span>I own this agent, or I'm authorized to run a safety test against it.</span>
+      </label>
+
+      {/* 6 · scan */}
+      {error && <p className="connect-error">{error}</p>}
+      <div className="connect-actions">
+        <button type="button" className="btn-primary" onClick={saveAndScan}
+                disabled={busy || !consent}>
+          {busy ? "Saving…" : "Save & scan my agent"}
+        </button>
+      </div>
+      <p className="connect-scope">
+        This sends ~14 short safety prompts to your agent, one at a time, each tagged
+        <code> X-Agenttic-Safety-Test: true</code>. We only send text and read replies —
+        we never run your tools.
+      </p>
     </div>
   );
 }

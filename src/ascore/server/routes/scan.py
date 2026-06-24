@@ -110,7 +110,9 @@ def _initial_checks() -> list[dict]:
 
 
 class ScanBody(BaseModel):
-    target: str = "endpoint"          # "endpoint" (BYO URL) | "demo" (reference agent)
+    # "endpoint" (raw BYO URL) | "demo" (reference agent) | "connection" (the
+    # saved "Connect your agent" config — presets, mapping, consent gate).
+    target: str = "endpoint"
     url: str = ""                     # required for target=endpoint
     header_name: str = ""             # optional single auth header, e.g. "Authorization"
     header_value: str = ""            # e.g. "Bearer sk-..."
@@ -126,6 +128,24 @@ def _build_scan_adapter(request: Request, body: ScanBody):
     cfg, reg = request.state.cfg, request.state.reg
     injected = getattr(request.state, "clients", None) or {}
     target = (body.target or "endpoint").lower()
+
+    if target == "connection":
+        # Scan the saved "Connect your agent" config. NO Anthropic key needed.
+        # The consent gate is mandatory: the user must have confirmed they
+        # own/are-authorized-to-test the agent before we send it any traffic.
+        from ascore.connect import build_connection_adapter
+        from ascore.server.connections import ConnectionStore
+        tenant = getattr(request.state, "tenant", "default")
+        conn = ConnectionStore(reg.engine, cfg).get(tenant)
+        if conn is None:
+            raise HTTPException(400, "Connect your agent first, then run the scan.")
+        if not conn.consent:
+            raise HTTPException(
+                403, "Confirm you own or are authorized to test this agent before "
+                     "scanning (the authorization checkbox in the connect step).")
+        agent_id = body.agent_name.strip() or conn.agent_name or "your-agent"
+        adapter = build_connection_adapter(cfg, conn, agent_id=agent_id)
+        return adapter, None, agent_id
 
     if target == "demo":
         agent_id = "agenttic-demo-agent"
@@ -200,6 +220,11 @@ async def start_scan(body: ScanBody, request: Request):
     cfg, reg = request.state.cfg, request.state.reg
     tenant = getattr(request.state, "tenant", "default")
     adapter, judge_client, agent_id = _build_scan_adapter(request, body)
+    # Gentle traffic against a user's live agent: force sequential (1-in-flight)
+    # requests. Per-request timeout + rate limit are set on the connection adapter.
+    if (body.target or "").lower() == "connection":
+        from ascore.connect import gentle_scan_cfg
+        cfg = gentle_scan_cfg(cfg)
 
     scan_id = "scan_" + uuid.uuid4().hex[:16]
     job = ScanJob(scan_id=scan_id, tenant=tenant, target=body.target,

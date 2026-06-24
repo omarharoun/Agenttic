@@ -44,10 +44,25 @@ def _http_transport(url: str, payload: dict, timeout: float,
         return json.loads(resp.read().decode())
 
 
+#: Header set on every request to the user's agent so the operator can recognise
+#: Agenttic's safety traffic. Defined in ``ascore.connect`` (single source).
+from ascore.connect import SAFETY_TEST_HEADER  # noqa: E402
+
+
 class BlackBoxHTTPAgent(AgentAdapter):
     """Driver for a client's existing agent behind a POST endpoint.
 
-    ``output_field``: key in the JSON response holding the agent's answer.
+    Two response-extraction modes:
+
+    * legacy/flat — ``output_field``: a top-level key in the JSON response.
+    * ``mapping`` (a :class:`ascore.connect.Mapping`): the request prompt is
+      rendered into the mapped request body and the reply is read from a dotted
+      response path (e.g. ``choices[0].message.content``). This is what the
+      "Connect your agent" flow uses; it also builds the request body so an
+      OpenAI-compatible endpoint works one-click.
+
+    Every request carries ``X-Agenttic-Safety-Test: true`` and an optional
+    ``min_interval_s`` enforces gentle, rate-limited traffic.
     """
 
     visibility = "black_box"
@@ -62,6 +77,8 @@ class BlackBoxHTTPAgent(AgentAdapter):
         allow_private_url: bool = False,  # opt-in to hit private/loopback hosts
         cost_per_call_usd: float = 0.0,   # declared cost (black-box has no usage)
         headers: dict | None = None,      # auth / custom headers for the endpoint
+        mapping=None,                     # ascore.connect.Mapping | None
+        min_interval_s: float = 0.0,      # min seconds between requests (rate limit)
         transport=None,  # injectable for tests; defaults to real HTTP
     ):
         self.agent_id = agent_id
@@ -70,16 +87,50 @@ class BlackBoxHTTPAgent(AgentAdapter):
         self.timeout = timeout
         self.allow_private_url = allow_private_url
         self.cost_per_call_usd = cost_per_call_usd
-        self.headers = headers or {}
+        self.mapping = mapping
+        self.min_interval_s = max(0.0, float(min_interval_s))
+        self._last_call = 0.0
+        # the safety-test header rides on EVERY request (probe + scan); explicit
+        # caller headers (auth) merge on top.
+        self.headers = {SAFETY_TEST_HEADER: "true", **(headers or {})}
         self._transport = transport or (
             lambda payload: _http_transport(self.url, payload, self.timeout,
                                             self.allow_private_url, self.headers)
         )
 
     def describe(self) -> dict:
-        return {"adapter": "BlackBoxHTTPAgent", "url": self.url,
-                "output_field": self.output_field,
-                "cost_per_call_usd": self.cost_per_call_usd}
+        d = {"adapter": "BlackBoxHTTPAgent", "url": self.url,
+             "cost_per_call_usd": self.cost_per_call_usd}
+        if self.mapping is not None:
+            d["mapping"] = self.mapping.public()
+        else:
+            d["output_field"] = self.output_field
+        return d
+
+    def _request_body(self, test_input: dict) -> dict:
+        """The JSON body to POST: mapped (Connect flow) or the raw case input."""
+        if self.mapping is not None:
+            from ascore.connect import build_request_body, render_prompt
+            return build_request_body(self.mapping, render_prompt(test_input))
+        return test_input
+
+    def _extract_reply(self, body: dict) -> str:
+        """The reply text from the response (raises so callers record an error)."""
+        if self.mapping is not None:
+            from ascore.connect import extract_reply
+            return extract_reply(self.mapping, body)
+        if self.output_field not in body:
+            from ascore.connect import MappingError
+            raise MappingError(
+                f"response missing field {self.output_field!r}: keys={list(body)}")
+        return str(body[self.output_field])
+
+    def _throttle(self) -> None:
+        if self.min_interval_s <= 0:
+            return
+        wait = self.min_interval_s - (time.monotonic() - self._last_call)
+        if wait > 0:
+            time.sleep(wait)
 
     def run(self, test_input: dict, *, test_case_id: str | None = None) -> Trace:
         t0 = datetime.now(timezone.utc)
@@ -88,12 +139,11 @@ class BlackBoxHTTPAgent(AgentAdapter):
         final = ""
         cost = 0.0
         try:
-            body = self._transport(test_input)
+            self._throttle()  # gentle traffic: honour the per-agent rate limit
+            body = self._transport(self._request_body(test_input))
+            self._last_call = time.monotonic()
             cost = self.cost_per_call_usd  # the call was actually made
-            if self.output_field not in body:
-                error = f"response missing field {self.output_field!r}: keys={list(body)}"
-            else:
-                final = str(body[self.output_field])
+            final = self._extract_reply(body)  # may raise (mapping/missing field)
         except (ConnectionError, OSError):
             raise  # transport errors bubble up — the harness owns retries
         except Exception as exc:  # noqa: BLE001 — malformed response/blocked url is data

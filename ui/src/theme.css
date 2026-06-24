@@ -1364,6 +1364,46 @@ table.data tbody tr { transition: background 0.1s; }
 }
 .scan-reassure b { color: var(--text); font-weight: 600; }
 
+/* --- connect your agent (reusable webhook connection) -------------------- */
+.connect-open { margin-top: var(--sp-4); display: inline-block; }
+.connect-panel {
+  margin-top: var(--sp-5); padding: var(--sp-5); border: 1px solid var(--border);
+  border-radius: var(--r-lg); background: var(--field);
+}
+.connect-head { display: flex; align-items: center; justify-content: space-between; }
+.connect-head h4 { margin: 0; font: 600 var(--t-base)/1.2 var(--font-ui); color: var(--text); }
+.connect-saved {
+  margin: var(--sp-3) 0 0; font-size: var(--t-sm); color: var(--muted);
+}
+.connect-input {
+  width: 100%; margin-bottom: var(--sp-2); padding: 11px 13px;
+  border-radius: var(--r-md); background: var(--panel); border: 1px solid var(--border);
+  font-size: var(--t-base);
+}
+.connect-actions { margin-top: var(--sp-4); display: flex; gap: var(--sp-3); }
+.connect-test {
+  margin-top: var(--sp-3); font-size: var(--t-sm); line-height: 1.5;
+  border-radius: var(--r-sm); padding: 10px 13px;
+}
+.connect-test.ok { background: var(--ok-soft); border: 1px solid var(--ok-border); color: var(--muted); }
+.connect-test.err { background: var(--bad-soft); border: 1px solid var(--bad-border); color: var(--text); }
+.connect-test blockquote {
+  margin: 6px 0 0; padding-left: 10px; border-left: 2px solid var(--ok-border);
+  color: var(--text); font-style: italic;
+}
+.connect-consent {
+  display: flex; align-items: flex-start; gap: 8px; margin-top: var(--sp-4);
+  font-size: var(--t-sm); color: var(--text); cursor: pointer; line-height: 1.5;
+}
+.connect-consent input { margin-top: 3px; }
+.connect-error { margin: var(--sp-3) 0 0; font-size: var(--t-sm); color: var(--bad); }
+.connect-scope {
+  margin: var(--sp-3) 0 0; font-size: var(--t-xs); line-height: 1.6; color: var(--faint);
+}
+.connect-scope code {
+  font-size: 0.9em; background: var(--panel); padding: 1px 5px; border-radius: 4px;
+}
+
 /* --- live + graded ------------------------------------------------------- */
 .scan-live { display: flex; flex-direction: column; align-items: center; gap: var(--sp-5); }
 .scan-seal-wrap { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); width: 100%; }

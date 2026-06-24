@@ -215,6 +215,36 @@ class ApiKeyRow(SQLModel, table=True):
     updated_at: datetime
 
 
+class AgentConnectionRow(SQLModel, table=True):
+    """A tenant's saved "Connect your agent" config — the live HTTP endpoint the
+    Safety Battery is scanned against. One per tenant (upsert, like api_keys).
+
+    The auth header VALUE is a secret: stored ENCRYPTED (Fernet) in
+    ``auth_ciphertext``, never returned by the API (only ``auth_last4`` masked).
+    The request/response mapping (which field the prompt goes into; the path to
+    the reply) is plain config. ``consent`` + ``consent_at`` record that the user
+    confirmed they own/are-authorized-to-test the agent — scanning is blocked
+    without it."""
+    __tablename__ = "agent_connections"
+    __table_args__ = (UniqueConstraint("tenant_id", "name"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    name: str = "default"                       # reserved for future multi-agent
+    agent_name: str = "your-agent"              # display name for the certificate
+    endpoint_url: str = ""
+    preset: str = "generic"                     # openai | generic | custom
+    request_field: str = "input"                # generic/custom prompt field
+    response_path: str = "output"               # dotted path to the reply text
+    model: str = ""                             # openai preset model
+    auth_header_name: str = ""                  # e.g. "Authorization" (not secret)
+    auth_ciphertext: str = ""                   # Fernet(auth header value)
+    auth_last4: str = ""                         # masked display only
+    consent: bool = False
+    consent_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
 class PersonalApiTokenRow(SQLModel, table=True):
     """A user's personal API token (PAT) for programmatic REST access. GLOBAL
     table (like users): the token is presented as ``Authorization: Bearer`` and

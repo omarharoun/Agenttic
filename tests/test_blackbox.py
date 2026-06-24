@@ -92,7 +92,10 @@ class TestBlackBoxAdapter:
         agent = BlackBoxHTTPAgent(agent_id="x", url="http://unused",
                                   headers={"Authorization": "Bearer t"})
         agent.run({"q": 1})
-        assert captured["headers"] == {"Authorization": "Bearer t"}
+        # auth header reaches the transport; the safety-test header rides on every
+        # request so the operator can recognise Agenttic's traffic.
+        assert captured["headers"]["Authorization"] == "Bearer t"
+        assert captured["headers"]["X-Agenttic-Safety-Test"] == "true"
 
     def test_missing_output_field_is_data_not_crash(self):
         agent = BlackBoxHTTPAgent(agent_id="x", url="http://unused",
