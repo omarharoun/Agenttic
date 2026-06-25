@@ -245,6 +245,23 @@ class AgentConnectionRow(SQLModel, table=True):
     updated_at: datetime
 
 
+class AssistantSessionRow(SQLModel, table=True):
+    """One Safe Reference Assistant conversation, tenant-scoped. ``payload`` is
+    the full JSON-serializable session state (transcript, scratchpad, step log,
+    any pending sensitive action). ``status`` is denormalized for listing /
+    "is this session waiting on me?" without parsing the payload. Append-or-
+    update by (tenant_id, session_id)."""
+    __tablename__ = "assistant_sessions"
+    __table_args__ = (UniqueConstraint("tenant_id", "session_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    session_id: str = Field(index=True)
+    status: str = "ready"                       # ready | awaiting_approval
+    payload: str = ""                           # full session-state JSON
+    created_at: datetime
+    updated_at: datetime
+
+
 class PersonalApiTokenRow(SQLModel, table=True):
     """A user's personal API token (PAT) for programmatic REST access. GLOBAL
     table (like users): the token is presented as ``Authorization: Bearer`` and
