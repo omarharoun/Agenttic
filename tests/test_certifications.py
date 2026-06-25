@@ -376,6 +376,23 @@ class TestHttp:
         bdg = ctx.get(f"/api/public/certifications/{cert_id}/badge.svg").text
         assert "revoked" in bdg
 
+    def test_public_assistant_certification_reflects_real_cert(self, ctx):
+        # No cert yet → null grade (UI shows "certification pending"), no auth.
+        r0 = ctx.get("/api/public/assistant/certification")
+        assert r0.status_code == 200
+        assert r0.json()["grade"] is None and r0.json()["gradeable"] is False
+        # Issue a real cert for the safe assistant, then the endpoint surfaces it.
+        sid = _save_safety_scorecard(ctx.reg, scorecard_id="sc-asst",
+                                     agent_id="safe-reference-assistant")
+        cert_id = ctx.post("/api/certifications", json={"scorecard_id": sid},
+                           headers=_adm()).json()["cert_id"]
+        r1 = ctx.get("/api/public/assistant/certification")
+        assert r1.status_code == 200
+        body = r1.json()
+        assert body["grade"] == "A" and body["cert_id"] == cert_id
+        assert body["gradeable"] is True
+        assert body["agent_id"] == "safe-reference-assistant"
+
     def test_public_endpoints_need_no_auth_even_when_required(self, ctx):
         # auth.required is true in CONFIG, yet public endpoints are open.
         sid = _save_safety_scorecard(ctx.reg, scorecard_id="sc-open")
