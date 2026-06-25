@@ -112,6 +112,7 @@ export function AppShell() {
         <NavLink to="/app/resources"><span className="ic">▤</span> Resources</NavLink>
         <NavLink to="/app/settings"><span className="ic">⚙</span> Settings</NavLink>
         <a href="/api-docs"><span className="ic">📖</span> API docs</a>
+        <a href="/assistant"><span className="ic">💬</span> Safe assistant</a>
         <span style={{ flex: 1 }} />
         <div className="nav-foot"><TokenControl /></div>
       </nav>

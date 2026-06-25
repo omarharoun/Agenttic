@@ -351,6 +351,24 @@ export const api = {
       body: JSON.stringify({ consent }),
     }).then((r) => json<ConnectionStatus>(r)),
 
+  // --- Safe Assistant (flagship consumer chat) --------------------------
+  // The sibling backend is implementing these; the UI normalizes responses
+  // (see assistant.ts) and falls back to a labelled local preview if absent.
+  createAssistantSession: () =>
+    afetch("/api/assistant/sessions", { method: "POST" }).then((r) => json<any>(r)),
+  getAssistantSession: (id: string) =>
+    afetch(`/api/assistant/sessions/${encodeURIComponent(id)}`).then((r) => json<any>(r)),
+  sendAssistantMessage: (id: string, text: string) =>
+    afetch(`/api/assistant/sessions/${encodeURIComponent(id)}/message`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    }).then((r) => json<any>(r)),
+  approveAssistantAction: (id: string, actionId: string, decision: "allow" | "deny") =>
+    afetch(`/api/assistant/sessions/${encodeURIComponent(id)}/approve`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action_id: actionId, decision }),
+    }).then((r) => json<any>(r)),
+
   // --- agent safety certification ---------------------------------------
   // Public reads (unauthenticated) — back the /certified pages + badge.
   publicCertification: (id: string) =>

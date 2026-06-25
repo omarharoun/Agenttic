@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import { AppShell } from "./AppShell";
 import { ApiDocsPage } from "./pages/ApiDocsPage";
+import { AssistantPage } from "./pages/AssistantPage";
 import { CertificatePage } from "./pages/CertificatePage";
 import { CertifiedDirectoryPage } from "./pages/CertifiedDirectoryPage";
 import { LandingPage } from "./pages/LandingPage";
@@ -14,6 +15,8 @@ export function App() {
       {/* public front door — the scanner is the primary entry */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/scan" element={<ScanPage />} />
+      {/* flagship consumer surface — the safe personal assistant */}
+      <Route path="/assistant" element={<AssistantPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/verify" element={<VerifyPage />} />
