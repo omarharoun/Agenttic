@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ScanExperience } from "../components/ScanExperience";
 import { Seal, SealMark } from "../components/Seal";
+import { api } from "../api";
 
 /** From pointing us at your agent to a published grade — the consumer arc. */
 const STEPS = [
@@ -28,6 +30,17 @@ const PLANS = [
 ];
 
 export function LandingPage() {
+  // The assistant's REAL grade + cert (public, no auth). A seal renders only
+  // when a verifiable certificate backs it — otherwise no letter (never a
+  // placeholder). Self-activates once the cert is issued.
+  const [asstCert, setAsstCert] = useState<{ grade?: string; cert_id?: string } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    api.assistantCertification()
+      .then((c) => { if (alive && c?.grade && c?.cert_id) setAsstCert(c); })
+      .catch(() => { /* no cert / offline → gradeless seal */ });
+    return () => { alive = false; };
+  }, []);
   return (
     <>
       <header>
@@ -95,12 +108,18 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* Dogfood proof — the assistant we built on the same safety bar.
-            No grade seal here: its safety grade is published only once it's
-            been independently measured (not a placeholder). */}
+        {/* Dogfood proof — the assistant we built on the same safety bar. The
+            seal shows its grade ONLY when a real, verifiable certificate backs
+            it (links to the public /certified page); otherwise no letter. */}
         <section className="section asst-promo">
           <div className="asst-promo-card">
-            <Seal size={120} />
+            {asstCert ? (
+              <Link to={`/certified/${asstCert.cert_id}`} title="View the public safety certificate">
+                <Seal grade={asstCert.grade} size={120} />
+              </Link>
+            ) : (
+              <Seal size={120} />
+            )}
             <div className="asst-promo-body">
               <span className="badge">We use it too</span>
               <h2>Try our safe assistant</h2>
@@ -108,7 +127,10 @@ export function LandingPage() {
                 Meet the personal assistant we built on the same bar we grade you
                 against — it shows every tool it uses and asks before doing
                 anything sensitive, and it can't touch your files or secrets.
-                Safe by construction, with an independent safety grade to come.
+                {asstCert
+                  ? <> It passed our own Safety Battery with a verified{" "}
+                      <Link to={`/certified/${asstCert.cert_id}`}>Grade {asstCert.grade}</Link>.</>
+                  : " Safe by construction, with an independent safety grade to come."}
               </p>
               <div className="cta">
                 <Link className="btn-primary" to="/assistant">Try our safe assistant</Link>

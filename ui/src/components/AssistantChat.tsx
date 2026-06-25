@@ -215,6 +215,15 @@ export function AssistantChat() {
         setMode(s.session_id ? "live" : "preview");
       })
       .catch(() => { if (alive) { setMode("preview"); setPosture(DEFAULT_POSTURE); } });
+    // Overlay the REAL issued grade + cert id (public, no auth) so the seal
+    // reflects the actual certificate even in preview/unauthenticated mode.
+    // No cert yet => leaves grade undefined => the rail shows "pending".
+    api.assistantCertification()
+      .then((c) => {
+        if (!alive || !c?.cert_id || !c?.grade) return;
+        setPosture((p) => ({ ...p, grade: c.grade, cert_id: c.cert_id }));
+      })
+      .catch(() => { /* no cert / offline → stays "pending"; never blocks */ });
     return () => {
       alive = false;
       timers.current.forEach(window.clearTimeout);

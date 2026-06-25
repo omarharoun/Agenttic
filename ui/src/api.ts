@@ -376,6 +376,11 @@ export const api = {
       .then((r) => json<any>(r)),
   publicCertifiedDirectory: () =>
     fetch("/api/public/certifications").then((r) => json<any>(r)),
+  // The Safe Assistant's REAL grade + cert id (latest valid cert), or a null
+  // grade if none is issued — backs the honest seal on the public assistant
+  // page + landing. Never a placeholder.
+  assistantCertification: () =>
+    fetch("/api/public/assistant/certification").then((r) => json<any>(r)),
   // Authenticated — issue from a scorecard, list, revoke.
   listCertifications: () =>
     afetch("/api/certifications").then((r) => json<any>(r)),

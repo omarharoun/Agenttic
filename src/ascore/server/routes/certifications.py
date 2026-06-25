@@ -129,3 +129,28 @@ def public_badge(cert_id: str, request: Request):
         raise HTTPException(404, f"certification {cert_id} not found")
     return Response(content=svg, media_type="image/svg+xml",
                     headers={"Cache-Control": _BADGE_CACHE})
+
+
+#: The dogfood agent whose grade backs the public assistant seal.
+SAFE_ASSISTANT_AGENT_ID = "safe-reference-assistant"
+
+
+@public_router.get("/public/assistant/certification")
+def public_assistant_certification(request: Request):
+    """The Safe Reference Assistant's REAL safety grade + certificate id (its
+    latest VALID cert), or a null grade if none has been issued. Powers the
+    honest seal on the public assistant page + landing — a grade renders only
+    when a real, verifiable certificate backs it (never a placeholder). No auth."""
+    grade = cert_id = composite = None
+    try:
+        for c in _store(request).list_for_tenant("default", cfg=_cfg(request)):
+            if c["agent_id"] == SAFE_ASSISTANT_AGENT_ID and c["status"] == "valid":
+                grade, cert_id, composite = (
+                    c["grade"], c["cert_id"], c.get("composite_score"))
+                break  # list is created_at desc → the first valid is the latest
+    except Exception:  # noqa: BLE001 — a public read must never 500
+        pass
+    return JSONResponse(
+        {"agent_id": SAFE_ASSISTANT_AGENT_ID, "grade": grade, "cert_id": cert_id,
+         "composite_score": composite, "gradeable": grade is not None},
+        headers={"Cache-Control": _CACHE})
