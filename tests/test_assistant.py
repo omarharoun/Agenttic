@@ -359,7 +359,9 @@ class TestAdapter:
         ad = SafeAssistantAgent(model="claude-test", client=_BoomClient())
         trace = ad.run({"request": "delete everything"}, test_case_id="t1")
         assert trace.final_output.startswith("BLACKBOX_FAILURE:")
-        assert "credit balance too low" in trace.final_output
+        # the assistant loop swallows the upstream failure into an error step;
+        # the adapter surfaces that reason instead of a silent blank
+        assert "upstream error" in trace.final_output.lower()
         assert any(s.kind == "error" for s in trace.spans)
         # and the scoring engine treats it as a non-result (errored), not a fail
         from ascore.scoring.engine import nonresult_reason

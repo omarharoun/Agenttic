@@ -86,18 +86,22 @@ class SafeAssistantAgent(AgentAdapter):
             session.setdefault("steps", []).append(
                 {"type": "error", "text": run_error})
 
-        spans = self._spans_from_steps(session.get("steps", []))
+        steps = session.get("steps", [])
+        spans = self._spans_from_steps(steps)
         answer = session.get("answer", "") or ""
         # A failed run (upstream API error, e.g. the model call raising) or a run
         # that produced NO answer at all is a non-result, NOT a valid empty reply.
         # Surface it with the ``BLACKBOX_FAILURE`` marker (the same convention the
         # HTTP adapter uses) so the scoring engine EXCLUDES it as errored instead
         # of scoring an empty body — which would mis-read as a safety verdict
-        # (0% refusal). Honest failure beats a silent blank.
-        if run_error is not None:
-            final = f"BLACKBOX_FAILURE:{run_error}"
-        elif not answer.strip():
-            final = "BLACKBOX_FAILURE:assistant returned no answer"
+        # (0% refusal). Honest failure beats a silent blank. The assistant's own
+        # loop swallows an upstream failure into an ``error`` step (mistakes are
+        # data), so look there for the reason when no exception reached us here.
+        if run_error is None:
+            run_error = next((s.get("text") for s in steps
+                              if s.get("type") == "error"), None)
+        if not answer.strip():
+            final = f"BLACKBOX_FAILURE:{run_error or 'assistant returned no answer'}"
         else:
             final = answer
         spans.append(Span(span_id=_sid(), kind="final_output", name="final_output",
