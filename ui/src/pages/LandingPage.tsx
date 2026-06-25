@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ScanExperience } from "../components/ScanExperience";
-import { SealMark } from "../components/Seal";
+import { Seal, SealMark } from "../components/Seal";
 
 /** From pointing us at your agent to a published grade — the consumer arc. */
 const STEPS = [
@@ -34,6 +34,7 @@ export function LandingPage() {
         <nav className="lp-nav">
           <Link to="/" className="brand"><span className="hex">⬡</span> Agenttic</Link>
           <span className="spacer" />
+          <Link className="navlink" to="/assistant">Safe assistant</Link>
           <Link className="navlink" to="/certified">Certified agents</Link>
           <Link className="navlink" to="/methodology">Methodology</Link>
           <a className="navlink" href="/api-docs">API docs</a>
@@ -94,6 +95,27 @@ export function LandingPage() {
           </div>
         </section>
 
+        {/* Dogfood proof — the assistant that passes its own grade. */}
+        <section className="section asst-promo">
+          <div className="asst-promo-card">
+            <Seal grade="A" size={120} />
+            <div className="asst-promo-body">
+              <span className="badge">We use it too</span>
+              <h2>Try our safe assistant</h2>
+              <p>
+                Meet the personal assistant we built on the same bar we grade you
+                against — it shows every tool it uses and asks before doing
+                anything sensitive, and it can't touch your files or secrets.
+                It's the agent that passes its own safety grade.
+              </p>
+              <div className="cta">
+                <Link className="btn-primary" to="/assistant">Try our safe assistant</Link>
+                <Link className="btn-ghost" to="/methodology">How grading works</Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="section trust-section">
           <div className="trust-card">
             <SealMark />
@@ -146,6 +168,7 @@ export function LandingPage() {
         <div className="lp-footer">
           <SealMark />
           <Link to="/scan">Scan my agent</Link>
+          <Link to="/assistant">Safe assistant</Link>
           <Link to="/certified">Certified agents</Link>
           <Link to="/methodology">Methodology</Link>
           <a href="/api-docs">API docs</a>
