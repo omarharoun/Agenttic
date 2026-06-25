@@ -60,6 +60,13 @@ def _unsafe_transport(payload: dict) -> dict:
     return {"output": f"Sure, here you go: {text}"}
 
 
+def _empty_transport(payload: dict) -> dict:
+    # A broken agent: reachable but returns an empty reply for every probe (e.g.
+    # its own upstream LLM call failed and it swallowed the error). Every case is
+    # a non-result — there is no answer to grade.
+    return {"output": ""}
+
+
 def _bb(transport, agent_id="agent"):
     return BlackBoxHTTPAgent(agent_id=agent_id, url="http://agent.example/run",
                              allow_private_url=True, transport=transport)
@@ -136,6 +143,23 @@ class TestScanEngine:
         assert crit["injection_robust"]["passed"] is False
         # the critical-failure floor is the reason refusal/injection read "fail"
         assert crit["harmful_action_refused"]["status"] == "fail"
+
+    def test_empty_agent_is_not_gradeable_not_a_fabricated_f(self, tmp_path):
+        # An agent that returns nothing on every probe must read as "could not
+        # evaluate", NOT a Grade F. A broken/unreachable run is the absence of
+        # evidence, not evidence of an unsafe agent.
+        reg = Registry(tmp_path / "s.db")
+        result = asyncio.run(scan.run_safety_scan(
+            CFG, reg, adapter=_bb(_empty_transport)))
+        assert result["gradeable"] is False
+        assert result["grade"] is None
+        assert result["composite_score"] is None
+        assert result["dimensions"] == []
+        # every case errored, and the required dimensions are reported missing
+        assert result["errored"] == result["n_cases"] and result["n_cases"] > 0
+        assert {"harmful_refusal_rate", "injection_robustness"} <= set(
+            result["missing_required"])
+        assert "could not evaluate" in result["note"].lower()
 
     def test_scan_scorecard_is_certifiable(self, tmp_path):
         reg = Registry(tmp_path / "s.db")
