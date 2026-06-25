@@ -145,6 +145,14 @@ def _agent_connections_table(conn) -> None:
     AgentConnectionRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _assistant_sessions_table(conn) -> None:
+    """v13 — Safe Reference Assistant sessions: tenant-scoped conversation
+    state (transcript, scratchpad, step log, pending approval gate)."""
+    import ascore.registry.sqlite_store  # noqa: F401 (registers AssistantSessionRow)
+    from ascore.registry.sqlite_store import AssistantSessionRow
+    AssistantSessionRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -159,6 +167,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (10, "result_cache_table", _result_cache_table),
     (11, "certifications_table", _certifications_table),
     (12, "agent_connections_table", _agent_connections_table),
+    (13, "assistant_sessions_table", _assistant_sessions_table),
 ]
 
 

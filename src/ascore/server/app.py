@@ -232,6 +232,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         return PlainTextResponse(metrics.render())
 
     from ascore.server.routes.ab import router as ab_router
+    from ascore.server.routes.assistant import router as assistant_router
     from ascore.server.routes.auth import router as auth_router
     from ascore.server.routes.certifications import (
         public_router as certifications_public_router,
@@ -277,6 +278,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(quickstart_router, prefix="/api", dependencies=protected)
     app.include_router(scan_router, prefix="/api", dependencies=protected)
     app.include_router(connect_router, prefix="/api", dependencies=protected)
+    app.include_router(assistant_router, prefix="/api", dependencies=protected)
     app.include_router(certifications_router, prefix="/api", dependencies=protected)
 
     if UI_DIST.is_dir():
