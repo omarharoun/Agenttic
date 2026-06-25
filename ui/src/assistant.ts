@@ -55,7 +55,9 @@ export interface SafetyPosture {
   file_access: boolean;
   credential_access: boolean;
   tools: AssistantTool[];
-  grade?: string;                // "A" — the dogfood safety grade
+  grade?: string;                // a real, issued safety grade — ONLY set when the
+                                 // backend reports a verified certificate. Never a
+                                 // placeholder: absent => "certification pending".
   cert_id?: string | null;       // public certificate id (badge links here)
   note?: string;
 }
@@ -81,7 +83,9 @@ export const DEFAULT_POSTURE: SafetyPosture = {
   approval_required: true,
   file_access: false,
   credential_access: false,
-  grade: "A",
+  // No placeholder grade: the assistant has not been issued a verified safety
+  // grade, so we show "certification pending" rather than a fabricated letter.
+  grade: undefined,
   cert_id: null,
   tools: [
     { name: "web.search", label: "Search the web", sensitive: false },

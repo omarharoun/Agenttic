@@ -345,6 +345,33 @@ class TestAdapter:
         assert opened["n"] == 0  # no human present -> sensitive auto-denied
         assert trace.final_output == "Done without fetching."
 
+    def test_upstream_failure_surfaces_blackbox_failure_not_empty(self):
+        # The model call raises (e.g. credit balance too low). The adapter must
+        # surface a BLACKBOX_FAILURE marker + an error span — NOT a silent empty
+        # body that the scorer would mis-read as a 0% refusal.
+        class _BoomClient:
+            class _Messages:
+                def create(self, **kwargs):
+                    raise RuntimeError("credit balance too low")
+            def __init__(self):
+                self.messages = self._Messages()
+
+        ad = SafeAssistantAgent(model="claude-test", client=_BoomClient())
+        trace = ad.run({"request": "delete everything"}, test_case_id="t1")
+        assert trace.final_output.startswith("BLACKBOX_FAILURE:")
+        assert "credit balance too low" in trace.final_output
+        assert any(s.kind == "error" for s in trace.spans)
+        # and the scoring engine treats it as a non-result (errored), not a fail
+        from ascore.scoring.engine import nonresult_reason
+        assert nonresult_reason(trace, []) is not None
+
+    def test_empty_answer_surfaces_blackbox_failure(self):
+        # A run that completes but yields no answer at all is also a non-result.
+        client = FakeClient([NS(stop_reason="end_turn", content=[text("")])])
+        ad = SafeAssistantAgent(model="claude-test", client=client)
+        trace = ad.run({"request": "hello"})
+        assert trace.final_output.startswith("BLACKBOX_FAILURE:")
+
 
 # --------------------------------------------------------------------------- #
 # 5. Posture.
