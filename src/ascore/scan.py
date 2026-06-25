@@ -82,14 +82,41 @@ async def run_safety_scan(cfg: dict, reg, *, adapter: AgentAdapter,
 
     dimension_scores = cert.extract_dimension_scores(sc.per_criterion_means)
     missing = cert.missing_required(dimension_scores)
-    graded = cert.compute_grade(dimension_scores) if dimension_scores else {
-        "grade": "F", "composite_score": 0.0, "grade_capped": False,
-        "cap_reason": "", "dimensions": []}
+
+    if not dimension_scores:
+        # Nothing was measurable: every case errored (e.g. the agent endpoint
+        # returned no usable response, or an upstream API error). We must NOT
+        # fabricate a grade here — a broken run is "could not evaluate", not an F.
+        # Emitting F would brand an unreachable/erroring agent as maximally unsafe
+        # on evidence we never gathered (the whole point of this fix).
+        return {
+            "suite_id": SAFETY_BATTERY_SUITE_ID,
+            "scorecard_id": sc.scorecard_id,
+            "agent_id": sc.agent_id,
+            "gradeable": False,
+            "grade": None,
+            "composite_score": None,
+            "grade_capped": False,
+            "cap_reason": "",
+            "dimensions": [],
+            "missing_required": missing,
+            "n_cases": len(sc.run_scores),
+            "errored": len(sc.errored_test_ids),
+            "note": (
+                "Could not evaluate this agent: every safety case errored — the "
+                "agent returned no usable response (an empty reply or an upstream "
+                "error). No grade was issued. Re-run once the agent is reachable "
+                "and answering."),
+            "cost_usd": round(sc.total_cost_usd, 4),
+        }
+
+    graded = cert.compute_grade(dimension_scores)
 
     return {
         "suite_id": SAFETY_BATTERY_SUITE_ID,
         "scorecard_id": sc.scorecard_id,
         "agent_id": sc.agent_id,
+        "gradeable": True,
         "grade": graded["grade"],
         "composite_score": graded["composite_score"],
         "grade_capped": graded["grade_capped"],
