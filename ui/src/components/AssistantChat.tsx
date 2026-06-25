@@ -4,8 +4,9 @@
    A friendly personal assistant that makes its *safety* visible: it shows every
    tool it uses ("opened a web page", "did the math"), and — the trust-defining
    moment — it pauses for an inline approval before doing anything sensitive. A
-   safety-posture rail and the dogfood "Grade A" seal keep the differentiator in
-   view. End-user voice throughout; mobile-first; keyboard accessible.
+   safety-posture rail keeps the differentiator in view; a safety grade is shown
+   only once a real certificate is issued (otherwise "certification pending").
+   End-user voice throughout; mobile-first; keyboard accessible.
 
    Talks to the sibling backend (POST sessions / message / approve, GET session)
    and degrades gracefully to a clearly-labelled local preview if it's absent.
@@ -108,20 +109,36 @@ function MessageBubble({ m, onDecide, decideBusy }: {
   );
 }
 
-/** The always-visible safety differentiator: posture + tools + dogfood seal. */
+/** The always-visible safety differentiator: posture + tools + safety seal.
+ *  A grade is shown ONLY when the backend reports a real, issued certificate;
+ *  otherwise we show an honest "certification pending" state — never a
+ *  placeholder letter. */
 function SafetyRail({ posture }: { posture: SafetyPosture }) {
-  const grade = posture.grade ?? "A";
-  const certHref = posture.cert_id ? `/certified/${posture.cert_id}` : "/certified";
+  const certified = Boolean(posture.cert_id && posture.grade);
   return (
     <aside className="asst-rail" aria-label="Safety posture">
       <div className="asst-rail-seal">
-        <Link to={certHref} title="View the public safety certificate" className="asst-seal-link">
-          <Seal grade={grade} size={104} />
-        </Link>
-        <div className="asst-rail-cert">
-          <b>Agenttic Safety Certified — Grade {grade}</b>
-          <Link to={certHref} className="asst-cert-link">View certificate ↗</Link>
-        </div>
+        {certified ? (
+          <>
+            <Link to={`/certified/${posture.cert_id}`}
+                  title="View the public safety certificate" className="asst-seal-link">
+              <Seal grade={posture.grade} size={104} />
+            </Link>
+            <div className="asst-rail-cert">
+              <b>Agenttic Safety Certified — Grade {posture.grade}</b>
+              <Link to={`/certified/${posture.cert_id}`} className="asst-cert-link">
+                View certificate ↗</Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <Seal size={104} />
+            <div className="asst-rail-cert">
+              <b>Safety certification pending</b>
+              <Link to="/methodology" className="asst-cert-link">How grading works ↗</Link>
+            </div>
+          </>
+        )}
       </div>
 
       <ul className="asst-posture">
@@ -148,8 +165,9 @@ function SafetyRail({ posture }: { posture: SafetyPosture }) {
       </div>
 
       <p className="asst-rail-foot">
-        This assistant is the agent that passes its own safety grade — proof, not
-        a promise. <Link to="/methodology">How grading works ↗</Link>
+        Safe by construction — sandboxed, least-privilege, and human-in-the-loop.
+        Its safety grade is published only once independently measured.{" "}
+        <Link to="/methodology">How grading works ↗</Link>
       </p>
     </aside>
   );
@@ -372,7 +390,7 @@ export function AssistantChat() {
         <div className="asst-thread" role="log" aria-live="polite" aria-label="Conversation">
           {empty ? (
             <div className="asst-empty">
-              <Seal grade={posture.grade ?? "A"} size={92} />
+              <Seal grade={posture.grade} size={92} />
               <h2>Your safe AI assistant</h2>
               <p className="asst-empty-sub">
                 It asks before doing anything sensitive, and it can't touch your

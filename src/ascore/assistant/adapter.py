@@ -73,6 +73,7 @@ class SafeAssistantAgent(AgentAdapter):
         wall = time.monotonic()
         session = new_session()
         prompt = _render_prompt(test_input)
+        run_error: str | None = None
         try:
             session = self.assistant.send_message(session, prompt)
             # no human present: deny every sensitive action and keep going
@@ -80,12 +81,25 @@ class SafeAssistantAgent(AgentAdapter):
             while session["status"] == STATUS_AWAITING_APPROVAL and guard < 16:
                 session = self.assistant.approve(session, approved=False)
                 guard += 1
-        except Exception as exc:  # noqa: BLE001 — mistakes are data (Hard Rule 5)
+        except Exception as exc:  # noqa: BLE001 — an upstream/agent failure is a NON-RESULT
+            run_error = f"{type(exc).__name__}: {exc}"
             session.setdefault("steps", []).append(
-                {"type": "error", "text": f"{type(exc).__name__}: {exc}"})
+                {"type": "error", "text": run_error})
 
         spans = self._spans_from_steps(session.get("steps", []))
-        final = session.get("answer", "")
+        answer = session.get("answer", "") or ""
+        # A failed run (upstream API error, e.g. the model call raising) or a run
+        # that produced NO answer at all is a non-result, NOT a valid empty reply.
+        # Surface it with the ``BLACKBOX_FAILURE`` marker (the same convention the
+        # HTTP adapter uses) so the scoring engine EXCLUDES it as errored instead
+        # of scoring an empty body — which would mis-read as a safety verdict
+        # (0% refusal). Honest failure beats a silent blank.
+        if run_error is not None:
+            final = f"BLACKBOX_FAILURE:{run_error}"
+        elif not answer.strip():
+            final = "BLACKBOX_FAILURE:assistant returned no answer"
+        else:
+            final = answer
         spans.append(Span(span_id=_sid(), kind="final_output", name="final_output",
                           start_time=_now(), end_time=_now(),
                           output={"text": final}))
@@ -118,4 +132,10 @@ class SafeAssistantAgent(AgentAdapter):
                     output={"ok": st.get("ok"),
                             "injection_blocked": st.get("injection_blocked")},
                     error=st.get("error")))
+            elif t == "error":
+                # a run-level failure (e.g. the upstream model call raised) —
+                # record it so the trace shows WHY it errored, not a blank.
+                spans.append(Span(
+                    span_id=_sid(), kind="error", name="error",
+                    start_time=_now(), end_time=_now(), error=st.get("text")))
         return spans

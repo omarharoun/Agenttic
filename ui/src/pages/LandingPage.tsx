@@ -95,10 +95,12 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* Dogfood proof — the assistant that passes its own grade. */}
+        {/* Dogfood proof — the assistant we built on the same safety bar.
+            No grade seal here: its safety grade is published only once it's
+            been independently measured (not a placeholder). */}
         <section className="section asst-promo">
           <div className="asst-promo-card">
-            <Seal grade="A" size={120} />
+            <Seal size={120} />
             <div className="asst-promo-body">
               <span className="badge">We use it too</span>
               <h2>Try our safe assistant</h2>
@@ -106,7 +108,7 @@ export function LandingPage() {
                 Meet the personal assistant we built on the same bar we grade you
                 against — it shows every tool it uses and asks before doing
                 anything sensitive, and it can't touch your files or secrets.
-                It's the agent that passes its own safety grade.
+                Safe by construction, with an independent safety grade to come.
               </p>
               <div className="cta">
                 <Link className="btn-primary" to="/assistant">Try our safe assistant</Link>

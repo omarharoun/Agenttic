@@ -31,7 +31,7 @@ export function AssistantPage() {
           <p className="sub">
             A helpful personal assistant that shows its work and asks before doing
             anything sensitive — and it can't touch your files or your secrets.
-            It's the agent that passes its own safety grade.
+            Safe by construction, with an independent safety grade to come.
           </p>
         </section>
 
