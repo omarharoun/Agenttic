@@ -43,9 +43,14 @@ class CampRunRow(SQLModel, table=True):
     task_id: str = Field(index=True)
     agent_label: str = ""
     mode: str = "mock"  # "mock" | "agent" (BYO-key agent under camp)
-    status: str = "complete"  # complete | error
+    status: str = "running"  # running | succeeded | failed
     created_at: datetime
     finished_at: datetime | None = None
+    updated_at: datetime | None = None  # heartbeat: bumped on every progress write
+    # live progress (async runs report as they go)
+    total_episodes: int = 0
+    episodes_completed: int = 0
+    phase: str = ""  # human-readable ("312/500 episodes", "round 2/5", …)
     # config knobs (threshold is the hard, non-overridable accuracy floor)
     threshold: float = 0.99
     min_episodes_for_gate: int = 200
@@ -113,13 +118,29 @@ class CampStore:
 
     def create_run(self, run_id: str, *, kind: str, task_id: str, mode: str,
                    agent_label: str, threshold: float, min_episodes_for_gate: int,
-                   seed: int) -> None:
+                   seed: int, total_episodes: int = 0) -> None:
         with Session(self.engine) as s:
+            now = _now()
             s.add(CampRunRow(
                 tenant_id=self.tenant, run_id=run_id, kind=kind, task_id=task_id,
                 mode=mode, agent_label=agent_label, threshold=threshold,
                 min_episodes_for_gate=min_episodes_for_gate, seed=seed,
-                created_at=_now()))
+                status="running", total_episodes=total_episodes,
+                phase="queued", created_at=now, updated_at=now))
+            s.commit()
+
+    def update_progress(self, run_id: str, *, episodes_completed: int,
+                        phase: str | None = None) -> None:
+        """Heartbeat + progress. Cheap; called periodically while a run works."""
+        with Session(self.engine) as s:
+            row = self._row(s, run_id)
+            if row.status != "running":
+                return  # terminal — don't resurrect
+            row.episodes_completed = episodes_completed
+            if phase is not None:
+                row.phase = phase
+            row.updated_at = _now()
+            s.add(row)
             s.commit()
 
     def finish_run(self, run_id: str, *, episodes: int, passes: int,
@@ -128,8 +149,12 @@ class CampStore:
                    review_queue: list | None = None) -> None:
         with Session(self.engine) as s:
             row = self._row(s, run_id)
-            row.status = "complete"
-            row.finished_at = _now()
+            row.status = "succeeded"
+            now = _now()
+            row.finished_at = now
+            row.updated_at = now
+            row.phase = "done"
+            row.episodes_completed = episodes
             row.episodes = episodes
             row.passes = passes
             row.wilson_lower_95 = wilson_lower_95
@@ -146,11 +171,35 @@ class CampStore:
     def fail_run(self, run_id: str, error: str) -> None:
         with Session(self.engine) as s:
             row = self._row(s, run_id)
-            row.status = "error"
+            row.status = "failed"
             row.error = error
-            row.finished_at = _now()
+            now = _now()
+            row.finished_at = now
+            row.updated_at = now
+            row.phase = "failed"
             s.add(row)
             s.commit()
+
+    def interrupt_orphans(self) -> int:
+        """Startup hygiene: any run still 'running' did not survive the previous
+        process (the work lived in that process's memory). Mark them failed so
+        the client sees a real terminal state instead of a run hung forever.
+        Safe under the single-worker model (mirrors UIStore.interrupt_orphans)."""
+        with Session(self.engine) as s:
+            rows = s.exec(select(CampRunRow).where(
+                CampRunRow.tenant_id == self.tenant,
+                CampRunRow.status == "running")).all()
+            now = _now()
+            for r in rows:
+                r.status = "failed"
+                r.error = "interrupted: the server restarted while this run was " \
+                          "in progress"
+                r.finished_at = now
+                r.updated_at = now
+                r.phase = "interrupted"
+                s.add(r)
+            s.commit()
+            return len(rows)
 
     def set_gate(self, run_id: str, gate: dict, *, approved_by: str | None,
                  approved_at: datetime | None) -> None:
@@ -236,6 +285,10 @@ class CampStore:
             "status": row.status,
             "created_at": row.created_at.isoformat(),
             "finished_at": row.finished_at.isoformat() if row.finished_at else None,
+            "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+            "total_episodes": row.total_episodes,
+            "episodes_completed": row.episodes_completed,
+            "phase": row.phase,
             "threshold": row.threshold,
             "min_episodes_for_gate": row.min_episodes_for_gate,
             "episodes": row.episodes,

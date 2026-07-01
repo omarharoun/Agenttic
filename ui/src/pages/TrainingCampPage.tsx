@@ -1,6 +1,19 @@
 import { useEffect, useState } from "react";
 import { api, downloadBlob } from "../api";
-import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { EmptyState, PageHeader, Skeleton, Spinner } from "../components/ui";
+
+const TERMINAL = new Set(["succeeded", "failed"]);
+
+function StatusChip({ run }: { run: any }) {
+  const s = run.status;
+  if (s === "running") {
+    const p = run.total_episodes
+      ? ` ${run.episodes_completed}/${run.total_episodes}` : "";
+    return <span className="status-chip running">running{p}</span>;
+  }
+  const cls = s === "succeeded" ? "succeeded" : "failed";
+  return <span className={`status-chip ${cls}`}>{s}</span>;
+}
 
 /* ============================================================================
    Training Camp — /app/training-camp.
@@ -80,6 +93,29 @@ export function TrainingCampPage() {
     api.getCamp(id).then(setDetail).catch(() => {});
   };
 
+  // Poll a run that's still working (async): refresh detail + list until it
+  // reaches a terminal state, then render results. No long-held request, so no
+  // Cloudflare 524.
+  useEffect(() => {
+    if (!detail || TERMINAL.has(detail.status)) return;
+    const id = detail.run_id;
+    const t = setInterval(() => {
+      api.getCamp(id).then((r) => {
+        setDetail(r);
+        if (TERMINAL.has(r.status)) load();
+      }).catch(() => {});
+    }, 1500);
+    return () => clearInterval(t);
+  }, [detail?.run_id, detail?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep the list fresh while any run is still working.
+  const anyRunning = (runs ?? []).some((r) => !TERMINAL.has(r.status));
+  useEffect(() => {
+    if (!anyRunning) return;
+    const t = setInterval(load, 2000);
+    return () => clearInterval(t);
+  }, [anyRunning]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const start = async () => {
     setBusy(true); setMsg(null);
     try {
@@ -89,11 +125,12 @@ export function TrainingCampPage() {
             threshold, holdout, seed, degenerate })
         : await api.startCamp({
             task_id: taskId, mode, episodes, threshold, seed });
-      setMsg({ kind: "ok", text: `Camp ${run.run_id} complete — ${run.gate?.summary ?? ""}` });
+      // 202 + a running row; the polling effect takes over and shows progress.
+      setMsg({ kind: "ok", text: `Camp ${run.run_id} started — running…` });
       load();
-      inspect(run.run_id);
+      setDetail(run);
     } catch (e: any) {
-      setMsg({ kind: "err", text: `Camp failed: ${String(e?.message ?? e)}` });
+      setMsg({ kind: "err", text: `Could not start camp: ${String(e?.message ?? e)}` });
     } finally { setBusy(false); }
   };
 
@@ -223,25 +260,28 @@ export function TrainingCampPage() {
             <table className="data">
               <thead>
                 <tr>
-                  <th>run</th><th>kind</th><th>task</th><th>mode</th>
+                  <th>run</th><th>kind</th><th>status</th><th>mode</th>
                   <th>accuracy</th><th>wilson₉₅ low</th><th>floor</th>
                   <th>gate</th><th></th>
                 </tr>
               </thead>
               <tbody>
-                {runs.map((r) => (
-                  <tr key={r.run_id}>
-                    <td className="mono">{r.run_id}</td>
-                    <td>{r.kind}</td>
-                    <td>{r.task_id}</td>
-                    <td>{r.mode}</td>
-                    <td>{pct(r.pass_rate)}</td>
-                    <td><b>{pct(r.wilson_lower_95)}</b></td>
-                    <td>{pct(r.threshold)}</td>
-                    <td><GateBadge gate={r.gate} /></td>
-                    <td><button className="ghost-sm" onClick={() => inspect(r.run_id)}>inspect</button></td>
-                  </tr>
-                ))}
+                {runs.map((r) => {
+                  const done = r.status === "succeeded";
+                  return (
+                    <tr key={r.run_id}>
+                      <td className="mono">{r.run_id}</td>
+                      <td>{r.kind}</td>
+                      <td><StatusChip run={r} /></td>
+                      <td>{r.mode}</td>
+                      <td>{done ? pct(r.pass_rate) : "—"}</td>
+                      <td><b>{done ? pct(r.wilson_lower_95) : "—"}</b></td>
+                      <td>{pct(r.threshold)}</td>
+                      <td>{done ? <GateBadge gate={r.gate} /> : "—"}</td>
+                      <td><button className="ghost-sm" onClick={() => inspect(r.run_id)}>inspect</button></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -253,9 +293,60 @@ export function TrainingCampPage() {
   );
 }
 
+function RunningView({ run }: { run: any }) {
+  const total = run.total_episodes || 0;
+  const done = run.episodes_completed || 0;
+  const frac = total ? Math.min(1, done / total) : 0;
+  return (
+    <div style={{ marginTop: 26 }}>
+      <h2 style={{ marginBottom: 4 }}>
+        <span className="mono">{run.run_id}</span>{" "}
+        <span className="muted-sm">· {run.kind} · {run.task_id} · {run.mode}</span>
+      </h2>
+      <div className="card">
+        <div className="card-head"><h3><Spinner /> Running…</h3>
+          <p>The camp runs in the background — this page polls for progress, so a
+            long run won't time out. {run.mode === "agent"
+              && "Agent mode makes one model call per episode."}</p>
+        </div>
+        <div className="card-body">
+          <div style={{ marginBottom: 8 }}>
+            <b>{run.phase || "working"}</b>
+            {total ? ` — ${done}/${total} episodes` : ""}
+          </div>
+          <div style={{ height: 10, borderRadius: 6, background: "var(--wait-soft)",
+                        overflow: "hidden", maxWidth: 460 }}>
+            <div style={{ width: `${Math.round(frac * 100)}%`, height: "100%",
+                          background: "var(--accent)", transition: "width .4s" }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FailedView({ run }: { run: any }) {
+  return (
+    <div style={{ marginTop: 26 }}>
+      <h2 style={{ marginBottom: 4 }}>
+        <span className="mono">{run.run_id}</span>{" "}
+        <span className="muted-sm">· {run.kind} · {run.task_id} · {run.mode}</span>
+      </h2>
+      <div className="card">
+        <div className="card-head"><h3 style={{ color: "var(--fail)" }}>Run failed</h3></div>
+        <div className="card-body">
+          <div className="note-err">{run.error || "The run failed with no message."}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CampDetail({ run, onApprove, onExport }: {
   run: any; onApprove: (id: string) => void; onExport: (id: string) => void;
 }) {
+  if (run.status === "running" || run.status === "queued") return <RunningView run={run} />;
+  if (run.status === "failed") return <FailedView run={run} />;
   const g = run.gate ?? {};
   const rep = run.report ?? {};
   const floorPromoteHint = !g.floor_met

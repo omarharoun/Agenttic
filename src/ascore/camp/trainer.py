@@ -83,9 +83,11 @@ class TrainingCamp:
         self.agent = agent
         self.store = store
 
-    def run(self, config: CampConfig) -> CampReport:
+    def run(self, config: CampConfig, on_episode=None) -> CampReport:
+        # ``on_episode(done, total)`` is an optional progress hook (added for the
+        # async runner); when None the loop behaves exactly as before.
         passes = 0
-        for _ in range(config.episodes):
+        for _i in range(config.episodes):
             obs = self.env.reset()
             action = self.agent.act(obs)
             result = self.env.step(action)
@@ -109,6 +111,9 @@ class TrainingCamp:
                     system_prompt=obs.get("system", ""),
                 )
             )
+
+            if on_episode is not None:
+                on_episode(_i + 1, config.episodes)
 
         return CampReport(
             task_id=self.task.task_id,

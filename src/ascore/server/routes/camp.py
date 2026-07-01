@@ -9,9 +9,13 @@ holdout **ratchet** log + the human review queue), sign off on the gate as an
 operator, and export the passing episodes as a **distillation dataset**.
 
 All routes are auth-gated and tenant-scoped (mounted under the protected `/api`
-routers in ``app.py``). Camp runs are deterministic and fast in ``mock`` mode, so
-they run synchronously (off the event loop via a worker thread). ``agent`` mode
-drives the real BYO-key agent and costs tokens, so episode counts are capped.
+routers in ``app.py``). Camp runs are **asynchronous**: the start endpoints create
+the run row (``status=running``), launch the work in a background task (the
+blocking episode loop runs off the event loop via a worker thread), and return
+202 immediately with the run id — so the request never approaches Cloudflare's
+~100s origin timeout, even for ``agent`` mode making N model calls. Progress is
+persisted as it runs; the client polls ``GET /camps/{id}``. A server restart mid-
+run is swept to ``failed`` on startup (no run hangs forever).
 
 Honesty posture (kept from AgentCamp): the accuracy floor is non-overridable —
 a human sign-off is required *on top of* clearing it, never a substitute — and
@@ -91,9 +95,56 @@ def list_camp_tasks(request: Request):
     return {"tasks": service.available_tasks(), "modes": list(service.MODES)}
 
 
+# -- background runner --------------------------------------------------------
+
+# Hold references to in-flight tasks so they aren't garbage-collected mid-run
+# (asyncio only keeps weak refs). Single-worker model — see app.py.
+_BG_TASKS: set[asyncio.Task] = set()
+
+
+def _spawn(coro) -> None:
+    task = asyncio.ensure_future(coro)
+    _BG_TASKS.add(task)
+    task.add_done_callback(_BG_TASKS.discard)
+
+
+async def _run_camp_bg(store, run_id: str, params: dict, adapter, *,
+                       improve: bool) -> None:
+    """Do the actual (blocking) camp work off the event loop, persisting live
+    progress and the final result / error. Never raises — a failure is recorded
+    on the run row so the client sees a real terminal state."""
+    def progress(done: int, total: int, phase: str) -> None:
+        # called from the worker thread; CampStore uses its own Session (safe)
+        store.update_progress(run_id, episodes_completed=done, phase=phase)
+    try:
+        if improve:
+            result = await asyncio.to_thread(
+                service.run_improve_camp, on_progress=progress, **params)
+            store.add_episodes(run_id, result["episodes"])
+            report = result["report"]
+            store.finish_run(
+                run_id, episodes=report["episodes"], passes=report["passes"],
+                wilson_lower_95=report["wilson_lower_95"],
+                pass_rate=report["pass_rate"], report=report,
+                gate=result["gate"], rounds=result["rounds"],
+                review_queue=result["review_queue"])
+        else:
+            result = await asyncio.to_thread(
+                service.run_single_camp, adapter=adapter,
+                on_progress=progress, **params)
+            store.add_episodes(run_id, result["episodes"])
+            report = result["report"]
+            store.finish_run(
+                run_id, episodes=report["episodes"], passes=report["passes"],
+                wilson_lower_95=report["wilson_lower_95"],
+                pass_rate=report["pass_rate"], report=report, gate=result["gate"])
+    except Exception as exc:  # noqa: BLE001 — record, never crash the loop
+        store.fail_run(run_id, f"{type(exc).__name__}: {exc}")
+
+
 # -- start a single camp ------------------------------------------------------
 
-@router.post("/camps", dependencies=[Depends(require_operator)])
+@router.post("/camps", status_code=202, dependencies=[Depends(require_operator)])
 async def start_camp(body: StartCampBody, request: Request):
     if body.task_id not in service.TASKS:
         raise HTTPException(400, f"unknown task '{body.task_id}'")
@@ -106,6 +157,8 @@ async def start_camp(body: StartCampBody, request: Request):
             raise HTTPException(
                 400, f"agent mode is capped at {MAX_AGENT_EPISODES} episodes "
                      f"(it spends your Anthropic key); requested {body.episodes}")
+        # Build the BYO adapter now (needs the request/key); a missing key still
+        # fails fast with a 400 instead of a background failure.
         adapter = _build_byo_adapter(request, body)
     elif body.episodes > MAX_MOCK_EPISODES:
         raise HTTPException(400, f"episodes capped at {MAX_MOCK_EPISODES}")
@@ -115,25 +168,15 @@ async def start_camp(body: StartCampBody, request: Request):
     store.create_run(
         run_id, kind="single", task_id=body.task_id, mode=body.mode,
         agent_label=body.agent_id or "", threshold=body.threshold,
-        min_episodes_for_gate=body.min_episodes_for_gate, seed=body.seed)
+        min_episodes_for_gate=body.min_episodes_for_gate, seed=body.seed,
+        total_episodes=body.episodes)
 
-    try:
-        result = await asyncio.to_thread(
-            service.run_single_camp,
-            task_id=body.task_id, mode=body.mode, episodes=body.episodes,
-            threshold=body.threshold, min_episodes_for_gate=body.min_episodes_for_gate,
-            seed=body.seed, adapter=adapter)
-    except Exception as exc:  # noqa: BLE001 — surface as run error, not a 500
-        store.fail_run(run_id, f"{type(exc).__name__}: {exc}")
-        raise HTTPException(400, f"camp run failed: {exc}")
-
-    report = result["report"]
-    store.add_episodes(run_id, result["episodes"])
-    store.finish_run(
-        run_id, episodes=report["episodes"], passes=report["passes"],
-        wilson_lower_95=report["wilson_lower_95"], pass_rate=report["pass_rate"],
-        report=report, gate=result["gate"])
-    return store.get_run(run_id)
+    params = dict(
+        task_id=body.task_id, mode=body.mode, episodes=body.episodes,
+        threshold=body.threshold, min_episodes_for_gate=body.min_episodes_for_gate,
+        seed=body.seed)
+    _spawn(_run_camp_bg(store, run_id, params, adapter, improve=False))
+    return store.get_run(run_id)  # status=running
 
 
 def _build_byo_adapter(request: Request, body: StartCampBody):
@@ -154,7 +197,8 @@ def _build_byo_adapter(request: Request, body: StartCampBody):
 
 # -- start an improve loop ----------------------------------------------------
 
-@router.post("/camps/improve", dependencies=[Depends(require_operator)])
+@router.post("/camps/improve", status_code=202,
+             dependencies=[Depends(require_operator)])
 async def start_improve(body: ImproveCampBody, request: Request):
     if body.task_id not in service.TASKS:
         raise HTTPException(400, f"unknown task '{body.task_id}'")
@@ -170,27 +214,16 @@ async def start_improve(body: ImproveCampBody, request: Request):
     store.create_run(
         run_id, kind="improve", task_id=body.task_id, mode="mock",
         agent_label="", threshold=body.threshold,
-        min_episodes_for_gate=min(200, body.holdout), seed=body.seed)
+        min_episodes_for_gate=min(200, body.holdout), seed=body.seed,
+        total_episodes=body.rounds * body.episodes_per_round)
 
-    try:
-        result = await asyncio.to_thread(
-            service.run_improve_camp,
-            task_id=body.task_id, rounds=body.rounds,
-            episodes_per_round=body.episodes_per_round, threshold=body.threshold,
-            holdout=body.holdout, seed=body.seed, degenerate=body.degenerate,
-            approved_by=None)
-    except Exception as exc:  # noqa: BLE001
-        store.fail_run(run_id, f"{type(exc).__name__}: {exc}")
-        raise HTTPException(400, f"improve loop failed: {exc}")
-
-    report = result["report"]
-    store.add_episodes(run_id, result["episodes"])
-    store.finish_run(
-        run_id, episodes=report["episodes"], passes=report["passes"],
-        wilson_lower_95=report["wilson_lower_95"], pass_rate=report["pass_rate"],
-        report=report, gate=result["gate"], rounds=result["rounds"],
-        review_queue=result["review_queue"])
-    return store.get_run(run_id)
+    params = dict(
+        task_id=body.task_id, rounds=body.rounds,
+        episodes_per_round=body.episodes_per_round, threshold=body.threshold,
+        holdout=body.holdout, seed=body.seed, degenerate=body.degenerate,
+        approved_by=None)
+    _spawn(_run_camp_bg(store, run_id, params, None, improve=True))
+    return store.get_run(run_id)  # status=running
 
 
 # -- read ---------------------------------------------------------------------
@@ -234,7 +267,7 @@ def approve_camp(run_id: str, request: Request):
         row = store.get_run_row(run_id)
     except NotFoundError:
         raise HTTPException(404, f"camp run {run_id} not found")
-    if row.status != "complete":
+    if row.status != "succeeded":
         raise HTTPException(422, f"run is {row.status}, cannot approve")
 
     from ascore.camp.trainer import CampReport
