@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import asdict
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from .adapter_agent import AdapterAgent
 from .agent import Agent, HeuristicSupportAgent
@@ -97,6 +97,21 @@ def evaluate_gate(report: CampReport, approved_by: Optional[str] = None) -> dict
     }
 
 
+def _throttled(on_progress, total, phase_fn):
+    """Wrap a raw progress hook so it fires at most ~50 times over the run —
+    keeps the DB write rate sane for large episode counts."""
+    if on_progress is None:
+        return None
+    step = max(1, total // 50)
+    last = [0]
+
+    def hook(done, _tot):
+        if done == total or done - last[0] >= step:
+            last[0] = done
+            on_progress(done, total, phase_fn(done))
+    return hook
+
+
 def run_single_camp(
     *,
     task_id: str = "support_triage",
@@ -106,8 +121,12 @@ def run_single_camp(
     min_episodes_for_gate: int = 200,
     seed: int = 0,
     adapter: Any = None,
+    on_progress: Optional[Callable[[int, int, str], None]] = None,
 ) -> dict:
-    """Run one camp session; return report + (pre-approval) gate + episodes."""
+    """Run one camp session; return report + (pre-approval) gate + episodes.
+
+    ``on_progress(done, total, phase)`` is called periodically as episodes
+    complete (used by the async runner to persist live progress)."""
     task = get_task(task_id)
     rng = random.Random(seed)
     env = MockSupportEnv(task, rng)
@@ -122,9 +141,12 @@ def run_single_camp(
 
     store = MemoryTraceStore()
     camp = TrainingCamp(task, env, agent, store)
+    hook = _throttled(on_progress, episodes,
+                      lambda done: f"{done}/{episodes} episodes")
     report = camp.run(CampConfig(
         episodes=episodes, accuracy_threshold=threshold,
-        min_episodes_for_gate=min_episodes_for_gate, seed=seed))
+        min_episodes_for_gate=min_episodes_for_gate, seed=seed),
+        on_episode=hook)
 
     # Fresh run => no human has signed off yet: gate denies by default.
     gate = evaluate_gate(report, approved_by=None)
@@ -147,10 +169,14 @@ def run_improve_camp(
     seed: int = 0,
     degenerate: bool = False,
     approved_by: Optional[str] = None,
+    on_progress: Optional[Callable[[int, int, str], None]] = None,
 ) -> dict:
     """Run the self-improving champion/challenger loop with the frozen-holdout
     ratchet; return the final report, gate, per-round log, review queue and the
-    full cross-round episode memory."""
+    full cross-round episode memory.
+
+    ``on_progress(done, total, phase)`` reports coarse per-round progress (the
+    loop is mock-only and fast, so round granularity is plenty)."""
     task = get_task(task_id)
     frozen = FrozenHoldout(task, n=holdout, seed=seed + 10_000)
     store = MemoryTraceStore()
@@ -158,10 +184,16 @@ def run_improve_camp(
 
     loop = ImprovementLoop(task, frozen, store, factory=factory)
     approver = (lambda _r: True) if approved_by else None
+    total_eps = rounds * episodes_per_round
+    on_round = None
+    if on_progress is not None:
+        def on_round(r, total_rounds):  # noqa: E306 — local hook
+            on_progress(min(r * episodes_per_round, total_eps), total_eps,
+                        f"round {r}/{total_rounds}")
     result = loop.run(
         LoopConfig(rounds=rounds, episodes_per_round=episodes_per_round,
                    accuracy_floor=threshold, seed=seed),
-        human_approver=approver)
+        human_approver=approver, on_round=on_round)
 
     # Measure the final champion on the frozen anchor to build a gate-compatible
     # report (Wilson lower bound over the held-out set — never trained on).

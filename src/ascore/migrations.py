@@ -165,6 +165,24 @@ def _training_camp_tables(conn) -> None:
     CampEpisodeRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _training_camp_async_progress(conn) -> None:
+    """v15 — async camp runs: add live-progress + heartbeat columns to
+    camprunrow (total/completed episodes, phase, updated_at). Additive; on a
+    fresh DB v14 already creates these from the current model, so we add only
+    the columns that are actually missing (idempotent across SQLite/Postgres)."""
+    from sqlalchemy import inspect
+    existing = {c["name"] for c in inspect(conn).get_columns("camprunrow")}
+    adds = {
+        "total_episodes": "INTEGER NOT NULL DEFAULT 0",
+        "episodes_completed": "INTEGER NOT NULL DEFAULT 0",
+        "phase": "VARCHAR NOT NULL DEFAULT ''",
+        "updated_at": "TIMESTAMP",
+    }
+    for name, ddl in adds.items():
+        if name not in existing:
+            conn.execute(text(f"ALTER TABLE camprunrow ADD COLUMN {name} {ddl}"))
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -181,6 +199,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (12, "agent_connections_table", _agent_connections_table),
     (13, "assistant_sessions_table", _assistant_sessions_table),
     (14, "training_camp_tables", _training_camp_tables),
+    (15, "training_camp_async_progress", _training_camp_async_progress),
 ]
 
 

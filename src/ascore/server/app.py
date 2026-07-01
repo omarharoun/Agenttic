@@ -138,6 +138,7 @@ class Workspaces:
             from ascore.camp.store import CampStore
             camp_tenant = tenant if self._postgres else "default"
             camp = CampStore(reg.engine, tenant=camp_tenant)
+            camp.interrupt_orphans()  # sweep runs left 'running' by a dead process
             self._ws[tenant] = Workspace(self.cfg, reg, store, bus, manager,
                                          tenant, ab=ab, optimizer=optimizer,
                                          camp=camp)

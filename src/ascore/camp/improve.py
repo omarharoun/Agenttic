@@ -212,7 +212,10 @@ class ImprovementLoop:
         return episodes
 
     def run(self, config: LoopConfig,
-            human_approver: Optional[Callable] = None) -> LoopResult:
+            human_approver: Optional[Callable] = None,
+            on_round: Optional[Callable] = None) -> LoopResult:
+        # ``on_round(r, total_rounds)`` is an optional progress hook (added for
+        # the async runner); when None the loop behaves exactly as before.
         rng = random.Random(config.seed)
         champion = RuleSupportAgent(generation=0)
         best_rate = self.holdout.evaluate(champion).pass_rate
@@ -243,6 +246,9 @@ class ImprovementLoop:
                 log.note = f"challenger refused (no gain); stall {stalls}/{config.patience}"
 
             result.rounds.append(log)
+
+            if on_round is not None:
+                on_round(r, config.rounds)
 
             # Stop early once the champion clears the floor with margin to spare.
             champ_final = self.holdout.evaluate(champion)
