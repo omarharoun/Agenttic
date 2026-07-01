@@ -478,6 +478,42 @@ export const api = {
   getOptimizeRun: (id: string) =>
     afetch(`/api/optimize/runs/${encodeURIComponent(id)}`).then((r) => json<any>(r)),
 
+  // -- training camp (folded-in AgentCamp: run N episodes, grade, Wilson
+  //    lower-bound accuracy, two-condition promotion gate, distillation export)
+  campTasks: () =>
+    afetch("/api/camps/tasks").then((r) =>
+      json<{ tasks: { task_id: string; name: string }[]; modes: string[] }>(r)),
+  listCamps: () =>
+    afetch("/api/camps").then((r) => json<{ runs: any[] }>(r)),
+  getCamp: (id: string) =>
+    afetch(`/api/camps/${encodeURIComponent(id)}`).then((r) => json<any>(r)),
+  startCamp: (body: {
+    task_id?: string; mode?: string; episodes?: number; threshold?: number;
+    min_episodes_for_gate?: number; seed?: number; model?: string;
+    agent_id?: string;
+  }) =>
+    afetch("/api/camps", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<any>(r)),
+  startImprove: (body: {
+    task_id?: string; rounds?: number; episodes_per_round?: number;
+    threshold?: number; holdout?: number; seed?: number; degenerate?: boolean;
+  }) =>
+    afetch("/api/camps/improve", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<any>(r)),
+  approveCamp: (id: string) =>
+    afetch(`/api/camps/${encodeURIComponent(id)}/approve`, { method: "POST" })
+      .then((r) => json<any>(r)),
+  exportCampDistillation: (id: string) =>
+    afetch(`/api/camps/${encodeURIComponent(id)}/distillation.jsonl`)
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`${r.status}`);
+        return r.blob();
+      }),
+
   listTraces: () => afetch("/api/traces").then((r) => json<any[]>(r)),
   getTrace: (id: string) => afetch(`/api/traces/${id}`).then((r) => json<any>(r)),
   upload: (file: File) => {

@@ -61,11 +61,12 @@ def safe_static_path(base: Path, rel: str) -> Path | None:
 class Workspace:
     """One tenant's isolated stack."""
     def __init__(self, cfg, reg, store, bus, manager, tenant, ab=None,
-                 optimizer=None):
+                 optimizer=None, camp=None):
         self.cfg, self.reg, self.store = cfg, reg, store
         self.bus, self.manager, self.tenant = bus, manager, tenant
         self.ab = ab
         self.optimizer = optimizer
+        self.camp = camp
 
 
 class Workspaces:
@@ -134,8 +135,12 @@ class Workspaces:
             ab = ABManager(self.cfg, reg, clients=self.clients)
             from ascore.server.optimizer_manager import OptimizerManager
             optimizer = OptimizerManager(self.cfg, reg, clients=self.clients)
+            from ascore.camp.store import CampStore
+            camp_tenant = tenant if self._postgres else "default"
+            camp = CampStore(reg.engine, tenant=camp_tenant)
             self._ws[tenant] = Workspace(self.cfg, reg, store, bus, manager,
-                                         tenant, ab=ab, optimizer=optimizer)
+                                         tenant, ab=ab, optimizer=optimizer,
+                                         camp=camp)
         return self._ws[tenant]
 
 
@@ -150,6 +155,7 @@ def bind_workspace(request: Request) -> None:
     request.state.manager = ws.manager
     request.state.ab = ws.ab
     request.state.optimizer = ws.optimizer
+    request.state.camp = ws.camp
     request.state.bus = ws.bus
     request.state.clients = request.app.state.clients
 
@@ -234,6 +240,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     from ascore.server.routes.ab import router as ab_router
     from ascore.server.routes.assistant import router as assistant_router
     from ascore.server.routes.auth import router as auth_router
+    from ascore.server.routes.camp import router as camp_router
     from ascore.server.routes.certifications import (
         public_router as certifications_public_router,
     )
@@ -280,6 +287,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(connect_router, prefix="/api", dependencies=protected)
     app.include_router(assistant_router, prefix="/api", dependencies=protected)
     app.include_router(certifications_router, prefix="/api", dependencies=protected)
+    app.include_router(camp_router, prefix="/api", dependencies=protected)
 
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"),
