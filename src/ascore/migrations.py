@@ -153,6 +153,18 @@ def _assistant_sessions_table(conn) -> None:
     AssistantSessionRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _training_camp_tables(conn) -> None:
+    """v14 — Training Camp (folded-in AgentCamp): tenant-scoped training/eval
+    runs and their graded-episode memory. ``CampRunRow`` holds the config, the
+    Wilson-lower-bound accuracy, the promotion-gate decision + human sign-off,
+    and the improve-loop ratchet log; ``CampEpisodeRow`` is the reusable memory
+    the distillation export and review queue read from."""
+    import ascore.camp.store  # noqa: F401 (registers CampRunRow + CampEpisodeRow)
+    from ascore.camp.store import CampEpisodeRow, CampRunRow
+    CampRunRow.__table__.create(bind=conn, checkfirst=True)
+    CampEpisodeRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -168,6 +180,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (11, "certifications_table", _certifications_table),
     (12, "agent_connections_table", _agent_connections_table),
     (13, "assistant_sessions_table", _assistant_sessions_table),
+    (14, "training_camp_tables", _training_camp_tables),
 ]
 
 

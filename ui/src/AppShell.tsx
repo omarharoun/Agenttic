@@ -16,6 +16,7 @@ import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { OptimizePage } from "./pages/OptimizePage";
 import { ResourcesPage } from "./pages/ResourcesPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { TrainingCampPage } from "./pages/TrainingCampPage";
 
 /** Token control: paste an API token (CI/power users). Login is the normal path;
  * a token, if set, takes precedence over the session for API calls. */
@@ -106,6 +107,7 @@ export function AppShell() {
         <NavLink to="/app/compare"><span className="ic">⚖</span> Compare</NavLink>
         <NavLink to="/app/leaderboard"><span className="ic">🏆</span> Leaderboard</NavLink>
         <NavLink to="/app/certifications"><span className="ic">🏅</span> Certification</NavLink>
+        <NavLink to="/app/training-camp"><span className="ic">🎯</span> Training Camp</NavLink>
         <NavLink to="/app/hardening"><span className="ic">🛡</span> Hardening</NavLink>
         <NavLink to="/app/optimize"><span className="ic">✨</span> Optimize</NavLink>
         <NavLink to="/app/agents"><span className="ic">🤖</span> Agents</NavLink>
@@ -146,6 +148,7 @@ export function AppShell() {
             <Route path="compare" element={<ComparePage />} />
             <Route path="leaderboard" element={<LeaderboardPage />} />
             <Route path="certifications" element={<CertificationsPage />} />
+            <Route path="training-camp" element={<TrainingCampPage />} />
             <Route path="hardening" element={<HardeningPage />} />
             <Route path="optimize" element={<OptimizePage />} />
             <Route path="agents" element={<AgentsPage />} />
