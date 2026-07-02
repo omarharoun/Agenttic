@@ -97,6 +97,19 @@ def _cfg(request: Request) -> dict:
     return request.app.state.cfg
 
 
+@public_router.get("/public/certifications/keys")
+def public_keys(request: Request):
+    """The published Ed25519 public keys certificates are signed with, so anyone
+    can verify a certificate WITHOUT trusting Agenttic (fetch the key for a
+    cert's ``public_key_id``, then Ed25519-verify its signature over
+    ``signed_payload``). Also served at ``/.well-known/agenttic-cert-keys.json``.
+    No auth. Never exposes the private key."""
+    return JSONResponse(
+        {"alg": cert.SIGNATURE_ALG,
+         "keys": cert.published_public_keys(_cfg(request))},
+        headers={"Cache-Control": _CACHE})
+
+
 @public_router.get("/public/certifications/{cert_id}")
 def public_get(cert_id: str, request: Request):
     """The public certificate: grade, agent, the real per-dimension safety

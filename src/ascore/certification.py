@@ -23,10 +23,16 @@ deliberately conservative and transparent:
   pins the agent's ``config_hash`` so a *changed* agent does not silently keep
   its grade.
 
-* **Tamper-evident.** The canonical certificate payload is signed with
-  HMAC-SHA256 under ``ASCORE_SECRET_KEY``. Mutating the stored payload (or
-  copying a signature onto another certificate) fails verification — the public
-  verification page reports ``signature_verified: false``.
+* **Third-party verifiable.** The canonical certificate payload is signed with
+  an **Ed25519** private key held only by the issuer; the matching **public key
+  is published** (``/.well-known/agenttic-cert-keys.json`` and
+  ``docs/CERTIFICATION.md``). Anyone can verify a certificate *without trusting
+  Agenttic and without any secret*: recompute the canonical JSON and check the
+  signature against the published public key for the cert's ``public_key_id``
+  (``verify_certificate`` does exactly this). Mutating the stored payload, or
+  copying a signature onto another certificate, fails verification. This is the
+  real "verifiable" property — a symmetric HMAC only lets the *issuer* verify,
+  so it could never back a public trust claim.
 
 This module is pure logic (rubric, signing, payload, badge). Persistence and the
 HTTP surface live in ``server/certifications.py`` and
@@ -41,6 +47,13 @@ import json
 import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+    Ed25519PrivateKey,
+    Ed25519PublicKey,
+)
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 # Bumped when the rubric (dimensions, weights, bands, or caps) changes, so every
 # certificate records the exact methodology it was graded under (honesty: an old
@@ -245,16 +258,228 @@ def compute_grade(dimension_scores: dict[str, float]) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# Signing — tamper-evidence over the canonical certificate payload.
+# Signing — third-party-verifiable Ed25519 signatures over the canonical payload.
+#
+# The issuer holds an Ed25519 PRIVATE key and publishes the matching PUBLIC key
+# (see ``published_public_keys`` → /.well-known/agenttic-cert-keys.json and
+# docs/CERTIFICATION.md). A certificate carries its ``signature`` (base64),
+# ``signature_alg`` ("ed25519"), and ``public_key_id`` so any third party can
+# verify it OFFLINE, against the published key alone — no secret, no call to
+# Agenttic (``verify_certificate``). The legacy HMAC helpers remain only to read
+# any pre-existing HMAC-signed certificate; new certs are always Ed25519.
 # --------------------------------------------------------------------------- #
+
+SIGNATURE_ALG = "ed25519"
+
+# Env / config sources for the issuer's Ed25519 signing key. Accepts a PKCS#8 PEM
+# private key OR base64 of the 32-byte raw Ed25519 seed. Via ``*_FILE`` too.
+SIGNING_KEY_ENV = "ASCORE_CERT_SIGNING_KEY"
+# Additional trusted PUBLIC keys (PEM or base64 raw), for key rotation / verify-
+# only nodes — comma/newline separated in the env, a list in config.
+PUBLIC_KEYS_ENV = "ASCORE_CERT_PUBLIC_KEYS"
+
+# A deterministic, PUBLICLY-KNOWN development key, used ONLY outside production so
+# local runs and tests can issue + verify without provisioning a key. It is NOT a
+# secret and MUST NOT be used in production: issuance fails closed in prod when no
+# real key is configured (see ``signing_key``). The seed is public on purpose — a
+# dev certificate is meant to be forgeable, so nobody mistakes it for a real one.
+_DEV_KEY_SEED = hashlib.sha256(b"agenttic-dev-insecure-cert-key/v1").digest()
+
+
+def canonical_json(payload: dict) -> str:
+    """Deterministic JSON serialization of the signed payload — sorted keys,
+    compact separators — so the signature is stable across processes and a
+    third-party verifier can recompute exactly what was signed."""
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"),
+                      ensure_ascii=True)
+
+
+def _b64e(b: bytes) -> str:
+    import base64
+    return base64.b64encode(b).decode("ascii")
+
+
+def _b64d(s: str) -> bytes:
+    import base64
+    return base64.b64decode(s)
+
+
+def is_production(cfg: dict | None = None) -> bool:
+    """Whether this process is running in production, where certificate issuance
+    must fail closed if no real signing key is configured. Driven by
+    ``ASCORE_ENV`` / ``ASCORE_ENVIRONMENT`` (or ``env`` in config)."""
+    env = (os.environ.get("ASCORE_ENV") or os.environ.get("ASCORE_ENVIRONMENT")
+           or "")
+    if not env and cfg:
+        env = str((cfg or {}).get("env")
+                  or ((cfg or {}).get("server", {}) or {}).get("env") or "")
+    return env.strip().lower() in ("prod", "production")
+
+
+def _load_private_from_material(material: str) -> Ed25519PrivateKey:
+    material = material.strip()
+    if "BEGIN" in material:
+        key = serialization.load_pem_private_key(material.encode(), password=None)
+        if not isinstance(key, Ed25519PrivateKey):
+            raise CertificationError("configured cert signing key is not Ed25519")
+        return key
+    raw = _b64d(material)
+    if len(raw) != 32:
+        raise CertificationError(
+            "raw Ed25519 signing key must be 32 bytes (base64-encoded)")
+    return Ed25519PrivateKey.from_private_bytes(raw)
+
+
+def _load_public_from_material(material: str) -> Ed25519PublicKey:
+    material = material.strip()
+    if "BEGIN" in material:
+        key = serialization.load_pem_public_key(material.encode())
+        if not isinstance(key, Ed25519PublicKey):
+            raise CertificationError("configured cert public key is not Ed25519")
+        return key
+    return Ed25519PublicKey.from_public_bytes(_b64d(material))
+
+
+def _configured_signing_material(cfg: dict | None) -> str:
+    from ascore.secrets import get_secret
+    m = get_secret(SIGNING_KEY_ENV) or os.environ.get(SIGNING_KEY_ENV, "")
+    if not m and cfg:
+        m = str((cfg.get("certification", {}) or {}).get("signing_key") or "")
+    return m.strip()
+
+
+def _configured_public_materials(cfg: dict | None) -> list[str]:
+    out: list[str] = []
+    env = os.environ.get(PUBLIC_KEYS_ENV, "")
+    for chunk in env.replace("\n", ",").split(","):
+        if chunk.strip():
+            out.append(chunk.strip())
+    if cfg:
+        for pk in ((cfg.get("certification", {}) or {}).get("public_keys") or []):
+            if str(pk).strip():
+                out.append(str(pk).strip())
+    return out
+
+
+def signing_key(cfg: dict | None = None) -> Ed25519PrivateKey:
+    """The issuer's Ed25519 private key for signing certificates.
+
+    Configured via ``ASCORE_CERT_SIGNING_KEY`` (env / ``*_FILE``, PEM or base64
+    raw seed) or ``certification.signing_key`` in config. In production, if none
+    is configured this raises — we never sign with an insecure default and never
+    fall back to a hard-coded secret. Outside production a deterministic,
+    publicly-known dev key is used so local/test issuance works (and is honestly
+    forgeable)."""
+    material = _configured_signing_material(cfg)
+    if material:
+        return _load_private_from_material(material)
+    if is_production(cfg):
+        raise CertificationError(
+            f"no certificate signing key configured ({SIGNING_KEY_ENV}) — "
+            "refusing to issue certificates in production (fail closed). "
+            "Generate one with `python -m ascore.certification gen-key` and set "
+            f"{SIGNING_KEY_ENV}.")
+    return Ed25519PrivateKey.from_private_bytes(_DEV_KEY_SEED)
+
+
+def key_id(public_key: Ed25519PublicKey) -> str:
+    """A stable, self-describing id for a public key: ``ed25519:<sha256[:16]>``
+    over its raw bytes. Lets a certificate name which published key signed it."""
+    raw = public_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
+    return "ed25519:" + hashlib.sha256(raw).hexdigest()[:16]
+
+
+def public_key_b64(public_key: Ed25519PublicKey) -> str:
+    return _b64e(public_key.public_bytes(Encoding.Raw, PublicFormat.Raw))
+
+
+def public_key_pem(public_key: Ed25519PublicKey) -> str:
+    return public_key.public_bytes(
+        Encoding.PEM, PublicFormat.SubjectPublicKeyInfo).decode("ascii")
+
+
+def _public_key_entry(public_key: Ed25519PublicKey) -> dict:
+    return {
+        "kid": key_id(public_key),
+        "alg": SIGNATURE_ALG,
+        "public_key_b64": public_key_b64(public_key),
+        "public_key_pem": public_key_pem(public_key),
+    }
+
+
+def published_public_keys(cfg: dict | None = None) -> list[dict]:
+    """The public keys a third party can verify certificates against — the active
+    signing key's public half plus any extra trusted public keys (rotation). This
+    is what ``/.well-known/agenttic-cert-keys.json`` serves. Never exposes the
+    private key. In production with no key configured, the active key is omitted
+    (issuance is already failing closed) and only configured public keys show."""
+    entries: dict[str, dict] = {}
+    try:
+        priv = signing_key(cfg)
+        e = _public_key_entry(priv.public_key())
+        entries[e["kid"]] = e
+    except CertificationError:
+        pass
+    for material in _configured_public_materials(cfg):
+        try:
+            e = _public_key_entry(_load_public_from_material(material))
+            entries.setdefault(e["kid"], e)
+        except (CertificationError, ValueError):
+            continue
+    return list(entries.values())
+
+
+def _public_key_for(kid: str | None, cfg: dict | None) -> Ed25519PublicKey | None:
+    if not kid:
+        return None
+    for e in published_public_keys(cfg):
+        if e["kid"] == kid:
+            return Ed25519PublicKey.from_public_bytes(_b64d(e["public_key_b64"]))
+    return None
+
+
+def sign_certificate(payload: dict, *, cfg: dict | None = None) -> tuple[dict, str]:
+    """Embed the signing metadata (``signature_alg``, ``public_key_id``) into the
+    payload and Ed25519-sign the canonical form. Returns the finalised (signed)
+    payload dict and the base64 signature. The metadata is part of what's signed,
+    so a verifier knows unambiguously which published key to check against."""
+    priv = signing_key(cfg)
+    signed = {**payload, "signature_alg": SIGNATURE_ALG,
+              "public_key_id": key_id(priv.public_key())}
+    sig = priv.sign(canonical_json(signed).encode("utf-8"))
+    return signed, _b64e(sig)
+
+
+def _verify_ed25519(payload: dict, signature: str,
+                    public_key: Ed25519PublicKey) -> bool:
+    try:
+        public_key.verify(_b64d(signature), canonical_json(payload).encode("utf-8"))
+        return True
+    except Exception:  # noqa: BLE001 — InvalidSignature or malformed input
+        return False
+
+
+def verify_certificate(payload: dict, signature: str, public_key_b64: str) -> bool:
+    """THIRD-PARTY verification: check a certificate's Ed25519 signature against a
+    PUBLISHED public key alone — no secret, no trust in the issuer, no server
+    call. ``payload`` is the signed certificate dict (the ``signed_payload`` in
+    the public view); ``public_key_b64`` comes from
+    ``/.well-known/agenttic-cert-keys.json``. This is the function a verifier
+    reimplements in any language: canonical-JSON the payload, Ed25519-verify."""
+    try:
+        pub = Ed25519PublicKey.from_public_bytes(_b64d(public_key_b64))
+    except Exception:  # noqa: BLE001
+        return False
+    return _verify_ed25519(payload, signature, pub)
+
+
+# -- legacy HMAC (read-only: verify pre-existing HMAC-signed certs / unit tests) #
 
 
 def signing_secret(cfg: dict | None = None) -> str:
-    """The HMAC signing secret: ``ASCORE_SECRET_KEY`` (env / *_FILE) if set, else
-    the session secret, else a dev fallback — the same chain ``server.crypto``
-    uses for encryption, so one configured secret covers both. Rotating it
-    invalidates existing certificate signatures (they verify as tampered), which
-    is the intended fail-closed behaviour for a credential rotation."""
+    """The legacy HMAC secret: ``ASCORE_SECRET_KEY`` (env / *_FILE) if set, else
+    the session secret, else ``""``. There is **no** insecure hard-coded fallback
+    any more — an unset secret makes legacy HMAC verification fail closed."""
     from ascore.secrets import get_secret
     secret = get_secret("ASCORE_SECRET_KEY") or os.environ.get("ASCORE_SECRET_KEY", "")
     if not secret and cfg is not None:
@@ -263,19 +488,14 @@ def signing_secret(cfg: dict | None = None) -> str:
             secret = session_secret(cfg)
         except Exception:  # noqa: BLE001
             secret = ""
-    return secret or "ascore-dev-insecure-secret"
-
-
-def canonical_json(payload: dict) -> str:
-    """Deterministic JSON serialization of the signed payload — sorted keys,
-    compact separators — so the signature is stable across processes."""
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"),
-                      ensure_ascii=True)
+    return secret
 
 
 def sign_payload(payload: dict, *, cfg: dict | None = None,
                  secret: str | None = None) -> str:
-    """HMAC-SHA256 hex signature over the canonical payload."""
+    """LEGACY HMAC-SHA256 hex signature over the canonical payload. Retained for
+    reading old HMAC certs and for unit tests that pass an explicit ``secret``;
+    new certificates are signed with ``sign_certificate`` (Ed25519)."""
     key = (secret if secret is not None else signing_secret(cfg)).encode("utf-8")
     return hmac.new(key, canonical_json(payload).encode("utf-8"),
                     hashlib.sha256).hexdigest()
@@ -283,11 +503,28 @@ def sign_payload(payload: dict, *, cfg: dict | None = None,
 
 def verify_signature(payload: dict, signature: str, *, cfg: dict | None = None,
                      secret: str | None = None) -> bool:
-    """Constant-time check that ``signature`` matches ``payload`` under the
-    current secret. False on any mismatch (tampered payload, copied signature,
-    or a rotated secret)."""
-    expected = sign_payload(payload, cfg=cfg, secret=secret)
-    return hmac.compare_digest(expected, str(signature or ""))
+    """Verify a certificate signature.
+
+    * An explicit ``secret`` forces the legacy HMAC path (unit tests, legacy
+      certs verified against a known secret).
+    * Otherwise, an Ed25519 cert (``signature_alg == "ed25519"``) is verified
+      against the published public key named by its ``public_key_id`` — the real
+      third-party-verifiable path, requiring no secret.
+    * A legacy HMAC cert (no ``signature_alg``) is verified against the configured
+      secret, and fails closed when none is configured.
+
+    False on any mismatch (tampered payload, copied signature, unknown key)."""
+    if secret is not None:
+        return hmac.compare_digest(sign_payload(payload, secret=secret),
+                                   str(signature or ""))
+    if payload.get("signature_alg") == SIGNATURE_ALG:
+        pub = _public_key_for(payload.get("public_key_id"), cfg)
+        return pub is not None and _verify_ed25519(payload, signature, pub)
+    sec = signing_secret(cfg)
+    if not sec:
+        return False
+    return hmac.compare_digest(sign_payload(payload, cfg=cfg),
+                               str(signature or ""))
 
 
 # --------------------------------------------------------------------------- #
@@ -422,3 +659,31 @@ textLength="{(vw - 22) * 10}">{value_e}</text>
 def _xml_escape(s: str) -> str:
     return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             .replace('"', "&quot;"))
+
+
+# --------------------------------------------------------------------------- #
+# Key generation helper — `python -m ascore.certification gen-key`.
+# --------------------------------------------------------------------------- #
+
+
+def generate_signing_key() -> tuple[str, dict]:
+    """Generate a fresh Ed25519 signing key. Returns ``(private_b64, pub_entry)``
+    where ``private_b64`` is the 32-byte raw seed (set as ``ASCORE_CERT_SIGNING_KEY``)
+    and ``pub_entry`` is the public-key entry to publish."""
+    priv = Ed25519PrivateKey.generate()
+    raw = priv.private_bytes(
+        Encoding.Raw, serialization.PrivateFormat.Raw,
+        serialization.NoEncryption())
+    return _b64e(raw), _public_key_entry(priv.public_key())
+
+
+if __name__ == "__main__":  # pragma: no cover
+    import sys
+    if len(sys.argv) >= 2 and sys.argv[1] == "gen-key":
+        priv_b64, entry = generate_signing_key()
+        print("# Keep this SECRET. Set it as ASCORE_CERT_SIGNING_KEY:")
+        print(priv_b64)
+        print("\n# Public key (published; safe to share):")
+        print(json.dumps(entry, indent=2))
+    else:
+        print("usage: python -m ascore.certification gen-key")
