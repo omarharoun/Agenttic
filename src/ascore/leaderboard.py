@@ -67,6 +67,11 @@ def compute_leaderboard(
                      + (per[s].get("total_scoring_cost_usd") or 0.0)
                      for s in agent_suites)
         cost_per_case = round(all_in / total_cases, 6) if total_cases else None
+        # Total scored cases behind this agent's Index — the sample size the UI
+        # shows so a broad-but-thin board never reads as more certain than it is.
+        # (n_scored is additive; older summaries without it fall back to n_runs.)
+        n_scored_total = sum(per[s].get("n_scored", per[s].get("n_runs") or 0)
+                             for s in agent_suites)
         rows.append({
             "agent_id": agent_id,
             "index": round(index, 1),
@@ -78,12 +83,21 @@ def compute_leaderboard(
             "agent_type": declared_types.get(agent_id, "discovered"),
             "visibility_tier": tiers.pop() if len(tiers) == 1 else "mixed",
             "n_errored": sum(per[s].get("n_errored", 0) for s in agent_suites),
+            # sample size behind the Index (per-suite CIs live in per_suite; the
+            # Index is a weighted mean of rates, so we surface n + per-suite
+            # intervals rather than one composite CI that would misrepresent it).
+            "n_scored": n_scored_total,
             "per_suite": {
                 s: {
                     "success_rate": per[s]["task_success_rate"],
                     "suite_version": per[s].get("suite_version"),
                     "scorecard_id": per[s].get("scorecard_id"),
                     "mean_cost_usd": per[s].get("mean_cost_usd"),
+                    # sample size + Wilson 95% interval for this suite's rate
+                    "n_scored": per[s].get("n_scored"),
+                    "n_passed": per[s].get("n_passed"),
+                    "success_wilson_low": per[s].get("success_wilson_low"),
+                    "success_wilson_high": per[s].get("success_wilson_high"),
                 } for s in agent_suites
             },
         })

@@ -10,7 +10,6 @@ the number you can actually defend, not the lucky point estimate.
 
 from __future__ import annotations
 
-import math
 import time
 import uuid
 from dataclasses import dataclass
@@ -22,14 +21,12 @@ from .trace import Episode, TraceStore
 
 
 def wilson_lower_bound(passes: int, n: int, z: float = 1.96) -> float:
-    """Lower bound of the Wilson score interval for a binomial proportion."""
-    if n == 0:
-        return 0.0
-    phat = passes / n
-    denom = 1 + z * z / n
-    centre = phat + z * z / (2 * n)
-    margin = z * math.sqrt((phat * (1 - phat) + z * z / (4 * n)) / n)
-    return max(0.0, (centre - margin) / denom)
+    """Lower bound of the Wilson score interval for a binomial proportion.
+
+    Delegates to ``ascore.stats.wilson_lower_bound`` (single source of truth) so
+    the camp gate and every scorecard/leaderboard interval agree."""
+    from ascore.stats import wilson_lower_bound as _wlb
+    return _wlb(passes, n, z)
 
 
 @dataclass

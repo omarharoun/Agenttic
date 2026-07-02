@@ -77,6 +77,11 @@ def execution_results(execution_id: str, request: Request):
                     "agent_id": sc.agent_id, "suite_id": sc.suite_id,
                     "suite_version": sc.suite_version,
                     "task_success_rate": sc.task_success_rate,
+                    # sample size + Wilson 95% interval for an honest headline
+                    "n_scored": sc.n_scored,
+                    "n_passed": sc.n_passed,
+                    "success_wilson_low": sc.success_wilson_low,
+                    "success_wilson_high": sc.success_wilson_high,
                     # on a cache hit this run made no new calls — its run cost is $0
                     "mean_cost_usd": 0.0 if cached else sc.mean_cost_usd,
                     "total_cost_usd": 0.0 if cached else sc.total_cost_usd,
