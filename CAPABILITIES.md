@@ -41,7 +41,13 @@ components a run produces). Source of truth: `src/ascore/metrics/catalog.py`.
 Agenttic's own seed data — they are not the public datasets and don't reproduce
 any paper's numbers. The Index is empty until you run an agent with your own
 Anthropic key. SWE-bench is scored by an **offline proxy**, not its official
-Docker resolve-rate.
+Docker resolve-rate — the real resolve-rate harness is now **wired but gated**
+(set `ASCORE_SWEBENCH_HARNESS=docker` in an environment with Docker + the
+`swebench` package + instance images) rather than hard-disabled. The honest
+per-wedge status — reproduced vs proxy vs seed-sample, and what real reproduction
+would take — is served at `GET /api/public/reproduction`. As of now **no wedge
+reproduces a public leaderboard number in this environment**, and that endpoint
+says so plainly instead of hiding it.
 
 **Red-team injection (real probe set, honest self-test):** the
 `redteam-injection-v1` suite is a genuine, technique-diverse prompt-injection
