@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { ReplayCanvas } from "../canvas/ReplayCanvas";
-import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { DataView, EmptyState, PageHeader, RawToggle, Skeleton } from "../components/ui";
 import { ResultsPanel } from "../panels/ResultsPanel";
 import { useFlowStore } from "../store";
 
@@ -87,8 +87,21 @@ export function ExecutionsPage() {
                 <ResultsPanel results={results} />
               </div>
             ) : null}
-            <h2 style={{ marginTop: 18 }}>node outputs</h2>
-            <pre className="doc">{JSON.stringify(detail.node_outputs, null, 2)}</pre>
+            <h2 style={{ marginTop: 18 }}>Node outputs</h2>
+            {Object.keys(detail.node_outputs ?? {}).length === 0 ? (
+              <p className="muted-sm">No node outputs recorded for this run.</p>
+            ) : (
+              <div className="node-outputs">
+                {Object.entries(detail.node_outputs as Record<string, unknown>).map(
+                  ([nodeId, out]) => (
+                    <div className="no-card" key={nodeId}>
+                      <div className="no-head mono">{nodeId}</div>
+                      <DataView value={out} />
+                      <RawToggle value={out} />
+                    </div>
+                  ))}
+              </div>
+            )}
           </>
         )}
       </div>

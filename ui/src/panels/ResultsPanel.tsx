@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, downloadBlob } from "../api";
+import { money, ms } from "../stats";
 
 /** Post-run scoreboard: scorecard summary + one row per test case showing
  * the agent's prediction vs expected, expandable to per-criterion scores
@@ -55,7 +56,8 @@ export function ResultsPanel({ results }: { results: any }) {
             )}
             <div className="stat">
               <span className="lab">Cost / case</span>
-              <span className="val sm">${(sc.mean_cost_usd ?? 0).toFixed(4)}</span>
+              <span className="val sm" title={sc.mean_cost_usd == null ? "not measured" : undefined}>
+                {money(sc.mean_cost_usd)}</span>
             </div>
             {allIn > 0 && (
               <div className="stat" title={`agent execution $${(sc.total_cost_usd ?? 0).toFixed(4)} + judge $${(sc.total_scoring_cost_usd ?? 0).toFixed(4)}`}>
@@ -138,8 +140,8 @@ export function ResultsPanel({ results }: { results: any }) {
               ))}
               <div className="kv">
                 <small>{c.steps ?? "?"} steps ·
-                  ${(c.cost_usd ?? 0).toFixed(4)} ·
-                  {Math.round(c.latency_ms ?? 0)}ms</small>
+                  {" "}{money(c.cost_usd)} ·
+                  {" "}{ms(c.latency_ms)}</small>
               </div>
             </div>
           )}
