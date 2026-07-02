@@ -15,6 +15,8 @@ interface Row {
   total_scoring_cost_usd?: number | null;
   n_runs?: number;
   n_errored?: number;
+  n_scored?: number;      // exact scored-case count (backend)
+  n_passed?: number;      // exact passing-case count (backend)
   visibility_tier?: string;
   cached?: boolean;
   created_at: string;
@@ -70,8 +72,9 @@ export function ResultsHistoryPage() {
                 <tbody>
                   {rows.map((r) => {
                     const cost = (r.total_cost_usd ?? 0) + (r.total_scoring_cost_usd ?? 0);
-                    // scored n = all runs minus the ones excluded for scoring errors
-                    const nScored = Math.max(0, (r.n_runs ?? 0) - (r.n_errored ?? 0));
+                    // Prefer the backend's EXACT scored/passed counts; fall back to
+                    // (runs − errored) only for older payloads without them.
+                    const nScored = r.n_scored ?? Math.max(0, (r.n_runs ?? 0) - (r.n_errored ?? 0));
                     return (
                       <tr key={r.scorecard_id}>
                         <td className="mono">
@@ -89,7 +92,7 @@ export function ResultsHistoryPage() {
                             : <>{Math.round(r.task_success_rate * 100)}%
                                 {nScored > 0 && (
                                   <div className="cell-ci">
-                                    <Uncertainty rate={r.task_success_rate} n={nScored} />
+                                    <Uncertainty passes={r.n_passed} rate={r.task_success_rate} n={nScored} />
                                   </div>
                                 )}</>}
                         </td>
