@@ -85,16 +85,48 @@ tenant). The certificate pins:
   **expiry** (default 90 days, configurable per issuance).
 
 The canonical certificate payload is serialized deterministically (sorted keys,
-compact) and signed with **HMAC-SHA256** under **`ASCORE_SECRET_KEY`** (the same
-server secret `server/crypto.py` uses, with the same fallback chain). The
-signature is stored on the certificate.
+compact) and signed with **Ed25519** — an asymmetric signature. The issuer holds
+the **private** signing key (`ASCORE_CERT_SIGNING_KEY`, a PKCS#8 PEM or base64
+raw 32-byte seed; generate one with `python -m ascore.certification gen-key`).
+The matching **public** key is *published* and is all anyone needs to verify. The
+payload embeds `signature_alg: "ed25519"` and a `public_key_id` naming the key;
+the base64 `signature` is stored on the certificate.
 
-**Tamper-evidence.** Verification recomputes the HMAC over the stored payload and
-compares in constant time. Mutating any stored field, or copying a signature onto
-a different certificate (the `cert_id` is *inside* the signed payload), fails
-verification — the public surface reports `signature_verified: false` and the
-badge renders `unverified`. Rotating `ASCORE_SECRET_KEY` invalidates existing
-signatures by design (fail-closed).
+**Fail-closed in production.** If `ASCORE_CERT_SIGNING_KEY` is unset in
+production (`ASCORE_ENV=production`), issuance *refuses* rather than signing with a
+default — there is no hard-coded fallback secret. Outside production a
+deterministic, publicly-known dev key is used so local runs and tests can issue
+and verify; a dev certificate is deliberately forgeable and must never be trusted
+as real.
+
+**Third-party verifiability (the point).** Because the signature is asymmetric,
+**anyone can verify a certificate without trusting Agenttic and without any
+secret**:
+
+1. Fetch the public keys from **`/.well-known/agenttic-cert-keys.json`** (also at
+   `GET /api/public/certifications/keys`).
+2. Pick the key whose `kid` equals the certificate's `public_key_id`.
+3. Ed25519-verify the certificate's `signature` (base64) over its
+   `signed_payload` (the exact canonical JSON bytes that were signed, returned on
+   the public certificate).
+
+`ascore.certification.verify_certificate(payload, signature, public_key_b64)` is a
+reference implementation; the same three steps reimplement in any language. A
+symmetric HMAC could never do this — only the key-holder could verify — which is
+why the earlier HMAC scheme was not genuine public verifiability.
+
+**Tamper-evidence.** Mutating any stored field, or copying a signature onto a
+different certificate (the `cert_id` is *inside* the signed payload), breaks the
+signature — independent verification and the issuer's own `signature_verified`
+both report false, and the badge renders `unverified`.
+
+**Key rotation.** Additional trusted public keys can be published via
+`ASCORE_CERT_PUBLIC_KEYS` (or `certification.public_keys` in config) so
+certificates signed by a retired key still verify after the signing key rotates.
+
+> **Legacy note.** Certificates issued before the Ed25519 switch were HMAC-signed;
+> those are still readable (verified against `ASCORE_SECRET_KEY`, fail-closed if
+> unset). All new certificates are Ed25519.
 
 **Revocation** (`DELETE /api/certifications/{id}`, owner tenant) is immediate.
 `revoked_at` lives *outside* the signed payload, so revoking never breaks the
@@ -107,9 +139,10 @@ signature; revoked certs simply verify with `status: "revoked"`.
 | `POST` | `/api/certifications` | operator + tenant | Issue from a scorecard id |
 | `GET` | `/api/certifications` | auth | List the tenant's certs |
 | `DELETE` | `/api/certifications/{id}` | operator, owner | Revoke (immediate) |
-| `GET` | `/api/public/certifications/{id}` | **none** | Full public certificate (grade, real per-dimension breakdown, dates, status, `signature_verified`) |
-| `GET` | `/api/public/certifications/{id}/verify` | **none** | Signature + lifecycle status only |
+| `GET` | `/api/public/certifications/{id}` | **none** | Full public certificate (grade, real per-dimension breakdown, dates, status, `signature`, `signature_alg`, `public_key_id`, `signed_payload`) |
+| `GET` | `/api/public/certifications/{id}/verify` | **none** | Signature + lifecycle status + signing metadata |
 | `GET` | `/api/public/certifications/{id}/badge.svg` | **none** | Embeddable shields.io-style SVG badge |
+| `GET` | `/api/public/certifications/keys` | **none** | Published Ed25519 public keys (also at `/.well-known/agenttic-cert-keys.json`) |
 
 The `certifications` table is **global** (tenant-scoped for issuance/listing, but
 publicly verifiable by id). The public endpoints take no auth and are

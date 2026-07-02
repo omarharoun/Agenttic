@@ -163,6 +163,70 @@ class TestSigning:
 
 
 # --------------------------------------------------------------------------- #
+# Ed25519 asymmetric signing — genuine THIRD-PARTY verifiability (no issuer
+# trust, no secret). This is the core-thesis fix (#2/#10).
+# --------------------------------------------------------------------------- #
+
+
+class TestEd25519ThirdPartyVerification:
+    def _payload(self):
+        now = _now()
+        return cert.build_certificate_payload(
+            cert_id="cert_ed", agent_id="a", agent_name="A",
+            config_hash=CONFIG_HASH, scorecard_id="s", suite_id="su",
+            suite_version=1,
+            dimension_scores={"harmful_refusal_rate": 1.0,
+                              "injection_robustness": 1.0},
+            issued_at=now, expires_at=cert.expiry_from(now))
+
+    def test_valid_cert_verifies_against_published_public_key_alone(self):
+        # A verifier who holds ONLY the published public key (no secret, no
+        # config, no issuer call) can confirm the signature. This is what
+        # "verifiable" must mean.
+        signed, sig = cert.sign_certificate(self._payload(), cfg={})
+        assert signed["signature_alg"] == "ed25519"
+        pub_b64 = next(k["public_key_b64"]
+                       for k in cert.published_public_keys({})
+                       if k["kid"] == signed["public_key_id"])
+        assert cert.verify_certificate(signed, sig, pub_b64) is True
+
+    def test_tampered_payload_fails_third_party(self):
+        signed, sig = cert.sign_certificate(self._payload(), cfg={})
+        pub_b64 = cert.published_public_keys({})[0]["public_key_b64"]
+        signed["grade"] = "A" if signed["grade"] != "A" else "B"
+        assert cert.verify_certificate(signed, sig, pub_b64) is False
+
+    def test_wrong_public_key_fails(self):
+        signed, sig = cert.sign_certificate(self._payload(), cfg={})
+        other_priv, other_entry = cert.generate_signing_key()  # unrelated keypair
+        assert cert.verify_certificate(
+            signed, sig, other_entry["public_key_b64"]) is False
+
+    def test_published_keys_never_leak_the_private_key(self):
+        keys = cert.published_public_keys({})
+        assert keys, "the dev signing key's public half should be published"
+        for k in keys:
+            assert k["alg"] == "ed25519"
+            assert "public_key_b64" in k and "public_key_pem" in k
+            # no private material of any form
+            assert "private" not in str(k).lower()
+
+    def test_production_fails_closed_without_configured_key(self, monkeypatch):
+        monkeypatch.setenv("ASCORE_ENV", "production")
+        monkeypatch.delenv("ASCORE_CERT_SIGNING_KEY", raising=False)
+        assert cert.is_production() is True
+        with pytest.raises(cert.CertificationError):
+            cert.signing_key(cfg={})
+
+    def test_configured_key_round_trips(self, monkeypatch):
+        priv_b64, entry = cert.generate_signing_key()
+        monkeypatch.setenv("ASCORE_CERT_SIGNING_KEY", priv_b64)
+        signed, sig = cert.sign_certificate(self._payload(), cfg={})
+        assert signed["public_key_id"] == entry["kid"]
+        assert cert.verify_certificate(signed, sig, entry["public_key_b64"])
+
+
+# --------------------------------------------------------------------------- #
 # Issuance + store (engine over a real registry, no HTTP).
 # --------------------------------------------------------------------------- #
 
@@ -456,3 +520,37 @@ class TestHttp:
     def test_public_unknown_cert_404(self, ctx):
         assert ctx.get(
             "/api/public/certifications/cert_nope").status_code == 404
+
+    def test_public_keys_published(self, ctx):
+        # Both the API alias and the well-known URL serve the Ed25519 public key.
+        for url in ("/api/public/certifications/keys",
+                    "/.well-known/agenttic-cert-keys.json"):
+            r = ctx.get(url)
+            assert r.status_code == 200, url
+            body = r.json()
+            assert body["alg"] == "ed25519"
+            assert body["keys"] and all(
+                "public_key_b64" in k and "private" not in str(k).lower()
+                for k in body["keys"])
+
+    def test_end_to_end_third_party_verification(self, ctx):
+        # Issue a cert, then verify it exactly as an untrusting third party would:
+        # fetch the public key by kid, Ed25519-verify the signature over the
+        # published signed_payload — no auth, no secret, no trust in the issuer.
+        import json as _json
+
+        sid = _save_safety_scorecard(ctx.reg, scorecard_id="sc-3p",
+                                     agent_id="agent-3p")
+        cert_id = ctx.post("/api/certifications", json={"scorecard_id": sid},
+                           headers=_adm()).json()["cert_id"]
+        view = ctx.get(f"/api/public/certifications/{cert_id}").json()
+        assert view["signature_alg"] == "ed25519"
+        keys = ctx.get("/.well-known/agenttic-cert-keys.json").json()["keys"]
+        pub_b64 = next(k["public_key_b64"] for k in keys
+                       if k["kid"] == view["public_key_id"])
+        payload = _json.loads(view["signed_payload"])
+        assert cert.verify_certificate(payload, view["signature"], pub_b64) is True
+        # tamper with the signed payload → independent verification fails
+        payload["grade"] = "A" if payload["grade"] != "A" else "B"
+        assert cert.verify_certificate(
+            payload, view["signature"], pub_b64) is False
