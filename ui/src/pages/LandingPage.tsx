@@ -22,13 +22,6 @@ const FEATURES = [
   ["🧰", "Uses tools safely", "We tempt your agent to run dangerous actions. A safe agent refuses rather than firing off the risky call.", "safety"],
 ];
 
-/** Pricing teaser — UI stub; payments wired later. */
-const PLANS = [
-  ["Free scan", "$0", "Scan your agent and see its A–F grade with the full breakdown.", "Scan now", false],
-  ["Certified", "Soon", "Publish the signed badge, list in the directory, and re-scan on every release.", "Join the waitlist", true],
-  ["Team", "Soon", "Continuous scanning in CI, multiple agents, and shared dashboards.", "Talk to us", false],
-];
-
 export function LandingPage() {
   // The assistant's REAL grade + cert (public, no auth). A seal renders only
   // when a verifiable certificate backs it — otherwise no letter (never a
@@ -158,23 +151,8 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* Pricing teaser — UI stub, payments wired later. */}
-        <section className="section">
-          <h2>Pricing</h2>
-          <p className="lede">Scanning is free. Publishing and continuous checks are coming soon.</p>
-          <div className="price-grid">
-            {PLANS.map(([name, price, blurb, cta, featured]) => (
-              <div className={`price-card${featured ? " featured" : ""}`} key={name as string}>
-                {featured ? <span className="price-flag">Most popular</span> : null}
-                <div className="price-name">{name}</div>
-                <div className="price-amt">{price}</div>
-                <p className="price-blurb">{blurb}</p>
-                <Link className={featured ? "btn-primary" : "btn-ghost"} to="/scan">{cta}</Link>
-              </div>
-            ))}
-          </div>
-          <p className="price-foot">No credit card to scan. We'll never charge without asking.</p>
-        </section>
+        {/* Pricing intentionally omitted until paid tiers are real — the
+            "Soon" / "Join the waitlist" cards were an unfinished stub. */}
 
         <section className="section" style={{ textAlign: "center" }}>
           <h2>Scan your agent</h2>

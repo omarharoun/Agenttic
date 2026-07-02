@@ -8,6 +8,7 @@ import { useFlowStore } from "./store";
 import { AgentsPage } from "./pages/AgentsPage";
 import { CertificationsPage } from "./pages/CertificationsPage";
 import { ComparePage } from "./pages/ComparePage";
+import { DashboardPage } from "./pages/DashboardPage";
 import { EditorPage } from "./pages/EditorPage";
 import { ExecutionsPage } from "./pages/ExecutionsPage";
 import { ResultsHistoryPage } from "./pages/ResultsHistoryPage";
@@ -43,6 +44,32 @@ function TokenControl() {
     </div>
   );
 }
+
+/** The console navigation, grouped by intent instead of a flat 12-item pile.
+ *  A benchmark authority opens on the Dashboard; the workflow builder is one
+ *  demoted "New evaluation" entry, not the front door. */
+const NAV_GROUPS: { title: string; items: { to: string; icon: string; label: string }[] }[] = [
+  { title: "Benchmark", items: [
+    { to: "/app/build", icon: "＋", label: "New evaluation" },
+    { to: "/app/executions", icon: "▶", label: "Runs" },
+    { to: "/app/results", icon: "📊", label: "Results" },
+    { to: "/app/leaderboard", icon: "🏆", label: "Leaderboard" },
+    { to: "/app/compare", icon: "⚖", label: "Compare" },
+  ]},
+  { title: "Improve", items: [
+    { to: "/app/training-camp", icon: "🎯", label: "Training Camp" },
+    { to: "/app/hardening", icon: "🛡", label: "Hardening" },
+    { to: "/app/optimize", icon: "✨", label: "Optimize" },
+  ]},
+  { title: "Certify", items: [
+    { to: "/app/certifications", icon: "🏅", label: "Certification" },
+  ]},
+  { title: "Manage", items: [
+    { to: "/app/agents", icon: "🤖", label: "Agents" },
+    { to: "/app/resources", icon: "▤", label: "Resources" },
+    { to: "/app/settings", icon: "⚙", label: "Settings" },
+  ]},
+];
 
 /** The authenticated console: sidebar + top bar + routed pages. Guards on
  * /api/me — a 401 bounces to /login. */
@@ -101,21 +128,25 @@ export function AppShell() {
         <a className="logo" href="/" title="Agenttic home">
           <span className="ic">⬡</span> Agenttic
         </a>
-        <NavLink to="/app" end><span className="ic">▦</span> Workflows</NavLink>
-        <NavLink to="/app/executions"><span className="ic">▶</span> Runs</NavLink>
-        <NavLink to="/app/results"><span className="ic">📊</span> Results</NavLink>
-        <NavLink to="/app/compare"><span className="ic">⚖</span> Compare</NavLink>
-        <NavLink to="/app/leaderboard"><span className="ic">🏆</span> Leaderboard</NavLink>
-        <NavLink to="/app/certifications"><span className="ic">🏅</span> Certification</NavLink>
-        <NavLink to="/app/training-camp"><span className="ic">🎯</span> Training Camp</NavLink>
-        <NavLink to="/app/hardening"><span className="ic">🛡</span> Hardening</NavLink>
-        <NavLink to="/app/optimize"><span className="ic">✨</span> Optimize</NavLink>
-        <NavLink to="/app/agents"><span className="ic">🤖</span> Agents</NavLink>
-        <NavLink to="/app/resources"><span className="ic">▤</span> Resources</NavLink>
-        <NavLink to="/app/settings"><span className="ic">⚙</span> Settings</NavLink>
-        <a href="/api-docs"><span className="ic">📖</span> API docs</a>
-        <a href="/assistant"><span className="ic">💬</span> Safe assistant</a>
+        <NavLink to="/app" end className="nav-home">
+          <span className="ic">▦</span> Dashboard
+        </NavLink>
+        {NAV_GROUPS.map((g) => (
+          <div className="nav-group" key={g.title}>
+            <div className="nav-group-title">{g.title}</div>
+            {g.items.map((it) => (
+              <NavLink key={it.to} to={it.to}>
+                <span className="ic">{it.icon}</span> {it.label}
+              </NavLink>
+            ))}
+          </div>
+        ))}
         <span style={{ flex: 1 }} />
+        <div className="nav-group">
+          <div className="nav-group-title">More</div>
+          <a href="/api-docs"><span className="ic">📖</span> API docs</a>
+          <a href="/assistant"><span className="ic">💬</span> Safe assistant</a>
+        </div>
         <div className="nav-foot"><TokenControl /></div>
       </nav>
 
@@ -142,7 +173,8 @@ export function AppShell() {
         )}
         <div className="app-routes">
           <Routes>
-            <Route path="/" element={<EditorPage />} />
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="build" element={<EditorPage />} />
             <Route path="executions" element={<ExecutionsPage />} />
             <Route path="results" element={<ResultsHistoryPage />} />
             <Route path="compare" element={<ComparePage />} />

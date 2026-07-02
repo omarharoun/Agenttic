@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, downloadBlob } from "../api";
-import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
+import { money } from "../stats";
 
 interface Row {
   scorecard_id: string;
@@ -13,6 +14,7 @@ interface Row {
   total_cost_usd?: number | null;
   total_scoring_cost_usd?: number | null;
   n_runs?: number;
+  n_errored?: number;
   visibility_tier?: string;
   cached?: boolean;
   created_at: string;
@@ -68,6 +70,8 @@ export function ResultsHistoryPage() {
                 <tbody>
                   {rows.map((r) => {
                     const cost = (r.total_cost_usd ?? 0) + (r.total_scoring_cost_usd ?? 0);
+                    // scored n = all runs minus the ones excluded for scoring errors
+                    const nScored = Math.max(0, (r.n_runs ?? 0) - (r.n_errored ?? 0));
                     return (
                       <tr key={r.scorecard_id}>
                         <td className="mono">
@@ -79,8 +83,17 @@ export function ResultsHistoryPage() {
                         </td>
                         <td>{r.agent_id}</td>
                         <td className="mono">{r.suite_id} v{r.suite_version}</td>
-                        <td className="num">{Math.round((r.task_success_rate ?? 0) * 100)}%</td>
-                        <td className="num">${cost.toFixed(4)}</td>
+                        <td className="num">
+                          {r.task_success_rate == null
+                            ? <span className="muted-sm">—</span>
+                            : <>{Math.round(r.task_success_rate * 100)}%
+                                {nScored > 0 && (
+                                  <div className="cell-ci">
+                                    <Uncertainty rate={r.task_success_rate} n={nScored} />
+                                  </div>
+                                )}</>}
+                        </td>
+                        <td className="num">{money(cost)}</td>
                         <td>{new Date(r.created_at).toLocaleString()}</td>
                         <td>
                           <button onClick={() => open(r.scorecard_id)}>report</button>

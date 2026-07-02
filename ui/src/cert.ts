@@ -114,12 +114,13 @@ export function statusView(status: CertStatus): StatusView {
 /* --------------------------- embed / share ------------------------------- */
 
 /** Site origin for absolute embed URLs; falls back to the canonical host when
- *  there is no window (SSR / tests). */
+ *  there is no window (SSR / tests). NOTE: the canonical host is agenttic.io —
+ *  agenttic.ai is a different, unrelated company; never fall back to it. */
 export function siteOrigin(): string {
   if (typeof window !== "undefined" && window.location?.origin) {
     return window.location.origin;
   }
-  return "https://agenttic.ai";
+  return "https://agenttic.io";
 }
 
 /** Public verification page URL for a certificate (what the badge links to). */
