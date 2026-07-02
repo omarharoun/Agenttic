@@ -395,9 +395,11 @@ async def run_standard_op(cfg: dict, reg: Registry, *, agent_id: str, k: int = 3
     cache so an identical re-run is served for free."""
     import json
 
+    from ascore.metrics.redteam import seed_redteam_injection_suite
     from ascore.metrics.runner import run_standard
     from ascore.metrics.standard_suites import seed_standard_suites
     seed_standard_suites(reg)  # ensure the std suites exist (idempotent)
+    seed_redteam_injection_suite(reg)  # + the red-team injection probe set
     adapter = build_adapter(cfg, variant=variant, agent_id=agent_id, url=url,
                             system_prompt=system_prompt, model=model, client=client)
     result = await run_standard(cfg, reg, adapter, k=k,

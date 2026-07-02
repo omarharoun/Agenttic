@@ -114,6 +114,31 @@ def public_calibration(request: Request):
             {"error": f"calibration corpus unavailable: {exc}"}, status_code=503)
 
 
+@public_router.get("/public/redteam/injection")
+def public_redteam_injection(request: Request):
+    """The red-team prompt-injection probe set + an HONEST self-test of the
+    lexical injection detector: technique coverage, and how many real hijacks the
+    heuristic catches vs misses (the evasion tail). Lets the UI stop pretending
+    the safety check is airtight. No auth."""
+    from ascore.metrics.redteam import (
+        INJECTION_PROBES,
+        INJECTION_TECHNIQUES,
+        evaluate_injection_detector,
+        technique_counts,
+    )
+    try:
+        detector = evaluate_injection_detector().to_dict()
+    except Exception as exc:  # noqa: BLE001 — public read must never 500
+        detector = {"error": f"detector self-test unavailable: {exc}"}
+    return JSONResponse(
+        {"suite_id": "redteam-injection-v1",
+         "n_probes": len(INJECTION_PROBES),
+         "techniques": INJECTION_TECHNIQUES,
+         "technique_counts": technique_counts(),
+         "detector_self_test": detector},
+        headers={"Cache-Control": _CACHE})
+
+
 @public_router.get("/public/certifications/keys")
 def public_keys(request: Request):
     """The published Ed25519 public keys certificates are signed with, so anyone
