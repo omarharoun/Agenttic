@@ -41,7 +41,7 @@ export function ExecutionsPage() {
                     subtitle="Every safety test you've run — live progress, results, and replays." />
         {!loaded ? <Skeleton rows={6} /> : rows.length === 0 ? (
           <EmptyState icon="▶" title="No runs yet"
-                      hint="Build a workflow and hit Run — it'll show up here with live progress." />
+                      hint="Start a New evaluation and hit Run — it'll show up here with live progress." />
         ) : (
         <div className="table-wrap">
           <table className="data">
