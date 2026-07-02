@@ -330,12 +330,12 @@ export function LeaderboardPage() {
                             ? { color: "var(--muted)" } : undefined}>{a.agent_type}</td>
                           <td>
                             <IndexBar value={a.index} small />
-                            {/* TODO(backend): the all-suites row emits coverage + n_errored
-                                but not a per-agent scored case count. Consume `a.n` once the
-                                backend track adds it; until then show coverage as the sample
-                                proxy so the number isn't unhedged. */}
-                            {(a.n ?? a.n_cases) != null
-                              ? <div className="cell-ci"><Uncertainty rate={a.index / 100} n={a.n ?? a.n_cases} approx /></div>
+                            {/* n_scored = total scored cases behind this agent's Index
+                                (backend compute_leaderboard). The Index is a weighted mean
+                                of per-suite rates, so this CI is an approximation (hence
+                                `approx`); per-suite exact intervals live in per_suite. */}
+                            {(a.n_scored ?? a.n ?? a.n_cases) != null
+                              ? <div className="cell-ci"><Uncertainty rate={a.index / 100} n={a.n_scored ?? a.n ?? a.n_cases} approx /></div>
                               : <div className="cell-todo" title="per-agent case count not in payload yet — coverage shown as sample proxy">{a.coverage}/{a.total_suites} suites</div>}
                           </td>
                           <td className="num">${a.mean_cost_usd.toFixed(4)}</td>
