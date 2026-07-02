@@ -114,6 +114,17 @@ def public_calibration(request: Request):
             {"error": f"calibration corpus unavailable: {exc}"}, status_code=503)
 
 
+@public_router.get("/public/reproduction")
+def public_reproduction(request: Request):
+    """Per-wedge HONEST reproduction status: whether each wedge reproduces a
+    public benchmark number, runs a proxy, or demonstrates the methodology on a
+    seed sample — and what real reproduction would take. Lets the UI stop hiding
+    the SWE-bench-proxy / seed-sample caveats the docs already admit. No auth."""
+    from ascore.metrics.reproduction import reproduction_report
+    return JSONResponse(reproduction_report(),
+                        headers={"Cache-Control": _CACHE})
+
+
 @public_router.get("/public/redteam/injection")
 def public_redteam_injection(request: Request):
     """The red-team prompt-injection probe set + an HONEST self-test of the
