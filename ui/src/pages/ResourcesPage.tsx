@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, downloadBlob } from "../api";
-import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { DataView, EmptyState, PageHeader, RawToggle, Skeleton } from "../components/ui";
 
 type Tab = "suites" | "scorecards" | "traces";
 
@@ -18,9 +18,10 @@ export function ResourcesPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [doc, setDoc] = useState<string>("");
+  const [spans, setSpans] = useState<any[] | null>(null);
 
   const refresh = (t: Tab) => {
-    setDoc(""); setLoaded(false);
+    setDoc(""); setSpans(null); setLoaded(false);
     (t === "suites" ? api.listSuites()
       : t === "scorecards" ? api.listScorecards()
       : api.listTraces())
@@ -122,8 +123,9 @@ export function ResourcesPage() {
                       <td className="num">{t.n_spans}</td>
                       <td>{t.final_output}</td>
                       <td><button onClick={() =>
-                        api.getTrace(t.trace_id).then((full) =>
-                          setDoc(JSON.stringify(full.spans, null, 2)))}>
+                        api.getTrace(t.trace_id).then((full) => {
+                          setDoc(""); setSpans(full.spans ?? []);
+                        })}>
                         spans
                       </button></td>
                     </tr>
@@ -135,6 +137,29 @@ export function ResourcesPage() {
         )}
 
         {doc && <pre className="doc" style={{ marginTop: 16 }}>{doc}</pre>}
+
+        {spans && (
+          <div className="span-view" style={{ marginTop: 16 }}>
+            <div className="eyebrow" style={{ marginBottom: 6 }}>
+              Trace spans ({spans.length})
+              <button className="ghost-sm" style={{ marginLeft: 8 }}
+                      onClick={() => setSpans(null)}>close</button>
+            </div>
+            {spans.length === 0 ? (
+              <p className="muted-sm">This trace has no spans.</p>
+            ) : (
+              spans.map((s, i) => (
+                <div className="no-card" key={i}>
+                  <div className="no-head mono">
+                    {s.name ?? s.span_type ?? s.type ?? `span ${i + 1}`}
+                  </div>
+                  <DataView value={s} />
+                  <RawToggle value={s} />
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

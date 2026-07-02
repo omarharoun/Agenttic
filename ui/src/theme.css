@@ -572,6 +572,33 @@ pre.doc {
   padding: var(--sp-4); white-space: pre-wrap; font: var(--t-xs) / 1.6 var(--font-mono);
   max-height: 60vh; overflow-y: auto;
 }
+
+/* readable JSON view — the structured alternative to a raw stringify dump */
+.node-outputs, .span-view { display: flex; flex-direction: column; gap: var(--sp-3); }
+.no-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--r); padding: var(--sp-3) var(--sp-4);
+}
+.no-head {
+  font-size: var(--t-sm); color: var(--accent); margin-bottom: var(--sp-2);
+  padding-bottom: var(--sp-2); border-bottom: 1px solid var(--border);
+}
+.dv-obj { margin: 0; }
+.dv-row { display: grid; grid-template-columns: minmax(120px, 200px) 1fr; gap: var(--sp-3);
+  padding: 2px 0; align-items: baseline; }
+.dv-key { color: var(--muted); font: 500 var(--t-xs) / 1.5 var(--font-mono); }
+.dv-val { min-width: 0; overflow-wrap: anywhere; }
+.dv-scalar { font-size: var(--t-sm); }
+.dv-empty { color: var(--faint); font-size: var(--t-xs); font-style: italic; }
+.dv-list { margin: 0; padding-left: var(--sp-5); }
+.dv-list > li { padding: 1px 0; }
+.raw-toggle { margin-top: var(--sp-2); }
+.raw-toggle > summary {
+  cursor: pointer; color: var(--muted); font-size: var(--t-xs);
+  list-style: revert; user-select: none;
+}
+.raw-toggle > summary:hover { color: var(--accent); }
+.raw-toggle > pre.doc { margin-top: var(--sp-2); }
 .tabs { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-4); }
 .tabs button.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 
@@ -1386,7 +1413,7 @@ table.data tbody tr { transition: background 0.1s; }
   border-radius: var(--r-sm); padding: 10px 13px;
 }
 .connect-test.ok { background: var(--ok-soft); border: 1px solid var(--ok-border); color: var(--muted); }
-.connect-test.err { background: var(--bad-soft); border: 1px solid var(--bad-border); color: var(--text); }
+.connect-test.err { background: var(--fail-soft); border: 1px solid var(--fail-border); color: var(--text); }
 .connect-test blockquote {
   margin: 6px 0 0; padding-left: 10px; border-left: 2px solid var(--ok-border);
   color: var(--text); font-style: italic;
@@ -1396,7 +1423,7 @@ table.data tbody tr { transition: background 0.1s; }
   font-size: var(--t-sm); color: var(--text); cursor: pointer; line-height: 1.5;
 }
 .connect-consent input { margin-top: 3px; }
-.connect-error { margin: var(--sp-3) 0 0; font-size: var(--t-sm); color: var(--bad); }
+.connect-error { margin: var(--sp-3) 0 0; font-size: var(--t-sm); color: var(--fail); }
 .connect-scope {
   margin: var(--sp-3) 0 0; font-size: var(--t-xs); line-height: 1.6; color: var(--faint);
 }

@@ -99,22 +99,6 @@ export function AgentsPage() {
                 </div>
               </>
             )}
-            {form.variant === "managed" && (
-              <>
-                <div>
-                  <label>managed_agent_id *</label>
-                  <input value={form.managed_agent_id}
-                         onChange={(e) => setForm(
-                           { ...form, managed_agent_id: e.target.value })} />
-                </div>
-                <div>
-                  <label>environment_id *</label>
-                  <input value={form.environment_id}
-                         onChange={(e) => setForm(
-                           { ...form, environment_id: e.target.value })} />
-                </div>
-              </>
-            )}
             <div style={{ gridColumn: "1 / -1" }}>
               <label>description</label>
               <input value={form.description}

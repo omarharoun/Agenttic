@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, downloadBlob } from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { money, ms } from "../stats";
+
+/** Signed delta of two possibly-missing values; "—" when either is unknown. */
+const moneyDelta = (a?: number | null, b?: number | null) =>
+  a == null || b == null ? "—" : `${b - a >= 0 ? "+" : ""}${money(b - a)}`;
+const msDelta = (a?: number | null, b?: number | null) =>
+  a == null || b == null ? "n/a" : `${b - a >= 0 ? "+" : ""}${ms(b - a)}`;
 
 type Variant = {
   label: string;
@@ -140,17 +147,17 @@ function Comparison({ c, id }: { c: any; id: string }) {
                 {signedPct(c.success_delta)}</td>
             </tr>
             <tr><td>Mean cost / run</td>
-              <td className="num">${(c.mean_cost_a ?? 0).toFixed(4)}</td>
-              <td className="num">${(c.mean_cost_b ?? 0).toFixed(4)}</td>
-              <td className="num">${((c.mean_cost_b - c.mean_cost_a) || 0).toFixed(4)}</td></tr>
+              <td className="num">{money(c.mean_cost_a)}</td>
+              <td className="num">{money(c.mean_cost_b)}</td>
+              <td className="num">{moneyDelta(c.mean_cost_a, c.mean_cost_b)}</td></tr>
             <tr><td>Total cost</td>
-              <td className="num">${(c.total_cost_a ?? 0).toFixed(4)}</td>
-              <td className="num">${(c.total_cost_b ?? 0).toFixed(4)}</td>
-              <td className="num">${((c.total_cost_b - c.total_cost_a) || 0).toFixed(4)}</td></tr>
+              <td className="num">{money(c.total_cost_a)}</td>
+              <td className="num">{money(c.total_cost_b)}</td>
+              <td className="num">{moneyDelta(c.total_cost_a, c.total_cost_b)}</td></tr>
             <tr><td>p95 latency</td>
-              <td className="num">{Math.round(c.p95_latency_a ?? 0)} ms</td>
-              <td className="num">{Math.round(c.p95_latency_b ?? 0)} ms</td>
-              <td className="num">{Math.round((c.p95_latency_b - c.p95_latency_a) || 0)} ms</td></tr>
+              <td className="num">{ms(c.p95_latency_a)}</td>
+              <td className="num">{ms(c.p95_latency_b)}</td>
+              <td className="num">{msDelta(c.p95_latency_a, c.p95_latency_b)}</td></tr>
           </tbody>
         </table>
       </div>
