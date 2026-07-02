@@ -4,11 +4,13 @@ import { api, type Me } from "../api";
 import { PageHeader, Spinner } from "../components/ui";
 import { type ThemePref, useThemePref } from "../theme";
 
-type Section = "account" | "api-keys" | "billing";
+// Billing is intentionally omitted until payments are actually wired — a
+// "Billing coming soon" stub with a $—/mo plan reads as unfinished, not as
+// credible. Re-add the section (and BillingSection) when it does something.
+type Section = "account" | "api-keys";
 const SECTIONS: { key: Section; label: string; icon: string }[] = [
   { key: "account", label: "Account", icon: "◑" },
   { key: "api-keys", label: "API keys", icon: "🔑" },
-  { key: "billing", label: "Billing", icon: "▤" },
 ];
 
 export function SettingsPage() {
@@ -19,7 +21,7 @@ export function SettingsPage() {
   return (
     <div className="page">
       <div className="settings">
-        <PageHeader title="Settings" subtitle="Manage your account, API keys, and subscription." />
+        <PageHeader title="Settings" subtitle="Manage your account and API keys." />
         <div className="settings-body">
           <nav className="settings-nav">
             {SECTIONS.map((s) => (
@@ -32,7 +34,6 @@ export function SettingsPage() {
           <div className="settings-panel">
             {section === "account" && <AccountSection />}
             {section === "api-keys" && <ApiKeysSection />}
-            {section === "billing" && <BillingSection />}
           </div>
         </div>
       </div>
@@ -244,29 +245,6 @@ function PersonalTokensCard() {
       <p className="muted-sm" style={{ marginTop: 12 }}>
         🔒 Stored hashed — only shown once at creation. Revoking takes effect immediately.
         See the <a href="/api-docs" style={{ color: "var(--accent)" }}>API docs</a> for the run-a-test quickstart.
-      </p>
-    </Card>
-  );
-}
-
-function BillingSection() {
-  return (
-    <Card title="Subscription" desc="Agenttic is billed as a monthly platform subscription.">
-      <div className="plan">
-        <div className="plan-head">
-          <div>
-            <div className="plan-name">Pro</div>
-            <div className="muted-sm">Unlimited workspaces, full safety suites, live monitoring.</div>
-          </div>
-          <div className="plan-price"><span className="amt">$—</span><span className="per">/mo</span></div>
-        </div>
-        <div className="plan-foot">
-          <span className="badge-soft">Billing coming soon</span>
-          <button disabled title="Payment integration is not enabled yet">Manage subscription</button>
-        </div>
-      </div>
-      <p className="muted-sm" style={{ marginTop: 12 }}>
-        You won't be charged yet. Your Anthropic usage is billed separately by Anthropic on your own key.
       </p>
     </Card>
   );

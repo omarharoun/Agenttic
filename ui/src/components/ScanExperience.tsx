@@ -219,6 +219,10 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
                   Safety score {job.result.composite_score}/100
                   {job.result.cost_usd > 0 && <> · cost ${job.result.cost_usd.toFixed(2)}</>}
                 </div>
+                <div className="scan-rigor"
+                     title="A quick scan sends ~14 short safety probes and scores the replies with lexical refusal / target-token checks — a fast screen, not a full canonical suite run (k=3, against the real attack environments). Treat it as a first look, not an exhaustive audit.">
+                  ⚡ Quick scan · ~14 probes · lexical screen
+                </div>
               </div>
             )}
           </div>
@@ -457,6 +461,10 @@ function GradedActions({ job, onReset }: { job: ScanJob; onReset: () => void }) 
       <p className="scan-cert-blurb">
         We minted a signed, verifiable certificate for this result — pinned to the
         exact agent version we tested. Share the badge or the public page.
+      </p>
+      <p className="scan-cert-caveat">
+        This grade is from a <b>quick scan</b> (~14 lexical safety probes), not a full
+        canonical suite run — a fast screen, not an exhaustive audit.
       </p>
       <div className="scan-embed-preview">
         <img src={badge} alt={`Agenttic Safety grade ${grade}`} height={28} />

@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { api, downloadBlob } from "../api";
+import { Uncertainty } from "../components/ui";
+import { money, ms } from "../stats";
+import { PASS_MEANING, PASS_THRESHOLD } from "../workflow/templates";
 
 /** Post-run scoreboard: scorecard summary + one row per test case showing
  * the agent's prediction vs expected, expandable to per-criterion scores
@@ -22,6 +25,7 @@ export function ResultsPanel({ results }: { results: any }) {
     <div className="results">
       {scorecards.map((sc: any) => {
         const allIn = (sc.total_cost_usd ?? 0) + (sc.total_scoring_cost_usd ?? 0);
+        const passThreshold = sc.pass_threshold ?? PASS_THRESHOLD;
         return (
         <div key={sc.scorecard_id}>
           {sc.cached && (
@@ -38,7 +42,8 @@ export function ResultsPanel({ results }: { results: any }) {
                   Not scored
                 </span>
               ) : (
-                <span className={`val ${sc.task_success_rate >= 0.7 ? "ok" : "err"}`}>
+                <span className={`val ${sc.task_success_rate >= passThreshold ? "ok" : "err"}`}
+                      title={PASS_MEANING}>
                   {Math.round(sc.task_success_rate * 100)}%
                 </span>
               )}
@@ -55,7 +60,8 @@ export function ResultsPanel({ results }: { results: any }) {
             )}
             <div className="stat">
               <span className="lab">Cost / case</span>
-              <span className="val sm">${(sc.mean_cost_usd ?? 0).toFixed(4)}</span>
+              <span className="val sm" title={sc.mean_cost_usd == null ? "not measured" : undefined}>
+                {money(sc.mean_cost_usd)}</span>
             </div>
             {allIn > 0 && (
               <div className="stat" title={`agent execution $${(sc.total_cost_usd ?? 0).toFixed(4)} + judge $${(sc.total_scoring_cost_usd ?? 0).toFixed(4)}`}>
@@ -88,6 +94,16 @@ export function ResultsPanel({ results }: { results: any }) {
               {passed > 0 && <span className="p" style={{ width: wpct(passed) }} title={`${passed} passed`} />}
               {failed > 0 && <span className="f" style={{ width: wpct(failed) }} title={`${failed} failed`} />}
               {errored.length > 0 && <span className="e" style={{ width: wpct(errored.length) }} title={`${errored.length} errored`} />}
+            </div>
+          )}
+          {scored.length > 0 && (
+            <div className="score-ci">
+              Task success is {passed}/{scored.length} scored cases ·{" "}
+              <Uncertainty passes={passed} n={scored.length} />
+              {errored.length > 0 && <> · {errored.length} excluded (scoring error)</>}
+              <div className="pass-def" title={PASS_MEANING}>
+                Pass = mean criterion score ≥ {passThreshold.toFixed(2)}
+              </div>
             </div>
           )}
         </div>
@@ -138,8 +154,8 @@ export function ResultsPanel({ results }: { results: any }) {
               ))}
               <div className="kv">
                 <small>{c.steps ?? "?"} steps ·
-                  ${(c.cost_usd ?? 0).toFixed(4)} ·
-                  {Math.round(c.latency_ms ?? 0)}ms</small>
+                  {" "}{money(c.cost_usd)} ·
+                  {" "}{ms(c.latency_ms)}</small>
               </div>
             </div>
           )}

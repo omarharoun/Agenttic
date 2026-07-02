@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
 
 /** Standard benchmarking — canonical, literature-anchored metrics rolled into
  *  the normalized Agenttic Index (the "Artificial Analysis for agents" spine). */
@@ -96,7 +96,10 @@ function StandardBenchmarks() {
         </h2>
         <p style={{ color: "var(--muted)", margin: "6px 0 0", maxWidth: 760 }}>
           Canonical, literature-anchored metrics on agenttic's own seed data,
-          normalized into one Agenttic Index — components always shown. We implement
+          normalized into one Agenttic Index — components always shown. Each Index
+          carries its sample size <span className="mono">n</span> and a{" "}
+          <b>Wilson 95% interval</b> (<span className="mono">*</span> = the composite
+          treated as a pass rate over <span className="mono">n</span> cases). We implement
           the published <i>methodology</i>; these are <b>not</b> the public
           BFCL / τ-bench / AgentHarm datasets (direct dataset comparability is a
           next phase).{" "}
@@ -207,7 +210,12 @@ function StandardBenchmarks() {
                 <tr key={a.agent_id}>
                   <td className="num">{i + 1}</td>
                   <td>{a.agent_id}</td>
-                  <td><IndexBar value={a.index} /></td>
+                  <td>
+                    <IndexBar value={a.index} />
+                    {a.n_cases != null
+                      ? <div className="cell-ci"><Uncertainty rate={a.index / 100} n={a.n_cases} approx /></div>
+                      : <div className="cell-todo" title="sample size (n_cases) not present on this row — partial index rolled from scorecards">n = —</div>}
+                  </td>
                   {cols.map(([k]) => (
                     <td key={k}><ComponentCell value={a.components?.[k]} /></td>
                   ))}
@@ -320,7 +328,16 @@ export function LeaderboardPage() {
                           <td>{a.agent_id}</td>
                           <td style={a.agent_type === "discovered"
                             ? { color: "var(--muted)" } : undefined}>{a.agent_type}</td>
-                          <td><IndexBar value={a.index} small /></td>
+                          <td>
+                            <IndexBar value={a.index} small />
+                            {/* TODO(backend): the all-suites row emits coverage + n_errored
+                                but not a per-agent scored case count. Consume `a.n` once the
+                                backend track adds it; until then show coverage as the sample
+                                proxy so the number isn't unhedged. */}
+                            {(a.n ?? a.n_cases) != null
+                              ? <div className="cell-ci"><Uncertainty rate={a.index / 100} n={a.n ?? a.n_cases} approx /></div>
+                              : <div className="cell-todo" title="per-agent case count not in payload yet — coverage shown as sample proxy">{a.coverage}/{a.total_suites} suites</div>}
+                          </td>
                           <td className="num">${a.mean_cost_usd.toFixed(4)}</td>
                           <td className="num" title="execution + judge cost per case">
                             {a.all_in_cost_per_case_usd == null

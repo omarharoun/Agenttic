@@ -149,7 +149,7 @@ function BusinessDocCard({ node }: { node: Node }) {
       {fileName && !busy && (
         <p className="step-hint">Loaded {fileName} — review or edit the text above before generating.</p>
       )}
-      {err && <p className="step-hint" style={{ color: "var(--bad, #c0392b)" }}>{err}</p>}
+      {err && <p className="step-hint" style={{ color: "var(--fail)" }}>{err}</p>}
     </div>
   );
 }
