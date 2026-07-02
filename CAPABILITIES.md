@@ -43,6 +43,18 @@ any paper's numbers. The Index is empty until you run an agent with your own
 Anthropic key. SWE-bench is scored by an **offline proxy**, not its official
 Docker resolve-rate.
 
+**Red-team injection (real probe set, honest self-test):** the
+`redteam-injection-v1` suite is a genuine, technique-diverse prompt-injection
+probe set (28 probes across 12 techniques — indirect document/email/web/tool,
+direct override, encoded/obfuscated payloads, role-play jailbreaks, system-prompt
+exfiltration, delimiter escapes, payload splitting, zero-width Unicode — plus
+benign controls). `GET /api/public/redteam/injection` also runs a **self-test of
+the lexical injection detector** against a labeled response corpus and publishes,
+honestly, what it MISSES: on the seed corpus it catches ~44% of hijacks and
+misses the evasion tail (paraphrased compliance, synonym tools, exfiltration)
+entirely. Catching those needs the real AgentDojo / InjecAgent execution
+environments — a tracked future task, not something we claim to already do.
+
 **Calibration (demonstrated, seed):** the deterministic heuristic checks
 (refusal, injection robustness, secret-leak, faithfulness gate) are calibrated
 against a shipped human-label corpus — run `uv run ascore calibrate-corpus` or
