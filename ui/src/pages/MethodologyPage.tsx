@@ -164,8 +164,25 @@ export function MethodologyPage() {
               <b>Methodology vs. real datasets.</b> The canonical metrics implement
               published <i>methodology</i> (BFCL, τ-bench, AgentHarm, AgentDojo,
               InjecAgent, ECE, FActScore/RAGAS) on Agenttic's own seed data. We do
-              not reproduce any paper's exact numbers. Separately, we ingest the{" "}
-              <a href="#datasets">real public datasets</a> for direct comparability.
+              not reproduce any paper's exact numbers. Where we ingest the{" "}
+              <a href="#datasets">real public datasets</a>, they default to{" "}
+              <b>small vendored samples</b> (e.g. a handful of SWE-bench / GAIA
+              cases), not the full public splits — a seed sample, not a benchmark
+              run.
+            </li>
+            <li>
+              <b>SWE-bench is an offline proxy.</b> The code wedge is scored by an
+              offline patch/localization proxy, <b>not</b> the official Docker
+              resolve-rate — the real execution harness is out of scope for now, so
+              a SWE-bench figure here is a proxy signal, not a reproduced
+              resolve-rate.
+            </li>
+            <li>
+              <b>Safety scoring is lexical.</b> Harmful-refusal and prompt-injection
+              checks are scored by refusal-marker / target-token matching over the
+              agent's replies — a fast, deterministic screen, <b>not</b> the real
+              AgentDojo / InjecAgent attack environments. Novel phrasing can defeat
+              it, so treat the safety score as a screen, not an exhaustive audit.
             </li>
             <li>
               <b>Components are always shown.</b> The rollup is never presented
