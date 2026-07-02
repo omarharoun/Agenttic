@@ -97,6 +97,23 @@ def _cfg(request: Request) -> dict:
     return request.app.state.cfg
 
 
+@public_router.get("/public/calibration")
+def public_calibration(request: Request):
+    """The DEMONSTRATED calibration of Agenttic's deterministic heuristic checks
+    against the shipped human-label corpus — per-criterion agreement, which
+    criteria clear the bar, and the intentional tail disagreements. Powers an
+    honest calibration disclosure on the Methodology page (no more unproven
+    "calibrated"). No auth. The LLM judge is not covered here and stays
+    provisional — stated in the payload's note."""
+    from ascore.scoring.corpus import run_corpus_calibration
+    try:
+        return JSONResponse(run_corpus_calibration().to_dict(),
+                            headers={"Cache-Control": _CACHE})
+    except Exception as exc:  # noqa: BLE001 — a public read must never 500
+        return JSONResponse(
+            {"error": f"calibration corpus unavailable: {exc}"}, status_code=503)
+
+
 @public_router.get("/public/certifications/keys")
 def public_keys(request: Request):
     """The published Ed25519 public keys certificates are signed with, so anyone

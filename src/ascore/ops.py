@@ -191,13 +191,25 @@ async def score_op(
         fi_evaluator = FiEvaluator(
             threshold=cfg.get("scoring", {}).get("fi_threshold", 0.5),
             evaluate_fn=fi_evaluate_fn)
+    from ascore.scoring.corpus import uncalibrated_criteria
     runs: list[RunScore] = []
     total = len(cases)
+    _uncal_cache: dict[str, set[str]] = {}
     for i, (trace, case) in enumerate(zip(traces, cases)):
         rubric = rubric_override or reg.get_rubric(case.rubric_id)
+        # Hard Rule 6: mark provisional every criterion whose calibration isn't
+        # demonstrated — all judge criteria, plus heuristic checks not proven by
+        # the shipped calibration corpus. Computed once per rubric version.
+        rkey = f"{rubric.rubric_id}:{rubric.version}"
+        uncal = _uncal_cache.get(rkey)
+        if uncal is None:
+            uncal = uncalibrated_criteria(
+                [c.criterion_id for c in rubric.criteria],
+                {c.criterion_id: c.scorer for c in rubric.criteria})
+            _uncal_cache[rkey] = uncal
         try:
             rs = await asyncio.to_thread(
-                score_run, trace, case, rubric, judge,
+                score_run, trace, case, rubric, judge, uncalibrated=uncal,
                 pass_threshold=pass_threshold, fi_evaluator=fi_evaluator)
             runs.append(rs)
             if on_progress:

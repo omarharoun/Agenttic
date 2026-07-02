@@ -43,6 +43,16 @@ any paper's numbers. The Index is empty until you run an agent with your own
 Anthropic key. SWE-bench is scored by an **offline proxy**, not its official
 Docker resolve-rate.
 
+**Calibration (demonstrated, seed):** the deterministic heuristic checks
+(refusal, injection robustness, secret-leak, faithfulness gate) are calibrated
+against a shipped human-label corpus — run `uv run ascore calibrate-corpus` or
+`GET /api/public/calibration` to reproduce it (offline, no key). The v1 seed
+corpus shows ~0.88 overall agreement, with intentional tail cases the lexical
+checks miss surfaced rather than hidden. It is a *small seed set*, not a large
+inter-annotator study, and it does **not** cover the **LLM judge** — so every
+judge criterion is marked **PROVISIONAL/uncalibrated** in scorecards until a
+judge-vs-human run is done (SPEC Hard Rule 6).
+
 ## Which workflow do I run?
 
 - **"Is this agent good enough for this client's job?"** → bespoke suite:
