@@ -1,4 +1,27 @@
 import type { ReactNode } from "react";
+import { ciLabel, wilsonInterval } from "../stats";
+
+/** The credibility hedge that belongs next to EVERY headline rate: the sample
+ *  size `n` and a Wilson 95% interval. Mirrors the Training Camp gate, which
+ *  judges the lower bound rather than the lucky point estimate. Pass either the
+ *  exact `passes`, or a `rate` (0–1) from which passes is reconstructed as
+ *  round(rate·n). Renders nothing when there is no sample to speak of. */
+export function Uncertainty({ passes, n, rate, approx, className = "" }: {
+  passes?: number | null; n?: number | null; rate?: number | null;
+  approx?: boolean; className?: string;
+}) {
+  if (n == null || n <= 0) return null;
+  const p = passes != null ? passes : rate != null ? Math.round(rate * n) : null;
+  if (p == null) return null;
+  const iv = wilsonInterval(p, n);
+  const tip = `Wilson 95% interval ${ciLabel(iv, 1)} over n=${n}`
+    + (approx ? " (approx: composite score treated as a pass rate)" : "");
+  return (
+    <span className={`uncertainty ${className}`} title={tip}>
+      n={n} · 95% CI {ciLabel(iv)}{approx ? "*" : ""}
+    </span>
+  );
+}
 
 /** Page header used across console pages for consistent hierarchy. */
 export function PageHeader({ title, subtitle, actions }: {

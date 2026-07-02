@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, downloadBlob } from "../api";
+import { Uncertainty } from "../components/ui";
 import { money, ms } from "../stats";
 
 /** Post-run scoreboard: scorecard summary + one row per test case showing
@@ -90,6 +91,13 @@ export function ResultsPanel({ results }: { results: any }) {
               {passed > 0 && <span className="p" style={{ width: wpct(passed) }} title={`${passed} passed`} />}
               {failed > 0 && <span className="f" style={{ width: wpct(failed) }} title={`${failed} failed`} />}
               {errored.length > 0 && <span className="e" style={{ width: wpct(errored.length) }} title={`${errored.length} errored`} />}
+            </div>
+          )}
+          {scored.length > 0 && (
+            <div className="score-ci">
+              Task success is {passed}/{scored.length} scored cases ·{" "}
+              <Uncertainty passes={passed} n={scored.length} />
+              {errored.length > 0 && <> · {errored.length} excluded (scoring error)</>}
             </div>
           )}
         </div>
