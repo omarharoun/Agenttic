@@ -186,6 +186,27 @@ def calibrate(suite_id: str, config: str = "config.yaml"):
 
 
 @app.command()
+def calibrate_corpus():
+    """Demonstrate deterministic-check calibration against the shipped human-label
+    corpus (offline, reproducible; no API key). Prints per-criterion agreement."""
+    from ascore.scoring.corpus import run_corpus_calibration
+
+    result = run_corpus_calibration()
+    console.print(f"[bold]{result.version}[/] — {result.n_records} labeled "
+                  f"records, overall agreement "
+                  f"[bold]{result.overall_agreement:.2%}[/]")
+    table = Table("criterion", "n", "agreement", "status")
+    for cid, cal in sorted(result.per_criterion.items()):
+        table.add_row(cid, str(cal.n), f"{cal.agreement:.2f}",
+                      "[green]calibrated[/]" if cal.calibrated
+                      else "[red]UNCALIBRATED[/]")
+    console.print(table)
+    console.print(f"[dim]{len(result.disagreements)} intentional tail "
+                  "disagreement(s); the LLM judge is not covered and stays "
+                  "provisional.[/]")
+
+
+@app.command()
 def regress(agent: str = typer.Option(..., "--agent", "-a", help="agent id"),
             config: str = "config.yaml"):
     """Re-run every suite this agent was scored on; diff against prior results."""
