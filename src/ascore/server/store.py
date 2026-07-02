@@ -342,16 +342,28 @@ class UIStore:
                 q = q.where(ScorecardRow.agent_id == agent_id)
             if suite_id:
                 q = q.where(ScorecardRow.suite_id == suite_id)
+            from ascore.stats import wilson_interval
             out = []
             for r in s.exec(q).all():
                 p = json.loads(r.payload)
+                runs = p.get("run_scores", [])
+                scored = [rs for rs in runs if rs.get("scoring_error") is None]
+                n_scored = len(scored)
+                n_passed = sum(1 for rs in scored if rs.get("passed"))
+                w_low, w_high = wilson_interval(n_passed, n_scored)
                 out.append({"scorecard_id": r.scorecard_id, "agent_id": r.agent_id,
                             "suite_id": r.suite_id, "suite_version": r.suite_version,
                             "task_success_rate": p.get("task_success_rate"),
                             "mean_cost_usd": p.get("mean_cost_usd"),
                             "total_cost_usd": p.get("total_cost_usd", 0.0),
                             "total_scoring_cost_usd": p.get("total_scoring_cost_usd", 0.0),
-                            "n_runs": len(p.get("run_scores", [])),
+                            "n_runs": len(runs),
+                            # sample size + Wilson 95% interval so the UI can show
+                            # an honest CI next to the headline rate (never bare %)
+                            "n_scored": n_scored,
+                            "n_passed": n_passed,
+                            "success_wilson_low": round(w_low, 4),
+                            "success_wilson_high": round(w_high, 4),
                             "p95_latency_ms": p.get("p95_latency_ms"),
                             "n_errored": len(p.get("errored_test_ids", [])),
                             "visibility_tier": p.get("visibility_tier"),

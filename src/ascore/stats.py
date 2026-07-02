@@ -30,6 +30,53 @@ from dataclasses import dataclass
 ALPHA = 0.05  # significance level used across the A/B verdicts
 
 
+# --------------------------------------------------------------------------- #
+# Wilson score interval — the honest confidence interval for a pass-rate.
+#
+# "72% (18/25)" and "72% (720/1000)" are the same point estimate but very
+# different claims. The Wilson interval is what we surface next to every headline
+# rate so a small n reads as the wide, uncertain band it actually is (and, unlike
+# the normal approximation, it stays inside [0,1] and behaves near 0/1). The
+# *lower bound* is the number to defend — see camp.trainer, which gates on it.
+# --------------------------------------------------------------------------- #
+
+Z_95 = 1.96  # standard-normal quantile for a 95% two-sided interval
+
+
+def wilson_interval(passes: int, n: int, z: float = Z_95) -> tuple[float, float]:
+    """(low, high) of the Wilson score interval for a binomial pass-rate. Both
+    bounds are clamped to [0,1]; an empty sample returns (0.0, 1.0) — maximal
+    ignorance, never a spurious point."""
+    if n <= 0:
+        return (0.0, 1.0)
+    phat = passes / n
+    denom = 1 + z * z / n
+    centre = phat + z * z / (2 * n)
+    margin = z * math.sqrt((phat * (1 - phat) + z * z / (4 * n)) / n)
+    return (max(0.0, (centre - margin) / denom),
+            min(1.0, (centre + margin) / denom))
+
+
+def wilson_lower_bound(passes: int, n: int, z: float = Z_95) -> float:
+    """Just the Wilson lower bound (the defensible floor)."""
+    return wilson_interval(passes, n, z)[0]
+
+
+def proportion_stats(passes: int, n: int) -> dict:
+    """A JSON-ready summary of a pass-rate with its sample size + Wilson 95%
+    interval — the additive shape the UI needs to render an honest headline.
+    ``rate`` is None (not a fabricated 0.0) when there's nothing scored."""
+    low, high = wilson_interval(passes, n)
+    return {
+        "n": n,
+        "passes": passes,
+        "rate": (passes / n) if n else None,
+        "wilson_low": round(low, 4),
+        "wilson_high": round(high, 4),
+        "ci_level": 0.95,
+    }
+
+
 @dataclass(frozen=True)
 class McNemarResult:
     b: int            # discordant: A passed, B failed

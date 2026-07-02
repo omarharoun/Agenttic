@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 
 class CriterionScore(BaseModel):
@@ -66,6 +66,39 @@ class Scorecard(BaseModel):
     errored_test_ids: list[str] = Field(default_factory=list)
     visibility_tier: Literal["glass_box", "black_box"]
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    # --- sample size + confidence (additive; derived from run_scores) --------
+    # task_success_rate is a point estimate; on its own it hides how much data
+    # backs it. These computed fields travel with every serialized scorecard so
+    # the UI can show n and a Wilson 95% interval next to the headline rate
+    # (never a bare % again). Derived, so old stored scorecards gain them for
+    # free on read.
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def n_scored(self) -> int:
+        """Cases that were actually scored (scoring errors excluded) — the n the
+        pass-rate is computed over."""
+        return sum(1 for r in self.run_scores if r.scoring_error is None)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def n_passed(self) -> int:
+        return sum(1 for r in self.run_scores
+                   if r.scoring_error is None and r.passed)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def success_wilson_low(self) -> float:
+        """Wilson 95% lower bound on the pass-rate — the defensible floor."""
+        from ascore.stats import wilson_interval
+        return round(wilson_interval(self.n_passed, self.n_scored)[0], 4)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def success_wilson_high(self) -> float:
+        from ascore.stats import wilson_interval
+        return round(wilson_interval(self.n_passed, self.n_scored)[1], 4)
 
     @classmethod
     def aggregate(
