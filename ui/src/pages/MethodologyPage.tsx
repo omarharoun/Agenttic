@@ -392,11 +392,19 @@ export function MethodologyPage() {
               applies — re-test to re-certify. No silent grade inflation.
             </li>
             <li>
-              <b>Signed and checkable.</b> The certificate payload is
-              cryptographically signed, so the grade and scores on the public{" "}
-              <code>/certified/&#123;id&#125;</code> page can be verified as issued
-              by Agenttic and unaltered. Each page carries a clear status —{" "}
-              ✓&nbsp;Valid, ⚠&nbsp;Expired, or ⛔&nbsp;Revoked.
+              <b>Independently verifiable.</b> The certificate payload is signed
+              with an <b>Ed25519</b> asymmetric signature. Agenttic holds the
+              private key; the matching <b>public key is published</b> at{" "}
+              <code>/.well-known/agenttic-cert-keys.json</code>. So anyone —{" "}
+              <i>without trusting Agenttic and without any shared secret</i> — can
+              verify that the grade and scores on the public{" "}
+              <code>/certified/&#123;id&#125;</code> page were issued by Agenttic
+              and are unaltered: fetch the public key, then check the certificate's{" "}
+              <code>signature</code> over its <code>signed_payload</code>. Each page
+              also carries a clear status — ✓&nbsp;Valid, ⚠&nbsp;Expired, or
+              ⛔&nbsp;Revoked. (The earlier scheme used a symmetric secret only
+              Agenttic could check; this replaces it with true public
+              verifiability.)
             </li>
             <li>
               <b>Honest by construction.</b> Grades populate only from runs that

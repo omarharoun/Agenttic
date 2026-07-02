@@ -87,7 +87,9 @@ def issue_certificate(*, global_engine, cfg: dict, reg, tenant: str,
         scorecard_id=scorecard_id, suite_id=sc.suite_id,
         suite_version=sc.suite_version, dimension_scores=dimension_scores,
         issued_at=issued_at, expires_at=expires_at)
-    signature = cert.sign_payload(payload, cfg=cfg)
+    # Ed25519-sign: embeds signature_alg + public_key_id into the payload and
+    # signs the canonical form. Fails closed in prod if no signing key is set.
+    payload, signature = cert.sign_certificate(payload, cfg=cfg)
 
     row = CertificationRow(
         cert_id=cert_id, tenant_id=tenant, agent_id=sc.agent_id,
@@ -126,6 +128,8 @@ class CertStore:
         payload = self._payload(row)
         status = cert.certificate_status(payload, row.revoked_at)
         verified = cert.verify_signature(payload, row.signature, cfg=cfg)
+        alg = payload.get("signature_alg")
+        kid = payload.get("public_key_id")
         return {
             "cert_id": row.cert_id,
             "methodology_version": payload.get("methodology_version"),
@@ -147,7 +151,23 @@ class CertStore:
             "status": status,
             "valid": status == "valid" and verified,
             "signature": row.signature,
+            "signature_alg": alg,
+            "public_key_id": kid,
+            # The exact bytes that were signed — so a third party can verify
+            # offline without guessing our canonicalisation.
+            "signed_payload": cert.canonical_json(payload),
+            # signature_verified is the ISSUER's own check (convenience). The
+            # trustworthy path is independent verification: see `verification`.
             "signature_verified": verified,
+            "verification": {
+                "algorithm": alg or "hmac-sha256 (legacy)",
+                "public_key_id": kid,
+                "public_keys_url": "/.well-known/agenttic-cert-keys.json",
+                "how": ("Independently verify WITHOUT trusting Agenttic: fetch "
+                        "the public key for `public_key_id` from "
+                        "`public_keys_url`, then Ed25519-verify `signature` "
+                        "(base64) over `signed_payload`. No secret needed."),
+            },
             "note": ("This certificate is bound to the agent's config_hash. If "
                      "the agent's configuration changes, its config_hash changes "
                      "and this certificate no longer describes the running agent "
@@ -166,6 +186,11 @@ class CertStore:
         return {
             "cert_id": cert_id,
             "signature_verified": verified,
+            "signature": row.signature,
+            "signature_alg": payload.get("signature_alg"),
+            "public_key_id": payload.get("public_key_id"),
+            "signed_payload": cert.canonical_json(payload),
+            "public_keys_url": "/.well-known/agenttic-cert-keys.json",
             "status": status,
             "valid": status == "valid" and verified,
             "grade": payload.get("grade"),

@@ -164,16 +164,85 @@ def test_execution_harness_caveat_surfaced():
 
 # -- official resolve-rate interface is execution-gated --------------------
 
-def test_resolve_rate_requires_execution_harness():
-    assert harness_available() is False
+def test_resolve_rate_requires_execution_harness(monkeypatch):
+    monkeypatch.delenv("ASCORE_SWEBENCH_HARNESS", raising=False)
+    assert harness_available() is False          # no infra configured here
     inst = ResolveInstance(instance_id="x__y-1", repo="x/y", base_commit="abc",
                            candidate_patch=_PATCH_ONE,
                            fail_to_pass=["t::a"], pass_to_pass=["t::b"])
-    # we never substitute the proxy for the real metric: this raises, loudly
+    # we never substitute the proxy for the real metric: with no harness it
+    # raises, loudly — an honest gate, not a fabricated number.
     with pytest.raises(ExecutionHarnessRequired):
         resolve_rate([inst])
-    with pytest.raises(ExecutionHarnessRequired):
-        resolve_rate([inst], harness=object())     # harness_available() still False
+
+
+def test_resolve_rate_uses_a_supplied_harness():
+    # The path is REAL, not stubbed: a conforming harness is used and the
+    # official aggregation (resolved / total) is computed.
+    inst_a = ResolveInstance(instance_id="a", repo="x/y", base_commit="c",
+                             candidate_patch=_PATCH_ONE, fail_to_pass=["t::a"],
+                             pass_to_pass=["t::b"])
+    inst_b = ResolveInstance(instance_id="b", repo="x/y", base_commit="c",
+                             candidate_patch=_PATCH_ONE, fail_to_pass=["t::a"],
+                             pass_to_pass=["t::b"])
+
+    class OneResolvedHarness:
+        def resolved(self, instance):
+            return instance.instance_id == "a"
+
+    assert resolve_rate([inst_a, inst_b], harness=OneResolvedHarness()) == 0.5
+
+
+def test_harness_available_detects_configuration(monkeypatch):
+    # Env-gated, not hard-coded: a docker harness needs docker + the swebench
+    # package (absent here, so still False); a custom dotted path counts as
+    # "configured".
+    monkeypatch.setenv("ASCORE_SWEBENCH_HARNESS", "docker")
+    from ascore.metrics import swebench_resolve as swe
+    assert swe.harness_available() == (swe._docker_present()
+                                       and swe._swebench_present())
+    monkeypatch.setenv("ASCORE_SWEBENCH_HARNESS", "mypkg.mod:make")
+    assert swe.harness_available() is True
+    monkeypatch.setenv("ASCORE_SWEBENCH_HARNESS", "off")
+    assert swe.harness_available() is False
+
+
+def test_reproduction_status_is_honest():
+    from ascore.metrics.reproduction import reproduction_report
+    rep = reproduction_report()
+    assert rep["any_reproduced"] is False        # nothing reproduced here
+    by_wedge = {w["wedge"]: w for w in rep["wedges"]}
+    assert by_wedge["code"]["status"] == "proxy"
+    assert by_wedge["code"]["official_metric"] == "resolve-rate"
+    assert by_wedge["tool_calling"]["status"] == "seed_sample"
+    # every wedge states what real reproduction requires
+    assert all(w["requires"] for w in rep["wedges"])
+
+
+def test_public_reproduction_endpoint(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from ascore.registry.sqlite_store import Registry
+    from ascore.server.app import create_app
+
+    cfg_path = tmp_path / "config.yaml"
+    cfg_path.write_text(
+        "models: {agent_default: a, judge_strong: j, judge_light: l}\n"
+        "harness: {timeout_seconds: 10, max_parallel: 5, transport_retries: 1,"
+        " max_steps: 10}\n"
+        "scoring: {calibration_threshold: 0.8}\n"
+        "live: {sample_rate: 0.05, drift_threshold: 0.15, drift_window_runs: 50}\n"
+        f"paths: {{registry_db: {tmp_path}/a.db, review_dir: {tmp_path}/r,"
+        f" calibration_dir: {tmp_path}/c}}\n"
+        "auth: {token: adm, required: true, allow_signup: true,"
+        " signup_role: operator, session_secret: testsecret}\n")
+    reg = Registry(tmp_path / "a.db")
+    with TestClient(create_app(str(cfg_path), registry=reg)) as c:
+        r = c.get("/api/public/reproduction")    # no auth
+        assert r.status_code == 200
+        body = r.json()
+        assert body["any_reproduced"] is False
+        assert any(w["wedge"] == "code" for w in body["wedges"])
 
 
 # -- idempotent ingest -----------------------------------------------------

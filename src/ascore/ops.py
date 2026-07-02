@@ -191,13 +191,25 @@ async def score_op(
         fi_evaluator = FiEvaluator(
             threshold=cfg.get("scoring", {}).get("fi_threshold", 0.5),
             evaluate_fn=fi_evaluate_fn)
+    from ascore.scoring.corpus import uncalibrated_criteria
     runs: list[RunScore] = []
     total = len(cases)
+    _uncal_cache: dict[str, set[str]] = {}
     for i, (trace, case) in enumerate(zip(traces, cases)):
         rubric = rubric_override or reg.get_rubric(case.rubric_id)
+        # Hard Rule 6: mark provisional every criterion whose calibration isn't
+        # demonstrated — all judge criteria, plus heuristic checks not proven by
+        # the shipped calibration corpus. Computed once per rubric version.
+        rkey = f"{rubric.rubric_id}:{rubric.version}"
+        uncal = _uncal_cache.get(rkey)
+        if uncal is None:
+            uncal = uncalibrated_criteria(
+                [c.criterion_id for c in rubric.criteria],
+                {c.criterion_id: c.scorer for c in rubric.criteria})
+            _uncal_cache[rkey] = uncal
         try:
             rs = await asyncio.to_thread(
-                score_run, trace, case, rubric, judge,
+                score_run, trace, case, rubric, judge, uncalibrated=uncal,
                 pass_threshold=pass_threshold, fi_evaluator=fi_evaluator)
             runs.append(rs)
             if on_progress:
@@ -383,9 +395,11 @@ async def run_standard_op(cfg: dict, reg: Registry, *, agent_id: str, k: int = 3
     cache so an identical re-run is served for free."""
     import json
 
+    from ascore.metrics.redteam import seed_redteam_injection_suite
     from ascore.metrics.runner import run_standard
     from ascore.metrics.standard_suites import seed_standard_suites
     seed_standard_suites(reg)  # ensure the std suites exist (idempotent)
+    seed_redteam_injection_suite(reg)  # + the red-team injection probe set
     adapter = build_adapter(cfg, variant=variant, agent_id=agent_id, url=url,
                             system_prompt=system_prompt, model=model, client=client)
     result = await run_standard(cfg, reg, adapter, k=k,
