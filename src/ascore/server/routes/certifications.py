@@ -97,6 +97,72 @@ def _cfg(request: Request) -> dict:
     return request.app.state.cfg
 
 
+@public_router.get("/public/calibration")
+def public_calibration(request: Request):
+    """The DEMONSTRATED calibration of Agenttic's deterministic heuristic checks
+    against the shipped human-label corpus — per-criterion agreement, which
+    criteria clear the bar, and the intentional tail disagreements. Powers an
+    honest calibration disclosure on the Methodology page (no more unproven
+    "calibrated"). No auth. The LLM judge is not covered here and stays
+    provisional — stated in the payload's note."""
+    from ascore.scoring.corpus import run_corpus_calibration
+    try:
+        return JSONResponse(run_corpus_calibration().to_dict(),
+                            headers={"Cache-Control": _CACHE})
+    except Exception as exc:  # noqa: BLE001 — a public read must never 500
+        return JSONResponse(
+            {"error": f"calibration corpus unavailable: {exc}"}, status_code=503)
+
+
+@public_router.get("/public/reproduction")
+def public_reproduction(request: Request):
+    """Per-wedge HONEST reproduction status: whether each wedge reproduces a
+    public benchmark number, runs a proxy, or demonstrates the methodology on a
+    seed sample — and what real reproduction would take. Lets the UI stop hiding
+    the SWE-bench-proxy / seed-sample caveats the docs already admit. No auth."""
+    from ascore.metrics.reproduction import reproduction_report
+    return JSONResponse(reproduction_report(),
+                        headers={"Cache-Control": _CACHE})
+
+
+@public_router.get("/public/redteam/injection")
+def public_redteam_injection(request: Request):
+    """The red-team prompt-injection probe set + an HONEST self-test of the
+    lexical injection detector: technique coverage, and how many real hijacks the
+    heuristic catches vs misses (the evasion tail). Lets the UI stop pretending
+    the safety check is airtight. No auth."""
+    from ascore.metrics.redteam import (
+        INJECTION_PROBES,
+        INJECTION_TECHNIQUES,
+        evaluate_injection_detector,
+        technique_counts,
+    )
+    try:
+        detector = evaluate_injection_detector().to_dict()
+    except Exception as exc:  # noqa: BLE001 — public read must never 500
+        detector = {"error": f"detector self-test unavailable: {exc}"}
+    return JSONResponse(
+        {"suite_id": "redteam-injection-v1",
+         "n_probes": len(INJECTION_PROBES),
+         "techniques": INJECTION_TECHNIQUES,
+         "technique_counts": technique_counts(),
+         "detector_self_test": detector},
+        headers={"Cache-Control": _CACHE})
+
+
+@public_router.get("/public/certifications/keys")
+def public_keys(request: Request):
+    """The published Ed25519 public keys certificates are signed with, so anyone
+    can verify a certificate WITHOUT trusting Agenttic (fetch the key for a
+    cert's ``public_key_id``, then Ed25519-verify its signature over
+    ``signed_payload``). Also served at ``/.well-known/agenttic-cert-keys.json``.
+    No auth. Never exposes the private key."""
+    return JSONResponse(
+        {"alg": cert.SIGNATURE_ALG,
+         "keys": cert.published_public_keys(_cfg(request))},
+        headers={"Cache-Control": _CACHE})
+
+
 @public_router.get("/public/certifications/{cert_id}")
 def public_get(cert_id: str, request: Request):
     """The public certificate: grade, agent, the real per-dimension safety

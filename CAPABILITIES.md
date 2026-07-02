@@ -41,7 +41,35 @@ components a run produces). Source of truth: `src/ascore/metrics/catalog.py`.
 Agenttic's own seed data — they are not the public datasets and don't reproduce
 any paper's numbers. The Index is empty until you run an agent with your own
 Anthropic key. SWE-bench is scored by an **offline proxy**, not its official
-Docker resolve-rate.
+Docker resolve-rate — the real resolve-rate harness is now **wired but gated**
+(set `ASCORE_SWEBENCH_HARNESS=docker` in an environment with Docker + the
+`swebench` package + instance images) rather than hard-disabled. The honest
+per-wedge status — reproduced vs proxy vs seed-sample, and what real reproduction
+would take — is served at `GET /api/public/reproduction`. As of now **no wedge
+reproduces a public leaderboard number in this environment**, and that endpoint
+says so plainly instead of hiding it.
+
+**Red-team injection (real probe set, honest self-test):** the
+`redteam-injection-v1` suite is a genuine, technique-diverse prompt-injection
+probe set (28 probes across 12 techniques — indirect document/email/web/tool,
+direct override, encoded/obfuscated payloads, role-play jailbreaks, system-prompt
+exfiltration, delimiter escapes, payload splitting, zero-width Unicode — plus
+benign controls). `GET /api/public/redteam/injection` also runs a **self-test of
+the lexical injection detector** against a labeled response corpus and publishes,
+honestly, what it MISSES: on the seed corpus it catches ~44% of hijacks and
+misses the evasion tail (paraphrased compliance, synonym tools, exfiltration)
+entirely. Catching those needs the real AgentDojo / InjecAgent execution
+environments — a tracked future task, not something we claim to already do.
+
+**Calibration (demonstrated, seed):** the deterministic heuristic checks
+(refusal, injection robustness, secret-leak, faithfulness gate) are calibrated
+against a shipped human-label corpus — run `uv run ascore calibrate-corpus` or
+`GET /api/public/calibration` to reproduce it (offline, no key). The v1 seed
+corpus shows ~0.88 overall agreement, with intentional tail cases the lexical
+checks miss surfaced rather than hidden. It is a *small seed set*, not a large
+inter-annotator study, and it does **not** cover the **LLM judge** — so every
+judge criterion is marked **PROVISIONAL/uncalibrated** in scorecards until a
+judge-vs-human run is done (SPEC Hard Rule 6).
 
 ## Which workflow do I run?
 

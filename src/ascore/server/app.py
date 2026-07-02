@@ -271,6 +271,19 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     # auth-protected routers; looked up by cert id regardless of tenant.
     app.include_router(certifications_public_router, prefix="/api")
 
+    @app.get("/.well-known/agenttic-cert-keys.json", include_in_schema=False)
+    def well_known_cert_keys(request: Request):
+        """Stable, well-known location for the Ed25519 public keys that sign
+        Agenttic safety certificates — the trust anchor for third-party,
+        issuer-independent certificate verification (see docs/CERTIFICATION.md)."""
+        from fastapi.responses import JSONResponse
+
+        from ascore import certification as _cert
+        return JSONResponse(
+            {"alg": _cert.SIGNATURE_ALG,
+             "keys": _cert.published_public_keys(request.app.state.cfg)},
+            headers={"Cache-Control": "public, max-age=300"})
+
     protected = [Depends(require_auth), Depends(bind_workspace)]
     app.include_router(workflows_router, prefix="/api", dependencies=protected)
     app.include_router(executions_router, prefix="/api", dependencies=protected)
