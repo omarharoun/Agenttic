@@ -355,9 +355,21 @@ def index_weights() -> dict[str, float]:
 
 
 def catalog_payload() -> list[dict]:
-    """JSON-safe metric catalog for the API/UI (names, methodology, weights)."""
-    return [{
+    """JSON-safe metric catalog for the API/UI (names, methodology, weights).
+
+    Canonical Agenttic Index metrics first, then any per-family judge/metric
+    modules (append-only, isolated in clearly-delimited blocks so parallel
+    metric branches compose without conflict)."""
+    payload = [{
         "id": m.id, "name": m.name, "methodology": m.methodology,
         "category": m.category, "weight": m.weight,
         "check_refs": list(m.check_refs), "status": m.status,
     } for m in METRICS]
+    # --- BEGIN judge-quality family (feat/metrics-judge) — see judge_quality.py ---
+    try:
+        from ascore.metrics.judge_quality import catalog_payload as _judge_quality
+        payload += _judge_quality()
+    except Exception:  # noqa: BLE001 — a family module must never break the catalog
+        pass
+    # --- END judge-quality family ---
+    return payload
