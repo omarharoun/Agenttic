@@ -22,6 +22,7 @@ import {
   riskTone, type SafetyPosture, type SessionStatus,
 } from "../assistant";
 import { Seal } from "./Seal";
+import { type AssistantCert, useAssistantCert } from "../useAssistantCert";
 
 const POLL_MS = 800;
 
@@ -110,23 +111,24 @@ function MessageBubble({ m, onDecide, decideBusy }: {
 }
 
 /** The always-visible safety differentiator: posture + tools + safety seal.
- *  A grade is shown ONLY when the backend reports a real, issued certificate;
- *  otherwise we show an honest "certification pending" state — never a
- *  placeholder letter. */
-function SafetyRail({ posture }: { posture: SafetyPosture }) {
-  const certified = Boolean(posture.cert_id && posture.grade);
+ *  The safety GRADE comes from the single-source ``useAssistantCert`` hook (the
+ *  same one the assistant page's top line + the landing page read), so the rail
+ *  card and footer can never contradict the headline. A grade is shown ONLY when
+ *  a real, verifiable certificate backs it; otherwise an honest "pending" state. */
+function SafetyRail({ posture, cert }: { posture: SafetyPosture; cert: AssistantCert | null }) {
+  const certified = Boolean(cert);
   return (
     <aside className="asst-rail" aria-label="Safety posture">
       <div className="asst-rail-seal">
         {certified ? (
           <>
-            <Link to={`/certified/${posture.cert_id}`}
+            <Link to={`/certified/${cert!.cert_id}`}
                   title="View the public safety certificate" className="asst-seal-link">
-              <Seal grade={posture.grade} size={104} />
+              <Seal grade={cert!.grade} size={104} />
             </Link>
             <div className="asst-rail-cert">
-              <b>Agenttic Safety Certified — Grade {posture.grade}</b>
-              <Link to={`/certified/${posture.cert_id}`} className="asst-cert-link">
+              <b>Agenttic Safety Certified — Grade {cert!.grade}</b>
+              <Link to={`/certified/${cert!.cert_id}`} className="asst-cert-link">
                 View certificate ↗</Link>
             </div>
           </>
@@ -166,7 +168,10 @@ function SafetyRail({ posture }: { posture: SafetyPosture }) {
 
       <p className="asst-rail-foot">
         Safe by construction — sandboxed, least-privilege, and human-in-the-loop.
-        Its safety grade is published only once independently measured.{" "}
+        {certified
+          ? <> Its safety grade has been independently measured and published:{" "}
+              <Link to={`/certified/${cert!.cert_id}`}>Grade {cert!.grade}</Link>.{" "}</>
+          : " Its safety grade is published only once independently measured. "}
         <Link to="/methodology">How grading works ↗</Link>
       </p>
     </aside>
@@ -176,6 +181,9 @@ function SafetyRail({ posture }: { posture: SafetyPosture }) {
 /* ------------------------------ the chat --------------------------------- */
 
 export function AssistantChat() {
+  // Single source of truth for the safety grade — shared with the assistant
+  // page's top line + the landing page, so the rail can't drift out of sync.
+  const cert = useAssistantCert();
   const [mode, setMode] = useState<"init" | "live" | "preview">("init");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [posture, setPosture] = useState<SafetyPosture>(DEFAULT_POSTURE);
@@ -215,15 +223,9 @@ export function AssistantChat() {
         setMode(s.session_id ? "live" : "preview");
       })
       .catch(() => { if (alive) { setMode("preview"); setPosture(DEFAULT_POSTURE); } });
-    // Overlay the REAL issued grade + cert id (public, no auth) so the seal
-    // reflects the actual certificate even in preview/unauthenticated mode.
-    // No cert yet => leaves grade undefined => the rail shows "pending".
-    api.assistantCertification()
-      .then((c) => {
-        if (!alive || !c?.cert_id || !c?.grade) return;
-        setPosture((p) => ({ ...p, grade: c.grade, cert_id: c.cert_id }));
-      })
-      .catch(() => { /* no cert / offline → stays "pending"; never blocks */ });
+    // The safety grade + cert id come from the shared useAssistantCert hook
+    // (single source of truth), not a second fetch here — so the rail's seal,
+    // card, and footer always match the assistant-page headline.
     return () => {
       alive = false;
       timers.current.forEach(window.clearTimeout);
@@ -399,7 +401,7 @@ export function AssistantChat() {
         <div className="asst-thread" role="log" aria-live="polite" aria-label="Conversation">
           {empty ? (
             <div className="asst-empty">
-              <Seal grade={posture.grade} size={92} />
+              <Seal grade={cert?.grade} size={92} />
               <h2>Your safe AI assistant</h2>
               <p className="asst-empty-sub">
                 It asks before doing anything sensitive, and it can't touch your
@@ -456,7 +458,7 @@ export function AssistantChat() {
         </form>
       </div>
 
-      <SafetyRail posture={posture} />
+      <SafetyRail posture={posture} cert={cert} />
     </div>
   );
 }
