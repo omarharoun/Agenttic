@@ -898,6 +898,16 @@ th.sortable:hover { color: var(--accent); }
 .dataset-chip a { color: var(--accent); text-decoration: none; font-weight: 600; }
 .dataset-chip a:hover { text-decoration: underline; }
 
+/* jargon glossary term — dotted underline + a small "?" with a plain-language
+   tooltip (keep the rigor, lower the barrier) */
+.term { border-bottom: 1px dotted var(--border-strong); cursor: help; outline: none; }
+.term:hover, .term:focus-visible { border-bottom-color: var(--accent); }
+.term:focus-visible { box-shadow: 0 1px 0 0 var(--accent); }
+.term-q {
+  display: inline-block; margin-left: 2px; font-size: 0.72em; font-weight: 700;
+  color: var(--accent); vertical-align: super; line-height: 0;
+}
+
 .spinner { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid var(--border); border-top-color: var(--accent); display: inline-block; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

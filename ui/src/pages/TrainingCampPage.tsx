@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, downloadBlob } from "../api";
 import { EmptyState, PageHeader, Skeleton, Spinner } from "../components/ui";
+import { Term } from "../components/Term";
 
 const TERMINAL = new Set(["succeeded", "failed"]);
 
@@ -166,10 +167,10 @@ export function TrainingCampPage() {
         <PageHeader
           title="Training Camp"
           subtitle={<>Run an agent against a task many times, grade every attempt,
-            and measure real accuracy with a <b>Wilson 95% lower bound</b>. Promotion
+            and measure real accuracy with a <b><Term name="wilson">Wilson 95% lower bound</Term></b>. Promotion
             needs <b>both</b> a hard, non-overridable accuracy floor <i>and</i> a human
             sign-off. Export the passing episodes as a distillation dataset, or run the
-            self-improving loop with its anti-collapse ratchet.</>}
+            self-improving loop with its <Term name="ratchet">anti-collapse ratchet</Term>.</>}
         />
 
         {/* start panel */}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { Term } from "../components/Term";
 
 const pct = (x: number | null | undefined) =>
   x == null ? "—" : `${Math.round(x * 100)}%`;
@@ -336,7 +337,8 @@ export function OptimizePage() {
   return (
     <div>
       <PageHeader title="Prompt optimizer"
-        subtitle="Self-improving system prompt — frozen model, suite score as reward (OPRO/ProTeGi reflection)" />
+        subtitle={<>Self-improving system prompt — frozen model, suite score as
+          reward (<Term name="opro">OPRO/ProTeGi</Term> reflection)</>} />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(340px, 1fr) 1.4fr",
                     gap: 16, alignItems: "start" }}>
         <div style={{ display: "grid", gap: 14 }}>

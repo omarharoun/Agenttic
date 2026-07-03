@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
+import { Term } from "../components/Term";
 
 /** Standard benchmarking — canonical, literature-anchored metrics rolled into
  *  the normalized Agenttic Index (the "Artificial Analysis for agents" spine). */
@@ -98,7 +99,7 @@ function StandardBenchmarks() {
           Canonical, literature-anchored metrics on agenttic's own seed data,
           normalized into one Agenttic Index — components always shown. Each Index
           carries its sample size <span className="mono">n</span> and a{" "}
-          <b>Wilson 95% interval</b> (<span className="mono">*</span> = the composite
+          <b><Term name="wilson">Wilson 95% interval</Term></b> (<span className="mono">*</span> = the composite
           treated as a pass rate over <span className="mono">n</span> cases). We implement
           the published <i>methodology</i>; these are <b>not</b> the public
           BFCL / τ-bench / AgentHarm datasets (direct dataset comparability is a
@@ -316,7 +317,8 @@ export function LeaderboardPage() {
                               aria-sort={sort.key === key ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
                               onClick={() => sortBy(key, def)}
                               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sortBy(key, def); } }}>
-                            {label}{sort.key === key ? (sort.dir === 1 ? " ▲" : " ▼") : ""}
+                            {key === "visibility_tier" ? <Term name="tiers">{label}</Term> : label}
+                            {sort.key === key ? (sort.dir === 1 ? " ▲" : " ▼") : ""}
                           </th>
                         ))}
                       </tr>
