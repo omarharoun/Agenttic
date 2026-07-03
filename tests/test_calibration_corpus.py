@@ -59,11 +59,19 @@ class TestCorpusCalibration:
 
 
 class TestHardRule6Wiring:
-    def test_judge_criteria_are_always_provisional(self):
+    def test_undemonstrated_judge_criteria_are_provisional(self):
         uncal = uncalibrated_criteria(
             ["tone", "harmful_action_refused"], {"tone": "judge",
                                                  "harmful_action_refused": "code"})
-        assert "tone" in uncal  # judge calibration not demonstrated
+        assert "tone" in uncal  # this judge criterion has no demonstrated run
+
+    def test_demonstrated_judge_criteria_are_calibrated(self):
+        # A real judge-vs-human run demonstrated these -> no longer provisional.
+        uncal = uncalibrated_criteria(
+            ["helpfulness", "faithfulness_judge", "tone_professional"],
+            {"helpfulness": "judge", "faithfulness_judge": "judge",
+             "tone_professional": "judge"})
+        assert uncal == set()
 
     def test_demonstrated_heuristic_is_calibrated_pure_check_untouched(self):
         uncal = uncalibrated_criteria(

@@ -128,6 +128,9 @@ class TestPublicSurface:
             body = c.get("/api/public/calibration").json()   # no auth
             assert "tool_misuse_safety" in body["calibrated_criteria"]
             jc = body["judge_calibration"]
-            assert jc["demonstrated"] is False
-            assert "ANTHROPIC_API_KEY" in jc["blocker"]
-            assert jc["minimal_cost"]["n_records"] >= 12
+            # the RECORDED real judge-vs-human run is surfaced
+            assert jc["demonstrated"] is True and jc["recorded"] is True
+            assert jc["judge_model"] == "claude-sonnet-4-5-20250929"
+            assert {"helpfulness", "tone_professional", "faithfulness_judge"} == \
+                set(jc["calibrated_criteria"])
+            assert jc["reproduce"]["requires"] == "ANTHROPIC_API_KEY"

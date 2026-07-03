@@ -216,7 +216,21 @@ class LLMJudge:
 
     @staticmethod
     def _parse(raw: str, scale: str) -> tuple[float, str]:
-        data = json.loads(raw.strip())
+        text = raw.strip()
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            # Some models wrap the verdict in a ```json fence or add prose around
+            # it; recover the first JSON object rather than failing the score.
+            import re
+            fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+            obj = fenced.group(1) if fenced else None
+            if obj is None:
+                m = re.search(r"\{.*\}", text, re.DOTALL)
+                obj = m.group(0) if m else None
+            if obj is None:
+                raise
+            data = json.loads(obj)
         score = float(data["score"])
         if score not in ALLOWED_SCORES[scale]:
             raise ValueError(

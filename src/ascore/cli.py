@@ -244,16 +244,18 @@ def reproduce_bfcl(
             None, "--predictions", help="JSON {bfcl_id: [{name,args}]} of MODEL "
             "predictions to score (from the official bfcl generator or a live run)"),
         model: str = typer.Option("unknown", "--model", help="model label"),
+        live: bool = typer.Option(False, "--live", help="GENERATE predictions by "
+                                  "running the model over the V4 Python simple "
+                                  "split (native FC, temp 0); needs ANTHROPIC_API_KEY"),
         published: float | None = typer.Option(
             None, "--published", help="published accuracy to reproduce (0-1)"),
         published_source: str = typer.Option("", "--published-source")):
     """Reproduce a published BFCL number, or validate the grader on real data.
 
-    With no --predictions and no API key this prints the honest blocker + the
-    one-command run and spends nothing. With --predictions it scores real model
-    outputs and, given --published, reports reproduced-vs-published with n +
-    Wilson 95% interval. Always runs the offline grader validation (oracle → must
-    be 100% on real data)."""
+    `--live` runs the model over the real V4 Python `simple` split (n≈400) with
+    native function-calling and scores it. `--predictions <file>` scores a
+    predictions file instead. With neither, prints the honest blocker (no spend).
+    Always runs the offline grader validation (oracle → must be 100%)."""
     import json
 
     from ascore.metrics import bfcl_reproduce as R
@@ -265,18 +267,35 @@ def reproduce_bfcl(
                   f"oracle accuracy [bold]{val.accuracy:.1%}[/] "
                   f"({val.passes}/{val.n}, Wilson95 [{lo:.3f},{hi:.3f}]) {ok}")
 
-    if predictions is None:
+    if live:
         if not R.model_predictions_available():
-            blk = R.bfcl_blocker()
-            console.print("\n[yellow]Per-model reproduction blocked[/]: "
-                          f"{blk['blocker']}")
-            mr = blk["minimal_run"]
-            console.print(f"[dim]Minimal run:[/] {mr['one_command']}")
-            console.print(f"[dim]Est. cost:[/] {mr['est_cost_usd_order']} · "
-                          f"[dim]published ref:[/] {mr['published_reference']}")
+            console.print(f"\n[yellow]Blocked:[/] {R.bfcl_blocker()['blocker']}")
             raise typer.Exit(0)
-        console.print("[dim]API key present — supply --predictions from the "
-                      "official bfcl generator (or a live run) to score them.[/]")
+        from ascore.stats import wilson_interval
+        cases = R.load_simple_python_v4()
+        console.print(f"Running [bold]{model}[/] over {len(cases)} V4 "
+                      "simple_python cases (native FC, temp 0)...")
+        preds = R.generate_predictions(
+            cases, model=model,
+            on_progress=lambda d, n: console.print(f"[dim]  {d}/{n}[/]"))
+        sc = R.score_cases(cases, preds)
+        low, high = wilson_interval(sc.passes, sc.n)
+        console.print(f"\n[bold]{model}[/] BFCL simple_python (FC): "
+                      f"[bold]{sc.accuracy:.2%}[/] ({sc.passes}/{sc.n}, "
+                      f"Wilson95 [{low:.3f},{high:.3f}])")
+        if published is not None:
+            inside = low <= published <= high
+            v = "[green]REPRODUCED[/]" if inside else "[yellow]ATTEMPTED (off by " \
+                f"{abs(published - sc.accuracy):.1%})[/]"
+            console.print(f"Published {published:.2%} → {v}")
+        raise typer.Exit(0)
+
+    if predictions is None:
+        blk = R.bfcl_blocker()
+        console.print(f"\n[yellow]Per-model reproduction:[/] {blk['blocker']}"
+                      if not R.model_predictions_available()
+                      else "[dim]Key present — use --live to run, or --predictions "
+                           "to score a file.[/]")
         raise typer.Exit(0)
 
     preds = json.loads(Path(predictions).read_text())

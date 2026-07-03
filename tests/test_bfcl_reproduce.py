@@ -91,17 +91,20 @@ class TestHonestBlocker:
 
 
 class TestReproductionStatusSurface:
-    def test_tool_calling_wedge_is_scorer_validated_not_reproduced(self, monkeypatch):
+    def test_tool_calling_wedge_attempted_not_reproduced(self, monkeypatch):
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)  # force no-key branch
         from ascore.metrics.reproduction import reproduction_report
         rep = reproduction_report()
         assert rep["any_reproduced"] is False
         tc = {w["wedge"]: w for w in rep["wedges"]}["tool_calling"]
-        assert tc["status"] == "scorer_validated"
+        assert tc["status"] == "attempted"       # real run, honest near-miss
         assert tc["reproduced"] is False
-        # the validated-grader evidence is surfaced (n + full-split result)
         detail = tc["detail"]
+        # the validated-grader evidence is surfaced (n + full-split result)
         assert detail["scorer_validation_full_split"]["n"] == 400
         assert detail["scorer_validation_sample"]["accuracy"] == 1.0
-        assert detail["model_reproduction"]["reproduced"] is False
-        assert "ANTHROPIC_API_KEY" in detail["model_reproduction"]["blocker"]
+        # the real reproduction ATTEMPT: recorded honestly, below published
+        att = detail["model_reproduction_attempt"]
+        assert att["reproduced_accuracy"] < att["published_accuracy"]
+        assert att["published_within_interval"] is False
+        assert att["model"] == "claude-sonnet-4-5-20250929"
