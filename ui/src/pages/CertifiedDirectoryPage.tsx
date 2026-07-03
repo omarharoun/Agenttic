@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { certIdOf, type DirectoryEntry, gradeColor, statusView } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
+import { Skeleton } from "../components/ui";
 
 /* ============================================================================
    Public Certified Agents directory — /certified (unauthenticated).
@@ -65,7 +66,9 @@ export function CertifiedDirectoryPage() {
         </header>
 
         {rows === undefined ? (
-          <div className="cert-loading"><span className="spinner" /></div>
+          <div className="cert-dir-skel" aria-busy="true" aria-label="Loading certified agents">
+            <Skeleton rows={6} />
+          </div>
         ) : list.length === 0 ? (
           <div className="cert-dir-empty">
             <div className="empty-ico">◌</div>

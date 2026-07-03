@@ -344,7 +344,7 @@ export function OptimizePage() {
           <div className="policy-box">
             <div className="policy-title">runs</div>
             {!runs.length && <EmptyState icon="✨" title="No optimization runs yet"
-              hint="Pick an approved suite and a baseline prompt to start." />}
+              hint="Optimization rewrites your system prompt to lift suite score without touching the model — pick an approved suite and a baseline prompt above to start." />}
             {runs.map((r) => (
               <button key={r.run_id} onClick={() => setSelected(r.run_id)}
                 className={selected === r.run_id ? "active" : ""}

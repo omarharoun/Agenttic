@@ -110,9 +110,14 @@ export function DashboardPage() {
                   <Link className="ghost-sm" to="/app/leaderboard">Full leaderboard →</Link>
                 </header>
                 {topAgents.length === 0 ? (
-                  <p className="muted-sm dash-card-empty">
-                    No ranked agents yet — run the standard benchmark to populate the Index.
-                  </p>
+                  <div className="dash-card-empty">
+                    <p className="muted-sm">
+                      No ranked agents yet. A ranking is how you compare agents and
+                      show which is safer — run the standard benchmark to populate
+                      the Agenttic Index.
+                    </p>
+                    <Link className="btn-primary" to="/app/leaderboard">Run standard benchmark</Link>
+                  </div>
                 ) : (
                   <table className="data">
                     <thead><tr><th className="num">#</th><th>agent</th><th>Index</th></tr></thead>
@@ -143,9 +148,13 @@ export function DashboardPage() {
                   <Link className="ghost-sm" to="/app/results">All results →</Link>
                 </header>
                 {recent.length === 0 ? (
-                  <p className="muted-sm dash-card-empty">
-                    No scorecards yet — a guided evaluation lands its results here.
-                  </p>
+                  <div className="dash-card-empty">
+                    <p className="muted-sm">
+                      No results yet. A scored run is what earns a grade and a
+                      certificate you can publish — a guided evaluation lands here.
+                    </p>
+                    <Link className="btn-primary" to="/app/build">New evaluation</Link>
+                  </div>
                 ) : (
                   <table className="data">
                     <thead><tr><th>agent</th><th>suite</th><th className="num">success</th></tr></thead>
