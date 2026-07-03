@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import { type DirectoryEntry, gradeColor, statusView } from "../cert";
+import { certIdOf, type DirectoryEntry, gradeColor, statusView } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
 
 /* ============================================================================
@@ -19,7 +19,7 @@ function normalize(raw: any): DirectoryEntry[] {
     : Array.isArray(raw?.agents) ? raw.agents
     : [];
   return list.map((c: any) => ({
-    id: c.id ?? c.certification_id ?? "",
+    id: certIdOf(c),
     agent_name: c.agent_name ?? c.agent_id ?? "Unnamed agent",
     grade: c.grade ?? "—",
     index: typeof c.index === "number" ? c.index : null,
