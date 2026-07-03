@@ -70,13 +70,13 @@ export function DashboardPage() {
         <Onboarding />
         <PageHeader
           title="Dashboard"
-          subtitle={<>The credibility surface — agents ranked on the Agenttic Index,
+          subtitle={<>Score → Issues → Fix. Agents ranked on the Agenttic Index,
             your latest results with their confidence intervals, and what's running
             now. Every headline number carries its sample size and a Wilson 95% interval.</>}
           actions={
             <div className="dash-cta">
               <Link className="btn-primary" to="/app/build">＋ New evaluation</Link>
-              <a href="/scan" className="btn-ghost">Scan an agent</a>
+              <Link className="btn-ghost" to="/app/issues">🔎 Find issues</Link>
             </div>
           }
         />
@@ -147,7 +147,7 @@ export function DashboardPage() {
               <section className="dash-card">
                 <header className="dash-card-head">
                   <h2>Recent results</h2>
-                  <Link className="ghost-sm" to="/app/results">All results →</Link>
+                  <Link className="ghost-sm" to="/app/issues">What's wrong →</Link>
                 </header>
                 {recent.length === 0 ? (
                   <div className="dash-card-empty">

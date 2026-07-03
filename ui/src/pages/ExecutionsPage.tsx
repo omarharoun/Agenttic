@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { ReplayCanvas } from "../canvas/ReplayCanvas";
 import { DataView, EmptyState, PageHeader, RawToggle, Skeleton } from "../components/ui";
+import { IssuesReport } from "../components/IssuesReport";
 import { ResultsPanel } from "../panels/ResultsPanel";
 import { useFlowStore } from "../store";
 
@@ -38,7 +39,7 @@ export function ExecutionsPage() {
     <div className="page">
       <div className="list-page">
         <PageHeader title="Runs"
-                    subtitle="Every safety test you've run — live progress, results, and replays." />
+                    subtitle="Every run you've scored — live progress, then the issues it surfaced (worst-first) with the full scoreboard behind them." />
         {!loaded ? <Skeleton rows={6} /> : rows.length === 0 ? (
           <EmptyState icon="▶" title="No runs yet"
                       hint="Start a New evaluation and hit Run — it'll show up here with live progress." />
@@ -90,8 +91,13 @@ export function ExecutionsPage() {
             </h2>
             <ReplayCanvas execution={detail} />
             {results && (results.cases?.length || results.scorecards?.length) ? (
-              <div style={{ maxWidth: 760, marginTop: 14 }}>
-                <ResultsPanel results={results} />
+              <div style={{ maxWidth: 820, marginTop: 14 }}>
+                {/* Issues first — the hero of a result. The full scoreboard follows. */}
+                <IssuesReport executionId={detail.execution_id} />
+                <details className="results-raw" style={{ marginTop: 16 }}>
+                  <summary>Full scoreboard — every case, pass or fail</summary>
+                  <ResultsPanel results={results} />
+                </details>
               </div>
             ) : null}
             <h2 style={{ marginTop: 18 }}>Node outputs</h2>
