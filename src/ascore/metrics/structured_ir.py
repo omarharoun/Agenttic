@@ -1,7 +1,7 @@
-"""Deterministic structured-output, SQL, format, number, and date checks.
+"""Deterministic structured-output, retrieval, and ranking evaluation checks.
 
 Registered into the scoring CHECKS registry via the ``@check`` decorator.
-Covers (this module):
+Covers:
 
 - JSON validity & schema conformance (json_schema_valid, json_required_keys,
   json_type_shape_match, json_no_extra_keys)
@@ -11,9 +11,11 @@ Covers (this module):
 - Number and date extraction (number_match, date_match)
 - Format validators (is_email_format, is_url_format, is_phone_format,
   is_uuid_format, is_iso_date_format, enum_membership)
-
-The retrieval, ranking, set/list, and span checks are in the second half of
-this same file (see below the "PART 2" marker).
+- Information-retrieval / ranking (ir_ndcg_at_k, ir_mrr, ir_precision_at_k,
+  ir_recall_at_k, ir_map, ir_hit_rate)
+- Set / list accuracy (set_precision_score, set_recall_score, set_f1_score,
+  ordering_kendall_tau, ordering_spearman)
+- Span / citation overlap (span_overlap_f1)
 
 All algorithms are reimplemented from standard public definitions (no copied
 licensed code).
@@ -22,6 +24,7 @@ licensed code).
 from __future__ import annotations
 
 import json
+import math
 import re
 from datetime import date
 from typing import Any
@@ -394,3 +397,428 @@ def enum_membership(trace: Trace, tc: TestCase) -> float:
     enum_values = [str(v) for v in _need(tc, "enum_values")]
     text = (trace.final_output or "").strip().lower()
     return 1.0 if text in {v.strip().lower() for v in enum_values} else 0.0
+
+
+# ---------------------------------------------------------------------------
+# Helpers (Part 2) — list parsing
+# ---------------------------------------------------------------------------
+
+
+def _parse_list_output(output: str) -> list:
+    """Best-effort extraction of a ranked list from *output*.
+
+    Priority:
+    1. Parse the whole string as a JSON list.
+    2. Find the first ``[...]`` block in the text and parse that.
+    3. Split by newlines, strip each line, drop blanks.
+    """
+    text = (output or "").strip()
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, list):
+            return parsed
+    except (json.JSONDecodeError, TypeError):
+        pass
+    # Try to find a JSON array anywhere in the text
+    m = re.search(r"\[.*?\]", text, re.DOTALL)
+    if m:
+        try:
+            parsed = json.loads(m.group())
+            if isinstance(parsed, list):
+                return parsed
+        except (json.JSONDecodeError, TypeError):
+            pass
+    # Fall back: one item per non-blank line
+    return [line.strip() for line in text.splitlines() if line.strip()]
+
+
+def _relevant_ids(tc: TestCase) -> set[str]:
+    """Return the set of relevant IDs, always as strings."""
+    raw = _need(tc, "relevant_ids")
+    return {str(x) for x in raw}
+
+
+def _ranked_list(trace: Trace) -> list[str]:
+    """Parse the agent's ranked list from *final_output*, as strings."""
+    return [str(x) for x in _parse_list_output(trace.final_output)]
+
+
+# ---------------------------------------------------------------------------
+# IR / ranking checks
+# ---------------------------------------------------------------------------
+
+
+@check("ir_ndcg_at_k")
+def ir_ndcg_at_k(trace: Trace, tc: TestCase) -> float:
+    """nDCG@k (Järvelin & Kekäläinen 2002).
+
+    ``expected["relevant_ids"]``: set/list of relevant item IDs (strings).
+    ``expected["k"]`` (optional, default 10): cutoff depth.
+
+    DCG@k = Σ_{i=1}^{k} rel(i) / log2(i+1)
+    IDCG@k = DCG for ideal ranking (all relevant first)
+    nDCG@k = DCG@k / IDCG@k  (0.0 if no relevant items)
+    """
+    relevant = _relevant_ids(tc)
+    k = int((tc.expected or {}).get("k", 10))
+    ranked = _ranked_list(trace)
+
+    if not relevant:
+        return 1.0  # nothing to retrieve; vacuously perfect
+
+    top_k = ranked[:k]
+    dcg = sum(
+        1.0 / math.log2(i + 2)        # log2(rank + 1), rank is 0-indexed
+        for i, item in enumerate(top_k)
+        if item in relevant
+    )
+    n_ideal = min(len(relevant), k)
+    idcg = sum(1.0 / math.log2(i + 2) for i in range(n_ideal))
+    if idcg == 0.0:
+        return 0.0
+    return dcg / idcg
+
+
+@check("ir_mrr")
+def ir_mrr(trace: Trace, tc: TestCase) -> float:
+    """Mean Reciprocal Rank: 1/rank of the first relevant item in *final_output*.
+
+    ``expected["relevant_ids"]``: set/list of relevant item IDs.
+
+    Returns 0.0 if no relevant item appears.
+    """
+    relevant = _relevant_ids(tc)
+    ranked = _ranked_list(trace)
+    for i, item in enumerate(ranked):
+        if item in relevant:
+            return 1.0 / (i + 1)
+    return 0.0
+
+
+@check("ir_precision_at_k")
+def ir_precision_at_k(trace: Trace, tc: TestCase) -> float:
+    """Precision@k: fraction of the top-k results that are relevant.
+
+    ``expected["relevant_ids"]``: set/list of relevant item IDs.
+    ``expected["k"]`` (optional, default 10): cutoff depth.
+    """
+    relevant = _relevant_ids(tc)
+    k = int((tc.expected or {}).get("k", 10))
+    top_k = _ranked_list(trace)[:k]
+    if not top_k:
+        return 0.0
+    hits = sum(1 for item in top_k if item in relevant)
+    return hits / len(top_k)
+
+
+@check("ir_recall_at_k")
+def ir_recall_at_k(trace: Trace, tc: TestCase) -> float:
+    """Recall@k: fraction of all relevant items found in the top-k results.
+
+    ``expected["relevant_ids"]``: set/list of relevant item IDs.
+    ``expected["k"]`` (optional, default 10): cutoff depth.
+    """
+    relevant = _relevant_ids(tc)
+    k = int((tc.expected or {}).get("k", 10))
+    if not relevant:
+        return 1.0
+    top_k = _ranked_list(trace)[:k]
+    hits = sum(1 for item in top_k if item in relevant)
+    return hits / len(relevant)
+
+
+@check("ir_map")
+def ir_map(trace: Trace, tc: TestCase) -> float:
+    """Mean Average Precision (MAP) — single-query AP.
+
+    AP = (Σ P@i for each hit position i) / |relevant|.
+
+    ``expected["relevant_ids"]``: set/list of relevant item IDs.
+    Returns 1.0 if no relevant items exist (vacuously perfect).
+    """
+    relevant = _relevant_ids(tc)
+    if not relevant:
+        return 1.0
+    ranked = _ranked_list(trace)
+    hits = 0
+    precision_sum = 0.0
+    for i, item in enumerate(ranked):
+        if item in relevant:
+            hits += 1
+            precision_sum += hits / (i + 1)
+    if hits == 0:
+        return 0.0
+    return precision_sum / len(relevant)
+
+
+@check("ir_hit_rate")
+def ir_hit_rate(trace: Trace, tc: TestCase) -> float:
+    """Hit-rate@k: 1.0 if any relevant item appears in the top-k results,
+    else 0.0.
+
+    ``expected["relevant_ids"]``: set/list of relevant item IDs.
+    ``expected["k"]`` (optional, default 10): cutoff depth.
+    """
+    relevant = _relevant_ids(tc)
+    k = int((tc.expected or {}).get("k", 10))
+    top_k = _ranked_list(trace)[:k]
+    return 1.0 if any(item in relevant for item in top_k) else 0.0
+
+
+# ---------------------------------------------------------------------------
+# Set / list accuracy
+# ---------------------------------------------------------------------------
+
+
+def _parse_predicted_set(trace: Trace) -> set[str]:
+    """Parse *final_output* as a JSON list and return a set of strings."""
+    return {str(x) for x in _parse_list_output(trace.final_output)}
+
+
+@check("set_precision_score")
+def set_precision_score(trace: Trace, tc: TestCase) -> float:
+    """|predicted ∩ gold| / |predicted|.
+
+    ``expected["expected_set"]``: iterable of gold item IDs.
+    Returns 0.0 if the predicted set is empty.
+    """
+    gold = {str(x) for x in _need(tc, "expected_set")}
+    predicted = _parse_predicted_set(trace)
+    if not predicted:
+        return 0.0
+    return len(predicted & gold) / len(predicted)
+
+
+@check("set_recall_score")
+def set_recall_score(trace: Trace, tc: TestCase) -> float:
+    """|predicted ∩ gold| / |gold|.
+
+    ``expected["expected_set"]``: iterable of gold item IDs.
+    Returns 1.0 if gold is empty (vacuously perfect recall).
+    """
+    gold = {str(x) for x in _need(tc, "expected_set")}
+    if not gold:
+        return 1.0
+    predicted = _parse_predicted_set(trace)
+    return len(predicted & gold) / len(gold)
+
+
+@check("set_f1_score")
+def set_f1_score(trace: Trace, tc: TestCase) -> float:
+    """Harmonic mean of set precision and recall.
+
+    ``expected["expected_set"]``: iterable of gold item IDs.
+    Returns 1.0 if both gold and predicted are empty.
+    Returns 0.0 if exactly one of them is empty.
+    """
+    gold = {str(x) for x in _need(tc, "expected_set")}
+    predicted = _parse_predicted_set(trace)
+
+    if not gold and not predicted:
+        return 1.0
+    if not predicted or not gold:
+        return 0.0
+
+    intersection = len(predicted & gold)
+    precision = intersection / len(predicted)
+    recall = intersection / len(gold)
+    if precision + recall == 0.0:
+        return 0.0
+    return 2.0 * precision * recall / (precision + recall)
+
+
+# ---------------------------------------------------------------------------
+# Ordering metrics (Kendall tau, Spearman rho)
+# ---------------------------------------------------------------------------
+
+
+def _shared_order(
+    agent_list: list[str], gold_list: list[str]
+) -> tuple[list[int], list[int]]:
+    """Return (agent_ranks, gold_ranks) for elements present in both lists.
+
+    Ranks are 0-based positions in the respective list.  Only elements that
+    appear in BOTH lists are included.
+    """
+    agent_pos = {item: i for i, item in enumerate(agent_list)}
+    gold_pos = {item: i for i, item in enumerate(gold_list)}
+    common = sorted(agent_pos.keys() & gold_pos.keys(), key=lambda x: agent_pos[x])
+    if not common:
+        return [], []
+    a_ranks = [agent_pos[x] for x in common]
+    g_ranks = [gold_pos[x] for x in common]
+    return a_ranks, g_ranks
+
+
+@check("ordering_kendall_tau")
+def ordering_kendall_tau(trace: Trace, tc: TestCase) -> float:
+    """Kendall tau between agent's ranked list and ``expected["expected_order"]``.
+
+    Only items present in BOTH lists are compared.  tau ∈ [-1, 1] is mapped to
+    [0, 1] as (tau + 1) / 2.  Returns 0.5 (neutral) if fewer than 2 shared
+    items exist.
+
+    Implemented from scratch (O(n²) concordant/discordant pair counting).
+    """
+    gold_list = [str(x) for x in _need(tc, "expected_order")]
+    agent_list = [str(x) for x in _parse_list_output(trace.final_output)]
+
+    a_ranks, g_ranks = _shared_order(agent_list, gold_list)
+    n = len(a_ranks)
+    if n < 2:
+        return 0.5  # neutral — not enough data to rank
+
+    concordant = 0
+    discordant = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            a_diff = a_ranks[i] - a_ranks[j]
+            g_diff = g_ranks[i] - g_ranks[j]
+            product = a_diff * g_diff
+            if product > 0:
+                concordant += 1
+            elif product < 0:
+                discordant += 1
+            # product == 0 → tie in one list, contributes to neither
+
+    total_pairs = n * (n - 1) // 2
+    if total_pairs == 0:
+        return 0.5
+    tau = (concordant - discordant) / total_pairs
+    return (tau + 1.0) / 2.0
+
+
+@check("ordering_spearman")
+def ordering_spearman(trace: Trace, tc: TestCase) -> float:
+    """Spearman rank correlation between agent's list and
+    ``expected["expected_order"]``.
+
+    Only items present in BOTH lists are considered.  Standard formula:
+    rho = 1 - 6 Σd² / (n(n²-1)), where d = difference in dense ranks within
+    the shared set.  rho ∈ [-1, 1] is mapped to [0, 1] as (rho + 1) / 2.
+    Returns 0.5 (neutral) if fewer than 2 shared items.
+    """
+    gold_list = [str(x) for x in _need(tc, "expected_order")]
+    agent_list = [str(x) for x in _parse_list_output(trace.final_output)]
+
+    a_ranks, g_ranks = _shared_order(agent_list, gold_list)
+    n = len(a_ranks)
+    if n < 2:
+        return 0.5
+
+    def _dense_rank(positions: list[int]) -> list[int]:
+        order = sorted(range(n), key=lambda i: positions[i])
+        ranks = [0] * n
+        for rank, idx in enumerate(order):
+            ranks[idx] = rank
+        return ranks
+
+    a_dense = _dense_rank(a_ranks)
+    g_dense = _dense_rank(g_ranks)
+
+    sum_d_sq = sum((a - g) ** 2 for a, g in zip(a_dense, g_dense))
+    denom = n * (n * n - 1)
+    if denom == 0:
+        return 0.5
+    rho = 1.0 - 6.0 * sum_d_sq / denom
+    return (rho + 1.0) / 2.0
+
+
+# ---------------------------------------------------------------------------
+# Span / citation overlap
+# ---------------------------------------------------------------------------
+
+
+def _char_positions(span: dict[str, int]) -> set[int]:
+    """Return the set of character positions [start, end)."""
+    start = int(span.get("start", 0))
+    end = int(span.get("end", 0))
+    return set(range(start, end))
+
+
+def _token_bag(text: str) -> dict[str, int]:
+    """Case-insensitive token count bag (SQuAD-style)."""
+    tokens = re.findall(r"[a-zA-Z0-9]+", text.lower())
+    bag: dict[str, int] = {}
+    for t in tokens:
+        bag[t] = bag.get(t, 0) + 1
+    return bag
+
+
+def _token_overlap_f1(pred_texts: list[str], gold_texts: list[str]) -> float:
+    """SQuAD-style token-level F1 over lists of text spans."""
+
+    def _count(texts: list[str]) -> dict[str, int]:
+        bag: dict[str, int] = {}
+        for t in texts:
+            for tok, cnt in _token_bag(t).items():
+                bag[tok] = bag.get(tok, 0) + cnt
+        return bag
+
+    pred_bag = _count(pred_texts)
+    gold_bag = _count(gold_texts)
+    common_tokens = sum(min(pred_bag.get(t, 0), cnt) for t, cnt in gold_bag.items())
+
+    pred_len = sum(pred_bag.values())
+    gold_len = sum(gold_bag.values())
+
+    if pred_len == 0 and gold_len == 0:
+        return 1.0
+    if common_tokens == 0:
+        return 0.0
+    precision = common_tokens / pred_len
+    recall = common_tokens / gold_len
+    return 2.0 * precision * recall / (precision + recall)
+
+
+@check("span_overlap_f1")
+def span_overlap_f1(trace: Trace, tc: TestCase) -> float:
+    """Character-level or token-level span F1 depending on gold span format.
+
+    ``expected["gold_spans"]`` is either:
+
+    - A list of ``{"start": int, "end": int}`` dicts → **character-level F1**.
+      Predicted spans come from ``expected["predicted_spans"]`` (same format).
+      F1 = 2·|P∩G| / (|P| + |G|) where P and G are sets of character positions.
+
+    - A list of strings → **token-level F1** (SQuAD-style).
+      Predicted spans come from parsing *final_output* as a JSON list of strings.
+      F1 uses the standard token-bag overlap.
+
+    Returns 1.0 when there are no gold spans (vacuously correct).
+    """
+    gold_spans = _need(tc, "gold_spans")
+
+    if not gold_spans:
+        return 1.0  # no gold spans — vacuously correct
+
+    # Detect mode by examining the first element
+    first = gold_spans[0]
+
+    if isinstance(first, dict):
+        # Character-level mode
+        pred_spans = _need(tc, "predicted_spans")
+        gold_chars: set[int] = set()
+        for s in gold_spans:
+            gold_chars |= _char_positions(s)
+        pred_chars: set[int] = set()
+        for s in pred_spans:
+            pred_chars |= _char_positions(s)
+
+        if not gold_chars and not pred_chars:
+            return 1.0
+        if not gold_chars or not pred_chars:
+            return 0.0
+
+        intersection = len(pred_chars & gold_chars)
+        precision = intersection / len(pred_chars)
+        recall = intersection / len(gold_chars)
+        if precision + recall == 0.0:
+            return 0.0
+        return 2.0 * precision * recall / (precision + recall)
+
+    # Token-level mode (gold_spans is list of strings)
+    gold_texts = [str(s) for s in gold_spans]
+    pred_raw = _parse_list_output(trace.final_output)
+    pred_texts = [str(s) for s in pred_raw]
+    return _token_overlap_f1(pred_texts, gold_texts)
