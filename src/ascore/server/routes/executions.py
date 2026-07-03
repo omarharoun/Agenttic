@@ -50,18 +50,11 @@ def get_execution(execution_id: str, request: Request):
         raise HTTPException(404, f"execution {execution_id} not found")
 
 
-@router.get("/executions/{execution_id}/results")
-def execution_results(execution_id: str, request: Request):
-    """Joined, render-ready results for an execution: scorecard summaries
-    plus one row per test case — the agent's actual output (its prediction),
-    the expected value, per-criterion scores, and judge rationales."""
-    state = request.state
-    try:
-        ex = state.store.get_execution(execution_id)
-    except NotFoundError:
-        raise HTTPException(404, f"execution {execution_id} not found")
-
-    scorecards, cases_out = [], []
+def _assemble_results(state, ex) -> tuple[list, list, set]:
+    """Join an execution's persisted node outputs into render-ready scorecards +
+    per-case rows, and collect the (rubric_id, version) pairs the run scored
+    against. Shared by the results and issues endpoints."""
+    scorecards, cases_out, rubric_refs = [], [], set()
     for node_id, ports in (ex.get("node_outputs") or {}).items():
         for payload in ports.values():
             if not isinstance(payload, dict):
@@ -71,6 +64,7 @@ def execution_results(execution_id: str, request: Request):
                     sc = state.reg.get_scorecard(payload["scorecard_id"])
                 except NotFoundError:
                     continue
+                rubric_refs.add((sc.rubric_id, sc.rubric_version))
                 cached = bool(payload.get("cached"))
                 scorecards.append({
                     "node_id": node_id, "scorecard_id": sc.scorecard_id,
@@ -121,8 +115,55 @@ def execution_results(execution_id: str, request: Request):
                         } for cs in rs["criterion_scores"]],
                     })
     cases_out.sort(key=lambda r: (r["node_id"], r["test_id"]))
+    return scorecards, cases_out, rubric_refs
+
+
+@router.get("/executions/{execution_id}/results")
+def execution_results(execution_id: str, request: Request):
+    """Joined, render-ready results for an execution: scorecard summaries
+    plus one row per test case — the agent's actual output (its prediction),
+    the expected value, per-criterion scores, and judge rationales."""
+    state = request.state
+    try:
+        ex = state.store.get_execution(execution_id)
+    except NotFoundError:
+        raise HTTPException(404, f"execution {execution_id} not found")
+    scorecards, cases_out, _ = _assemble_results(state, ex)
     return {"status": ex["status"], "scorecards": scorecards,
             "cases": cases_out}
+
+
+@router.get("/executions/{execution_id}/issues")
+def execution_issues(execution_id: str, request: Request):
+    """The Issues report — this execution's REAL failures, ranked worst-first,
+    each with a plain-language why, the failing cases as evidence, and which Fix
+    capability addresses it. Derived entirely from computed scores (no fabricated
+    findings); an all-passing run honestly reports zero issues."""
+    from ascore.issues import build_issues
+
+    state = request.state
+    try:
+        ex = state.store.get_execution(execution_id)
+    except NotFoundError:
+        raise HTTPException(404, f"execution {execution_id} not found")
+    scorecards, cases_out, rubric_refs = _assemble_results(state, ex)
+
+    # per-criterion metadata (description/scorer/scale/check_ref/tags) from the
+    # run's rubrics — powers category inference and the human-readable "why".
+    criteria_meta: dict[str, dict] = {}
+    for rid, ver in rubric_refs:
+        try:
+            rubric = state.reg.get_rubric(rid, ver)
+        except NotFoundError:
+            continue
+        for c in rubric.criteria:
+            criteria_meta.setdefault(c.criterion_id, {
+                "description": c.description, "scorer": c.scorer,
+                "scale": c.scale, "check_ref": c.check_ref, "tags": c.tags})
+
+    report = build_issues(scorecards=scorecards, cases=cases_out,
+                          criteria_meta=criteria_meta)
+    return {"status": ex["status"], **report}
 
 
 @router.get("/executions/{execution_id}/events")
