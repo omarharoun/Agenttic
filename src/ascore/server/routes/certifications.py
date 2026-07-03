@@ -99,16 +99,22 @@ def _cfg(request: Request) -> dict:
 
 @public_router.get("/public/calibration")
 def public_calibration(request: Request):
-    """The DEMONSTRATED calibration of Agenttic's deterministic heuristic checks
-    against the shipped human-label corpus — per-criterion agreement, which
-    criteria clear the bar, and the intentional tail disagreements. Powers an
-    honest calibration disclosure on the Methodology page (no more unproven
-    "calibrated"). No auth. The LLM judge is not covered here and stays
-    provisional — stated in the payload's note."""
+    """The DEMONSTRATED calibration of Agenttic's scorers against the shipped
+    human-label corpora — per-criterion agreement, which criteria clear the bar,
+    and the intentional tail disagreements. Two parts: the DETERMINISTIC heuristic
+    checks (measured offline, no key) and the LLM JUDGE (measured only when a
+    model API key is present; otherwise the honest blocker + minimal cost, with
+    every judge criterion PROVISIONAL). No auth."""
     from ascore.scoring.corpus import run_corpus_calibration
+    from ascore.scoring.judge_calibration import judge_calibration_status
     try:
-        return JSONResponse(run_corpus_calibration().to_dict(),
-                            headers={"Cache-Control": _CACHE})
+        body = run_corpus_calibration().to_dict()
+        body["deterministic_checks"] = {
+            "calibrated_criteria": body.get("calibrated_criteria"),
+            "overall_agreement": body.get("overall_agreement"),
+        }
+        body["judge_calibration"] = judge_calibration_status(request.app.state.cfg)
+        return JSONResponse(body, headers={"Cache-Control": _CACHE})
     except Exception as exc:  # noqa: BLE001 — a public read must never 500
         return JSONResponse(
             {"error": f"calibration corpus unavailable: {exc}"}, status_code=503)

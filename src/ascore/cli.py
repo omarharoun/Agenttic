@@ -207,6 +207,35 @@ def calibrate_corpus():
 
 
 @app.command()
+def calibrate_judge(config: str = "config.yaml"):
+    """Measure LLM-judge-vs-human agreement on the shipped judge-calibration
+    corpus (Krippendorff α / exact-match). Requires ANTHROPIC_API_KEY (the judge
+    is an LLM). With no key it prints the honest blocker + minimal cost and spends
+    nothing; judge criteria stay PROVISIONAL until a real run demonstrates
+    agreement."""
+    from ascore.scoring import judge_calibration as JC
+
+    cfg, _ = _ctx(config)
+    if not JC.judge_calibration_available():
+        blk = JC.judge_blocker(cfg)
+        console.print(f"[yellow]Judge calibration blocked:[/] {blk['blocker']}")
+        mc = blk["minimal_cost"]
+        console.print(f"[dim]Minimal run:[/] {blk['one_command']} · "
+                      f"n={mc['n_records']} records · est ~${mc['est_usd']} "
+                      f"({mc['est_usd_order']})")
+        raise typer.Exit(0)
+    result = JC.run_judge_calibration(cfg)
+    console.print(f"[bold]{result.version}[/] — judge vs human over "
+                  f"{result.n_records} records:")
+    table = Table("criterion", "n", "agreement", "status")
+    for cid, cal in sorted(result.per_criterion.items()):
+        table.add_row(cid, str(cal.n), f"{cal.agreement:.2f}",
+                      "[green]calibrated[/]" if cal.calibrated
+                      else "[red]PROVISIONAL[/]")
+    console.print(table)
+
+
+@app.command()
 def reproduce_bfcl(
         split: str = typer.Option("simple", "--split", help="BFCL split"),
         full: bool = typer.Option(False, "--full", help="fetch the whole split "
