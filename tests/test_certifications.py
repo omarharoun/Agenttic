@@ -320,6 +320,42 @@ class TestIssuance:
         assert store.public_view(ca["cert_id"], cfg={})["cert_id"] == ca["cert_id"]
         assert store.public_view(cb["cert_id"], cfg={})["cert_id"] == cb["cert_id"]
 
+    def test_supersession_marks_older_cert_for_same_version(self, tmp_path):
+        # Two certs for the SAME agent + SAME version (config_hash): only the
+        # newest is current; the older is superseded. This is what stops the UI
+        # from showing one agent as two equally-valid conflicting grades.
+        reg = Registry(tmp_path / "a.db")
+        _save_safety_scorecard(reg, scorecard_id="s1", agent_id="agent-x")
+        _save_safety_scorecard(reg, scorecard_id="s2", agent_id="agent-x")
+        issue_certificate(global_engine=reg.engine, cfg={}, reg=reg,
+                          tenant="default", scorecard_id="s1")
+        issue_certificate(global_engine=reg.engine, cfg={}, reg=reg,
+                          tenant="default", scorecard_id="s2")
+        certs = CertStore(reg.engine).list_for_tenant("default")
+        assert len(certs) == 2
+        assert sum(c["current"] for c in certs) == 1
+        assert sum(c["superseded"] for c in certs) == 1
+        # the single current cert is the most recently issued
+        current = next(c for c in certs if c["current"])
+        assert current["issued_at"] == max(c["issued_at"] for c in certs)
+
+    def test_distinct_versions_are_each_current(self, tmp_path):
+        # Same agent, DIFFERENT versions → neither supersedes the other; both are
+        # current for their own pinned version (the UI shows the version badge).
+        reg = Registry(tmp_path / "a.db")
+        _save_safety_scorecard(reg, scorecard_id="s1", agent_id="agent-x",
+                               config_hash="hash-v1")
+        _save_safety_scorecard(reg, scorecard_id="s2", agent_id="agent-x",
+                               config_hash="hash-v2")
+        issue_certificate(global_engine=reg.engine, cfg={}, reg=reg,
+                          tenant="default", scorecard_id="s1")
+        issue_certificate(global_engine=reg.engine, cfg={}, reg=reg,
+                          tenant="default", scorecard_id="s2")
+        certs = CertStore(reg.engine).list_for_tenant("default")
+        assert len(certs) == 2
+        assert all(c["current"] for c in certs)
+        assert not any(c["superseded"] for c in certs)
+
 
 # --------------------------------------------------------------------------- #
 # Lifecycle status (expired / revoked).

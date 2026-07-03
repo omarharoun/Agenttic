@@ -234,6 +234,17 @@ class CertStore:
                 "revoked_at": r.revoked_at.isoformat() if r.revoked_at else None,
                 "status": status,
             })
+        # Supersession: only the LATEST certificate per (agent, version) is
+        # "current"; older certs for the same agent+config_hash are superseded.
+        # This is what stops the UI from showing the same agent as two equally
+        # "valid" but conflicting grades. `rows` is created_at desc, so the first
+        # occurrence of each (agent_id, config_hash) is current, the rest not.
+        seen: set[tuple[str, str]] = set()
+        for c in out:
+            key = (c["agent_id"], c["config_hash"] or "")
+            c["superseded"] = key in seen
+            c["current"] = key not in seen
+            seen.add(key)
         return out
 
     def revoke(self, *, tenant: str, cert_id: str) -> bool:

@@ -1358,9 +1358,19 @@ table.data tbody tr { transition: background 0.1s; }
 .cert-item.open { border-color: var(--accent-line); }
 .cert-item-head { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-4) var(--sp-5); }
 .cert-item-id { min-width: 0; }
-.cert-item-name { font: 500 var(--t-title)/1.2 var(--font-serif); }
+.cert-item-name { font: 500 var(--t-title)/1.2 var(--font-serif); display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .cert-item-head a { color: var(--accent); text-decoration: none; }
 .cert-inline-status.ok { color: var(--ok); } .cert-inline-status.wait { color: var(--wait); } .cert-inline-status.fail { color: var(--fail); }
+/* current vs superseded certificate distinction (item 4) */
+.cert-item.superseded { opacity: 0.66; }
+.cert-item.superseded:hover { opacity: 1; }
+.cert-tag {
+  font: 600 9.5px/1 var(--font-ui); text-transform: uppercase; letter-spacing: 0.06em;
+  border-radius: var(--r-pill); padding: 3px 8px; border: 1px solid var(--border);
+}
+.cert-tag.current { color: var(--ok); border-color: var(--ok-border); background: var(--ok-soft); }
+.cert-tag.superseded { color: var(--muted); border-color: var(--border-strong); background: var(--panel-2); }
+.cert-ver { color: var(--faint); }
 
 .embed-block { border-top: 1px solid var(--border-soft); padding: var(--sp-4) var(--sp-5); background: var(--field); }
 .embed-preview { display: flex; align-items: center; gap: var(--sp-4); margin-bottom: var(--sp-2); }
