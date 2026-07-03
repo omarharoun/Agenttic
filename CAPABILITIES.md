@@ -44,10 +44,27 @@ Anthropic key. SWE-bench is scored by an **offline proxy**, not its official
 Docker resolve-rate — the real resolve-rate harness is now **wired but gated**
 (set `ASCORE_SWEBENCH_HARNESS=docker` in an environment with Docker + the
 `swebench` package + instance images) rather than hard-disabled. The honest
-per-wedge status — reproduced vs proxy vs seed-sample, and what real reproduction
-would take — is served at `GET /api/public/reproduction`. As of now **no wedge
-reproduces a public leaderboard number in this environment**, and that endpoint
-says so plainly instead of hiding it.
+per-wedge status — reproduced vs scorer-validated vs proxy vs seed-sample, and
+what real reproduction would take — is served at `GET /api/public/reproduction`.
+As of now **no wedge reproduces a public per-model leaderboard number in this
+environment** (no `ANTHROPIC_API_KEY` to generate predictions; SWE-bench needs
+the Docker harness), and that endpoint says so plainly instead of hiding it.
+
+**BFCL — the grader is reproduced/validated on the full real dataset.** For the
+tool-calling wedge (Berkeley Function-Calling Leaderboard), BFCL grades by
+deterministic AST match — no LLM judge, no Docker. Our AST grader is proven
+against the **whole real `simple` category (n=400)**: the oracle (ground-truth)
+predictions score **100%** (Wilson 95% [0.9905, 1.0]), and a wrong prediction
+scores wrong — so the machinery that reproduces the leaderboard number is correct.
+The one missing input is the *model's* predictions, which need an API key.
+Reproduce the grader (offline, no key) or run a real model with:
+
+    uv run ascore reproduce-bfcl --split simple --full            # validate grader
+    uv run ascore reproduce-bfcl --split simple --model <M> \
+        --predictions <preds.json> --published <ACC> --published-source <URL>
+
+The wedge is honestly labelled **`scorer_validated`** (not `reproduced`) until a
+real per-model run overlaps its published number.
 
 **Red-team injection (real probe set, honest self-test):** the
 `redteam-injection-v1` suite is a genuine, technique-diverse prompt-injection
