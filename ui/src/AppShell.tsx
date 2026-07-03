@@ -11,6 +11,7 @@ import { ComparePage } from "./pages/ComparePage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { EditorPage } from "./pages/EditorPage";
 import { ExecutionsPage } from "./pages/ExecutionsPage";
+import { IssuesPage } from "./pages/IssuesPage";
 import { ResultsHistoryPage } from "./pages/ResultsHistoryPage";
 import { HardeningPage } from "./pages/HardeningPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
@@ -45,18 +46,22 @@ function TokenControl() {
   );
 }
 
-/** The console navigation, grouped by intent instead of a flat 12-item pile.
- *  A benchmark authority opens on the Dashboard; the workflow builder is one
- *  demoted "New evaluation" entry, not the front door. */
+/** The console navigation, organized around the one product arc: Score → Issues
+ *  → Fix. Certify is demoted to a secondary group (still reachable, no longer the
+ *  pitch). A benchmark authority opens on the Dashboard; the workflow builder is
+ *  one demoted "New evaluation" entry, not the front door. */
 const NAV_GROUPS: { title: string; items: { to: string; icon: string; label: string }[] }[] = [
-  { title: "Benchmark", items: [
+  { title: "Score", items: [
     { to: "/app/build", icon: "＋", label: "New evaluation" },
     { to: "/app/executions", icon: "▶", label: "Runs" },
     { to: "/app/results", icon: "📊", label: "Results" },
     { to: "/app/leaderboard", icon: "🏆", label: "Leaderboard" },
     { to: "/app/compare", icon: "⚖", label: "Compare" },
   ]},
-  { title: "Improve", items: [
+  { title: "Issues", items: [
+    { to: "/app/issues", icon: "🔎", label: "Issues report" },
+  ]},
+  { title: "Fix", items: [
     { to: "/app/training-camp", icon: "🎯", label: "Training Camp" },
     { to: "/app/hardening", icon: "🛡", label: "Hardening" },
     { to: "/app/optimize", icon: "✨", label: "Optimize" },
@@ -185,6 +190,7 @@ export function AppShell() {
             <Route path="build" element={<EditorPage />} />
             <Route path="executions" element={<ExecutionsPage />} />
             <Route path="results" element={<ResultsHistoryPage />} />
+            <Route path="issues" element={<IssuesPage />} />
             <Route path="compare" element={<ComparePage />} />
             <Route path="leaderboard" element={<LeaderboardPage />} />
             <Route path="certifications" element={<CertificationsPage />} />

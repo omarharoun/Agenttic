@@ -1971,3 +1971,132 @@ table.data tbody tr { transition: background 0.1s; }
   .asst-msg-body { max-width: 90%; }
   .asst-intro h1 { font-size: 28px; }
 }
+
+/* ── Issues report — the ranked "what's wrong" view (Score → Issues → Fix) ── */
+.issues-report { margin: 0; }
+.issues-runpick {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap;
+}
+.issues-runpick label {
+  font: 600 var(--t-label) / 1 var(--font-ui); letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--faint);
+}
+.issues-runpick select { max-width: 520px; }
+
+/* summary banner */
+.issues-summary {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+  gap: 14px; padding: 18px 20px; margin-bottom: 18px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-left: 3px solid var(--accent); border-radius: var(--r-lg);
+}
+.isum-eyebrow {
+  display: block; font: 600 var(--t-label) / 1 var(--font-ui); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent); margin-bottom: 6px;
+}
+.isum-headline {
+  font: 500 20px/1.3 var(--font-serif); letter-spacing: -0.01em;
+  color: var(--text); margin: 0; max-width: 60ch;
+}
+.isum-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.isum-pass { font: 600 15px/1 var(--font-ui); color: var(--text); white-space: nowrap; }
+.isum-ci { display: block; margin-top: 4px; text-align: right; }
+.isum-counts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* severity chips */
+.sev-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font: 600 11px/1 var(--font-ui); letter-spacing: 0.03em; text-transform: uppercase;
+  padding: 4px 8px; border-radius: var(--r-pill); border: 1px solid transparent;
+  white-space: nowrap;
+}
+.sev-chip.sev-critical { color: #fff; background: var(--fail); border-color: var(--fail); }
+.sev-chip.sev-high { color: var(--fail); background: var(--fail-soft); border-color: var(--fail-border); }
+.sev-chip.sev-medium { color: var(--wait); background: var(--wait-soft); border-color: var(--wait-border); }
+.sev-chip.sev-low { color: var(--muted); background: var(--panel-2); border-color: var(--border); }
+
+/* issue cards */
+.issues-list { display: flex; flex-direction: column; gap: 12px; }
+.issue-card {
+  padding: 16px 18px; background: var(--panel); border: 1px solid var(--border);
+  border-left: 3px solid var(--border); border-radius: var(--r-md);
+  transition: border-color 0.15s ease;
+}
+.issue-card.sev-critical { border-left-color: var(--fail); }
+.issue-card.sev-high { border-left-color: var(--fail-border); }
+.issue-card.sev-medium { border-left-color: var(--wait-border); }
+.issue-card.sev-low { border-left-color: var(--border); }
+.issue-card:hover { border-color: var(--accent-line); }
+.issue-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.issue-cat {
+  font: 600 var(--t-label) / 1 var(--font-ui); letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--faint);
+}
+.issue-affected { margin-left: auto; font: 500 13px/1 var(--font-mono); color: var(--muted); }
+.issue-title {
+  font: 500 17px/1.3 var(--font-serif); letter-spacing: -0.01em;
+  color: var(--text); margin: 0 0 6px;
+}
+.issue-why { font-size: 14px; line-height: 1.55; color: var(--muted); margin: 0 0 12px; }
+.issue-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.issue-evbtn {
+  font: 500 13px/1 var(--font-ui); color: var(--text);
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 7px 12px; cursor: pointer;
+}
+.issue-evbtn:hover { border-color: var(--accent-line); }
+.issue-fix {
+  font: 600 13px/1 var(--font-ui); color: var(--accent-ink) !important;
+  background: var(--accent); border: 1px solid var(--accent);
+  border-radius: var(--r-pill); padding: 7px 14px; text-decoration: none;
+}
+.issue-fix:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.issue-fixblurb { font-size: 12.5px; line-height: 1.5; color: var(--faint); margin: 10px 0 0; }
+
+/* evidence drawer */
+.issue-evidence {
+  margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ev-crit { font-size: 13px; color: var(--muted); }
+.ev-crit .ev-count { margin-left: 8px; color: var(--wait); font-family: var(--font-mono); font-size: 12px; }
+.ev-case {
+  padding: 10px 12px; background: var(--panel-2);
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+}
+.ev-case-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.ev-case-head code { font-size: 12px; color: var(--text); }
+.ev-score { font: 600 12px/1 var(--font-mono); }
+.ev-score.ok { color: var(--ok); }
+.ev-score.half { color: var(--wait); }
+.ev-score.bad { color: var(--fail); }
+.ev-prov {
+  font: 600 10px/1 var(--font-ui); letter-spacing: 0.03em; text-transform: uppercase;
+  color: var(--wait); background: var(--wait-soft); border: 1px solid var(--wait-border);
+  border-radius: var(--r-pill); padding: 3px 7px;
+}
+.ev-rationale {
+  font: italic 400 13px/1.5 var(--font-serif); color: var(--text);
+  border-left: 2px solid var(--accent-line); padding-left: 10px; margin: 4px 0 8px;
+}
+.ev-kv { display: flex; gap: 8px; font-size: 12.5px; margin-top: 3px; }
+.ev-k {
+  flex: 0 0 76px; font: 600 var(--t-label) / 1.4 var(--font-ui);
+  text-transform: uppercase; letter-spacing: 0.03em; color: var(--faint);
+}
+.ev-v { color: var(--muted); font-family: var(--font-mono); font-size: 12px; word-break: break-word; }
+.ev-more { font-size: 12.5px; color: var(--faint); }
+
+/* raw scoreboard, tucked behind the issues hero */
+.results-raw > summary {
+  cursor: pointer; font: 600 13px/1 var(--font-ui); color: var(--muted);
+  padding: 8px 0; user-select: none;
+}
+.results-raw > summary:hover { color: var(--accent); }
+
+@media (max-width: 640px) {
+  .issues-summary { flex-direction: column; align-items: flex-start; }
+  .isum-meta { align-items: flex-start; }
+  .isum-counts { justify-content: flex-start; }
+  .issue-affected { margin-left: 0; }
+}

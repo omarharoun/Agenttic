@@ -121,6 +121,49 @@ export interface ConnectionTestResult {
   mapping: { preset: string; request_field: string; response_path: string; model: string };
 }
 
+/** One ranked issue in an execution's Issues report (GET /executions/{id}/issues). */
+export interface Issue {
+  id: string;
+  title: string;
+  criterion_id: string | null;
+  category: string;
+  category_label: string;
+  severity: "critical" | "high" | "medium" | "low";
+  impact_rank: number;
+  why: string;
+  affected_n: number;
+  n_measured: number;
+  affected_share: number | null;
+  evidence: {
+    counts: Record<string, number>;
+    cases: {
+      test_id?: string; score?: number; scorer?: string; calibrated?: boolean;
+      rationale?: string | null; prediction?: string; expected?: string;
+    }[];
+    criteria?: { criterion_id: string; description?: string; provisional: number }[];
+    truncated: number;
+  };
+  suggested_fix: { capability: string; label: string; route: string; blurb: string };
+  status: string;
+}
+
+export interface IssuesReport {
+  status: string;
+  issues: Issue[];
+  summary: {
+    total_issues: number;
+    by_severity: Record<"critical" | "high" | "medium" | "low", number>;
+    n_scored: number;
+    n_passed: number;
+    n_errored: number;
+    pass_rate: number | null;
+    pass_wilson_low: number | null;
+    pass_wilson_high: number | null;
+    headline: string;
+    clean: boolean;
+  };
+}
+
 const TOKEN_KEY = "ascore_token";
 
 /** API token store (shared bearer key). EventSource can't send headers, so
@@ -267,6 +310,8 @@ export const api = {
     afetch(`/api/executions/${id}`).then((r) => json<any>(r)),
   executionResults: (id: string) =>
     afetch(`/api/executions/${id}/results`).then((r) => json<any>(r)),
+  executionIssues: (id: string) =>
+    afetch(`/api/executions/${id}/issues`).then((r) => json<IssuesReport>(r)),
   listExecutions: (workflowId?: string) =>
     afetch(`/api/executions${workflowId ? `?workflow_id=${encodeURIComponent(workflowId)}` : ""}`)
       .then((r) => json<any[]>(r)),
