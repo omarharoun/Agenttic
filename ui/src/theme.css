@@ -1433,11 +1433,13 @@ table.data tbody tr { transition: background 0.1s; }
 .embed-row { margin-top: 10px; }
 .embed-row label { display: block; font: 600 var(--t-label)/1 var(--font-ui); text-transform: uppercase;
   letter-spacing: 0.06em; color: var(--faint); margin-bottom: 5px; }
-.embed-field { display: flex; align-items: stretch; gap: 8px; }
+.embed-field { display: flex; align-items: flex-start; gap: 8px; }
 .embed-field code {
-  flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; cursor: text;
+  /* wrap instead of a cramped horizontal scrollbar — Copy is the primary path */
+  flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere;
+  word-break: break-word; cursor: text; max-height: 96px; overflow-y: auto;
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-sm);
-  padding: 8px 10px; font: var(--t-xs)/1.5 var(--font-mono); color: var(--text);
+  padding: 8px 10px; font: var(--t-xs)/1.6 var(--font-mono); color: var(--text);
 }
 .embed-field button { flex-shrink: 0; }
 
