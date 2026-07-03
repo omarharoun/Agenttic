@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
+import { Onboarding } from "../components/Onboarding";
 import { money } from "../stats";
 
 /* ============================================================================
@@ -66,6 +67,7 @@ export function DashboardPage() {
   return (
     <div className="page">
       <div className="list-page">
+        <Onboarding />
         <PageHeader
           title="Dashboard"
           subtitle={<>The credibility surface — agents ranked on the Agenttic Index,
