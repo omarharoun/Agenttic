@@ -236,3 +236,9 @@ from ascore.metrics import canonical_checks as _canonical_checks  # noqa: E402,F
 from ascore.metrics import text_overlap as _text_overlap  # noqa: E402,F401
 # ---- feat/metrics-structured: structured / IR / ranking metric family ----
 from ascore.metrics import structured_ir as _structured_ir  # noqa: E402,F401
+# --- safety metric family (feat/metrics-safety) ---------------------------- #
+# Deterministic content-safety checks (PII / secret / profanity / system-prompt
+# leak). Same registration mechanism; kept in its own delimited block to minimise
+# merge conflicts with the parallel metric branches.
+from ascore.metrics import safety_checks as _safety_checks  # noqa: E402,F401
+# --------------------------------------------------------------------------- #
