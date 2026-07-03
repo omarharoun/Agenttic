@@ -278,11 +278,15 @@ def reproduce_bfcl(
         preds = R.generate_predictions(
             cases, model=model,
             on_progress=lambda d, n: console.print(f"[dim]  {d}/{n}[/]"))
-        sc = R.score_cases(cases, preds)
+        # score with the faithful port of BFCL's OFFICIAL AST checker
+        sc = R.score_cases_official(cases, preds)
+        homegrown = R.score_cases(cases, preds)
         low, high = wilson_interval(sc.passes, sc.n)
-        console.print(f"\n[bold]{model}[/] BFCL simple_python (FC): "
-                      f"[bold]{sc.accuracy:.2%}[/] ({sc.passes}/{sc.n}, "
+        console.print(f"\n[bold]{model}[/] BFCL simple_python (FC, official "
+                      f"checker): [bold]{sc.accuracy:.2%}[/] ({sc.passes}/{sc.n}, "
                       f"Wilson95 [{low:.3f},{high:.3f}])")
+        console.print(f"[dim]  (our simpler grader on the same predictions: "
+                      f"{homegrown.accuracy:.2%})[/]")
         if published is not None:
             inside = low <= published <= high
             v = "[green]REPRODUCED[/]" if inside else "[yellow]ATTEMPTED (off by " \

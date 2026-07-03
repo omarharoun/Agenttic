@@ -91,20 +91,21 @@ class TestHonestBlocker:
 
 
 class TestReproductionStatusSurface:
-    def test_tool_calling_wedge_attempted_not_reproduced(self, monkeypatch):
-        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)  # force no-key branch
+    def test_tool_calling_wedge_reproduced(self, monkeypatch):
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         from ascore.metrics.reproduction import reproduction_report
         rep = reproduction_report()
-        assert rep["any_reproduced"] is False
+        assert rep["any_reproduced"] is True
         tc = {w["wedge"]: w for w in rep["wedges"]}["tool_calling"]
-        assert tc["status"] == "attempted"       # real run, honest near-miss
-        assert tc["reproduced"] is False
+        assert tc["status"] == "reproduced" and tc["reproduced"] is True
         detail = tc["detail"]
-        # the validated-grader evidence is surfaced (n + full-split result)
+        # the validated-grader evidence is still surfaced (oracle 100%)
         assert detail["scorer_validation_full_split"]["n"] == 400
         assert detail["scorer_validation_sample"]["accuracy"] == 1.0
-        # the real reproduction ATTEMPT: recorded honestly, below published
-        att = detail["model_reproduction_attempt"]
-        assert att["reproduced_accuracy"] < att["published_accuracy"]
-        assert att["published_within_interval"] is False
-        assert att["model"] == "claude-sonnet-4-5-20250929"
+        # the real reproduction: published falls inside our Wilson interval
+        mr = detail["model_reproduction"]
+        assert mr["model"] == "claude-sonnet-4-5-20250929"
+        assert mr["published_within_interval"] is True
+        assert mr["wilson_low"] <= mr["published_accuracy"] <= mr["wilson_high"]
+        # both grader numbers reported for transparency (official reproduces)
+        assert mr["reproduced_accuracy"] > mr["homegrown_grader_accuracy"]

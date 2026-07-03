@@ -208,18 +208,20 @@ def test_harness_available_detects_configuration(monkeypatch):
 
 
 def test_reproduction_status_is_honest(monkeypatch):
-    # no model key configured => the honest "scorer_validated, not reproduced"
-    # branch (delenv to be robust to test-ordering env leakage).
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     from ascore.metrics.reproduction import reproduction_report
     rep = reproduction_report()
-    assert rep["any_reproduced"] is False        # nothing reproduced here
     by_wedge = {w["wedge"]: w for w in rep["wedges"]}
+    # the code wedge is still a proxy (needs the Docker resolve-rate harness)
     assert by_wedge["code"]["status"] == "proxy"
     assert by_wedge["code"]["official_metric"] == "resolve-rate"
-    # BFCL was attempted for real but landed ~4pts below published => not reproduced
-    assert by_wedge["tool_calling"]["status"] == "attempted"
-    assert by_wedge["tool_calling"]["reproduced"] is False
+    # BFCL was reproduced for real (published value inside our Wilson interval)
+    assert rep["any_reproduced"] is True
+    assert by_wedge["tool_calling"]["status"] == "reproduced"
+    assert by_wedge["tool_calling"]["reproduced"] is True
+    mr = by_wedge["tool_calling"]["detail"]["model_reproduction"]
+    assert mr["published_within_interval"] is True
+    assert mr["wilson_low"] <= mr["published_accuracy"] <= mr["wilson_high"]
     # every wedge states what real reproduction requires
     assert all(w["requires"] for w in rep["wedges"])
 
@@ -246,8 +248,10 @@ def test_public_reproduction_endpoint(tmp_path):
         r = c.get("/api/public/reproduction")    # no auth
         assert r.status_code == 200
         body = r.json()
-        assert body["any_reproduced"] is False
+        assert body["any_reproduced"] is True    # BFCL reproduced
         assert any(w["wedge"] == "code" for w in body["wedges"])
+        tc = {w["wedge"]: w for w in body["wedges"]}["tool_calling"]
+        assert tc["reproduced"] is True
 
 
 # -- idempotent ingest -----------------------------------------------------

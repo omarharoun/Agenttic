@@ -401,6 +401,88 @@ def score_cases(cases: list[TestCase], predictions: dict[str, list[dict]]
     return BFCLScore(split="simple_python_v4", n=n, passes=passes, multi_call=multi)
 
 
+def score_cases_official(cases: list[TestCase], predictions: dict[str, list[dict]]
+                         ) -> BFCLScore:
+    """Score with the FAITHFUL port of BFCL's official AST checker
+    (``bfcl_ast_official.simple_function_correct``) — the same semantics the
+    published Python Simple AST number is computed with (string normalisation,
+    int→float, optional/unexpected-param handling). Simple category: one call per
+    case; a wrong count is a miss."""
+    from ascore.metrics.bfcl_ast_official import simple_function_correct
+    n = passes = 0
+    for c in cases:
+        bid = (c.expected or {}).get("bfcl_id", c.test_id)
+        if bid not in predictions:
+            continue
+        n += 1
+        pred = predictions[bid]
+        gold = (c.expected or {}).get("expected_calls", [])
+        funcs = c.input.get("functions", [])
+        if len(pred) != 1 or len(gold) != 1 or not funcs:
+            continue  # wrong number of functions => miss (BFCL wrong_count)
+        gold_name = gold[0]["name"]
+        func_desc = next((f for f in funcs if f["name"] == gold_name), funcs[0])
+        model_call = {pred[0]["name"]: pred[0].get("args", {})}
+        possible_answer = {gold_name: gold[0]["args"]}
+        ok, _ = simple_function_correct(func_desc, model_call, possible_answer)
+        if ok:
+            passes += 1
+    return BFCLScore(split="simple_python_v4_official", n=n, passes=passes,
+                     multi_call=False)
+
+
+_OMIT = object()
+
+
+def _concretize(value):
+    """Turn a BFCL gold value into a concrete one: recurse into dicts (whose
+    values are allowed-lists) and lists (whose elements may be dicts)."""
+    if isinstance(value, dict):
+        out = {}
+        for k, allowed in value.items():
+            cv = _concretize_param(allowed)
+            if cv is not _OMIT:
+                out[k] = cv
+        return out
+    if isinstance(value, list):
+        return [_concretize(e) for e in value]
+    return value
+
+
+def _concretize_param(allowed: list):
+    """Pick a valid concrete value from a BFCL allowed-list (``""`` = optional).
+    Returns ``_OMIT`` when the param is optional-only (all allowed are ``""``)."""
+    if not isinstance(allowed, list):
+        return _concretize(allowed)
+    picked = next((a for a in allowed if a != ""), _OMIT)
+    return _OMIT if picked is _OMIT else _concretize(picked)
+
+
+def official_oracle_predictions(cases: list[TestCase]) -> dict[str, list[dict]]:
+    """A PERFECT solver's predictions, concretised from each case's ground truth
+    exactly as a valid function call — for validating the official checker
+    (omitting optional-empty params, unwrapping nested dict/list allowed-lists)."""
+    preds: dict[str, list[dict]] = {}
+    for c in cases:
+        bid = (c.expected or {}).get("bfcl_id", c.test_id)
+        calls = []
+        for call in (c.expected or {}).get("expected_calls", []):
+            args = {}
+            for param, allowed in call["args"].items():
+                cv = _concretize_param(allowed)
+                if cv is not _OMIT:
+                    args[param] = cv
+            calls.append({"name": call["name"], "args": args})
+        preds[bid] = calls
+    return preds
+
+
+def validate_official_scorer(cases: list[TestCase]) -> BFCLScore:
+    """The oracle (ground-truth) predictions must score 100% under the official
+    checker too — a correctness guard that the port isn't broken/over-strict."""
+    return score_cases_official(cases, official_oracle_predictions(cases))
+
+
 def model_predictions_available() -> bool:
     """Whether we can generate model predictions here (needs a model API key)."""
     from ascore.secrets import get_secret
