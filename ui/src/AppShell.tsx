@@ -115,7 +115,15 @@ export function AppShell() {
   };
 
   if (state === "loading") {
-    return <div className="app-shell"><div className="app-loading"><span className="spinner" /></div></div>;
+    return (
+      <div className="app-shell">
+        <div className="app-loading">
+          <span className="app-loading-brand"><span className="ic">⬡</span> Agenttic</span>
+          <span className="spinner" />
+          <span className="app-loading-note">Loading your workspace…</span>
+        </div>
+      </div>
+    );
   }
   if (state === "denied") {
     return <div className="app-shell"><div className="app-loading">

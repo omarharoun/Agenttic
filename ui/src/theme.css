@@ -663,7 +663,9 @@ pre.doc {
   gap: var(--sp-3); margin-bottom: var(--sp-3);
 }
 .dash-card-head h2 { font: 500 var(--t-lg)/1.2 var(--font-serif); margin: 0; }
-.dash-card-empty { padding: var(--sp-3) 0; }
+.dash-card-empty { padding: var(--sp-3) 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-3); }
+.dash-card-empty p { margin: 0; }
+.dash-card-empty .btn-primary { padding: 7px 15px; font-size: var(--t-sm); }
 .dash-note { margin-top: var(--sp-4); }
 .dash-idx { display: flex; align-items: center; gap: var(--sp-2); }
 .dash-idx-track {
@@ -714,7 +716,10 @@ th.sortable:hover { color: var(--accent); }
 /* ============================ console shell =============================== */
 .app-body { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .app-routes { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.app-loading { flex: 1; display: grid; place-items: center; color: var(--muted); gap: 10px; }
+.app-loading { flex: 1; display: grid; place-items: center; color: var(--muted); gap: 12px; }
+.app-loading-brand { font: 500 22px/1 var(--font-serif); color: var(--text); display: inline-flex; align-items: center; gap: 9px; }
+.app-loading-brand .ic { color: var(--accent); }
+.app-loading-note { font-size: var(--t-sm); color: var(--faint); }
 
 .app-topbar {
   height: 54px; flex-shrink: 0; border-bottom: 1px solid var(--border);
@@ -1246,6 +1251,14 @@ table.data tbody tr { transition: background 0.1s; }
 /* --- public certificate page --------------------------------------------- */
 .cert-page { max-width: 860px; margin: 0 auto; padding: var(--sp-8) var(--sp-6) var(--sp-12); }
 .cert-loading { display: grid; place-items: center; min-height: 280px; }
+/* structured cert loading skeletons — a shape, not a lone spinner on black */
+.cert-loading-skel { max-width: 640px; margin: var(--sp-8) auto; }
+.cert-loading-skel .cls-seal {
+  width: 120px; height: 120px; border-radius: 50%; margin: 0 auto var(--sp-6);
+  background: linear-gradient(90deg, var(--panel-2), var(--border), var(--panel-2));
+  background-size: 200% 100%; animation: shimmer 1.3s infinite;
+}
+.cert-dir-skel { max-width: 720px; margin: var(--sp-6) auto; }
 .cert-missing { text-align: center; padding: var(--sp-12) 0; display: flex;
   flex-direction: column; align-items: center; gap: var(--sp-4); }
 .cert-missing h1 { font: 500 var(--t-h1)/1.1 var(--font-serif); margin: 0; }

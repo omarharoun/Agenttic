@@ -193,7 +193,7 @@ function StandardBenchmarks() {
 
       {board === undefined ? <Skeleton rows={4} /> : agents.length === 0 ? (
         <EmptyState icon="◇" title="No standard runs yet"
-          hint="Install the canonical suites, then run a benchmark to populate the Agenttic Index."
+          hint="The Agenttic Index is how buyers compare agents at a glance — install the canonical suites, then run a benchmark to put your agents on it."
           action={<button className="primary" disabled={busy === "seed"} onClick={seed}>
             {busy === "seed" ? "Seeding…" : "Install standard suites"}
           </button>} />
