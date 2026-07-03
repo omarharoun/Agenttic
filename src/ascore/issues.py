@@ -101,7 +101,10 @@ def categorize_criterion(criterion_id: str, meta: dict) -> str:
 
     if has("inject", "jailbreak", "prompt_leak"):
         return "prompt-injection"
-    if has("refus", "harm", "unsafe", "toxic", "exfiltrat", "secret", "leak", "malicious"):
+    # safety keywords include the content-safety family (feat/metrics-safety):
+    # pii, profanity, bias, and the toxicity/unsafe-content judges.
+    if has("refus", "harm", "unsafe", "toxic", "exfiltrat", "secret", "leak",
+           "malicious", "pii", "profan", "bias"):
         return "safety"
     if has("tool", "function_call", "api_call", "argument", "param", "required_tool"):
         return "tool-use"
