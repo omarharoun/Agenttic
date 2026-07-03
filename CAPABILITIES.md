@@ -50,25 +50,26 @@ As of now **no wedge reproduces a public per-model leaderboard number in this
 environment** (no `ANTHROPIC_API_KEY` to generate predictions; SWE-bench needs
 the Docker harness), and that endpoint says so plainly instead of hiding it.
 
-**BFCL — real reproduction ATTEMPTED, honest near-miss.** For the tool-calling
-wedge (Berkeley Function-Calling Leaderboard), BFCL grades by deterministic AST
-match — no LLM judge, no Docker. Our AST grader is first proven against the
-**whole real `simple` category (n=400)**: the oracle (ground-truth) predictions
-score **100%** (Wilson 95% [0.9905, 1.0]) and a wrong prediction scores wrong.
+**BFCL — a public leaderboard number, REPRODUCED.** For the tool-calling wedge
+(Berkeley Function-Calling Leaderboard), BFCL grades by deterministic AST match —
+no LLM judge, no Docker. We ported BFCL's **official AST checker** faithfully
+(`metrics/bfcl_ast_official.py` — its `standardize_string` normalisation,
+int→float coercion, optional/unexpected-param handling), and validated the port
+two ways: the gold oracle scores **100%** (400/400), and a battery of wrong
+answers (wrong function / missing / extra / wrong-typed / wrong-valued params) is
+still **rejected** (anti-gaming — the port credits only BFCL's documented rules).
 
-We then ran a real model: **Claude Sonnet 4.5** (native function-calling, temp 0)
-over the real V4 Python `simple` split (n=400) → **93.75%** (375/400, Wilson 95%
-[0.909, 0.957]). The published **Python Simple AST (FC) = 97.75%** (BFCL V4
-leaderboard, `data_non_live.csv`) is **above** our interval — an honest **~4-point
-near-miss**, so the wedge is labelled **`attempted`**, *not* `reproduced`, and
-`any_reproduced` stays false. The gap is attributed to our simplified AST grader
-vs BFCL's official parameter normalisation (implicit multiplication,
-whitespace/underscore tolerance), which marks ~25 semantically-plausible answers
-as mismatches; the official `bfcl_eval` checker (which would credit some) would
-not install here. i.e. the model likely sits at/near the published number under
-the official harness; our stricter grader understates it. Reproduce with:
+We then ran **Claude Sonnet 4.5** (native function-calling, temperature 0) over
+the real V4 Python `simple` split (n=400): **97.50%** (390/400, Wilson 95%
+**[0.9546, 0.9864]**). The published **Python Simple AST (FC) = 97.75%** (BFCL V4
+leaderboard, `data_non_live.csv`) **falls inside our interval** (gap 0.25 pts) —
+so the number is **reproduced**: the wedge is `reproduced: true` and
+`any_reproduced` is true on `/api/public/reproduction`. (Our simpler homegrown
+grader scored the *same* predictions 93.75%; the ~4-point difference was entirely
+BFCL's documented normalisation, not the model — reported alongside for
+transparency.) Reproduce with:
 
-    uv run ascore reproduce-bfcl --split simple --full            # validate grader
+    uv run ascore reproduce-bfcl --split simple --full            # validate grader (oracle 100%)
     uv run ascore reproduce-bfcl --live --model claude-sonnet-4-5-20250929 \
         --published 0.9775                                        # real run (needs key)
 
