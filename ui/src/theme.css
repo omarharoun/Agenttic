@@ -741,6 +741,20 @@ th.sortable:hover { color: var(--accent); }
 .kn-x { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 6px; flex-shrink: 0; }
 .kn-x:hover { color: var(--text); }
 
+/* one clear cost view before a run (this-run estimate / spend / quota) */
+.cost-bar {
+  display: flex; flex-wrap: wrap; align-items: stretch; gap: var(--sp-6);
+  padding: 11px 18px; background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+}
+.cost-bar.over { background: var(--fail-soft); border-bottom-color: var(--fail-border); }
+.cost-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cost-lab { font: 600 var(--t-label)/1 var(--font-ui); text-transform: uppercase; letter-spacing: 0.06em; color: var(--faint); }
+.cost-val { font: 500 var(--t-title)/1.1 var(--font-serif); font-variant-numeric: tabular-nums; color: var(--text); }
+.cost-val .cost-unit { font: 500 var(--t-xs)/1 var(--font-ui); color: var(--muted); }
+.cost-sub { font: 500 var(--t-xs)/1.3 var(--font-mono); color: var(--muted); }
+.cost-warn { flex-basis: 100%; font-size: var(--t-sm); color: var(--fail); font-weight: 600; }
+
 /* in-flow (build editor) up-front missing-key prompt */
 .key-required-banner {
   display: flex; align-items: center; gap: 12px; padding: 12px 18px;
