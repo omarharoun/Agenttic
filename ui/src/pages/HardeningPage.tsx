@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { Term } from "../components/Term";
 
 const pct = (x: number | null | undefined) =>
   x == null ? "—" : `${Math.round(x * 100)}%`;
@@ -284,7 +285,7 @@ function LiveCatches({ onPromoted }: { onPromoted: (msg: string) => void }) {
     <>
       <h3 style={{ marginTop: 22 }}>Promote live-monitor catches</h3>
       <p style={{ color: "var(--muted)", marginTop: -6, fontSize: 13 }}>
-        Sampled production traces that scored below the drift threshold. A live
+        Sampled production traces that scored below the <Term name="drift">drift threshold</Term>. A live
         trace has no scripted ground truth, so promoting one reconstructs the
         case from the trace's <i>input only</i> and lands it{" "}
         <b>needs-review</b> (no fabricated <code>expected</code>) in a dedicated
@@ -298,7 +299,8 @@ function LiveCatches({ onPromoted }: { onPromoted: (msg: string) => void }) {
       </div>
       {catches === null ? <Skeleton rows={3} /> : catches.length === 0 ? (
         <EmptyState icon="📡" title="No live catches"
-          hint="When live monitoring scores a sampled production trace below the drift threshold, it shows up here as promotable." />
+          hint={<>When live monitoring scores a sampled production trace below the{" "}
+            <Term name="drift">drift threshold</Term>, it shows up here as promotable.</>} />
       ) : (
         <div className="table-wrap">
           <table className="data">
