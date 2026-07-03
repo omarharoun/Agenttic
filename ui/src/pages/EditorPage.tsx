@@ -319,6 +319,8 @@ export function EditorPage() {
         </div>
       )}
 
+      {hasNodes && <CostSummary estimate={estimate} />}
+
       {mode === "guided" ? (
         <GuidedFlow results={results} onPickTemplate={pickTemplate} />
       ) : (
@@ -328,6 +330,46 @@ export function EditorPage() {
             <Canvas />
           </ReactFlowProvider>
           <ConfigPanel results={results} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** One clear, up-front view of cost before a run — consolidates the scattered
+ *  numbers (this-run estimate, spend so far, quota) into a single panel. Fed by
+ *  the workflow estimate response, whose `budget` bundles projected + spent +
+ *  quota from one backend source. */
+function CostSummary({ estimate }: { estimate: any }) {
+  const e = estimate?.estimate;
+  const b = estimate?.budget ?? {};
+  if (!e) return null;
+  const money = (x: number | null | undefined) => `$${(x ?? 0).toFixed(4)}`;
+  const over = b.would_exceed_run || b.would_exceed_daily
+    || b.would_exceed_quota_daily || b.would_exceed_quota_monthly;
+  const dailyCap = b.max_daily_cost_usd || b.quota_daily_usd || 0;
+  const remainingDaily = dailyCap
+    ? Math.max(0, dailyCap - (b.spent_today_usd ?? 0)) : null;
+  return (
+    <div className={`cost-bar${over ? " over" : ""}`}>
+      <div className="cost-cell">
+        <span className="cost-lab">This run (est.)</span>
+        <span className="cost-val">~{money(e.projected_usd)}</span>
+        <span className="cost-sub">{e.n_cases} cases · agent {money(e.projected_agent_usd)} + judge {money(e.projected_judge_usd)}</span>
+      </div>
+      <div className="cost-cell">
+        <span className="cost-lab">Spent</span>
+        <span className="cost-val">{money(b.spent_today_usd)}<span className="cost-unit"> today</span></span>
+        <span className="cost-sub">{money(b.spent_month_usd)} this month</span>
+      </div>
+      <div className="cost-cell">
+        <span className="cost-lab">Daily quota</span>
+        <span className="cost-val">{dailyCap ? `$${dailyCap.toFixed(2)}` : "No cap"}</span>
+        <span className="cost-sub">{remainingDaily != null ? `${money(remainingDaily)} remaining` : "unlimited"}</span>
+      </div>
+      {over && (
+        <div className="cost-warn">
+          ⚠ This run would exceed your budget cap{b.warn_only ? " (warning only)" : " — it may be blocked"}.
         </div>
       )}
     </div>
