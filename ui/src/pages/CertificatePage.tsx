@@ -6,6 +6,7 @@ import {
   gradeColor, statusView,
 } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
+import { Skeleton } from "../components/ui";
 
 /* ============================================================================
    Public certificate verification page — /certified/:id (unauthenticated).
@@ -95,7 +96,10 @@ export function CertificatePage() {
       <PublicNav />
       <main className="cert-page">
         {cert === undefined ? (
-          <div className="cert-loading"><span className="spinner" /></div>
+          <div className="cert-loading-skel" aria-busy="true" aria-label="Loading certificate">
+            <div className="cls-seal" />
+            <Skeleton rows={5} />
+          </div>
         ) : cert === null ? (
           <div className="cert-missing">
             <Seal />

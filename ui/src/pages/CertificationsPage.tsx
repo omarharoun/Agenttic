@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
-import { embedSnippets, gradeColor, statusView } from "../cert";
+import { certIdOf, embedSnippets, gradeColor, isValidCertId, statusView } from "../cert";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 import { Seal } from "../components/Seal";
 
@@ -50,8 +50,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
 
 /** The publish panel for one issued certificate: live badge preview + the three
  *  copy-paste embed snippets. */
-function CertEmbed({ cert }: { cert: any }) {
-  const id = cert.id ?? cert.certification_id;
+function CertEmbed({ cert, id }: { cert: any; id: string }) {
   const snip = embedSnippets(id, cert.agent_name ?? cert.agent_id ?? "agent");
   return (
     <div className="embed-block">
@@ -114,7 +113,7 @@ export function CertificationsPage() {
         agent_name: agentName.trim() || undefined,
       });
       setMsg({ kind: "ok", text: `Certificate issued — grade ${c.grade ?? "?"}.` });
-      setJustIssued(c.id ?? c.certification_id ?? null);
+      setJustIssued(certIdOf(c) || null);
       setPicked(""); setAgentName("");
       setParams({}, { replace: true });
       load();
@@ -188,30 +187,59 @@ export function CertificationsPage() {
             hint="Certify a scorecard above to mint your first certificate and get its embed badge." />
         ) : (
           <div className="cert-list">
-            {certs.map((c) => {
-              const id = c.id ?? c.certification_id;
+            {certs.map((c, i) => {
+              const id = certIdOf(c);
+              const hasId = isValidCertId(id);
               const sv = statusView(c.status ?? "valid");
-              const open = justIssued === id;
+              const open = hasId && justIssued === id;
+              const superseded = c.superseded === true;
+              const version = c.config_hash ? String(c.config_hash) : "";
               return (
-                <div className={`cert-item${open ? " open" : ""}`} key={id}>
+                <div className={`cert-item${open ? " open" : ""}${superseded ? " superseded" : ""}`}
+                     key={id || `cert-${i}`}>
                   <div className="cert-item-head">
                     <Seal grade={c.grade} size={56} />
                     <div className="cert-item-id">
-                      <div className="cert-item-name">{c.agent_name ?? c.agent_id ?? "agent"}</div>
+                      <div className="cert-item-name">
+                        {c.agent_name ?? c.agent_id ?? "agent"}
+                        {superseded
+                          ? <span className="cert-tag superseded"
+                                  title="A newer certificate exists for this agent version">Superseded</span>
+                          : <span className="cert-tag current"
+                                  title="The latest certificate for this agent version">Current</span>}
+                      </div>
                       <div className="muted-sm">
-                        <span className="mono">{id}</span> · grade{" "}
+                        <span className="mono">{id || "—"}</span> · grade{" "}
                         <b style={{ color: gradeColor(c.grade ?? "") }}>{c.grade ?? "—"}</b>{" "}
                         · <span className={`cert-inline-status ${sv.tone}`}>{sv.icon} {sv.label}</span>
+                        {version && <>
+                          {" "}· <span className="cert-ver mono"
+                            title="The exact agent version (config_hash) this grade is pinned to">
+                            version {version.slice(0, 10)}</span>
+                        </>}
                       </div>
                     </div>
                     <span style={{ flex: 1 }} />
-                    <a className="ghost-sm" href={`/certified/${id}`} target="_blank"
-                       rel="noreferrer" style={{ marginRight: 6 }}>Public page ↗</a>
-                    {(c.status ?? "valid") !== "revoked" && (
+                    {hasId && (
+                      <a className="ghost-sm" href={`/certified/${id}`} target="_blank"
+                         rel="noreferrer" style={{ marginRight: 6 }}>Public page ↗</a>
+                    )}
+                    {hasId && (c.status ?? "valid") !== "revoked" && (
                       <button className="ghost-sm" onClick={() => revoke(id)}>Revoke</button>
                     )}
                   </div>
-                  <CertEmbed cert={c} />
+                  {hasId && superseded && (
+                    <p className="muted-sm" style={{ margin: "0 16px 4px" }}>
+                      ⓘ A newer certificate exists for this agent version — publish
+                      the current one instead of this superseded grade.
+                    </p>
+                  )}
+                  {hasId ? <CertEmbed cert={c} id={id} /> : (
+                    <p className="note-err" style={{ margin: "0 16px 16px" }}>
+                      This certificate is missing its id, so a verifiable badge can't
+                      be generated. Re-issue it, or contact support if it persists.
+                    </p>
+                  )}
                 </div>
               );
             })}

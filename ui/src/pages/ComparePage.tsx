@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, downloadBlob } from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { Term } from "../components/Term";
 import { money, ms } from "../stats";
 
 /** Signed delta of two possibly-missing values; "—" when either is unknown. */
@@ -163,7 +164,7 @@ function Comparison({ c, id }: { c: any; id: string }) {
       </div>
 
       <div style={{ fontSize: 12, color: "var(--muted)", margin: "6px 2px" }}>
-        McNemar's paired test: {mc.b} case(s) only {la} passed, {mc.c} only {lb} passed →
+        <Term name="mcnemar">McNemar's paired test</Term>: {mc.b} case(s) only {la} passed, {mc.c} only {lb} passed →
         {" "}{sig ? <b style={{ color: "var(--ok)" }}>significant (p={(mc.p_value ?? 0).toFixed(3)})</b>
           : mc.underpowered ? <span style={{ color: "var(--wait)" }}>too few to conclude (p={(mc.p_value ?? 0).toFixed(2)})</span>
           : <span>not significant (p={(mc.p_value ?? 0).toFixed(2)})</span>} ({mc.test}).

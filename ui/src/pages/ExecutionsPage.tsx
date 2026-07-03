@@ -54,7 +54,14 @@ export function ExecutionsPage() {
                 <tr key={r.execution_id}>
                   <td className="mono">{r.execution_id}</td>
                   <td>{r.workflow_id}</td>
-                  <td><span className={`status-chip ${r.status}`}>{r.status.replace(/_/g, " ")}</span></td>
+                  <td>
+                    <span className={`status-chip ${r.status}`}>{r.status.replace(/_/g, " ")}</span>
+                    {r.error_reason && (
+                      <div className="run-reason" title={r.error ?? r.error_reason}>
+                        {r.error_reason}
+                      </div>
+                    )}
+                  </td>
                   <td>{new Date(r.started_at).toLocaleTimeString()}</td>
                   <td>{Object.entries(r.node_states as Record<string, string>)
                     .map(([n, s]) => `${n}:${s}`).join("  ")}</td>

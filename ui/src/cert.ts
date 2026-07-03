@@ -123,13 +123,38 @@ export function siteOrigin(): string {
   return "https://agenttic.io";
 }
 
-/** Public verification page URL for a certificate (what the badge links to). */
+/** True when `id` is a usable certificate id — a non-empty string that isn't a
+ *  stringified nullish. The backend's canonical field is `cert_id`; reading the
+ *  wrong field (`id`/`certification_id`) yields `undefined`, which must NEVER be
+ *  interpolated into a public URL as the literal "undefined". */
+export function isValidCertId(id: unknown): id is string {
+  return typeof id === "string" && id.trim() !== ""
+    && id !== "undefined" && id !== "null";
+}
+
+/** Read the canonical certificate id from a cert-like object. The backend's
+ *  field is `cert_id`; older/loose shapes used `id`/`certification_id`. Returns
+ *  "" if none is present, so callers can `isValidCertId(...)`-guard uniformly. */
+export function certIdOf(c: any): string {
+  const id = c?.cert_id ?? c?.id ?? c?.certification_id;
+  return isValidCertId(id) ? id : "";
+}
+
+/** Public verification page URL for a certificate (what the badge links to).
+ *  Refuses to build `/certified/undefined`: throws on an invalid id so a broken
+ *  badge is never silently emitted. Callers guard with `isValidCertId` first. */
 export function certUrl(id: string, origin: string = siteOrigin()): string {
+  if (!isValidCertId(id)) {
+    throw new Error("certUrl: refusing to build a URL without a valid cert id");
+  }
   return `${origin}/certified/${id}`;
 }
 
-/** Public SVG badge URL for a certificate. */
+/** Public SVG badge URL for a certificate. Refuses an invalid id (see certUrl). */
 export function badgeUrl(id: string, origin: string = siteOrigin()): string {
+  if (!isValidCertId(id)) {
+    throw new Error("badgeUrl: refusing to build a badge URL without a valid cert id");
+  }
   return `${origin}/api/public/certifications/${id}/badge.svg`;
 }
 

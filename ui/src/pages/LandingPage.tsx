@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ScanExperience } from "../components/ScanExperience";
 import { Seal, SealMark } from "../components/Seal";
-import { api } from "../api";
+import { useAssistantCert } from "../useAssistantCert";
 
 /** From pointing us at your agent to a published grade — the consumer arc. */
 const STEPS = [
@@ -23,17 +22,10 @@ const FEATURES = [
 ];
 
 export function LandingPage() {
-  // The assistant's REAL grade + cert (public, no auth). A seal renders only
-  // when a verifiable certificate backs it — otherwise no letter (never a
-  // placeholder). Self-activates once the cert is issued.
-  const [asstCert, setAsstCert] = useState<{ grade?: string; cert_id?: string } | null>(null);
-  useEffect(() => {
-    let alive = true;
-    api.assistantCertification()
-      .then((c) => { if (alive && c?.grade && c?.cert_id) setAsstCert(c); })
-      .catch(() => { /* no cert / offline → gradeless seal */ });
-    return () => { alive = false; };
-  }, []);
+  // The assistant's REAL grade + cert (public, no auth), from the single shared
+  // source of truth. A seal renders only when a verifiable certificate backs it
+  // — otherwise no letter (never a placeholder). Self-activates once issued.
+  const asstCert = useAssistantCert();
   return (
     <>
       <header>
