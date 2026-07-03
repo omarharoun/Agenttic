@@ -1631,6 +1631,7 @@ table.data tbody tr { transition: background 0.1s; }
 /* intro / pitch above the chat (mirrors .scan-hero, quieter) */
 .asst-page { padding-bottom: var(--sp-16); }
 .asst-intro { text-align: center; padding: var(--sp-12) 0 var(--sp-8); position: relative; }
+.asst-intro-seal { display: inline-block; margin-bottom: var(--sp-4); text-decoration: none; }
 .asst-intro::before {
   content: ""; position: absolute; inset: -8% 18% 50%; z-index: -1;
   background: radial-gradient(58% 58% at 50% 0%, var(--accent-soft), transparent 72%);

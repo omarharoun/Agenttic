@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { AssistantChat } from "../components/AssistantChat";
-import { SealMark } from "../components/Seal";
+import { Seal, SealMark } from "../components/Seal";
+import { useAssistantCert } from "../useAssistantCert";
 
 /* ============================================================================
    /assistant — the Safe Assistant surface (public entry).
@@ -11,6 +12,9 @@ import { SealMark } from "../components/Seal";
    ========================================================================== */
 
 export function AssistantPage() {
+  // Same single source of truth the landing page reads, so the safety-grade
+  // messaging on the two pages can never contradict each other.
+  const asstCert = useAssistantCert();
   return (
     <>
       <header>
@@ -26,12 +30,21 @@ export function AssistantPage() {
 
       <main className="lp asst-page">
         <section className="asst-intro">
+          {asstCert && (
+            <Link className="asst-intro-seal" to={`/certified/${asstCert.cert_id}`}
+                  title="View the public safety certificate">
+              <Seal grade={asstCert.grade} size={96} />
+            </Link>
+          )}
           <span className="badge">Safe by design</span>
           <h1>Meet your <span className="grad">safe assistant</span></h1>
           <p className="sub">
             A helpful personal assistant that shows its work and asks before doing
             anything sensitive — and it can't touch your files or your secrets.
-            Safe by construction, with an independent safety grade to come.
+            {asstCert
+              ? <> It passed our own Safety Battery with a verified{" "}
+                  <Link to={`/certified/${asstCert.cert_id}`}>Grade {asstCert.grade}</Link>.</>
+              : " Safe by construction, with an independent safety grade to come."}
           </p>
         </section>
 
