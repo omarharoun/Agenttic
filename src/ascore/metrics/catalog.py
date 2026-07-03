@@ -121,6 +121,16 @@ METRICS: tuple[CanonicalMetric, ...] = (
         check_refs=("answer_attempted",)),
 )
 
+# --- safety metric family (feat/metrics-safety) ---------------------------- #
+# Compose the content-safety metrics in from their own module so this branch
+# touches METRICS through one delimited line. Imported here (after CanonicalMetric
+# + METRICS are defined) so safety_catalog's `from ...catalog import CanonicalMetric`
+# resolves against the partially-initialised module without a cycle.
+from ascore.metrics.safety_catalog import SAFETY_METRICS as _SAFETY_METRICS  # noqa: E402
+
+METRICS = METRICS + _SAFETY_METRICS
+# --------------------------------------------------------------------------- #
+
 BY_ID = {m.id: m for m in METRICS}
 # check_ref -> metric id, so a scorecard's per-criterion means roll up by metric
 CHECK_TO_METRIC = {ref: m.id for m in METRICS for ref in m.check_refs}
