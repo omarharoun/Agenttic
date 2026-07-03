@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  bandForIndex, badgeUrl, certUrl, dimensionLabel, embedSnippets,
-  gradeColor, gradeLetter, statusView,
+  bandForIndex, badgeUrl, certIdOf, certUrl, dimensionLabel, embedSnippets,
+  gradeColor, gradeLetter, isValidCertId, statusView,
 } from "./cert";
 
 describe("grade bands", () => {
@@ -56,6 +56,33 @@ describe("embed helpers", () => {
     expect(s.markdown).toContain("Acme Agent");
     expect(s.html).toContain("<img src=\"https://example.com/api/public/certifications/c_123/badge.svg\"");
     expect(s.html).toContain("href=\"https://example.com/certified/c_123\"");
+  });
+});
+
+describe("cert id guard (never build /certified/undefined)", () => {
+  it("validates real ids and rejects nullish / stringified-nullish", () => {
+    expect(isValidCertId("cert_abc123")).toBe(true);
+    expect(isValidCertId("")).toBe(false);
+    expect(isValidCertId("  ")).toBe(false);
+    expect(isValidCertId(undefined)).toBe(false);
+    expect(isValidCertId(null)).toBe(false);
+    expect(isValidCertId("undefined")).toBe(false);
+    expect(isValidCertId("null")).toBe(false);
+  });
+
+  it("reads the canonical cert_id (backend field), falling back to id/certification_id", () => {
+    expect(certIdOf({ cert_id: "cert_1" })).toBe("cert_1");
+    expect(certIdOf({ id: "cert_2" })).toBe("cert_2");
+    expect(certIdOf({ certification_id: "cert_3" })).toBe("cert_3");
+    expect(certIdOf({ agent_id: "no-id-here" })).toBe("");
+    expect(certIdOf(undefined)).toBe("");
+  });
+
+  it("refuses to build a URL or badge from an invalid id", () => {
+    expect(() => certUrl(undefined as any)).toThrow();
+    expect(() => certUrl("undefined")).toThrow();
+    expect(() => badgeUrl("" as any)).toThrow();
+    expect(() => embedSnippets(undefined as any, "agent")).toThrow();
   });
 });
 
