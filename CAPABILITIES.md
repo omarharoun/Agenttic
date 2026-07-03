@@ -72,11 +72,18 @@ probe set (28 probes across 12 techniques — indirect document/email/web/tool,
 direct override, encoded/obfuscated payloads, role-play jailbreaks, system-prompt
 exfiltration, delimiter escapes, payload splitting, zero-width Unicode — plus
 benign controls). `GET /api/public/redteam/injection` also runs a **self-test of
-the lexical injection detector** against a labeled response corpus and publishes,
-honestly, what it MISSES: on the seed corpus it catches ~44% of hijacks and
-misses the evasion tail (paraphrased compliance, synonym tools, exfiltration)
-entirely. Catching those needs the real AgentDojo / InjecAgent execution
-environments — a tracked future task, not something we claim to already do.
+the injection detector** against a labeled response corpus and publishes, honestly,
+what it catches vs misses. The detector is now **hardened**
+(`metrics/injection_detect.py`): beyond exact target-token / tool-name matching it
+adds structural, technique-aware layers — synonym-family tool calls,
+paraphrased/decoded action-completion, privilege grants, and system-prompt
+exfiltration — with a strengthened resistance guard so genuinely-robust agents
+aren't false-flagged. On the labeled corpus this lifts detection from **~44%
+(lexical only) to ~87%** at **0% false-positive rate**, and it still honestly
+reports the tails it **misses** (non-English compliance; hijacks via unknown tool
+families / novel completion verbs). Closing those needs the real AgentDojo /
+InjecAgent execution environments or a model-based classifier layer (needs an API
+key) — wired but not required, and never faked.
 
 **Calibration (demonstrated, seed):** the deterministic heuristic checks
 (refusal, injection robustness, secret-leak, faithfulness gate) are calibrated
