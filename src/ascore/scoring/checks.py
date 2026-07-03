@@ -120,6 +120,31 @@ _CHECK_EXPECTED_DEFAULTS = {
     # faithfulness gate: a missing reference context degrades to "" -> gate passes
     # (unverifiable, not a failure); the LLM metric labels it no_reference.
     "faithfulness_grounded": ("reference_context", str),
+    # ---- feat/metrics-nlp: text / NLP overlap checks ----------------------
+    # reference-based checks: missing reference degrades to "" -> score 0.0.
+    "levenshtein_similarity": ("reference", str),
+    "rouge1": ("reference", str),
+    "rouge2": ("reference", str),
+    "rougel": ("reference", str),
+    "bleu": ("reference", str),
+    "meteor": ("reference", str),
+    "token_f1": ("reference", str),
+    "token_precision": ("reference", str),
+    "token_recall": ("reference", str),
+    "exact_match": ("reference", str),
+    "normalized_exact_match": ("reference", str),
+    "jaccard_similarity": ("reference", str),
+    "char_ngram_overlap": ("reference", str),
+    "cosine_tfidf_similarity": ("reference", str),
+    # pattern checks: missing config -> vacuous pass (empty string / empty list).
+    "substring_containment": ("substring", str),
+    "keyword_containment": ("keywords", list),
+    "regex_match": ("pattern", str),
+    # length / word-count: missing bounds -> always passes (0..10000).
+    "length_in_range": ("min_length", lambda: 0),
+    "word_count_in_range": ("min_words", lambda: 0),
+    # number_present / date_present read only the trace output; no expected key.
+    # ---- end feat/metrics-nlp ---------------------------------------------
 }
 
 
@@ -191,3 +216,12 @@ def cost_under_limit(trace: Trace, tc: TestCase) -> float:
 # registry so standard suites score through the normal pipeline. Imported at the
 # bottom to avoid a cycle (the module imports `check`/`_need` defined above).
 from ascore.metrics import canonical_checks as _canonical_checks  # noqa: E402,F401
+
+# ---- feat/metrics-nlp: text / NLP overlap metric family ------------------
+# Registers levenshtein_similarity, rouge1/2/l, bleu, meteor, token_f1,
+# token_precision, token_recall, exact_match, normalized_exact_match,
+# jaccard_similarity, char_ngram_overlap, cosine_tfidf_similarity,
+# substring_containment, keyword_containment, regex_match, length_in_range,
+# word_count_in_range, number_present, date_present into CHECKS.
+from ascore.metrics import text_overlap as _text_overlap  # noqa: E402,F401
+# ---- end feat/metrics-nlp ------------------------------------------------

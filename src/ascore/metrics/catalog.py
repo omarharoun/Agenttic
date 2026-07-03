@@ -119,6 +119,131 @@ METRICS: tuple[CanonicalMetric, ...] = (
             "UNWEIGHTED in the index — answering everything is not itself good."),
         category="web_agent", weight=0.0,
         check_refs=("answer_attempted",)),
+
+    # ---- feat/metrics-nlp: deterministic text / NLP overlap metrics --------
+    # All weight=0 (diagnostic, not yet in the Agenttic Index). All implemented
+    # as pure-Python reimplementations of standard public algorithms — no
+    # external NLP libraries, no Future AGI source.
+
+    CanonicalMetric(
+        id="text_levenshtein",
+        name="Levenshtein / edit-distance similarity",
+        methodology=(
+            "Normalised edit-distance similarity: 1 − (edit_distance / max_length). "
+            "Standard Levenshtein distance (insert / delete / substitute each cost 1) "
+            "normalised to [0, 1]. Damerau-Levenshtein / JaroWinkler are related but "
+            "distinct; this implements the canonical unweighted Levenshtein."),
+        category="text_overlap", weight=0.0,
+        check_refs=("levenshtein_similarity",)),
+
+    CanonicalMetric(
+        id="text_rouge",
+        name="ROUGE-1 / ROUGE-2 / ROUGE-L (Lin, 2004)",
+        methodology=(
+            "Recall-Oriented Understudy for Gisting Evaluation (Lin 2004). "
+            "ROUGE-1 and ROUGE-2 are F1 scores over unigram and bigram token "
+            "overlap respectively. ROUGE-L is the F1 of the longest common "
+            "subsequence at token level. All computed as precision–recall harmonic "
+            "mean; single-reference variant."),
+        category="text_overlap", weight=0.0,
+        check_refs=("rouge1", "rouge2", "rougel")),
+
+    CanonicalMetric(
+        id="text_bleu",
+        name="BLEU with smoothing (Papineni et al. 2002)",
+        methodology=(
+            "Bilingual Evaluation Understudy (Papineni et al. 2002) with "
+            "add-1 smoothing per Chen & Cherry 2014 (method 1). Geometric mean "
+            "of 1-gram through 4-gram precision, multiplied by a brevity penalty. "
+            "Single-reference; scores in [0, 1]."),
+        category="text_overlap", weight=0.0,
+        check_refs=("bleu",)),
+
+    CanonicalMetric(
+        id="text_meteor",
+        name="METEOR-style unigram F-mean (Banerjee & Lavie, 2005)",
+        methodology=(
+            "METEOR unigram F-mean without fragmentation penalty: "
+            "F = 10·P·R / (9·P + R), which is the harmonic mean weighted toward "
+            "recall with α=0.9 (Banerjee & Lavie 2005). Matching is exact unigram "
+            "overlap after lowercasing. No stemming or synonym extension."),
+        category="text_overlap", weight=0.0,
+        check_refs=("meteor",)),
+
+    CanonicalMetric(
+        id="text_token_f1",
+        name="Token-level F1 / precision / recall (SQuAD-style)",
+        methodology=(
+            "SQuAD evaluation-script token-level F1 (Rajpurkar et al. 2016): "
+            "normalize both strings (lowercase, strip punctuation + articles), "
+            "compute unigram bag-of-words overlap, and derive precision, recall, "
+            "and F1. Also exposes token_precision and token_recall as separate "
+            "checks for rubrics that need the individual components."),
+        category="text_overlap", weight=0.0,
+        check_refs=("token_f1", "token_precision", "token_recall")),
+
+    CanonicalMetric(
+        id="text_exact_match",
+        name="Exact match / normalised exact match",
+        methodology=(
+            "Two variants: exact_match (strip whitespace only) and "
+            "normalized_exact_match (SQuAD-style: lowercase, remove punctuation "
+            "and articles, collapse whitespace). Both return 1.0 or 0.0. "
+            "Normalised exact match is the primary QA benchmark signal."),
+        category="text_overlap", weight=0.0,
+        check_refs=("exact_match", "normalized_exact_match")),
+
+    CanonicalMetric(
+        id="text_jaccard",
+        name="Jaccard token-set similarity",
+        methodology=(
+            "Jaccard index over token sets: |A∩B| / |A∪B| where A and B are "
+            "the lowercased whitespace-tokenized token sets of hypothesis and "
+            "reference. Duplicate tokens are deduplicated (set semantics). "
+            "Complement 1 − Jaccard is the Jaccard distance."),
+        category="text_overlap", weight=0.0,
+        check_refs=("jaccard_similarity",)),
+
+    CanonicalMetric(
+        id="text_char_ngram",
+        name="Character n-gram overlap F1",
+        methodology=(
+            "Precision–recall harmonic mean over character n-gram overlap. "
+            "Configurable n (default 3 = trigrams). Related to chrF (Popović "
+            "2015) and ChrF++ but without word-level features. Effective for "
+            "morphologically rich text and subword-level similarity."),
+        category="text_overlap", weight=0.0,
+        check_refs=("char_ngram_overlap",)),
+
+    CanonicalMetric(
+        id="text_cosine",
+        name="Cosine similarity over TF-IDF vectors",
+        methodology=(
+            "Cosine similarity between TF-IDF bag-of-words vectors of the "
+            "hypothesis and reference. IDF is computed over the two-document "
+            "corpus (hypothesis + reference) with additive smoothing: "
+            "idf(t) = log((N+1)/(df+1)) + 1. Pure-Python implementation; "
+            "no external NLP library required."),
+        category="text_overlap", weight=0.0,
+        check_refs=("cosine_tfidf_similarity",)),
+
+    CanonicalMetric(
+        id="text_pattern",
+        name="Substring / keyword / regex / length / presence constraints",
+        methodology=(
+            "Deterministic output-constraint checks: substring_containment "
+            "(literal substring present), keyword_containment (fraction of a "
+            "keyword list found), regex_match (re.search pattern), "
+            "length_in_range (character count), word_count_in_range (space-split "
+            "word count), number_present (any int/float), date_present (ISO / US "
+            "/ text date pattern). All return 0.0 or 1.0 and read config from "
+            "test_case.expected."),
+        category="text_overlap", weight=0.0,
+        check_refs=("substring_containment", "keyword_containment", "regex_match",
+                    "length_in_range", "word_count_in_range",
+                    "number_present", "date_present")),
+
+    # ---- end feat/metrics-nlp ----------------------------------------------
 )
 
 BY_ID = {m.id: m for m in METRICS}
