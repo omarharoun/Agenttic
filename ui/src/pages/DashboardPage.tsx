@@ -73,8 +73,8 @@ export function DashboardPage() {
             now. Every headline number carries its sample size and a Wilson 95% interval.</>}
           actions={
             <div className="dash-cta">
-              <Link className="primary" to="/app/build">＋ New evaluation</Link>
-              <a href="/scan" className="ghost-sm">Scan an agent</a>
+              <Link className="btn-primary" to="/app/build">＋ New evaluation</Link>
+              <a href="/scan" className="btn-ghost">Scan an agent</a>
             </div>
           }
         />
@@ -85,8 +85,8 @@ export function DashboardPage() {
               dashboard fills with a ranked leaderboard and your scored results.</>}
             action={
               <div className="dash-cta">
-                <Link className="primary" to="/app/build">Start an evaluation</Link>
-                <Link className="ghost-sm" to="/app/leaderboard">Open the leaderboard</Link>
+                <Link className="btn-primary" to="/app/build">Start an evaluation</Link>
+                <Link className="btn-ghost" to="/app/leaderboard">Open the leaderboard</Link>
               </div>
             } />
         ) : (
