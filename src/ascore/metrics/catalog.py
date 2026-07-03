@@ -244,6 +244,104 @@ METRICS: tuple[CanonicalMetric, ...] = (
                     "number_present", "date_present")),
 
     # ---- end feat/metrics-nlp ----------------------------------------------
+
+    # ---- STRUCTURED-OUTPUT, RETRIEVAL & RANKING metrics (weight=0 → domain-specific, not in index) ----
+    CanonicalMetric(
+        id="structured_output_quality",
+        name="Structured output quality (JSON/schema/type conformance)",
+        methodology=(
+            "Deterministic JSON conformance checks: validates that the agent's "
+            "output is parseable JSON (json_schema_valid via jsonschema Draft 7), "
+            "contains all expected keys (json_required_keys, fractional), has the "
+            "correct Python type per field (json_type_shape_match, fractional), and "
+            "introduces no extra keys beyond an allowlist (json_no_extra_keys)."),
+        category="structured_output", weight=0.0,
+        check_refs=("json_schema_valid", "json_required_keys",
+                    "json_type_shape_match", "json_no_extra_keys")),
+    CanonicalMetric(
+        id="extraction_accuracy",
+        name="Structured extraction accuracy (field-level exact and normalized match)",
+        methodology=(
+            "Field-level extraction accuracy over a gold expected-fields dict: "
+            "structured_extraction_exact measures str-stripped exact match (fraction "
+            "of fields correct); structured_extraction_normalized applies additional "
+            "case-folding and whitespace collapsing. Complemented by number_match "
+            "(first extracted number vs gold with configurable abs/relative tolerance) "
+            "and date_match (first ISO YYYY-MM-DD vs gold date)."),
+        category="structured_output", weight=0.0,
+        check_refs=("structured_extraction_exact", "structured_extraction_normalized",
+                    "number_match", "date_match")),
+    CanonicalMetric(
+        id="sql_validity",
+        name="SQL validity (sqlglot parse check)",
+        methodology=(
+            "Parses the agent's SQL output (extracted from a ```sql``` fence or raw "
+            "text) using sqlglot with ErrorLevel.RAISE; 1.0 if the parse succeeds, "
+            "0.0 on a ParseError. An optional sql_dialect expected key selects the "
+            "sqlglot dialect (e.g. 'mysql', 'bigquery'). The check verifies syntax "
+            "only, not semantics or schema correctness."),
+        category="structured_output", weight=0.0,
+        check_refs=("sql_is_valid",)),
+    CanonicalMetric(
+        id="ir_ranking_quality",
+        name="Retrieval/ranking quality (nDCG, MRR, MAP, P@k, R@k, hit-rate)",
+        methodology=(
+            "Standard information-retrieval metrics over a ranked list of IDs emitted "
+            "by the agent and a gold relevant_ids set. "
+            "ir_ndcg_at_k: Normalized Discounted Cumulative Gain @k "
+            "(Järvelin & Kekäläinen 2002), DCG/IDCG with binary relevance. "
+            "ir_mrr: Mean Reciprocal Rank (1/rank of first hit). "
+            "ir_map: Mean Average Precision (single-query AP = ΣP@i/|relevant|). "
+            "ir_precision_at_k / ir_recall_at_k: precision and recall at cutoff k. "
+            "ir_hit_rate: 1.0 if any relevant item appears in top-k, else 0.0. "
+            "The ranked list is parsed as JSON; falls back to a bracketed array or "
+            "newline-delimited items."),
+        category="retrieval", weight=0.0,
+        check_refs=("ir_ndcg_at_k", "ir_mrr", "ir_precision_at_k",
+                    "ir_recall_at_k", "ir_map", "ir_hit_rate")),
+    CanonicalMetric(
+        id="format_compliance",
+        name="Format compliance (email/URL/phone/UUID/ISO-date/enum validators)",
+        methodology=(
+            "Deterministic regex and stdlib validators applied to the stripped "
+            "final_output: is_email_format (simplified RFC 5322), is_url_format "
+            "(http/https/ftp URL), is_phone_format (7-20 chars, ≥7 digits, "
+            "digits/+/-/./()/ spaces), is_uuid_format (8-4-4-4-12 hex, "
+            "case-insensitive), is_iso_date_format (YYYY-MM-DD + date.fromisoformat "
+            "calendar validation), enum_membership (case-insensitive membership in "
+            "expected['enum_values'] list)."),
+        category="structured_output", weight=0.0,
+        check_refs=("is_email_format", "is_url_format", "is_phone_format",
+                    "is_uuid_format", "is_iso_date_format", "enum_membership")),
+    CanonicalMetric(
+        id="list_set_accuracy",
+        name="List/set accuracy (set F1, Kendall tau, Spearman rho)",
+        methodology=(
+            "Set-level and ordering metrics over the agent's JSON list output. "
+            "set_precision_score / set_recall_score / set_f1_score: standard "
+            "precision/recall/harmonic-F1 treating both predicted and gold as sets "
+            "(gold from expected['expected_set']). "
+            "ordering_kendall_tau: Kendall tau-b between agent and gold orderings "
+            "(only shared items; O(n²) concordant/discordant pair counting; tau "
+            "mapped from [-1,1] to [0,1]). "
+            "ordering_spearman: Spearman rho = 1 - 6Σd²/(n(n²-1)) on dense ranks "
+            "of shared items; rho mapped from [-1,1] to [0,1]."),
+        category="retrieval", weight=0.0,
+        check_refs=("set_precision_score", "set_recall_score", "set_f1_score",
+                    "ordering_kendall_tau", "ordering_spearman")),
+    CanonicalMetric(
+        id="span_grounding",
+        name="Citation/grounding span overlap (character and token F1)",
+        methodology=(
+            "span_overlap_f1 computes character-level or token-level F1 depending "
+            "on the format of expected['gold_spans']. Dict spans ({start,end}) → "
+            "character-position set overlap F1 (predicted spans from "
+            "expected['predicted_spans']). String spans → SQuAD-style token-bag F1 "
+            "with case-insensitive tokenization (predicted from final_output parsed "
+            "as a JSON list of strings). Both modes: F1 = 2·precision·recall / "
+            "(precision + recall)."),
+        category="grounding", weight=0.0,
+        check_refs=("span_overlap_f1",)),
 )
 
 BY_ID = {m.id: m for m in METRICS}

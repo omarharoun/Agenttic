@@ -145,6 +145,16 @@ _CHECK_EXPECTED_DEFAULTS = {
     "word_count_in_range": ("min_words", lambda: 0),
     # number_present / date_present read only the trace output; no expected key.
     # ---- end feat/metrics-nlp ---------------------------------------------
+    # ---- feat/metrics-structured: structured / IR optional-key checks -----
+    # (safe defaults exist; required fields like relevant_ids/json_schema/etc.
+    # intentionally absent — they must raise.)
+    "ir_ndcg_at_k": ("k", lambda: 10),
+    "ir_precision_at_k": ("k", lambda: 10),
+    "ir_recall_at_k": ("k", lambda: 10),
+    "ir_hit_rate": ("k", lambda: 10),
+    "number_match": ("tolerance", lambda: 1e-6),
+    "sql_is_valid": ("sql_dialect", lambda: None),
+    # ---- end feat/metrics-structured --------------------------------------
 }
 
 
@@ -224,4 +234,5 @@ from ascore.metrics import canonical_checks as _canonical_checks  # noqa: E402,F
 # substring_containment, keyword_containment, regex_match, length_in_range,
 # word_count_in_range, number_present, date_present into CHECKS.
 from ascore.metrics import text_overlap as _text_overlap  # noqa: E402,F401
-# ---- end feat/metrics-nlp ------------------------------------------------
+# ---- feat/metrics-structured: structured / IR / ranking metric family ----
+from ascore.metrics import structured_ir as _structured_ir  # noqa: E402,F401
