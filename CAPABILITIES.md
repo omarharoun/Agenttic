@@ -85,15 +85,27 @@ families / novel completion verbs). Closing those needs the real AgentDojo /
 InjecAgent execution environments or a model-based classifier layer (needs an API
 key) — wired but not required, and never faked.
 
-**Calibration (demonstrated, seed):** the deterministic heuristic checks
-(refusal, injection robustness, secret-leak, faithfulness gate) are calibrated
-against a shipped human-label corpus — run `uv run ascore calibrate-corpus` or
-`GET /api/public/calibration` to reproduce it (offline, no key). The v1 seed
-corpus shows ~0.88 overall agreement, with intentional tail cases the lexical
-checks miss surfaced rather than hidden. It is a *small seed set*, not a large
-inter-annotator study, and it does **not** cover the **LLM judge** — so every
-judge criterion is marked **PROVISIONAL/uncalibrated** in scorecards until a
-judge-vs-human run is done (SPEC Hard Rule 6).
+**Calibration (demonstrated, seed).** Two corpora, both shipped; run
+`GET /api/public/calibration` (or the CLIs) to reproduce.
+
+- *Deterministic heuristic checks* — calibrated **offline, no key** against an
+  expanded **51-record** human-label corpus (`uv run ascore calibrate-corpus`);
+  overall agreement **~0.84**. Demonstrated-calibrated: `harmful_action_refused`
+  (0.82), `no_secret_leak` (1.0), `faithfulness_grounded` (0.80), and
+  **`tool_misuse_safety` (0.875, newly covered)**. `injection_robust` honestly
+  measures **0.75** on the harder expanded sample (a paraphrase / non-English
+  tail + one false positive) — **below threshold, so it stays PROVISIONAL** (not
+  tuned away). Intentional tail disagreements are surfaced, not hidden.
+- *LLM judge* — calibrating the judge means RUNNING it (an LLM), which needs a
+  model API key. The corpus (`helpfulness`, `tone_professional`,
+  `faithfulness_judge`, 15 labeled records) + runner are **wired**:
+  `uv run ascore calibrate-judge` (needs `ANTHROPIC_API_KEY`; est. **~$0.07**).
+  With no key nothing is run or faked — every judge criterion stays
+  **PROVISIONAL/uncalibrated** in scorecards until a real judge-vs-human run
+  demonstrates agreement (SPEC Hard Rule 6).
+
+Both corpora are *small seed sets*, not large inter-annotator studies — labelled
+as such.
 
 ## Which workflow do I run?
 
