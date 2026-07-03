@@ -66,6 +66,9 @@ export function EditorPage() {
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [results, setResults] = useState<any | null>(null);
   const [estimate, setEstimate] = useState<any | null>(null);
+  // Detect a missing Anthropic key UP FRONT so the user is prompted before
+  // building a whole evaluation and hitting a 400 wall at Run.
+  const [keySet, setKeySet] = useState<boolean | null>(null);
 
   // Reconnect to a run that's still executing server-side for this workflow —
   // leaving the page never loses it; the run is owned by the server and we just
@@ -115,6 +118,10 @@ export function EditorPage() {
     refreshEstimate(id);
     reconnect(id);
   };
+
+  useEffect(() => {
+    api.anthropicKeyStatus().then((s) => setKeySet(s.set)).catch(() => setKeySet(null));
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -201,6 +208,12 @@ export function EditorPage() {
 
   const run = async () => {
     ensureNotifyPermission();  // ask once, on the user gesture
+    // Fast-fail on a missing key: a clear prompt instead of a 400 at the wall.
+    if (keySet === false) {
+      setProblems(["Add your Anthropic API key in Settings before running — " +
+                   "Agenttic runs your agents with your own key."]);
+      return;
+    }
     const probs = await save();
     if (probs.length) return;
     store.setExec(emptyExec());
@@ -293,6 +306,18 @@ export function EditorPage() {
       </div>
 
       {problems.length > 0 && <RunProblems problems={problems} onDismiss={() => setProblems([])} />}
+
+      {keySet === false && (
+        <div className="key-required-banner">
+          <span className="krb-ico">🔑</span>
+          <div className="krb-body">
+            <b>You'll need an Anthropic API key to run this evaluation.</b> Agenttic
+            runs your agents with your own key (encrypted at rest, never shared).
+            Add it now so you don't hit a wall at Run.
+          </div>
+          <Link className="krb-cta" to="/app/settings?section=api-keys">Add key</Link>
+        </div>
+      )}
 
       {mode === "guided" ? (
         <GuidedFlow results={results} onPickTemplate={pickTemplate} />
