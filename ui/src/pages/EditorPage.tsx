@@ -66,6 +66,9 @@ export function EditorPage() {
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [results, setResults] = useState<any | null>(null);
   const [estimate, setEstimate] = useState<any | null>(null);
+  // Detect a missing Anthropic key UP FRONT so the user is prompted before
+  // building a whole evaluation and hitting a 400 wall at Run.
+  const [keySet, setKeySet] = useState<boolean | null>(null);
 
   // Reconnect to a run that's still executing server-side for this workflow —
   // leaving the page never loses it; the run is owned by the server and we just
@@ -115,6 +118,10 @@ export function EditorPage() {
     refreshEstimate(id);
     reconnect(id);
   };
+
+  useEffect(() => {
+    api.anthropicKeyStatus().then((s) => setKeySet(s.set)).catch(() => setKeySet(null));
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -201,6 +208,12 @@ export function EditorPage() {
 
   const run = async () => {
     ensureNotifyPermission();  // ask once, on the user gesture
+    // Fast-fail on a missing key: a clear prompt instead of a 400 at the wall.
+    if (keySet === false) {
+      setProblems(["Add your Anthropic API key in Settings before running — " +
+                   "Agenttic runs your agents with your own key."]);
+      return;
+    }
     const probs = await save();
     if (probs.length) return;
     store.setExec(emptyExec());
@@ -294,6 +307,20 @@ export function EditorPage() {
 
       {problems.length > 0 && <RunProblems problems={problems} onDismiss={() => setProblems([])} />}
 
+      {keySet === false && (
+        <div className="key-required-banner">
+          <span className="krb-ico">🔑</span>
+          <div className="krb-body">
+            <b>You'll need an Anthropic API key to run this evaluation.</b> Agenttic
+            runs your agents with your own key (encrypted at rest, never shared).
+            Add it now so you don't hit a wall at Run.
+          </div>
+          <Link className="krb-cta" to="/app/settings?section=api-keys">Add key</Link>
+        </div>
+      )}
+
+      {hasNodes && <CostSummary estimate={estimate} />}
+
       {mode === "guided" ? (
         <GuidedFlow results={results} onPickTemplate={pickTemplate} />
       ) : (
@@ -303,6 +330,46 @@ export function EditorPage() {
             <Canvas />
           </ReactFlowProvider>
           <ConfigPanel results={results} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** One clear, up-front view of cost before a run — consolidates the scattered
+ *  numbers (this-run estimate, spend so far, quota) into a single panel. Fed by
+ *  the workflow estimate response, whose `budget` bundles projected + spent +
+ *  quota from one backend source. */
+function CostSummary({ estimate }: { estimate: any }) {
+  const e = estimate?.estimate;
+  const b = estimate?.budget ?? {};
+  if (!e) return null;
+  const money = (x: number | null | undefined) => `$${(x ?? 0).toFixed(4)}`;
+  const over = b.would_exceed_run || b.would_exceed_daily
+    || b.would_exceed_quota_daily || b.would_exceed_quota_monthly;
+  const dailyCap = b.max_daily_cost_usd || b.quota_daily_usd || 0;
+  const remainingDaily = dailyCap
+    ? Math.max(0, dailyCap - (b.spent_today_usd ?? 0)) : null;
+  return (
+    <div className={`cost-bar${over ? " over" : ""}`}>
+      <div className="cost-cell">
+        <span className="cost-lab">This run (est.)</span>
+        <span className="cost-val">~{money(e.projected_usd)}</span>
+        <span className="cost-sub">{e.n_cases} cases · agent {money(e.projected_agent_usd)} + judge {money(e.projected_judge_usd)}</span>
+      </div>
+      <div className="cost-cell">
+        <span className="cost-lab">Spent</span>
+        <span className="cost-val">{money(b.spent_today_usd)}<span className="cost-unit"> today</span></span>
+        <span className="cost-sub">{money(b.spent_month_usd)} this month</span>
+      </div>
+      <div className="cost-cell">
+        <span className="cost-lab">Daily quota</span>
+        <span className="cost-val">{dailyCap ? `$${dailyCap.toFixed(2)}` : "No cap"}</span>
+        <span className="cost-sub">{remainingDaily != null ? `${money(remainingDaily)} remaining` : "unlimited"}</span>
+      </div>
+      {over && (
+        <div className="cost-warn">
+          ⚠ This run would exceed your budget cap{b.warn_only ? " (warning only)" : " — it may be blocked"}.
         </div>
       )}
     </div>

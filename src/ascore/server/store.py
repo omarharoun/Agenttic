@@ -29,6 +29,47 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+# Ordered (substring → plain-language reason) map. First match wins, so put the
+# more specific needles first. Used to turn a raw "ExcType: message" node error
+# into something a non-engineer can act on, shown inline on the Runs list.
+_ERROR_HINTS: list[tuple[str, str]] = [
+    ("anthropic", "No Anthropic API key — add one in Settings"),
+    ("api key", "Missing API key"),
+    ("no key", "Missing API key"),
+    ("unauthor", "Authentication failed"),
+    ("forbidden", "Authentication failed"),
+    ("rate limit", "Rate-limited by the model provider"),
+    ("rate_limit", "Rate-limited by the model provider"),
+    ("overloaded", "The model provider was overloaded"),
+    ("timeout", "The agent timed out"),
+    ("timed out", "The agent timed out"),
+    ("connection", "Couldn't reach the agent endpoint"),
+    ("connect", "Couldn't reach the agent endpoint"),
+    ("document", "Document parse failed"),
+    ("pdf", "Document parse failed"),
+    ("parse", "Parsing failed"),
+    ("json", "The agent returned malformed output"),
+    ("validation", "The agent's output failed validation"),
+    ("not found", "A referenced item was not found"),
+]
+
+
+def humanize_execution_error(raw: str | None) -> str:
+    """Turn a raw ``ExcType: message`` node error into a short, plain-language
+    reason a non-engineer can act on. Falls back to the message body (exception
+    class stripped) when no known pattern matches."""
+    if not raw:
+        return "Failed — open Inspect for details"
+    low = raw.lower()
+    for needle, msg in _ERROR_HINTS:
+        if needle in low:
+            return msg
+    # Strip a leading "ExcType: " prefix, then clip to a readable length.
+    body = raw.split(":", 1)[1].strip() if ":" in raw else raw
+    body = body.strip() or raw
+    return body if len(body) <= 120 else body[:117] + "…"
+
+
 class WorkflowRow(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("tenant_id", "workflow_id"),)
     id: int | None = Field(default=None, primary_key=True)
@@ -179,7 +220,32 @@ class UIStore:
                 ExecutionRow.started_at.desc())
             if workflow_id:
                 q = q.where(ExecutionRow.workflow_id == workflow_id)
-            return [self._execution_dict(r, full=False) for r in s.exec(q).all()]
+            dicts = [self._execution_dict(r, full=False) for r in s.exec(q).all()]
+            # Surface a plain-language failure reason INLINE (item: failed-run
+            # reasons), so the Runs list explains a failure without opening
+            # Inspect. The reason lives on the node_failed event; batch-fetch the
+            # latest per failed execution in one query.
+            failed_ids = [d["execution_id"] for d in dicts
+                          if d["status"] in ("failed", "completed_with_errors")]
+            latest_err: dict[str, str] = {}
+            if failed_ids:
+                evs = s.exec(select(ExecutionEventRow).where(
+                    ExecutionEventRow.tenant_id == self.tenant,
+                    ExecutionEventRow.execution_id.in_(failed_ids),
+                    ExecutionEventRow.type == "node_failed"
+                ).order_by(ExecutionEventRow.seq)).all()
+                for e in evs:  # ascending seq → last write wins = latest failure
+                    err = json.loads(e.data).get("error")
+                    if err:
+                        latest_err[e.execution_id] = err
+            for d in dicts:
+                if d["status"] == "cancelled":
+                    d["error_reason"] = "Cancelled before finishing"
+                elif d["status"] in ("failed", "completed_with_errors"):
+                    raw = latest_err.get(d["execution_id"])
+                    d["error"] = raw
+                    d["error_reason"] = humanize_execution_error(raw)
+            return dicts
 
     @staticmethod
     def _execution_dict(row: ExecutionRow, *, full: bool) -> dict:

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import { type DirectoryEntry, gradeColor, statusView } from "../cert";
+import { certIdOf, type DirectoryEntry, gradeColor, statusView } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
+import { Skeleton } from "../components/ui";
 
 /* ============================================================================
    Public Certified Agents directory — /certified (unauthenticated).
@@ -19,7 +20,7 @@ function normalize(raw: any): DirectoryEntry[] {
     : Array.isArray(raw?.agents) ? raw.agents
     : [];
   return list.map((c: any) => ({
-    id: c.id ?? c.certification_id ?? "",
+    id: certIdOf(c),
     agent_name: c.agent_name ?? c.agent_id ?? "Unnamed agent",
     grade: c.grade ?? "—",
     index: typeof c.index === "number" ? c.index : null,
@@ -65,7 +66,9 @@ export function CertifiedDirectoryPage() {
         </header>
 
         {rows === undefined ? (
-          <div className="cert-loading"><span className="spinner" /></div>
+          <div className="cert-dir-skel" aria-busy="true" aria-label="Loading certified agents">
+            <Skeleton rows={6} />
+          </div>
         ) : list.length === 0 ? (
           <div className="cert-dir-empty">
             <div className="empty-ico">◌</div>

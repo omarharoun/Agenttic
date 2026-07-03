@@ -192,6 +192,45 @@ export function MethodologyPage() {
           </ul>
         </aside>
 
+        {/* ---------- why it's still trustworthy (pairs with the caveats) ---------- */}
+        <aside className="meth-trust" aria-label="Why these grades are still trustworthy">
+          <h2>Why these grades still count</h2>
+          <p>
+            The caveats above are about scope, not rigor. Within that scope the
+            grades are built to be trusted:
+          </p>
+          <ul>
+            <li>
+              <b>Published methodology, not invented.</b> Every component
+              implements a peer-reviewed benchmark's method (BFCL, τ-bench,
+              AgentHarm, AgentDojo, InjecAgent, ECE, FActScore/RAGAS) — not a
+              scoring rubric we made up.
+            </li>
+            <li>
+              <b>Calibrated against human labels.</b> Our scorers are checked for
+              agreement with a human-labelled corpus; a criterion only counts as
+              calibrated once it clears that bar, and disagreements are shown, not
+              hidden.
+            </li>
+            <li>
+              <b>Real results, with their uncertainty.</b> Grades come from actual
+              runs on a real agent version, and every headline number carries its
+              sample size <span className="mono">n</span> and a Wilson 95% interval
+              — a conservative floor, not a lucky point estimate.
+            </li>
+            <li>
+              <b>Signed and pinned.</b> Each certificate is cryptographically
+              signed and pinned to the exact agent version tested, so a grade can
+              be independently verified and can't be quietly outgrown.
+            </li>
+          </ul>
+          <p className="meth-trust-foot">
+            So a grade here is a conservative, reproducible signal on a defined
+            suite — read it as rigor within scope, not a disclaimer that it doesn't
+            count.
+          </p>
+        </aside>
+
         {/* ---------- the index & weighting ---------- */}
         <section className="meth-section" id="index">
           <span className="eyebrow">The rollup</span>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
+import { Onboarding } from "../components/Onboarding";
 import { money } from "../stats";
 
 /* ============================================================================
@@ -66,6 +67,7 @@ export function DashboardPage() {
   return (
     <div className="page">
       <div className="list-page">
+        <Onboarding />
         <PageHeader
           title="Dashboard"
           subtitle={<>The credibility surface — agents ranked on the Agenttic Index,
@@ -73,8 +75,8 @@ export function DashboardPage() {
             now. Every headline number carries its sample size and a Wilson 95% interval.</>}
           actions={
             <div className="dash-cta">
-              <Link className="primary" to="/app/build">＋ New evaluation</Link>
-              <a href="/scan" className="ghost-sm">Scan an agent</a>
+              <Link className="btn-primary" to="/app/build">＋ New evaluation</Link>
+              <a href="/scan" className="btn-ghost">Scan an agent</a>
             </div>
           }
         />
@@ -85,8 +87,8 @@ export function DashboardPage() {
               dashboard fills with a ranked leaderboard and your scored results.</>}
             action={
               <div className="dash-cta">
-                <Link className="primary" to="/app/build">Start an evaluation</Link>
-                <Link className="ghost-sm" to="/app/leaderboard">Open the leaderboard</Link>
+                <Link className="btn-primary" to="/app/build">Start an evaluation</Link>
+                <Link className="btn-ghost" to="/app/leaderboard">Open the leaderboard</Link>
               </div>
             } />
         ) : (
@@ -110,9 +112,14 @@ export function DashboardPage() {
                   <Link className="ghost-sm" to="/app/leaderboard">Full leaderboard →</Link>
                 </header>
                 {topAgents.length === 0 ? (
-                  <p className="muted-sm dash-card-empty">
-                    No ranked agents yet — run the standard benchmark to populate the Index.
-                  </p>
+                  <div className="dash-card-empty">
+                    <p className="muted-sm">
+                      No ranked agents yet. A ranking is how you compare agents and
+                      show which is safer — run the standard benchmark to populate
+                      the Agenttic Index.
+                    </p>
+                    <Link className="btn-primary" to="/app/leaderboard">Run standard benchmark</Link>
+                  </div>
                 ) : (
                   <table className="data">
                     <thead><tr><th className="num">#</th><th>agent</th><th>Index</th></tr></thead>
@@ -143,9 +150,13 @@ export function DashboardPage() {
                   <Link className="ghost-sm" to="/app/results">All results →</Link>
                 </header>
                 {recent.length === 0 ? (
-                  <p className="muted-sm dash-card-empty">
-                    No scorecards yet — a guided evaluation lands its results here.
-                  </p>
+                  <div className="dash-card-empty">
+                    <p className="muted-sm">
+                      No results yet. A scored run is what earns a grade and a
+                      certificate you can publish — a guided evaluation lands here.
+                    </p>
+                    <Link className="btn-primary" to="/app/build">New evaluation</Link>
+                  </div>
                 ) : (
                   <table className="data">
                     <thead><tr><th>agent</th><th>suite</th><th className="num">success</th></tr></thead>
