@@ -28,6 +28,7 @@ flips the wedge to "reproduced" the moment predictions (a key) are available.
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -215,6 +216,189 @@ def reproduce_from_predictions(split: str, model: str,
         split=split, model=model, reproduced_accuracy=sc.accuracy, n=sc.n,
         wilson_low=low, wilson_high=high, published_accuracy=published_accuracy,
         published_source=published_source, overlaps=overlaps)
+
+
+# --------------------------------------------------------------------------- #
+# Live FC-mode reproduction: run a model over BFCL simple (Python) with native
+# tool-use, exactly as the leaderboard's "(FC)" entries are evaluated.
+# --------------------------------------------------------------------------- #
+
+# The V4 Python `simple` category — the classic ~400-case single-call AST split
+# the leaderboard reports as "Python Simple AST".
+_V4_BASE = ("https://raw.githubusercontent.com/ShishirPatil/gorilla/main/"
+            "berkeley-function-call-leaderboard/bfcl_eval/data")
+_V4_SIMPLE_Q = "BFCL_v4_simple_python.json"
+_V4_SIMPLE_A = "possible_answer/BFCL_v4_simple_python.json"
+
+# BFCL uses a few non-JSON-Schema type names; map them to valid ones for the
+# Anthropic tools API (native function calling).
+_TYPE_MAP = {"dict": "object", "float": "number", "tuple": "array",
+             "any": "string", "integer": "integer", "string": "string",
+             "boolean": "boolean", "array": "array", "number": "number",
+             "object": "object", "null": "string"}
+
+
+def _jsonl_or_json(text: str) -> list[dict]:
+    text = text.strip()
+    if not text:
+        return []
+    if text[0] == "[":
+        return json.loads(text)
+    return [json.loads(ln) for ln in text.splitlines() if ln.strip()]
+
+
+def load_simple_python_v4() -> list[TestCase]:
+    """Fetch the real V4 Python `simple` split (question + ground truth) and parse
+    it into TestCases — the exact split behind the leaderboard's Python Simple AST
+    number. Network required (small JSON)."""
+    import urllib.request
+
+    def _get(name: str) -> list[dict]:
+        with urllib.request.urlopen(f"{_V4_BASE}/{name}", timeout=60) as r:
+            return _jsonl_or_json(r.read().decode("utf-8"))
+
+    questions, answers = _get(_V4_SIMPLE_Q), _get(_V4_SIMPLE_A)
+    ans_by_id = {a["id"]: a for a in answers}
+    cases: list[TestCase] = []
+    for rec in questions:
+        ans = ans_by_id.get(rec["id"])
+        if not ans:
+            continue
+        gt = ans["ground_truth"]
+        seq = [name for entry in gt for name in entry]
+        if not seq:
+            continue
+        expected_calls = [{"name": name, "args": args}
+                          for entry in gt for name, args in entry.items()]
+        tool_args: dict[str, dict] = {}
+        for call in expected_calls:
+            tool_args.setdefault(call["name"], {}).update(call["args"])
+        turns = rec.get("question") or [[{}]]
+        content = next((m.get("content", "") for m in turns[0]
+                        if m.get("role") == "user"), turns[0][0].get("content", ""))
+        cases.append(TestCase(
+            test_id=rec["id"], suite_id="bfcl-simple-python-v4", version=1,
+            task_description=content[:200],
+            input={"question": content, "functions": rec.get("function", []),
+                   "bfcl_id": rec["id"]},
+            expected={"required_tools": list(dict.fromkeys(seq)),
+                      "tool_sequence": seq, "tool_args": tool_args,
+                      "expected_calls": expected_calls, "abstain": False,
+                      "source": "BFCL", "split": "simple_python_v4",
+                      "bfcl_id": rec["id"]},
+            tags=["standard", "bfcl"], rubric_id="bfcl-repro"))
+    return cases
+
+
+def _safe_tool_name(name: str) -> str:
+    """Anthropic tool names must match ``^[a-zA-Z0-9_-]{1,64}$``; BFCL names can
+    contain dots (``math.factorial``). Sanitise for the API and map back after."""
+    import re
+    return re.sub(r"[^a-zA-Z0-9_-]", "_", name)[:64]
+
+
+def _normalize_schema(node):
+    """Recursively map BFCL's non-JSON-Schema type names (``float``, ``tuple``,
+    ``dict``, ``any``) to valid draft-2020-12 types, at every depth (properties,
+    array items, nested objects) — so the Anthropic tools API accepts the schema."""
+    if isinstance(node, list):
+        return [_normalize_schema(x) for x in node]
+    if not isinstance(node, dict):
+        return node
+    out = {}
+    for k, v in node.items():
+        if k == "type" and isinstance(v, str):
+            out[k] = _TYPE_MAP.get(v, "string")
+        elif k in ("properties",) and isinstance(v, dict):
+            out[k] = {pk: _normalize_schema(pv) for pk, pv in v.items()}
+        elif k in ("items", "additionalProperties") and isinstance(v, dict):
+            out[k] = _normalize_schema(v)
+        else:
+            out[k] = _normalize_schema(v) if isinstance(v, (dict, list)) else v
+    if out.get("type") == "array" and "items" not in out:
+        out["items"] = {"type": "string"}
+    return out
+
+
+def _anthropic_tool_from_bfcl(func: dict) -> dict:
+    """Convert one BFCL function schema to an Anthropic tools-API tool (name
+    sanitised, types normalised recursively)."""
+    params = func.get("parameters", {}) or {}
+    props = {pname: _normalize_schema(spec)
+             for pname, spec in (params.get("properties", {}) or {}).items()}
+    return {
+        "name": _safe_tool_name(func["name"]),
+        "description": (func.get("description") or func["name"])[:1000],
+        "input_schema": {"type": "object", "properties": props,
+                         "required": params.get("required", [])},
+    }
+
+
+def _predict_one(client, model: str, case: TestCase,
+                 temperature: float = 0.0) -> list[dict]:
+    """Run the model on one case with native tool-use (FC mode) and return the
+    predicted call(s) as ``[{"name","args"}]`` (empty if it made no call).
+    Predicted (sanitised) names are mapped back to the original BFCL names.
+    ``temperature`` defaults to 0 to match BFCL's deterministic evaluation."""
+    funcs = case.input.get("functions", [])
+    tools = [_anthropic_tool_from_bfcl(f) for f in funcs]
+    unmap = {_safe_tool_name(f["name"]): f["name"] for f in funcs}
+    resp = client.messages.create(
+        model=model, max_tokens=1024, tools=tools, temperature=temperature,
+        tool_choice={"type": "any"},   # force a function call (BFCL FC behaviour)
+        messages=[{"role": "user", "content": case.input.get("question", "")}])
+    return [{"name": unmap.get(b.name, b.name), "args": dict(b.input or {})}
+            for b in resp.content if getattr(b, "type", "") == "tool_use"]
+
+
+def generate_predictions(cases: list[TestCase], *, model: str, client=None,
+                         max_workers: int = 8, on_progress=None
+                         ) -> dict[str, list[dict]]:
+    """Run ``model`` over the cases with native function calling and collect
+    predictions ``{bfcl_id: [{name,args}]}``. Requires a model API key. A per-case
+    error becomes an empty prediction (scored as a miss, never dropped silently)."""
+    if client is None:
+        if not model_predictions_available():
+            raise ReproductionBlocked(json.dumps(bfcl_blocker()))
+        import anthropic
+        client = anthropic.Anthropic()
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    preds: dict[str, list[dict]] = {}
+    done = 0
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futs = {ex.submit(_predict_one, client, model, c):
+                (c.expected or {}).get("bfcl_id", c.test_id) for c in cases}
+        for fut in as_completed(futs):
+            bid = futs[fut]
+            try:
+                preds[bid] = fut.result()
+            except Exception:  # noqa: BLE001 — a failed call is a miss, not a crash
+                preds[bid] = []
+            done += 1
+            if on_progress and done % 50 == 0:
+                on_progress(done, len(cases))
+    return preds
+
+
+def score_cases(cases: list[TestCase], predictions: dict[str, list[dict]]
+                ) -> BFCLScore:
+    """Score predictions against an explicit list of cases (used for the V4 split,
+    which isn't one of the vendored adapters)."""
+    multi = any("multi_call" in c.tags for c in cases)
+    n = passes = 0
+    for c in cases:
+        bid = (c.expected or {}).get("bfcl_id", c.test_id)
+        if bid not in predictions:
+            continue
+        n += 1
+        tr = _trace_for(c, predictions[bid])
+        sel = run_check("tool_selection_accuracy", tr, c)
+        par = run_check("tool_param_accuracy", tr, c)
+        seq = run_check("tool_sequence_accuracy", tr, c)
+        if sel >= 1.0 and par >= 1.0 and (seq >= 1.0 if multi else True):
+            passes += 1
+    return BFCLScore(split="simple_python_v4", n=n, passes=passes, multi_call=multi)
 
 
 def model_predictions_available() -> bool:

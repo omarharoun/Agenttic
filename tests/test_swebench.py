@@ -217,8 +217,8 @@ def test_reproduction_status_is_honest(monkeypatch):
     by_wedge = {w["wedge"]: w for w in rep["wedges"]}
     assert by_wedge["code"]["status"] == "proxy"
     assert by_wedge["code"]["official_metric"] == "resolve-rate"
-    # BFCL grader is validated on real data, but no model key => not reproduced
-    assert by_wedge["tool_calling"]["status"] == "scorer_validated"
+    # BFCL was attempted for real but landed ~4pts below published => not reproduced
+    assert by_wedge["tool_calling"]["status"] == "attempted"
     assert by_wedge["tool_calling"]["reproduced"] is False
     # every wedge states what real reproduction requires
     assert all(w["requires"] for w in rep["wedges"])

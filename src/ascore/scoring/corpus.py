@@ -203,18 +203,22 @@ def uncalibrated_criteria(criterion_ids, scorers: dict[str, str] | None = None,
     PROVISIONAL (uncalibrated), so the UI never shows an unproven score as
     trusted (Hard Rule 6):
 
-    * every **judge** criterion (judge calibration is not demonstrated), plus
+    * every **judge** criterion NOT demonstrated-calibrated by a real
+      judge-vs-human run (see ``judge_calibration``), plus
     * every **heuristic** deterministic check not demonstrated-calibrated by the
       shipped corpus.
 
     Pure-deterministic checks (unambiguous ground truth) are calibrated by
     construction and are never flagged."""
+    from ascore.scoring.judge_calibration import demonstrated_calibrated_judge
     scorers = scorers or {}
     calibrated = demonstrated_calibrated(path)
+    judge_calibrated = demonstrated_calibrated_judge()
     out: set[str] = set()
     for cid in criterion_ids:
         if scorers.get(cid) == "judge":
-            out.add(cid)
+            if cid not in judge_calibrated:
+                out.add(cid)
         elif cid in HEURISTIC_CRITERIA and cid not in calibrated:
             out.add(cid)
     return out

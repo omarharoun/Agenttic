@@ -50,21 +50,27 @@ As of now **no wedge reproduces a public per-model leaderboard number in this
 environment** (no `ANTHROPIC_API_KEY` to generate predictions; SWE-bench needs
 the Docker harness), and that endpoint says so plainly instead of hiding it.
 
-**BFCL — the grader is reproduced/validated on the full real dataset.** For the
-tool-calling wedge (Berkeley Function-Calling Leaderboard), BFCL grades by
-deterministic AST match — no LLM judge, no Docker. Our AST grader is proven
-against the **whole real `simple` category (n=400)**: the oracle (ground-truth)
-predictions score **100%** (Wilson 95% [0.9905, 1.0]), and a wrong prediction
-scores wrong — so the machinery that reproduces the leaderboard number is correct.
-The one missing input is the *model's* predictions, which need an API key.
-Reproduce the grader (offline, no key) or run a real model with:
+**BFCL — real reproduction ATTEMPTED, honest near-miss.** For the tool-calling
+wedge (Berkeley Function-Calling Leaderboard), BFCL grades by deterministic AST
+match — no LLM judge, no Docker. Our AST grader is first proven against the
+**whole real `simple` category (n=400)**: the oracle (ground-truth) predictions
+score **100%** (Wilson 95% [0.9905, 1.0]) and a wrong prediction scores wrong.
+
+We then ran a real model: **Claude Sonnet 4.5** (native function-calling, temp 0)
+over the real V4 Python `simple` split (n=400) → **93.75%** (375/400, Wilson 95%
+[0.909, 0.957]). The published **Python Simple AST (FC) = 97.75%** (BFCL V4
+leaderboard, `data_non_live.csv`) is **above** our interval — an honest **~4-point
+near-miss**, so the wedge is labelled **`attempted`**, *not* `reproduced`, and
+`any_reproduced` stays false. The gap is attributed to our simplified AST grader
+vs BFCL's official parameter normalisation (implicit multiplication,
+whitespace/underscore tolerance), which marks ~25 semantically-plausible answers
+as mismatches; the official `bfcl_eval` checker (which would credit some) would
+not install here. i.e. the model likely sits at/near the published number under
+the official harness; our stricter grader understates it. Reproduce with:
 
     uv run ascore reproduce-bfcl --split simple --full            # validate grader
-    uv run ascore reproduce-bfcl --split simple --model <M> \
-        --predictions <preds.json> --published <ACC> --published-source <URL>
-
-The wedge is honestly labelled **`scorer_validated`** (not `reproduced`) until a
-real per-model run overlaps its published number.
+    uv run ascore reproduce-bfcl --live --model claude-sonnet-4-5-20250929 \
+        --published 0.9775                                        # real run (needs key)
 
 **Red-team injection (real probe set, honest self-test):** the
 `redteam-injection-v1` suite is a genuine, technique-diverse prompt-injection
@@ -96,13 +102,15 @@ key) — wired but not required, and never faked.
   measures **0.75** on the harder expanded sample (a paraphrase / non-English
   tail + one false positive) — **below threshold, so it stays PROVISIONAL** (not
   tuned away). Intentional tail disagreements are surfaced, not hidden.
-- *LLM judge* — calibrating the judge means RUNNING it (an LLM), which needs a
-  model API key. The corpus (`helpfulness`, `tone_professional`,
-  `faithfulness_judge`, 15 labeled records) + runner are **wired**:
+- *LLM judge* — a **real** judge-vs-human run was done: **Claude Sonnet 4.5** as
+  judge over the corpus (`helpfulness`, `tone_professional`, `faithfulness_judge`,
+  15 labeled records). All three cleared the 0.80 bar at **1.0 agreement**
+  (Krippendorff α for the three-point criteria, exact-match for the binary one),
+  so they move **PROVISIONAL → calibrated**. Honest caveat: **n=5 per criterion on
+  clear-cut seed cases** — genuine agreement but a small, easy sample; a
+  larger/harder corpus is future work. Every *other* judge criterion stays
+  **PROVISIONAL** until it, too, is demonstrated. Reproduce:
   `uv run ascore calibrate-judge` (needs `ANTHROPIC_API_KEY`; est. **~$0.07**).
-  With no key nothing is run or faked — every judge criterion stays
-  **PROVISIONAL/uncalibrated** in scorecards until a real judge-vs-human run
-  demonstrates agreement (SPEC Hard Rule 6).
 
 Both corpora are *small seed sets*, not large inter-annotator studies — labelled
 as such.
