@@ -140,6 +140,14 @@ body {
 
 code { font-family: var(--font-mono); font-size: 0.92em; }
 
+/* Anchors default to the brand Clay accent — NEVER the browser's default
+   hyperlink blue, which clashes with the warm editorial theme. Any link that
+   wants a different colour (nav, footer, filled buttons) sets it via a class
+   rule, which wins on specificity. This is the single guard that keeps stray
+   default-blue out of the whole app. */
+a { color: var(--accent); }
+a:hover { color: var(--accent-hover); }
+
 /* uppercase tracked micro-label — Noor's voice (sans 11px 600, 0.06em, ink-3) */
 .eyebrow,
 .palette h4,
