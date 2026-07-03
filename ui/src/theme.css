@@ -636,6 +636,46 @@ pre.doc {
   cursor: help;
 }
 
+/* ===== first-run guided onboarding (point → scan → grade → certify) ===== */
+.onboard {
+  position: relative; border: 1px solid var(--accent-line); border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--accent-soft), transparent 140%);
+  padding: var(--sp-5) var(--sp-6) var(--sp-6); margin-bottom: var(--sp-6);
+}
+.onboard-head h2 { font: 500 var(--t-h3)/1.15 var(--font-serif); margin: 6px 0 4px; letter-spacing: -0.01em; }
+.onboard-head p { color: var(--muted); font-size: var(--t-sm); margin: 0 0 var(--sp-5); max-width: 620px; }
+.onboard-x {
+  position: absolute; top: 12px; right: 12px; background: transparent; border: none;
+  color: var(--muted); cursor: pointer; font-size: 13px; padding: 4px 7px; line-height: 1;
+}
+.onboard-x:hover { color: var(--text); }
+.onboard-steps {
+  list-style: none; margin: 0 0 var(--sp-5); padding: 0;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4);
+}
+.onboard-step {
+  border: 1px solid var(--border); border-radius: var(--r); background: var(--panel);
+  padding: var(--sp-4); display: flex; flex-direction: column; gap: 6px; min-width: 0;
+}
+.onboard-n {
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  font: 500 14px/1 var(--font-serif); color: var(--accent);
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+}
+.onboard-step h3 { font-size: var(--t-lg); font-weight: 600; margin: 4px 0 0; }
+.onboard-step p { color: var(--muted); font-size: var(--t-sm); line-height: 1.5; margin: 0; flex: 1; }
+.onboard-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+.onboard-cta { padding: 6px 13px; font-size: var(--t-sm); }
+.onboard-alt { color: var(--accent); text-decoration: none; font: 600 var(--t-sm)/1 var(--font-ui); }
+.onboard-alt:hover { text-decoration: underline; }
+.onboard-dismiss {
+  background: transparent; border: none; color: var(--muted); cursor: pointer;
+  font: 500 var(--t-sm)/1 var(--font-ui); padding: 0;
+}
+.onboard-dismiss:hover { color: var(--accent); }
+@media (max-width: 900px) { .onboard-steps { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .onboard-steps { grid-template-columns: 1fr; } }
+
 /* ============================== dashboard ================================= */
 .dash-cta { display: flex; gap: var(--sp-2); align-items: center; }
 .dash-stats {
