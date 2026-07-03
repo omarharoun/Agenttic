@@ -384,6 +384,8 @@ button.approve { background: var(--wait); border-color: var(--wait); color: #2a1
 .status-chip.succeeded { color: var(--ok); border-color: var(--ok-border); background: var(--ok-soft); }
 .status-chip.failed, .status-chip.cancelled { color: var(--fail); border-color: var(--fail-border); background: var(--fail-soft); }
 .status-chip.completed_with_errors { color: var(--wait); border-color: var(--wait-border); background: var(--wait-soft); }
+/* inline plain-language failure reason on the Runs list */
+.run-reason { margin-top: 4px; font-size: var(--t-xs); color: var(--fail); max-width: 260px; line-height: 1.35; cursor: help; }
 
 .editor-body { flex: 1; display: flex; min-height: 0; }
 .canvas-wrap { flex: 1; min-width: 0; }
