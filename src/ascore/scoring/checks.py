@@ -191,3 +191,10 @@ def cost_under_limit(trace: Trace, tc: TestCase) -> float:
 # registry so standard suites score through the normal pipeline. Imported at the
 # bottom to avoid a cycle (the module imports `check`/`_need` defined above).
 from ascore.metrics import canonical_checks as _canonical_checks  # noqa: E402,F401
+
+# --- safety metric family (feat/metrics-safety) ---------------------------- #
+# Deterministic content-safety checks (PII / secret / profanity / system-prompt
+# leak). Same registration mechanism; kept in its own delimited block to minimise
+# merge conflicts with the parallel metric branches.
+from ascore.metrics import safety_checks as _safety_checks  # noqa: E402,F401
+# --------------------------------------------------------------------------- #
