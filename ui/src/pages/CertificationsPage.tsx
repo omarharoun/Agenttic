@@ -192,16 +192,31 @@ export function CertificationsPage() {
               const hasId = isValidCertId(id);
               const sv = statusView(c.status ?? "valid");
               const open = hasId && justIssued === id;
+              const superseded = c.superseded === true;
+              const version = c.config_hash ? String(c.config_hash) : "";
               return (
-                <div className={`cert-item${open ? " open" : ""}`} key={id || `cert-${i}`}>
+                <div className={`cert-item${open ? " open" : ""}${superseded ? " superseded" : ""}`}
+                     key={id || `cert-${i}`}>
                   <div className="cert-item-head">
                     <Seal grade={c.grade} size={56} />
                     <div className="cert-item-id">
-                      <div className="cert-item-name">{c.agent_name ?? c.agent_id ?? "agent"}</div>
+                      <div className="cert-item-name">
+                        {c.agent_name ?? c.agent_id ?? "agent"}
+                        {superseded
+                          ? <span className="cert-tag superseded"
+                                  title="A newer certificate exists for this agent version">Superseded</span>
+                          : <span className="cert-tag current"
+                                  title="The latest certificate for this agent version">Current</span>}
+                      </div>
                       <div className="muted-sm">
                         <span className="mono">{id || "—"}</span> · grade{" "}
                         <b style={{ color: gradeColor(c.grade ?? "") }}>{c.grade ?? "—"}</b>{" "}
                         · <span className={`cert-inline-status ${sv.tone}`}>{sv.icon} {sv.label}</span>
+                        {version && <>
+                          {" "}· <span className="cert-ver mono"
+                            title="The exact agent version (config_hash) this grade is pinned to">
+                            version {version.slice(0, 10)}</span>
+                        </>}
                       </div>
                     </div>
                     <span style={{ flex: 1 }} />
@@ -213,6 +228,12 @@ export function CertificationsPage() {
                       <button className="ghost-sm" onClick={() => revoke(id)}>Revoke</button>
                     )}
                   </div>
+                  {hasId && superseded && (
+                    <p className="muted-sm" style={{ margin: "0 16px 4px" }}>
+                      ⓘ A newer certificate exists for this agent version — publish
+                      the current one instead of this superseded grade.
+                    </p>
+                  )}
                   {hasId ? <CertEmbed cert={c} id={id} /> : (
                     <p className="note-err" style={{ margin: "0 16px 16px" }}>
                       This certificate is missing its id, so a verifiable badge can't
