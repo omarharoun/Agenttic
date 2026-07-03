@@ -636,7 +636,7 @@ pre.doc {
   cursor: help;
 }
 
-/* ===== first-run guided onboarding (point → scan → grade → certify) ===== */
+/* ===== first-run guided tutorial (interactive Score → Issues → Fix checklist) ===== */
 .onboard {
   position: relative; border: 1px solid var(--accent-line); border-radius: var(--r-lg);
   background: linear-gradient(180deg, var(--accent-soft), transparent 140%);
@@ -649,32 +649,70 @@ pre.doc {
   color: var(--muted); cursor: pointer; font-size: 13px; padding: 4px 7px; line-height: 1;
 }
 .onboard-x:hover { color: var(--text); }
-.onboard-steps {
-  list-style: none; margin: 0 0 var(--sp-5); padding: 0;
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4);
+/* progress bar under the intro */
+.onboard-progress {
+  height: 6px; border-radius: var(--r-pill); background: var(--panel);
+  border: 1px solid var(--border); overflow: hidden; max-width: 620px; margin-top: 4px;
 }
-.onboard-step {
+.onboard-progress-fill {
+  display: block; height: 100%; background: var(--accent); border-radius: var(--r-pill);
+  transition: width 0.35s ease;
+}
+.onboard-progress-lab {
+  display: block; margin: 6px 0 var(--sp-5); font: 500 var(--t-sm)/1 var(--font-ui);
+  color: var(--muted);
+}
+
+/* interactive checklist */
+.onboard-checklist { list-style: none; margin: 0 0 var(--sp-5); padding: 0; display: grid; gap: 10px; }
+.onboard-item {
+  display: flex; gap: 12px; align-items: flex-start;
   border: 1px solid var(--border); border-radius: var(--r); background: var(--panel);
-  padding: var(--sp-4); display: flex; flex-direction: column; gap: 6px; min-width: 0;
+  padding: var(--sp-4); transition: border-color 0.15s ease, opacity 0.15s ease;
 }
-.onboard-n {
-  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
-  font: 500 14px/1 var(--font-serif); color: var(--accent);
-  background: var(--accent-soft); border: 1px solid var(--accent-line);
+.onboard-item.is-done { opacity: 0.72; }
+.onboard-item.is-done h3 { text-decoration: line-through; text-decoration-color: var(--faint); }
+.onboard-check {
+  flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+  display: grid; place-items: center; font: 600 14px/1 var(--font-ui);
+  color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-line);
+  transition: background 0.15s ease, color 0.15s ease;
 }
-.onboard-step h3 { font-size: var(--t-lg); font-weight: 600; margin: 4px 0 0; }
-.onboard-step p { color: var(--muted); font-size: var(--t-sm); line-height: 1.5; margin: 0; flex: 1; }
-.onboard-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+.onboard-check:hover:not(:disabled) { background: var(--accent-line); }
+.onboard-check:disabled { cursor: default; }
+.onboard-item.is-done .onboard-check { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.onboard-item-body { min-width: 0; flex: 1; }
+.onboard-item-body h3 { font-size: var(--t-lg); font-weight: 600; margin: 3px 0 4px; }
+.onboard-item-body p { color: var(--muted); font-size: var(--t-sm); line-height: 1.5; margin: 0 0 8px; }
+.onboard-links { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .onboard-cta { padding: 6px 13px; font-size: var(--t-sm); }
 .onboard-alt { color: var(--accent); text-decoration: none; font: 600 var(--t-sm)/1 var(--font-ui); }
 .onboard-alt:hover { text-decoration: underline; }
+
+/* footer controls */
+.onboard-foot { display: flex; align-items: center; gap: 8px; }
+.onboard-foot-sep { color: var(--faint); }
 .onboard-dismiss {
   background: transparent; border: none; color: var(--muted); cursor: pointer;
   font: 500 var(--t-sm)/1 var(--font-ui); padding: 0;
 }
 .onboard-dismiss:hover { color: var(--accent); }
-@media (max-width: 900px) { .onboard-steps { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 520px) { .onboard-steps { grid-template-columns: 1fr; } }
+
+/* collapsed "resume" pill */
+.onboard-mini {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  border: 1px solid var(--accent-line); border-radius: var(--r-pill);
+  background: var(--accent-soft); color: var(--text);
+  font: 600 var(--t-sm)/1 var(--font-ui); padding: 8px 14px; margin-bottom: var(--sp-5);
+}
+.onboard-mini:hover { border-color: var(--accent); }
+.onboard-mini-ic { color: var(--accent); }
+.onboard-mini-open { color: var(--accent); }
+
+/* completion state */
+.onboard-complete .onboard-head h2 { color: var(--text); }
+
+@media (max-width: 520px) { .onboard-item { flex-wrap: wrap; } }
 
 /* ============================== dashboard ================================= */
 .dash-cta { display: flex; gap: var(--sp-2); align-items: center; }
