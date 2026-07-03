@@ -207,14 +207,19 @@ def test_harness_available_detects_configuration(monkeypatch):
     assert swe.harness_available() is False
 
 
-def test_reproduction_status_is_honest():
+def test_reproduction_status_is_honest(monkeypatch):
+    # no model key configured => the honest "scorer_validated, not reproduced"
+    # branch (delenv to be robust to test-ordering env leakage).
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     from ascore.metrics.reproduction import reproduction_report
     rep = reproduction_report()
     assert rep["any_reproduced"] is False        # nothing reproduced here
     by_wedge = {w["wedge"]: w for w in rep["wedges"]}
     assert by_wedge["code"]["status"] == "proxy"
     assert by_wedge["code"]["official_metric"] == "resolve-rate"
-    assert by_wedge["tool_calling"]["status"] == "seed_sample"
+    # BFCL grader is validated on real data, but no model key => not reproduced
+    assert by_wedge["tool_calling"]["status"] == "scorer_validated"
+    assert by_wedge["tool_calling"]["reproduced"] is False
     # every wedge states what real reproduction requires
     assert all(w["requires"] for w in rep["wedges"])
 

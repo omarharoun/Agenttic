@@ -207,6 +207,64 @@ def calibrate_corpus():
 
 
 @app.command()
+def reproduce_bfcl(
+        split: str = typer.Option("simple", "--split", help="BFCL split"),
+        full: bool = typer.Option(False, "--full", help="fetch the whole split "
+                                  "from HuggingFace (else the vendored sample)"),
+        predictions: Path | None = typer.Option(
+            None, "--predictions", help="JSON {bfcl_id: [{name,args}]} of MODEL "
+            "predictions to score (from the official bfcl generator or a live run)"),
+        model: str = typer.Option("unknown", "--model", help="model label"),
+        published: float | None = typer.Option(
+            None, "--published", help="published accuracy to reproduce (0-1)"),
+        published_source: str = typer.Option("", "--published-source")):
+    """Reproduce a published BFCL number, or validate the grader on real data.
+
+    With no --predictions and no API key this prints the honest blocker + the
+    one-command run and spends nothing. With --predictions it scores real model
+    outputs and, given --published, reports reproduced-vs-published with n +
+    Wilson 95% interval. Always runs the offline grader validation (oracle → must
+    be 100% on real data)."""
+    import json
+
+    from ascore.metrics import bfcl_reproduce as R
+
+    val = R.validate_scorer(split, full=full)
+    ok = "[green]VALID[/]" if val.accuracy >= 1.0 else "[red]SCORER BUG[/]"
+    lo, hi = val.wilson
+    console.print(f"Grader validation ({split}{' full' if full else ' sample'}): "
+                  f"oracle accuracy [bold]{val.accuracy:.1%}[/] "
+                  f"({val.passes}/{val.n}, Wilson95 [{lo:.3f},{hi:.3f}]) {ok}")
+
+    if predictions is None:
+        if not R.model_predictions_available():
+            blk = R.bfcl_blocker()
+            console.print("\n[yellow]Per-model reproduction blocked[/]: "
+                          f"{blk['blocker']}")
+            mr = blk["minimal_run"]
+            console.print(f"[dim]Minimal run:[/] {mr['one_command']}")
+            console.print(f"[dim]Est. cost:[/] {mr['est_cost_usd_order']} · "
+                          f"[dim]published ref:[/] {mr['published_reference']}")
+            raise typer.Exit(0)
+        console.print("[dim]API key present — supply --predictions from the "
+                      "official bfcl generator (or a live run) to score them.[/]")
+        raise typer.Exit(0)
+
+    preds = json.loads(Path(predictions).read_text())
+    res = R.reproduce_from_predictions(
+        split, model, preds, published_accuracy=published,
+        published_source=published_source or None, full=full)
+    d = res.to_dict()
+    console.print(f"\nModel [bold]{model}[/] on BFCL {split}: reproduced accuracy "
+                  f"[bold]{d['reproduced_accuracy']:.1%}[/] (n={d['n']}, "
+                  f"Wilson95 [{d['wilson_low']:.3f},{d['wilson_high']:.3f}])")
+    if published is not None:
+        verdict = "[green]REPRODUCED[/]" if d["reproduced"] else "[red]MISMATCH[/]"
+        console.print(f"Published {published:.1%} → {verdict} "
+                      f"(published within our 95% interval: {d['reproduced']})")
+
+
+@app.command()
 def regress(agent: str = typer.Option(..., "--agent", "-a", help="agent id"),
             config: str = "config.yaml"):
     """Re-run every suite this agent was scored on; diff against prior results."""
