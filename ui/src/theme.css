@@ -1127,6 +1127,28 @@ table.data tbody tr { transition: background 0.1s; }
 .meth-callout li { font-size: var(--t-base); line-height: 1.62; color: var(--text); }
 .meth-callout b { font-weight: 600; }
 
+/* the trustworthy-methodology counterweight to the honesty caveats (item 13) */
+.meth-trust {
+  border: 1px solid var(--ok-border); border-left-width: 4px; border-radius: var(--r);
+  background: var(--ok-soft); padding: var(--sp-5) var(--sp-6); margin: 0 0 var(--sp-12);
+}
+.meth-trust h2 { font: 500 var(--t-h3) / 1.2 var(--font-serif); margin: 0 0 var(--sp-3); }
+.meth-trust p { font-size: var(--t-base); line-height: 1.62; color: var(--text); margin: 0 0 var(--sp-3); }
+.meth-trust ul { margin: 0 0 var(--sp-3); padding-left: var(--sp-5); display: flex; flex-direction: column; gap: 10px; }
+.meth-trust li { font-size: var(--t-base); line-height: 1.62; color: var(--text); }
+.meth-trust b { font-weight: 600; }
+.meth-trust-foot { color: var(--muted); }
+
+/* short trust note paired with the "not the public datasets" caveat on the leaderboard */
+.cred-note {
+  margin: var(--sp-3) 0 0; padding: 10px 14px; font-size: var(--t-sm); line-height: 1.6;
+  color: var(--text); background: var(--ok-soft); border: 1px solid var(--ok-border);
+  border-left-width: 3px; border-radius: var(--r-sm); max-width: 760px;
+}
+.cred-note b { font-weight: 600; }
+.cred-note a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.cred-note a:hover { text-decoration: underline; }
+
 /* sections */
 .meth-section { padding: var(--sp-10) 0; border-top: 1px solid var(--border); }
 .meth-section > .eyebrow { display: block; margin-bottom: 8px; }

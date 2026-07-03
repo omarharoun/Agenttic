@@ -118,6 +118,13 @@ function StandardBenchmarks() {
             🏅 Certify an agent →
           </Link>
         </p>
+        <p className="cred-note">
+          <b>Why these still count:</b> we implement each benchmark's published
+          methodology, calibrate our scorers against human labels, and show the
+          sample size + Wilson interval on every number — so an Index is a
+          conservative, reproducible signal, not a vanity score.{" "}
+          <Link to="/methodology">Why our methodology is trustworthy →</Link>
+        </p>
       </header>
 
       {showMethod && cat && (
