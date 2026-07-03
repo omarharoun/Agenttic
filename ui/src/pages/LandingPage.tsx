@@ -114,8 +114,6 @@ export function LandingPage() {
           <Link to="/" className="brand"><span className="hex">⬡</span> Agenttic</Link>
           <span className="spacer" />
           <Link className="navlink" to="/methodology">Methodology</Link>
-          <Link className="navlink" to="/certified">Certified agents</Link>
-          <Link className="navlink" to="/assistant">Safe assistant</Link>
           <a className="navlink" href="/api-docs">API docs</a>
           <Link className="navlink" to="/login">Log in</Link>
           <Link className="btn-primary" to="/scan">Find your agent's issues</Link>
@@ -208,22 +206,7 @@ export function LandingPage() {
             </p>
             <div className="cta">
               <Link className="btn-ghost" to="/methodology">Read the methodology</Link>
-              <Link className="btn-ghost" to="/certified">See certified agents</Link>
             </div>
-          </div>
-        </section>
-
-        {/* Certification — demoted to an optional final step, not the pitch. */}
-        <section className="section certify-demoted">
-          <div className="cd-inner">
-            <span className="badge">Optional last step</span>
-            <h3>Fixed the issues? Certify it.</h3>
-            <p>
-              Once your agent passes, mint a signed certificate pinned to that exact
-              version and drop the badge on your README. Nice to have — but the point
-              is the fix, not the sticker.
-            </p>
-            <Link className="navlink" to="/certified">Browse certified agents →</Link>
           </div>
         </section>
 
@@ -244,8 +227,6 @@ export function LandingPage() {
           <SealMark />
           <Link to="/scan">Find issues</Link>
           <Link to="/methodology">Methodology</Link>
-          <Link to="/certified">Certified agents</Link>
-          <Link to="/assistant">Safe assistant</Link>
           <a href="/api-docs">API docs</a>
           <Link to="/login">Log in</Link>
           <span style={{ flex: 1 }} />
