@@ -45,7 +45,8 @@ export function ResultsHistoryPage() {
         <PageHeader
           title="Results"
           subtitle={
-            <>Every test result you've run — browse and re-open without re-running.{" "}
+            <>Every score you've run — browse and re-open without re-running. To see
+            what's wrong with a run, open its <Link to="/app/issues">Issues report</Link>.{" "}
             <span className="mono">♻</span> marks cached results: an identical re-run
             is served for free (no agent or judge calls).</>
           }

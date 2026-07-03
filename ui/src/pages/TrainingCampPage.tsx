@@ -166,8 +166,9 @@ export function TrainingCampPage() {
       <div className="list-page">
         <PageHeader
           title="Training Camp"
-          subtitle={<>Run an agent against a task many times, grade every attempt,
-            and measure real accuracy with a <b><Term name="wilson">Wilson 95% lower bound</Term></b>. Promotion
+          subtitle={<><b>Fix</b> behavior at the source: run an agent against a task many
+            times, grade every attempt, and measure real accuracy with a
+            <b> <Term name="wilson">Wilson 95% lower bound</Term></b>. Promotion
             needs <b>both</b> a hard, non-overridable accuracy floor <i>and</i> a human
             sign-off. Export the passing episodes as a distillation dataset, or run the
             self-improving loop with its <Term name="ratchet">anti-collapse ratchet</Term>.</>}
