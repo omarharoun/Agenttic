@@ -225,7 +225,24 @@ class TestFailureAndCancel:
             failed_evt = [e for e in store.events_after(eid)
                           if e["type"] == "node_failed"][0]
             assert "scripted failure" in failed_evt["data"]["error"]
+            # the failure reason is surfaced INLINE on the Runs list, not only
+            # inside Inspect
+            row = [r for r in store.list_executions() if r["execution_id"] == eid][0]
+            assert row["error"] and "scripted failure" in row["error"]
+            assert row["error_reason"]
         asyncio.run(main())
+
+    def test_humanize_execution_error_reasons(self):
+        from ascore.server.store import humanize_execution_error
+        assert "Anthropic" in humanize_execution_error(
+            "HTTPError: 400 Add your Anthropic API key")
+        assert humanize_execution_error(
+            "ValueError: document parse failed") == "Document parse failed"
+        assert "timed out" in humanize_execution_error("TimeoutError: took too long")
+        # unknown → strips the exception class prefix, keeps the message body
+        assert humanize_execution_error("RuntimeError: weird thing") == "weird thing"
+        # empty → a safe, actionable default
+        assert humanize_execution_error(None)
 
     def test_cancel_mid_run(self, tmp_path):
         async def main():
