@@ -137,99 +137,118 @@ export function MethodologyPage() {
       </nav>
 
       <main className="meth">
-        {/* ---------- intro ---------- */}
+        {/* ---------- intro (plain language) ---------- */}
         <header className="meth-hero">
-          <span className="eyebrow">Methodology &amp; Index</span>
-          <h1>How the Agenttic Index is computed</h1>
+          <span className="eyebrow">How it works</span>
+          <h1>How we test your agent</h1>
           <p className="lede">
-            The Agenttic Index is a single, normalized 0–100 score for how safe
-            and reliable an AI agent is — rolled up from six literature-anchored
-            component metrics. This page documents exactly what each component
-            measures, the published methodology it implements, how the components
-            are weighted, and the real public datasets behind the benchmark.
+            We put your AI agent through a battery of real tests, score how it did,
+            and show you exactly what to fix — in plain language, with the evidence.
+            Here's the whole thing in five steps.
           </p>
         </header>
 
-        {/* ---------- honesty callout ---------- */}
-        <aside className="meth-callout" aria-label="Honesty note">
-          <h2>What this number is — and isn't</h2>
+        {/* ---------- the plain-language walkthrough ---------- */}
+        <section className="meth-section meth-how">
+          <ol className="meth-how-steps">
+            <li>
+              <span className="mh-n">1</span>
+              <div>
+                <h3>Point us at your agent</h3>
+                <p>Connect your agent's endpoint, or use your own API key to run the
+                  built-in agents. Nothing is shared — your key is encrypted.</p>
+              </div>
+            </li>
+            <li>
+              <span className="mh-n">2</span>
+              <div>
+                <h3>We run real tests</h3>
+                <p>Your agent is put through the same kinds of tests researchers use
+                  — can it use its tools correctly, stay reliable across repeated
+                  tries, refuse harmful requests, and resist scam instructions hidden
+                  in the content it reads?</p>
+              </div>
+            </li>
+            <li>
+              <span className="mh-n">3</span>
+              <div>
+                <h3>We score it honestly</h3>
+                <p>You get a 0–100 score and an A–F grade. Every number comes with
+                  how many tests we ran and a confidence range — never a bare
+                  percentage, and never a top-line score that hides a weak spot.</p>
+              </div>
+            </li>
+            <li>
+              <span className="mh-n">4</span>
+              <div>
+                <h3>You see exactly what's wrong</h3>
+                <p>A ranked list of your agent's real failures — worst first — each
+                  with the specific case that failed and a plain-language reason why.
+                  No invented problems: if nothing failed, it says so.</p>
+              </div>
+            </li>
+            <li>
+              <span className="mh-n">5</span>
+              <div>
+                <h3>You fix it and re-test</h3>
+                <p>Train, optimize, or harden your agent against those failures — then
+                  run the tests again to prove the number actually moved.</p>
+              </div>
+            </li>
+          </ol>
+          <p className="meth-how-get">
+            <b>What you walk away with:</b> a trustworthy score, a ranked report of
+            what to fix, and — once it passes — an optional certificate you can share.
+          </p>
+        </section>
+
+        {/* ---------- plain-language honesty (framed as rigor) ---------- */}
+        <aside className="meth-callout" aria-label="Why you can trust the numbers">
+          <h2>Why you can trust the numbers</h2>
           <ul>
             <li>
-              <b>We run our own eval.</b> Agenttic puts an agent through its own
-              suites and scores the trace. Numbers populate only once those suites
-              have actually been run for an agent — an empty leaderboard means
-              "not yet measured," never an assumed pass.
+              <b>We only show what we actually tested.</b> A number appears only
+              after the tests really ran. A blank result means "not measured yet,"
+              never an assumed pass.
             </li>
             <li>
-              <b>Methodology vs. real datasets.</b> The canonical metrics implement
-              published <i>methodology</i> (BFCL, τ-bench, AgentHarm, AgentDojo,
-              InjecAgent, ECE, FActScore/RAGAS) on Agenttic's own seed data. We do
-              not reproduce any paper's exact numbers. Where we ingest the{" "}
-              <a href="#datasets">real public datasets</a>, they default to{" "}
-              <b>small vendored samples</b> (e.g. a handful of SWE-bench / GAIA
-              cases), not the full public splits — a seed sample, not a benchmark
-              run.
+              <b>We use real, published test methods.</b> The tests come from
+              well-known agent benchmarks — not a scoring scheme we made up. We run
+              them on our own sample data, so we don't claim to reproduce any single
+              paper's exact numbers.
             </li>
             <li>
-              <b>SWE-bench is an offline proxy.</b> The code wedge is scored by an
-              offline patch/localization proxy, <b>not</b> the official Docker
-              resolve-rate — the real execution harness is out of scope for now, so
-              a SWE-bench figure here is a proxy signal, not a reproduced
-              resolve-rate.
+              <b>We tell you where a test is a quick screen.</b> A few checks are
+              fast screens rather than exhaustive audits — for example, the safety
+              checks look for tell-tale words in the reply, and the coding benchmark
+              uses an offline stand-in instead of fully running the code. We say so
+              plainly rather than overstating what we measured.
             </li>
             <li>
-              <b>Safety scoring is lexical.</b> Harmful-refusal and prompt-injection
-              checks are scored by refusal-marker / target-token matching over the
-              agent's replies — a fast, deterministic screen, <b>not</b> the real
-              AgentDojo / InjecAgent attack environments. Novel phrasing can defeat
-              it, so treat the safety score as a screen, not an exhaustive audit.
-            </li>
-            <li>
-              <b>Components are always shown.</b> The rollup is never presented
-              alone — every component score sits next to it, so a strong Index can
-              never hide a weak safety or calibration number.
+              <b>The headline never hides a weak spot.</b> Every sub-score is shown
+              right next to the overall score, so a good average can't paper over a
+              weak safety or reliability number.
             </li>
           </ul>
+          <p className="meth-callout-foot">
+            None of this is a disclaimer that the grade doesn't count — it's the
+            opposite. A grade here is a careful, repeatable signal you can rely on,
+            with its limits stated up front. Want the deep version? It's all below.
+          </p>
         </aside>
 
-        {/* ---------- why it's still trustworthy (pairs with the caveats) ---------- */}
-        <aside className="meth-trust" aria-label="Why these grades are still trustworthy">
-          <h2>Why these grades still count</h2>
-          <p>
-            The caveats above are about scope, not rigor. Within that scope the
-            grades are built to be trusted:
-          </p>
-          <ul>
-            <li>
-              <b>Published methodology, not invented.</b> Every component
-              implements a peer-reviewed benchmark's method (BFCL, τ-bench,
-              AgentHarm, AgentDojo, InjecAgent, ECE, FActScore/RAGAS) — not a
-              scoring rubric we made up.
-            </li>
-            <li>
-              <b>Calibrated against human labels.</b> Our scorers are checked for
-              agreement with a human-labelled corpus; a criterion only counts as
-              calibrated once it clears that bar, and disagreements are shown, not
-              hidden.
-            </li>
-            <li>
-              <b>Real results, with their uncertainty.</b> Grades come from actual
-              runs on a real agent version, and every headline number carries its
-              sample size <span className="mono">n</span> and a Wilson 95% interval
-              — a conservative floor, not a lucky point estimate.
-            </li>
-            <li>
-              <b>Signed and pinned.</b> Each certificate is cryptographically
-              signed and pinned to the exact agent version tested, so a grade can
-              be independently verified and can't be quietly outgrown.
-            </li>
-          </ul>
-          <p className="meth-trust-foot">
-            So a grade here is a conservative, reproducible signal on a defined
-            suite — read it as rigor within scope, not a disclaimer that it doesn't
-            count.
-          </p>
-        </aside>
+        {/* ================================================================
+            THE TECHNICAL DETAILS — collapsed by default, for researchers.
+            Everything a rigor-minded reader wants: the index weighting, each
+            component's published methodology, the scoring pipeline, the real
+            datasets, and the certificate signing scheme.
+            ================================================================ */}
+        <details className="meth-tech">
+          <summary>
+            <span className="mt-sum-title">The technical details</span>
+            <span className="mt-sum-sub">for researchers — weights, statistics, datasets & signing</span>
+          </summary>
+          <div className="meth-tech-body">
 
         {/* ---------- the index & weighting ---------- */}
         <section className="meth-section" id="index">
@@ -453,6 +472,9 @@ export function MethodologyPage() {
             </li>
           </ul>
         </section>
+
+          </div>
+        </details>
 
         {/* ---------- close ---------- */}
         <section className="meth-section meth-cta" id="cta">

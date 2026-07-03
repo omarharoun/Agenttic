@@ -1204,6 +1204,48 @@ table.data tbody tr { transition: background 0.1s; }
 .meth-callout ul { margin: 0; padding-left: var(--sp-5); display: flex; flex-direction: column; gap: 10px; }
 .meth-callout li { font-size: var(--t-base); line-height: 1.62; color: var(--text); }
 .meth-callout b { font-weight: 600; }
+.meth-callout-foot { margin: var(--sp-4) 0 0; color: var(--muted); font-size: var(--t-base); line-height: 1.62; }
+
+/* plain-language "How we test your agent" walkthrough */
+.meth-how { margin-bottom: var(--sp-10); }
+.meth-how-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-4); }
+.meth-how-steps li { display: flex; gap: var(--sp-4); align-items: flex-start; }
+.mh-n {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; display: grid;
+  place-items: center; font: 500 17px/1 var(--font-serif); color: var(--accent);
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+}
+.meth-how-steps h3 { font: 600 var(--t-lg)/1.2 var(--font-ui); margin: 4px 0 4px; }
+.meth-how-steps p { color: var(--muted); font-size: var(--t-base); line-height: 1.6; margin: 0; max-width: 62ch; }
+.meth-how-get {
+  margin: var(--sp-5) 0 0; padding: 14px 16px; font-size: var(--t-base); line-height: 1.6;
+  color: var(--text); background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--r); max-width: 760px;
+}
+
+/* collapsible "technical details for researchers" */
+.meth-tech {
+  border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--panel); margin: var(--sp-6) 0 var(--sp-10); overflow: hidden;
+}
+.meth-tech > summary {
+  cursor: pointer; padding: var(--sp-5) var(--sp-6); list-style: none;
+  display: flex; flex-direction: column; gap: 3px; user-select: none;
+}
+.meth-tech > summary::-webkit-details-marker { display: none; }
+.meth-tech > summary::after {
+  content: "Show ▾"; position: absolute; right: var(--sp-6);
+  color: var(--accent); font: 600 var(--t-sm)/1 var(--font-ui);
+}
+.meth-tech[open] > summary::after { content: "Hide ▴"; }
+.meth-tech > summary { position: relative; }
+.meth-tech > summary:hover .mt-sum-title { color: var(--accent); }
+.mt-sum-title { font: 500 var(--t-h3)/1.2 var(--font-serif); color: var(--text); }
+.mt-sum-sub { font-size: var(--t-sm); color: var(--muted); }
+.meth-tech-body {
+  padding: 0 var(--sp-6) var(--sp-5); border-top: 1px solid var(--border);
+}
+.meth-tech-body .meth-section:first-child { margin-top: var(--sp-6); }
 
 /* the trustworthy-methodology counterweight to the honesty caveats (item 13) */
 .meth-trust {
