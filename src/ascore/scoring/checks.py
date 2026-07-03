@@ -120,6 +120,14 @@ _CHECK_EXPECTED_DEFAULTS = {
     # faithfulness gate: a missing reference context degrades to "" -> gate passes
     # (unverifiable, not a failure); the LLM metric labels it no_reference.
     "faithfulness_grounded": ("reference_context", str),
+    # structured_ir optional-key checks (safe defaults exist; required fields
+    # like relevant_ids/json_schema/etc. intentionally absent — they must raise).
+    "ir_ndcg_at_k": ("k", lambda: 10),
+    "ir_precision_at_k": ("k", lambda: 10),
+    "ir_recall_at_k": ("k", lambda: 10),
+    "ir_hit_rate": ("k", lambda: 10),
+    "number_match": ("tolerance", lambda: 1e-6),
+    "sql_is_valid": ("sql_dialect", lambda: None),
 }
 
 
@@ -191,3 +199,4 @@ def cost_under_limit(trace: Trace, tc: TestCase) -> float:
 # registry so standard suites score through the normal pipeline. Imported at the
 # bottom to avoid a cycle (the module imports `check`/`_need` defined above).
 from ascore.metrics import canonical_checks as _canonical_checks  # noqa: E402,F401
+from ascore.metrics import structured_ir as _structured_ir  # noqa: E402,F401
