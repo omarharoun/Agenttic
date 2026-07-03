@@ -337,8 +337,10 @@ export function OptimizePage() {
   return (
     <div>
       <PageHeader title="Prompt optimizer"
-        subtitle={<>Self-improving system prompt — frozen model, suite score as
-          reward (<Term name="opro">OPRO/ProTeGi</Term> reflection)</>} />
+        subtitle={<><b>Fix</b> tool-use and reliability issues by search — a
+          self-improving system prompt with the suite score as reward
+          (<Term name="opro">OPRO/ProTeGi</Term> reflection), a per-criterion
+          regression veto, and a held-out overfit guard.</>} />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(340px, 1fr) 1.4fr",
                     gap: 16, alignItems: "start" }}>
         <div style={{ display: "grid", gap: 14 }}>

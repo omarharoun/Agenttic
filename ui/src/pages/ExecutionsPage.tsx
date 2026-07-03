@@ -39,7 +39,7 @@ export function ExecutionsPage() {
     <div className="page">
       <div className="list-page">
         <PageHeader title="Runs"
-                    subtitle="Every safety test you've run — live progress, results, and replays." />
+                    subtitle="Every run you've scored — live progress, then the issues it surfaced (worst-first) with the full scoreboard behind them." />
         {!loaded ? <Skeleton rows={6} /> : rows.length === 0 ? (
           <EmptyState icon="▶" title="No runs yet"
                       hint="Start a New evaluation and hit Run — it'll show up here with live progress." />

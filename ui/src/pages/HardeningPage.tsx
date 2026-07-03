@@ -392,7 +392,7 @@ export function HardeningPage() {
     <div className="page">
       <div className="list-page">
         <PageHeader title="Hardening"
-          subtitle="Turn caught failures into permanent regression cases. Promote a scorecard's failures into a per-agent regression suite, then re-run to prove the fix held — hardening the agent over time, not just measuring it." />
+          subtitle="Fix, then keep it fixed. Promote an issue's failing cases into a permanent, versioned regression suite, then re-run to prove the fix held — with a McNemar delta so nothing silently regresses." />
 
         <div className="harden-flow" aria-hidden="true">
           <span className="hf-step"><span className="ic">①</span> Catch a failure</span>
