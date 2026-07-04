@@ -78,6 +78,20 @@
   --shadow: 0 2px 4px rgba(0, 0, 0, 0.30), 0 8px 20px rgba(0, 0, 0, 0.40);
   --shadow-lg: 0 10px 38px rgba(0, 0, 0, 0.50);
   --ring: 0 0 0 3px rgba(201, 100, 66, 0.30);
+
+  /* ===== shared card contract — the ONE surface look every boxed panel uses.
+     Every content card (Dashboard, Leaderboard, Executions, Compare, Optimize,
+     Hardening, Training Camp, Certifications, Settings, Methodology) reads from
+     these so radius/border/shadow stay identical page-to-page. Padding is left
+     to each context. Shadow tokens are theme-aware, so light inherits for free. */
+  --card-radius: var(--r-lg);
+  --card-border: 1px solid var(--border);
+  --card-shadow: var(--shadow-sm);
+  --card-bg: var(--panel);
+  --content-max: 1400px;      /* console reading width — keeps wide pages tidy */
+
+  /* readable ink on the amber "approve" button (theme-aware, see light block) */
+  --on-wait: #2a1d05;
 }
 
 /* ===== exact Noor warm-cream light variant ===== */
@@ -120,6 +134,9 @@ html[data-theme="light"] {
   --shadow: 0 2px 4px rgba(40, 33, 24, 0.04), 0 8px 20px rgba(40, 33, 24, 0.07);
   --shadow-lg: 0 10px 38px rgba(40, 33, 24, 0.12);
   --ring: 0 0 0 3px rgba(201, 100, 66, 0.18);
+
+  /* white ink reads better than dark-brown on the deeper light-mode amber */
+  --on-wait: #FFFFFF;
 }
 
 * { box-sizing: border-box; }
@@ -220,8 +237,8 @@ table.data th,
 
 .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-4); }
 .step {
-  border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--sp-5);
-  background: var(--panel); box-shadow: var(--shadow-sm);
+  border: var(--card-border); border-radius: var(--card-radius); padding: var(--sp-5);
+  background: var(--card-bg); box-shadow: var(--card-shadow);
 }
 .step .n { font: 500 22px/1 var(--font-serif); color: var(--accent); font-variant-numeric: tabular-nums; }
 .step h3 { font-size: var(--t-lg); margin: var(--sp-3) 0 6px; font-weight: 600; }
@@ -229,8 +246,8 @@ table.data th,
 
 .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--sp-4); }
 .feat {
-  border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--sp-6);
-  background: var(--panel); box-shadow: var(--shadow-sm);
+  border: var(--card-border); border-radius: var(--card-radius); padding: var(--sp-6);
+  background: var(--card-bg); box-shadow: var(--card-shadow);
   transition: border-color 0.15s, transform 0.15s;
 }
 .feat:hover { border-color: var(--accent-line); transform: translateY(-2px); }
@@ -373,7 +390,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
 button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 button.primary:hover { background: var(--accent-hover); }
 button.primary:disabled { opacity: 0.5; cursor: default; }
-button.approve { background: var(--wait); border-color: var(--wait); color: #2a1d05; font-weight: 700; }
+button.approve { background: var(--wait); border-color: var(--wait); color: var(--on-wait); font-weight: 700; }
 
 .status-chip {
   padding: 4px 11px; border-radius: var(--r-pill); font: 600 11.5px/1 var(--font-ui);
@@ -400,8 +417,8 @@ button.approve { background: var(--wait); border-color: var(--wait); color: #2a1
 .tpl-head p { color: var(--muted); font-size: var(--t-lg); margin: 0; }
 .tpl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .tpl-card {
-  text-align: left; border: 1px solid var(--border); border-radius: var(--r-lg);
-  background: var(--panel); padding: var(--sp-6); cursor: pointer; box-shadow: var(--shadow-sm);
+  text-align: left; border: var(--card-border); border-radius: var(--card-radius);
+  background: var(--card-bg); padding: var(--sp-6); cursor: pointer; box-shadow: var(--card-shadow);
   transition: border-color 0.15s, transform 0.15s; font-family: var(--font-ui);
 }
 .tpl-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
@@ -416,16 +433,16 @@ button.approve { background: var(--wait); border-color: var(--wait); color: #2a1
 /* step list */
 .flow-banner {
   display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-6);
-  padding: var(--sp-3) var(--sp-4); border: 1px solid var(--border); border-radius: var(--r);
-  background: var(--panel); box-shadow: var(--shadow-sm);
+  padding: var(--sp-4) var(--sp-5); border: var(--card-border); border-radius: var(--card-radius);
+  background: var(--card-bg); box-shadow: var(--card-shadow);
 }
 .flow-banner h2 { font: 500 var(--t-h3) / 1.2 var(--font-serif); margin: 0; }
 .flow-banner p { color: var(--muted); font-size: var(--t-sm); margin: 2px 0 0; }
 
 .steps-flow { position: relative; display: flex; flex-direction: column; gap: 0; }
 .step-card {
-  position: relative; border: 1px solid var(--border); border-radius: var(--r-lg);
-  background: var(--panel); box-shadow: var(--shadow-sm); margin-bottom: var(--sp-8);
+  position: relative; border: var(--card-border); border-radius: var(--card-radius);
+  background: var(--card-bg); box-shadow: var(--card-shadow); margin-bottom: var(--sp-8);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .step-card::after {        /* connector to the next step */
@@ -572,10 +589,31 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .react-flow__handle { width: 9px; height: 9px; background: var(--muted); border: 2px solid var(--bg); }
 .react-flow__handle:hover { background: var(--accent); }
 .react-flow { background: var(--bg); }
-.react-flow__minimap { background: var(--panel); }
+.react-flow__minimap { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-sm); }
+.react-flow__minimap-mask { fill: var(--bg); fill-opacity: 0.55; }
+/* theme the default ReactFlow zoom controls so they match the console in both
+   themes instead of rendering as stray white boxes */
+.react-flow__controls {
+  box-shadow: var(--shadow-sm); border-radius: var(--r-sm); overflow: hidden;
+  border: 1px solid var(--border);
+}
+.react-flow__controls-button {
+  background: var(--panel); border-bottom: 1px solid var(--border); color: var(--text);
+}
+.react-flow__controls-button:hover { background: var(--field); }
+.react-flow__controls-button svg { fill: var(--muted); }
+.react-flow__controls-button:hover svg { fill: var(--accent); }
 
 /* =============================== list pages =============================== */
-.list-page { padding: var(--sp-6) 30px; overflow-y: auto; flex: 1; }
+/* One shared console rhythm: generous top space, comfortable gutters, a deep
+   bottom runway so no page ends flush against the viewport, and a centred
+   reading width so content doesn't sprawl edge-to-edge on ultrawide displays.
+   1400px stays wide enough that dense leaderboard tables never cramp on a
+   laptop. Settings uses the same values so density reads identically. */
+.list-page {
+  padding: var(--sp-8) var(--sp-8) var(--sp-16); overflow-y: auto; flex: 1;
+}
+.list-page > * { max-width: var(--content-max); margin-inline: auto; }
 .list-page h2 { font: 500 var(--t-h2) / 1.15 var(--font-serif); margin: 0 0 6px; letter-spacing: -0.01em; }
 .list-page h3 { font: 500 var(--t-title) / 1.2 var(--font-serif); }
 table.data { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
@@ -592,8 +630,9 @@ pre.doc {
 /* readable JSON view — the structured alternative to a raw stringify dump */
 .node-outputs, .span-view { display: flex; flex-direction: column; gap: var(--sp-3); }
 .no-card {
-  background: var(--panel); border: 1px solid var(--border);
-  border-radius: var(--r); padding: var(--sp-3) var(--sp-4);
+  background: var(--card-bg); border: var(--card-border);
+  border-radius: var(--card-radius); box-shadow: var(--card-shadow);
+  padding: var(--sp-3) var(--sp-4);
 }
 .no-head {
   font-size: var(--t-sm); color: var(--accent); margin-bottom: var(--sp-2);
@@ -721,8 +760,8 @@ pre.doc {
   margin-bottom: var(--sp-5);
 }
 .dash-stat {
-  background: var(--panel); border: 1px solid var(--border);
-  border-radius: var(--r); padding: var(--sp-4);
+  background: var(--card-bg); border: var(--card-border);
+  border-radius: var(--card-radius); box-shadow: var(--card-shadow); padding: var(--sp-5);
 }
 .dash-stat-val { font: 500 28px/1 var(--font-serif); color: var(--text); }
 .dash-stat-lab {
@@ -733,8 +772,9 @@ pre.doc {
   display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4);
 }
 .dash-card {
-  background: var(--panel); border: 1px solid var(--border);
-  border-radius: var(--r); padding: var(--sp-4); min-width: 0;
+  background: var(--card-bg); border: var(--card-border);
+  border-radius: var(--card-radius); box-shadow: var(--card-shadow);
+  padding: var(--sp-5); min-width: 0;
 }
 .dash-card-head {
   display: flex; align-items: baseline; justify-content: space-between;
@@ -907,7 +947,7 @@ th.sortable:hover { color: var(--accent); }
 .page-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
 /* settings */
-.settings { flex: 1; overflow-y: auto; padding: 26px 30px 60px; }
+.settings { flex: 1; overflow-y: auto; padding: var(--sp-8) var(--sp-8) var(--sp-16); }
 .settings-body { display: flex; gap: 26px; align-items: flex-start; max-width: 940px; }
 .settings-nav { width: 184px; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; }
 .settings-nav button {
@@ -921,8 +961,8 @@ th.sortable:hover { color: var(--accent); }
 .settings-nav button.on .ic { color: var(--accent); }
 .settings-panel { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
 
-/* card */
-.card { border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--panel); box-shadow: var(--shadow-sm); }
+/* card — canonical boxed surface; every other card variant inherits this look */
+.card { border: var(--card-border); border-radius: var(--card-radius); background: var(--card-bg); box-shadow: var(--card-shadow); }
 .card-head { padding: 18px 20px 0; }
 .card-head h2 { font: 500 var(--t-title)/1.2 var(--font-serif); margin: 0; }
 .card-head p { color: var(--muted); font-size: var(--t-sm); margin: 6px 0 0; }
@@ -1068,9 +1108,9 @@ table.data tbody tr { transition: background 0.1s; }
   gap: 10px; margin: 10px 0 14px;
 }
 .dataset-card {
-  border: 1px solid var(--border); border-radius: var(--r); background: var(--panel);
-  padding: 12px 13px; display: flex; flex-direction: column; gap: 7px;
-  box-shadow: var(--shadow-xs);
+  border: var(--card-border); border-radius: var(--card-radius); background: var(--card-bg);
+  padding: 14px 15px; display: flex; flex-direction: column; gap: 7px;
+  box-shadow: var(--card-shadow);
 }
 .dataset-card .dc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .dataset-card .dc-name { font: 600 var(--t-base)/1.2 var(--font-ui); }
@@ -1290,8 +1330,8 @@ table.data tbody tr { transition: background 0.1s; }
 /* component metric cards */
 .metric-list { display: flex; flex-direction: column; gap: var(--sp-4); margin-top: var(--sp-2); }
 .metric-card {
-  border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--panel);
-  box-shadow: var(--shadow-sm); padding: var(--sp-5) var(--sp-6);
+  border: var(--card-border); border-radius: var(--card-radius); background: var(--card-bg);
+  box-shadow: var(--card-shadow); padding: var(--sp-5) var(--sp-6);
 }
 .metric-card .mc-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-4); }
 .metric-card h3 { font: 500 var(--t-title) / 1.25 var(--font-serif); margin: 0; }
@@ -1518,8 +1558,8 @@ table.data tbody tr { transition: background 0.1s; }
 .cert-dir-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--sp-4); margin: var(--sp-6) 0 var(--sp-12); }
 .cert-dir-card {
   display: flex; align-items: center; gap: var(--sp-4); text-decoration: none;
-  border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--panel);
-  box-shadow: var(--shadow-sm); padding: var(--sp-4) var(--sp-5);
+  border: var(--card-border); border-radius: var(--card-radius); background: var(--card-bg);
+  box-shadow: var(--card-shadow); padding: var(--sp-4) var(--sp-5);
   transition: border-color 0.15s, transform 0.15s;
 }
 .cert-dir-card:hover { border-color: var(--accent-line); transform: translateY(-2px); }
@@ -1533,13 +1573,6 @@ table.data tbody tr { transition: background 0.1s; }
 .cdc-status.ok { color: var(--ok); } .cdc-status.wait { color: var(--wait); } .cdc-status.fail { color: var(--fail); }
 .cdc-go { color: var(--faint); font-size: var(--t-lg); flex-shrink: 0; }
 .cert-dir-card:hover .cdc-go { color: var(--accent); }
-.cert-dir-empty {
-  text-align: center; padding: var(--sp-12) var(--sp-6); border: 1px dashed var(--border);
-  border-radius: var(--r-xl); background: var(--panel); margin: var(--sp-6) 0;
-}
-.cert-dir-empty .empty-ico { font-size: 38px; color: var(--faint); }
-.cert-dir-empty .empty-title { font: 500 var(--t-h3)/1.2 var(--font-serif); margin: 8px 0 6px; }
-.cert-dir-empty .empty-hint { color: var(--muted); max-width: 420px; margin: 0 auto var(--sp-5); line-height: 1.6; }
 
 /* --- in-app issue + embed ------------------------------------------------ */
 .cert-issue { display: flex; gap: var(--sp-4); align-items: flex-end; flex-wrap: wrap; }
@@ -1681,8 +1714,8 @@ table.data tbody tr { transition: background 0.1s; }
 /* --- connect your agent (reusable webhook connection) -------------------- */
 .connect-open { margin-top: var(--sp-4); display: inline-block; }
 .connect-panel {
-  margin-top: var(--sp-5); padding: var(--sp-5); border: 1px solid var(--border);
-  border-radius: var(--r-lg); background: var(--field);
+  margin-top: var(--sp-5); padding: var(--sp-5); border: var(--card-border);
+  border-radius: var(--card-radius); background: var(--field);
 }
 .connect-head { display: flex; align-items: center; justify-content: space-between; }
 .connect-head h4 { margin: 0; font: 600 var(--t-base)/1.2 var(--font-ui); color: var(--text); }
