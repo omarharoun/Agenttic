@@ -88,7 +88,7 @@
   --card-border: 1px solid var(--border);
   --card-shadow: var(--shadow-sm);
   --card-bg: var(--panel);
-  --content-max: 1200px;      /* console reading width — keeps wide pages tidy */
+  --content-max: 1400px;      /* console reading width — keeps wide pages tidy */
 
   /* readable ink on the amber "approve" button (theme-aware, see light block) */
   --on-wait: #2a1d05;
@@ -605,7 +605,15 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .react-flow__controls-button:hover svg { fill: var(--accent); }
 
 /* =============================== list pages =============================== */
-.list-page { padding: var(--sp-6) 30px; overflow-y: auto; flex: 1; }
+/* One shared console rhythm: generous top space, comfortable gutters, a deep
+   bottom runway so no page ends flush against the viewport, and a centred
+   reading width so content doesn't sprawl edge-to-edge on ultrawide displays.
+   1400px stays wide enough that dense leaderboard tables never cramp on a
+   laptop. Settings uses the same values so density reads identically. */
+.list-page {
+  padding: var(--sp-8) var(--sp-8) var(--sp-16); overflow-y: auto; flex: 1;
+}
+.list-page > * { max-width: var(--content-max); margin-inline: auto; }
 .list-page h2 { font: 500 var(--t-h2) / 1.15 var(--font-serif); margin: 0 0 6px; letter-spacing: -0.01em; }
 .list-page h3 { font: 500 var(--t-title) / 1.2 var(--font-serif); }
 table.data { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
@@ -939,7 +947,7 @@ th.sortable:hover { color: var(--accent); }
 .page-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
 /* settings */
-.settings { flex: 1; overflow-y: auto; padding: 26px 30px 60px; }
+.settings { flex: 1; overflow-y: auto; padding: var(--sp-8) var(--sp-8) var(--sp-16); }
 .settings-body { display: flex; gap: 26px; align-items: flex-start; max-width: 940px; }
 .settings-nav { width: 184px; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; }
 .settings-nav button {
