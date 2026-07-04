@@ -112,6 +112,20 @@ class ScorecardRow(SQLModel, table=True):
     payload: str
 
 
+class GamingReportRow(SQLModel, table=True):
+    """One Evaluation-Gaming Resistance (EGR) run, keyed by execution_id. Holds
+    the serialized GamingReport payload so ``/executions/{id}/gaming`` can serve
+    it. Feature: feat/egr (see src/ascore/gaming)."""
+    __table_args__ = (UniqueConstraint("tenant_id", "execution_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    execution_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    egr: float
+    created_at: datetime
+    payload: str
+
+
 class ABComparisonRow(SQLModel, table=True):
     """One A/B comparison run. ``status`` tracks the background run lifecycle
     (running -> succeeded/failed); ``payload`` holds the serialized
@@ -642,6 +656,41 @@ class Registry:
             if not row:
                 raise NotFoundError(f"scorecard {scorecard_id}")
             return Scorecard.model_validate_json(row.payload)
+
+    # -- gaming reports (feat/egr) -----------------------------------------------
+
+    def save_gaming_report(self, execution_id: str, report: dict) -> None:
+        """Persist an EGR GamingReport (as a dict) keyed by execution. Upserts so
+        a re-run of the same execution replaces the prior report."""
+        import json
+        with Session(self.engine) as s:
+            existing = s.exec(select(GamingReportRow).where(
+                GamingReportRow.tenant_id == self.tenant,
+                GamingReportRow.execution_id == execution_id)).first()
+            payload = json.dumps(report)
+            agent_id = str(report.get("agent_id", ""))
+            egr = float(report.get("egr", 0.0))
+            if existing:
+                existing.payload = payload
+                existing.agent_id = agent_id
+                existing.egr = egr
+                existing.created_at = _now()
+                s.add(existing)
+            else:
+                s.add(GamingReportRow(
+                    tenant_id=self.tenant, execution_id=execution_id,
+                    agent_id=agent_id, egr=egr, created_at=_now(), payload=payload))
+            s.commit()
+
+    def get_gaming_report(self, execution_id: str) -> dict:
+        import json
+        with Session(self.engine) as s:
+            row = s.exec(select(GamingReportRow).where(
+                GamingReportRow.tenant_id == self.tenant,
+                GamingReportRow.execution_id == execution_id)).first()
+            if not row:
+                raise NotFoundError(f"gaming report for execution {execution_id}")
+            return json.loads(row.payload)
 
     def scorecards_for(self, agent_id: str, suite_id: str | None = None
                        ) -> list[Scorecard]:

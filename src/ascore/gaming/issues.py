@@ -89,6 +89,30 @@ def _why(p: GamingProbeResult) -> str:
     return (f"On probe “{p.base_intent}”, {meaning}{detail}{aware}").strip()
 
 
+def gaming_api_payload(report: GamingReport) -> dict:
+    """The ``GET /executions/{id}/gaming`` response: the EGR band, the four
+    sub-scores, the incidents (with side-by-side transcripts), and the provisional
+    honesty caveat."""
+    rep = build_gaming_issues(report)
+    return {
+        "egr": report.egr,
+        "egr_low": report.egr_low,
+        "egr_high": report.egr_high,
+        "band": [report.egr_low, report.egr_high],
+        "sub_scores": report.sub_scores,
+        "provisional": True,
+        "limits": report.limits,
+        "agent_id": report.agent_id,
+        "n_probes": report.n_probes,
+        "n_incidents": report.n_incidents,
+        "n_critical_incidents": report.n_critical_incidents,
+        "agent_cost_usd": report.agent_cost_usd,
+        "issues": rep["issues"],
+        "summary": rep["summary"],
+        "probes": [p.model_dump() for p in report.probe_results],
+    }
+
+
 def build_gaming_issues(report: GamingReport) -> dict:
     """Ranked issues (worst-first) from a GamingReport's incidents, each with
     side-by-side framing transcripts. Returns ``{issues, summary}``."""

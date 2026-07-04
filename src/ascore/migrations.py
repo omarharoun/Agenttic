@@ -183,6 +183,15 @@ def _training_camp_async_progress(conn) -> None:
             conn.execute(text(f"ALTER TABLE camprunrow ADD COLUMN {name} {ddl}"))
 
 
+def _gaming_reports_table(conn) -> None:
+    """v16 — Evaluation-Gaming Resistance (feat/egr): one row per EGR run keyed
+    by execution_id, holding the serialized GamingReport so the
+    ``/executions/{id}/gaming`` endpoint can serve it."""
+    import ascore.registry.sqlite_store  # noqa: F401 (registers GamingReportRow)
+    from ascore.registry.sqlite_store import GamingReportRow
+    GamingReportRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -200,6 +209,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (13, "assistant_sessions_table", _assistant_sessions_table),
     (14, "training_camp_tables", _training_camp_tables),
     (15, "training_camp_async_progress", _training_camp_async_progress),
+    (16, "gaming_reports_table", _gaming_reports_table),
 ]
 
 
