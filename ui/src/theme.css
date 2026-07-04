@@ -390,7 +390,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
 button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 button.primary:hover { background: var(--accent-hover); }
 button.primary:disabled { opacity: 0.5; cursor: default; }
-button.approve { background: var(--wait); border-color: var(--wait); color: #2a1d05; font-weight: 700; }
+button.approve { background: var(--wait); border-color: var(--wait); color: var(--on-wait); font-weight: 700; }
 
 .status-chip {
   padding: 4px 11px; border-radius: var(--r-pill); font: 600 11.5px/1 var(--font-ui);
@@ -589,7 +589,20 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .react-flow__handle { width: 9px; height: 9px; background: var(--muted); border: 2px solid var(--bg); }
 .react-flow__handle:hover { background: var(--accent); }
 .react-flow { background: var(--bg); }
-.react-flow__minimap { background: var(--panel); }
+.react-flow__minimap { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-sm); }
+.react-flow__minimap-mask { fill: var(--bg); fill-opacity: 0.55; }
+/* theme the default ReactFlow zoom controls so they match the console in both
+   themes instead of rendering as stray white boxes */
+.react-flow__controls {
+  box-shadow: var(--shadow-sm); border-radius: var(--r-sm); overflow: hidden;
+  border: 1px solid var(--border);
+}
+.react-flow__controls-button {
+  background: var(--panel); border-bottom: 1px solid var(--border); color: var(--text);
+}
+.react-flow__controls-button:hover { background: var(--field); }
+.react-flow__controls-button svg { fill: var(--muted); }
+.react-flow__controls-button:hover svg { fill: var(--accent); }
 
 /* =============================== list pages =============================== */
 .list-page { padding: var(--sp-6) 30px; overflow-y: auto; flex: 1; }
