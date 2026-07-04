@@ -1565,13 +1565,6 @@ table.data tbody tr { transition: background 0.1s; }
 .cdc-status.ok { color: var(--ok); } .cdc-status.wait { color: var(--wait); } .cdc-status.fail { color: var(--fail); }
 .cdc-go { color: var(--faint); font-size: var(--t-lg); flex-shrink: 0; }
 .cert-dir-card:hover .cdc-go { color: var(--accent); }
-.cert-dir-empty {
-  text-align: center; padding: var(--sp-12) var(--sp-6); border: 1px dashed var(--border);
-  border-radius: var(--r-xl); background: var(--panel); margin: var(--sp-6) 0;
-}
-.cert-dir-empty .empty-ico { font-size: 38px; color: var(--faint); }
-.cert-dir-empty .empty-title { font: 500 var(--t-h3)/1.2 var(--font-serif); margin: 8px 0 6px; }
-.cert-dir-empty .empty-hint { color: var(--muted); max-width: 420px; margin: 0 auto var(--sp-5); line-height: 1.6; }
 
 /* --- in-app issue + embed ------------------------------------------------ */
 .cert-issue { display: flex; gap: var(--sp-4); align-items: flex-end; flex-wrap: wrap; }
