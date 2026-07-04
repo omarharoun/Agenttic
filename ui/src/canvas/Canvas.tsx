@@ -29,8 +29,12 @@ export function Canvas() {
     ? getComputedStyle(document.documentElement) : null;
   const themeMode = (document.documentElement.getAttribute("data-theme") as
     "dark" | "light") || "dark";
-  const dotColor = rootStyle?.getPropertyValue("--border-strong").trim() || "#38353a";
-  const bgColor = rootStyle?.getPropertyValue("--bg").trim() || "#000000";
+  // fall back to the resolved token per-theme (never a dark-only default) so the
+  // mesh stays correct even before styles are computed
+  const dotColor = rootStyle?.getPropertyValue("--border-strong").trim()
+    || (themeMode === "light" ? "#DBD6C8" : "#38353a");
+  const bgColor = rootStyle?.getPropertyValue("--bg").trim()
+    || (themeMode === "light" ? "#FAF9F5" : "#000000");
 
   const onNodesChange = useCallback(
     (changes: any) => {
