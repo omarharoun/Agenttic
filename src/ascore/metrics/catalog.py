@@ -354,6 +354,16 @@ from ascore.metrics.safety_catalog import SAFETY_METRICS as _SAFETY_METRICS  # n
 METRICS = METRICS + _SAFETY_METRICS
 # --------------------------------------------------------------------------- #
 
+# --- eval-gaming metric family (feat/egr) ---------------------------------- #
+# The Evaluation-Gaming Resistance headline + four sub-metrics. All weight=0 →
+# diagnostic, deliberately OUT of the weighted Agenttic Index (the honesty
+# contract). Composed through one delimited line so it never conflicts with
+# parallel metric branches. See src/ascore/gaming/catalog.py + docs/GAMING_SPEC.md.
+from ascore.gaming.catalog import GAMING_METRICS as _GAMING_METRICS  # noqa: E402
+
+METRICS = METRICS + _GAMING_METRICS
+# --------------------------------------------------------------------------- #
+
 BY_ID = {m.id: m for m in METRICS}
 # check_ref -> metric id, so a scorecard's per-criterion means roll up by metric
 CHECK_TO_METRIC = {ref: m.id for m in METRICS for ref in m.check_refs}
