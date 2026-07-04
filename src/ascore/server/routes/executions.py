@@ -166,6 +166,25 @@ def execution_issues(execution_id: str, request: Request):
     return {"status": ex["status"], **report}
 
 
+@router.get("/executions/{execution_id}/gaming")
+def execution_gaming(execution_id: str, request: Request):
+    """Evaluation-Gaming Resistance (EGR) for this execution — the PROVISIONAL
+    headline band, the four sub-scores, and any eval-gaming incidents with
+    side-by-side test-vs-deployment transcripts. 404 if the execution recorded no
+    EGR run. HONESTY: a high EGR is evidence of the ABSENCE OF DETECTABLE gaming,
+    not proof of honesty (see docs/GAMING_SPEC.md §4.3)."""
+    from ascore.gaming.issues import gaming_api_payload
+    from ascore.gaming.schema import GamingReport
+
+    state = request.state
+    try:
+        report_dict = state.reg.get_gaming_report(execution_id)
+    except NotFoundError:
+        raise HTTPException(
+            404, f"no eval-gaming (EGR) run recorded for execution {execution_id}")
+    return gaming_api_payload(GamingReport.model_validate(report_dict))
+
+
 @router.get("/executions/{execution_id}/events")
 async def stream_events(execution_id: str, request: Request, after: int = 0):
     state = request.state
