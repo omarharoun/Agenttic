@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { certIdOf, type DirectoryEntry, gradeColor, statusView } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
-import { Skeleton } from "../components/ui";
+import { EmptyState, Skeleton } from "../components/ui";
 
 /* ============================================================================
    Public Certified Agents directory — /certified (unauthenticated).
@@ -70,17 +70,11 @@ export function CertifiedDirectoryPage() {
             <Skeleton rows={6} />
           </div>
         ) : list.length === 0 ? (
-          <div className="cert-dir-empty">
-            <div className="empty-ico">◌</div>
-            <div className="empty-title">No certified agents yet</div>
-            <div className="empty-hint">
-              Be the first. Run your agent through the safety suites and publish a
-              grade the world can verify.
-            </div>
-            <div className="empty-action">
-              <Link className="btn-primary" to="/signup">Get your agent certified</Link>
-            </div>
-          </div>
+          <EmptyState
+            title="No certified agents yet"
+            hint="Be the first. Run your agent through the safety suites and publish a grade the world can verify."
+            action={<Link className="btn-primary" to="/signup">Get your agent certified</Link>}
+          />
         ) : (
           <div className="cert-dir-grid">
             {list.map((c) => {
