@@ -621,3 +621,21 @@ rubber-stamp indicator). An opt-in **interactive RL loop** (`ascore oversight
 watch`) surfaces borderline decisions to a human and adapts posture via a
 contextual bandit — auto-tightening, but only ever *proposing* loosening behind an
 explicit confirmation. All disabled by default.
+
+## Passport, receipts + verifier SDK (SPEC-2 M16–M17)
+
+Agents carry a short-lived, **Ed25519-signed passport** bound to their latest
+certification evidence (tier, dossier hash, policy hash, stage, autonomy). Keys
+are published as a JWKS at `/.well-known/agenttic-jwks.json` and rotate with
+overlap. Verification is split from status — a valid signature on a **revoked**
+passport is rejected.
+
+Every allowed action can carry a **signed receipt** (bound to a logged
+allow-decision; hashes not payloads); delegation chains resolve to the human
+principal. A relying party verifies passports/receipts **offline** with the
+Python or JS **verifier SDK** (no Agenttic account) — agents self-identify via the
+`Agent-Passport` header.
+
+An authenticated **risk feed** (`GET /api/feeds/risk/{agent_id}`) exposes
+aggregate posture for underwriters/procurement (no traces/PII), with **webhooks**
+on tier change, revocation, S1/S2 incidents, and stage demotion.

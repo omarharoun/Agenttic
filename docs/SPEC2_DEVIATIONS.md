@@ -83,3 +83,16 @@ new skips). Model note: the staged-ladder `agent_stage` is folded from append-on
 promotion records (the agent's promotion track), while cohorts assign caller groups
 to stages — a caller above the agent's promoted stage is stage-gate denied. All
 M14/M15 gate assertions green.
+
+## Ledger close — v0.6.0-passport (after M17) — FINAL
+Milestones M16–M17 complete, tagged `v0.6.0-passport`. Suite: **1499 passed, 4 skipped**
+(+24 since v0.5.0-staged, zero new skips, no test weakened). Crypto uses REAL Ed25519
+via the `cryptography` library (never hand-rolled); a fixed-seed golden fixture proves
+Python↔JS verifier parity; a grep test proves private keys never land in
+registry/logs/events/exports. All M16/M17 gate assertions green.
+
+FULL PROGRAM COMPLETE: P0 → M17, five release tags (v0.2.0-cert, v0.3.0-cards,
+v0.4.0-enforce, v0.5.0-staged, v0.6.0-passport) + the interactive-oversight-loop
+addendum. Baseline was 1347 passed / 4 skipped; final is 1499 / 4 (+152 tests, zero
+new skips). Every task committed individually; every gate + full suite green at each
+milestone. Deviations logged throughout; no playbook contract violated.
