@@ -126,23 +126,27 @@ class EnforcementGateway:
         fail_open = False
         preserved_ref = None
 
-        # Lane 1 — deterministic (T24.1)
+        from ascore.enforce.lanes import (
+            action_class_of, lane1_evaluate, lane2_evaluate,
+        )
+        action_class = action_class_of(tool_name, self.cfg)
+
+        # Lane 1 — deterministic (T24.1). Errors here apply the fail policy.
         try:
-            from ascore.enforce.lanes import lane1_evaluate, lane2_evaluate
-        except Exception:  # noqa: BLE001 — lanes not yet available
-            lane1_evaluate = lane2_evaluate = None
-
-        if lane1_evaluate is not None:
             l1 = lane1_evaluate(session, phase, tool_name, data, self.cfg)
-            if l1 is not None:
-                action, evidence, action_class, fail_open = (
-                    l1.action, l1.evidence, l1.action_class, l1.fail_open)
-                lane = "lane1"
+        except Exception:  # noqa: BLE001 — Lane-1 failure → per-class fail policy
+            l1 = self._fail_policy(action_class)
+        if l1 is not None:
+            action, evidence, fail_open = l1.action, l1.evidence, l1.fail_open
+            action_class = l1.action_class or action_class
+            lane = "lane1"
 
-        # Lane 2 — classifiers (T24.2), only if Lane 1 allowed
+        # Lane 2 — classifiers (T24.2), only if Lane 1 allowed. Hard timeout +
+        # per-class fail policy (write ⇒ closed, read ⇒ open + fail_open logged).
         transformed = None
-        if action == "allow" and lane2_evaluate is not None:
-            l2 = lane2_evaluate(session, phase, tool_name, data, self.cfg)
+        if action == "allow":
+            l2 = self._run_lane2_with_policy(
+                lane2_evaluate, session, phase, tool_name, data, action_class)
             if l2 is not None:
                 action, evidence, fail_open = l2.action, l2.evidence, l2.fail_open
                 action_class = l2.action_class or action_class
@@ -189,6 +193,37 @@ class EnforcementGateway:
                 pass
 
         return decision
+
+    def _fail_policy(self, action_class: str):
+        """Per-action-class fail policy: write ⇒ closed (deny); read ⇒ open
+        (allow) with fail_open logged. Unknown class defaults to closed (safe)."""
+        from ascore.enforce.lanes import LaneResult
+        policy = (self.cfg.get("enforcement", {}) or {}).get("fail_policy", {})
+        mode = policy.get(action_class, "closed")
+        if mode == "open":
+            return LaneResult(action="allow", action_class=action_class,
+                              fail_open=True, evidence=["fail_open:read"])
+        return LaneResult(action="deny", action_class=action_class,
+                          evidence=["fail_closed:write"])
+
+    def _run_lane2_with_policy(self, fn, session, phase, tool_name, data,
+                               action_class):
+        """Run Lane 2 under a hard timeout; on timeout/error apply the fail
+        policy for the action class."""
+        import concurrent.futures
+
+        lanes = self.cfg.get("enforcement", {}).get("lanes", {})
+        budget_ms = float(lanes.get("lane2_budget_ms", 80))
+        mult = float(lanes.get("ci_latency_multiplier", 5))
+        timeout_s = (budget_ms * mult) / 1000.0
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                fut = ex.submit(fn, session, phase, tool_name, data, self.cfg)
+                return fut.result(timeout=timeout_s)
+        except concurrent.futures.TimeoutError:
+            return self._fail_policy(action_class)
+        except Exception:  # noqa: BLE001 — classifier error → fail policy
+            return self._fail_policy(action_class)
 
     def _preserve_original(self, session, phase, tool_name, original) -> str:
         """Store the untouched original as an append-only 'preserved' event and
