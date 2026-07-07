@@ -1035,16 +1035,19 @@ def certify(
     out: str = typer.Option("", "--out", "-o", help="write the dossier JSON here"),
     url: str = typer.Option("", "--url", help="black-box agent endpoint (else reference)"),
     system_prompt: str = typer.Option("", "--system-prompt"),
+    renew: bool = typer.Option(False, "--renew", help="renew (chained dossier; $0 if unchanged)"),
     mock: bool = typer.Option(False, "--mock", help="offline deterministic provider (no API key)"),
     config: str = "config.yaml",
 ):
     """Certify an agent against a profile → an evidence dossier (Tier A/B/C).
 
     Provisional judge ⇒ tier ≤ B. Cache-aware: an identical agent config + profile
-    is served for $0. Use --mock for an offline, no-key run."""
+    is served for $0. --renew emits a chained dossier ($0 if unchanged). Use
+    --mock for an offline, no-key run."""
     import asyncio
 
     from ascore.certification.certify import certify as _certify
+    from ascore.certification.certify import renew as _renew
     from ascore.reporting.dossier_report import render_json
     cfg, reg = _ctx(config)
     variant = "blackbox" if url else "reference"
@@ -1052,9 +1055,10 @@ def certify(
     if mock:
         from ascore.certification.mock_provider import MockAnthropicClient
         client = MockAnthropicClient()
-    res = asyncio.run(_certify(cfg, reg, agent_id=agent, profile_id=profile,
-                               variant=variant, url=url, system_prompt=system_prompt,
-                               client=client, judge_client=client))
+    op = _renew if renew else _certify
+    res = asyncio.run(op(cfg, reg, agent_id=agent, profile_id=profile,
+                         variant=variant, url=url, system_prompt=system_prompt,
+                         client=client, judge_client=client))
     d = res.dossier
     tag = "[dim](cached, $0)[/]" if res.cached else f"[dim](${res.cost_usd:.4f})[/]"
     console.print(f"[bold]Dossier {d.dossier_id}[/] — Tier [bold]{d.tier_decision.tier}[/] "

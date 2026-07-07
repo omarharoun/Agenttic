@@ -41,6 +41,73 @@ class CertificationAborted(RuntimeError):
     later certify simply re-runs — the abort never poisons the cache."""
 
 
+async def renew(cfg: dict, reg, *, agent_id: str, profile_id: str,
+                adapter=None, variant: str = "reference", url: str = "",
+                system_prompt: str = "", client=None, judge_client=None,
+                caller_role: str | None = None, **kw) -> CertifyResult:
+    """Renew an agent's certification, producing a NEW dossier chained to the
+    previous one.
+
+    * **Unchanged agent** (same config hash) ⇒ **$0**: reuse the prior dossier's
+      evidence and tier verbatim, emit a fresh chained dossier (no re-run).
+    * **Changed agent** ⇒ re-certify (chained), and attach a **case-level diff**
+      vs the previous run (reusing the regression stats machinery).
+    """
+    from ascore.certification.dossier import assemble
+    from ascore.certification.profiles import load_profile, seed_profile
+    from ascore.schema.certification import Attestation
+
+    seed_profile(cfg, reg, profile_id)
+    profile = load_profile(cfg, reg, profile_id)
+    if adapter is None:
+        adapter = ops.build_adapter(cfg, variant=variant, agent_id=agent_id,
+                                    url=url, system_prompt=system_prompt,
+                                    client=client)
+    base_hash = adapter.config_hash()
+
+    prev = _find_reusable_dossier(reg, agent_id, base_hash, profile_id)
+    if prev is not None:
+        # unchanged agent → $0, identical tier, chained dossier
+        dossier = assemble(
+            reg, agent_id=agent_id, agent_config_hash=base_hash, profile=profile,
+            tier_decision=prev.tier_decision, coverage=prev.coverage,
+            attestation=Attestation(mode=attestation_mode_for(caller_role),
+                                    tenant=reg.tenant),
+            scorecard_refs=prev.scorecard_refs, calibration=prev.calibration,
+            elicitation=prev.elicitation, inspect_log_ref=prev.inspect_log_ref,
+            prev_dossier_sha256=prev.content_sha256, persist=True)
+        reg.append_dossier_event(dossier.dossier_id, agent_id, "renewed",
+                                 reason="unchanged agent — cache hit ($0)")
+        return CertifyResult(dossier=dossier, cost_usd=0.0, cached=True,
+                             elicitation=prev.elicitation or {})
+
+    # changed agent → full re-certify (force new dossier), then diff
+    res = await certify(cfg, reg, agent_id=agent_id, profile_id=profile_id,
+                        adapter=adapter, client=client, judge_client=judge_client,
+                        caller_role=caller_role, force=True, **kw)
+    reg.append_dossier_event(res.dossier.dossier_id, agent_id, "renewed",
+                             reason="agent changed — re-certified")
+    return res
+
+
+def case_level_diff(prev_run: dict, new_run: dict) -> dict:
+    """Case-level pass-rate diff between two canonical runs, reusing the paired
+    regression machinery (McNemar over per-case pass vectors when available)."""
+    from ascore.stats import mcnemar
+    p, n = prev_run.get("per_case", {}), new_run.get("per_case", {})
+    common = sorted(set(p) & set(n))
+    a = [1.0 if p[t] and all(p[t]) else 0.0 for t in common]
+    b = [1.0 if n[t] and all(n[t]) else 0.0 for t in common]
+    result = {"n_cases": len(common),
+              "regressions": [t for t, (x, y) in zip(common, zip(a, b)) if x > y],
+              "improvements": [t for t, (x, y) in zip(common, zip(a, b)) if y > x]}
+    if common:
+        mc = mcnemar([bool(x) for x in a], [bool(x) for x in b])
+        result["mcnemar"] = {"p_value": round(getattr(mc, "p_value", 1.0), 4),
+                             "favors": getattr(mc, "favors", "tie")}
+    return result
+
+
 def attestation_mode_for(caller_role: str | None) -> str:
     """Attestation is COMPUTED from the caller's principal, never selected
     (Hard Rule 13): an independent evaluator principal ⇒ ``independent``; the
