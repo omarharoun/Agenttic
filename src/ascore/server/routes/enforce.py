@@ -80,6 +80,16 @@ def enforce_events(request: Request, session_id: str | None = None,
     return request.state.reg.list_enforcement_events(session_id, agent_id)
 
 
+@router.get("/enforce/export")
+def enforce_export(request: Request, fmt: str = "json",
+                   session_id: str | None = None, agent_id: str | None = None):
+    from ascore.enforce.export import export_json, export_otel
+    if fmt == "otel":
+        return export_otel(request.state.reg, session_id, agent_id)
+    import json
+    return json.loads(export_json(request.state.reg, session_id, agent_id))
+
+
 @router.get("/enforce/dashboard")
 def enforce_dashboard(request: Request, agent_id: str | None = None,
                       session_id: str | None = None):
