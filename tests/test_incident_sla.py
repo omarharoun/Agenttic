@@ -37,7 +37,10 @@ def test_sla_absolute_across_dst():
                    opened_at=opened)
     m.open(inc)
     due = m.sla_due("i-dst", cfg)
-    assert due == opened + timedelta(hours=72)  # absolute, DST-immune
+    # SLA is an ABSOLUTE 72 real hours from the opening instant (DST-immune) —
+    # compare as instants in UTC, since persistence normalizes to a fixed offset.
+    assert due.astimezone(timezone.utc) == \
+        opened.astimezone(timezone.utc) + timedelta(hours=72)
 
 
 def test_closed_incident_not_overdue_and_listing():
