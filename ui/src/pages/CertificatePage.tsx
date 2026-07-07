@@ -205,7 +205,7 @@ function CertBody({ cert }: { cert: Certification }) {
           <div><dt>Issued</dt><dd>{pretty(cert.issued_at)}</dd></div>
           <div><dt>Expires</dt><dd>{cert.expires_at ? pretty(cert.expires_at) : "No expiry"}</dd></div>
           <div><dt>Methodology</dt><dd><Link to="/methodology">{cert.methodology_version || "current"} ↗</Link></dd></div>
-          <div><dt>Signature</dt><dd>{cert.signature_verified ? "Verified 🔏" : "Unverified ⚠"}</dd></div>
+          <div><dt>Signature</dt><dd>{cert.signature_verified ? "Verified ✓" : "Unverified ⚠"}</dd></div>
           <div className="cert-meta-wide">
             <dt>Pinned agent version</dt>
             <dd><code className="cert-hash">{cert.config_hash || "—"}</code></dd>

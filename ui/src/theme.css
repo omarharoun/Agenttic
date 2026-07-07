@@ -2309,3 +2309,13 @@ select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
 }
 
 .route-loading { min-height: 40vh; }
+
+/* Page-scoped link rules (.cert-page a, .meth a, …) outrank .btn-primary and
+   were painting primary-button text accent-on-accent. Anchor-qualified
+   selectors below match or beat them and are declared last, so ink wins. */
+a.btn-primary, button.btn-primary,
+.cert-page a.btn-primary, .cert-missing a.btn-primary,
+.meth a.btn-primary, .trust-card a.btn-primary,
+.auth-card .alt a.btn-primary, .cred-note a.btn-primary {
+  color: var(--accent-ink); text-decoration: none;
+}
