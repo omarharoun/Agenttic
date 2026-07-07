@@ -87,6 +87,30 @@ class IncidentManager:
             note=note)
         return self.get(incident_id)
 
+    def sla_due(self, incident_id: str, cfg: dict | None = None):
+        """The tz-aware SLA deadline for an incident."""
+        return self.get(incident_id).sla_due(cfg)
+
+    def is_overdue(self, incident_id: str, cfg: dict | None = None,
+                   now=None) -> bool:
+        return self.get(incident_id).is_overdue(cfg, now=now)
+
+    def list_with_sla(self, cfg: dict | None = None, agent_id: str | None = None,
+                      now=None) -> list[dict]:
+        """Every incident with its computed state + SLA deadline + overdue flag."""
+        out = []
+        for row in self.reg.list_incidents(agent_id):
+            inc = self.get(row["incident_id"])
+            out.append({
+                "incident_id": inc.incident_id, "agent_id": inc.agent_id,
+                "severity": inc.severity, "state": inc.state,
+                "origin": inc.origin,
+                "opened_at": inc.opened_at.isoformat(),
+                "sla_due": inc.sla_due(cfg).isoformat(),
+                "overdue": inc.is_overdue(cfg, now=now),
+            })
+        return out
+
     def add_note(self, incident_id: str, note: str, *, actor: str = "") -> None:
         """Append a note event without changing state."""
         record = self.reg.get_incident_record(incident_id)
