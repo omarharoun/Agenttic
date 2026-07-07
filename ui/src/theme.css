@@ -17,9 +17,10 @@
   --font-serif: "Marcellus", "Times New Roman", serif;
   --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
-  /* gilt ramp — hue-fixed, shared by both themes (legacy clay names) */
-  --clay-50: #F4EFE3; --clay-100: #E7DCC2; --clay-200: #D5C49B; --clay-300: #C6B07D;
-  --clay-400: #C2A878; --clay: #B0925C; --clay-600: #93794B; --clay-700: #75603B; --clay-800: #59492D;
+  /* gold ramp — true metallic gold, hue-fixed, shared by both themes
+     (legacy clay names kept so the component layer retunes for free) */
+  --clay-50: #FAF3DC; --clay-100: #F1E3B1; --clay-200: #E5CF7F; --clay-300: #DBBE55;
+  --clay-400: #D4AF37; --clay: #C9A227; --clay-600: #A98618; --clay-700: #8A6D14; --clay-800: #6B5510;
 
   /* radii — machined edges */
   --r-xs: 2px; --r-sm: 3px; --r-md: 5px; --r: 5px; --r-lg: 8px; --r-xl: 10px;
@@ -53,9 +54,9 @@
   /* accent — restrained gilt */
   --accent: var(--clay);
   --accent-hover: var(--clay-400);
-  --accent-soft: rgba(176, 146, 92, 0.14);
-  --accent-line: rgba(176, 146, 92, 0.45);
-  --accent-ink: var(--clay-50);
+  --accent-soft: rgba(201, 162, 39, 0.14);
+  --accent-line: rgba(201, 162, 39, 0.45);
+  --accent-ink: #201A08;   /* near-black ink ON gold — dial lettering */
 
   /* instrument metals + the one red */
   --metal: #C7CBD1;                       /* rhodium detail */
@@ -72,7 +73,7 @@
   --neutral: #A9AFB6; --neutral-soft: rgba(169, 175, 182, 0.12);
 
   /* dataviz — gilt, steel, rhodium, verdigris */
-  --viz-1: #B0925C; --viz-2: #7D96B8; --viz-3: #C7CBD1; --viz-4: #6FA07A; --viz-grid: #262B31;
+  --viz-1: #C9A227; --viz-2: #7D96B8; --viz-3: #C7CBD1; --viz-4: #6FA07A; --viz-grid: #262B31;
 
   /* category hues (advanced canvas) — mapped onto the family */
   --cat-input: var(--info);
@@ -89,7 +90,7 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.28);
   --shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.38);
   --shadow-lg: 0 14px 44px rgba(0, 0, 0, 0.50);
-  --ring: 0 0 0 3px rgba(176, 146, 92, 0.28);
+  --ring: 0 0 0 3px rgba(201, 162, 39, 0.30);
 
   /* ===== shared card contract — the ONE surface look every boxed panel uses.
      Radius/border/shadow stay identical page-to-page; padding is contextual. */
@@ -116,10 +117,10 @@ html[data-theme="light"] {
   --muted: #565B60;
   --faint: #82878C;
 
-  --accent: #8F7644;
-  --accent-hover: #75603B;
-  --accent-soft: #F2EDE0;
-  --accent-line: #D5C49B;
+  --accent: #8A6D14;
+  --accent-hover: #6B5510;
+  --accent-soft: #F6EFD6;
+  --accent-line: #E5CF7F;
   --accent-ink: #FFFFFF;
 
   --metal: #7E858D;
@@ -134,7 +135,7 @@ html[data-theme="light"] {
   --info: #3C5B82; --info-soft: #E5EBF2; --info-border: #C5D4E5;
   --neutral: #565B60; --neutral-soft: #E9EBE6;
 
-  --viz-1: #8F7644; --viz-2: #3C5B82; --viz-3: #6E747B; --viz-4: #45704F; --viz-grid: #E1E3DD;
+  --viz-1: #8A6D14; --viz-2: #3C5B82; --viz-3: #6E747B; --viz-4: #45704F; --viz-grid: #E1E3DD;
 
   --cat-input: #3C5B82;
   --cat-benchmark: #93701F;
@@ -148,7 +149,7 @@ html[data-theme="light"] {
   --shadow-sm: 0 1px 2px rgba(20, 24, 28, 0.04), 0 2px 6px rgba(20, 24, 28, 0.05);
   --shadow: 0 2px 4px rgba(20, 24, 28, 0.04), 0 8px 20px rgba(20, 24, 28, 0.07);
   --shadow-lg: 0 10px 38px rgba(20, 24, 28, 0.12);
-  --ring: 0 0 0 3px rgba(143, 118, 68, 0.22);
+  --ring: 0 0 0 3px rgba(138, 109, 20, 0.24);
 
   --on-wait: #FFFFFF;
 }

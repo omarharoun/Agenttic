@@ -87,7 +87,17 @@ export function CertificatePage() {
   useEffect(() => {
     let ok = true;
     api.publicCertification(id)
-      .then((c) => { if (ok) setCert({ ...c, scores: normalizeScores(c) }); })
+      .then((c) => {
+        if (!ok) return;
+        // The public API exposes the 0–100 figure as `composite_score`; the
+        // gauge + band read `index`. Map it here so the certificate shows the
+        // Agenttic Index dial whenever a numeric composite is present.
+        const index = typeof c?.index === "number" ? c.index
+          : typeof c?.composite_score === "number"
+            ? Math.round(c.composite_score <= 1 ? c.composite_score * 100 : c.composite_score)
+            : null;
+        setCert({ ...c, index, scores: normalizeScores(c) });
+      })
       .catch(() => { if (ok) setCert(null); });
     return () => { ok = false; };
   }, [id]);
