@@ -38,3 +38,12 @@ reasonable defaults. If an authoritative spec later surfaces, reconcile these:
   is deferred to the frontend build; the tested REST list endpoint (with computed
   state + SLA due clock + overdue flag) is the page's data contract. Live updates
   are available by polling `/api/incidents`.
+
+## Ledger close — v0.2.0-cert (after M8)
+Milestones P0 → M8 complete and tagged `v0.2.0-cert`. Test suite: **1401 passed,
+4 skipped** (baseline 1347/4 — grew by 54, zero new skips, no test weakened).
+All Gate assertions (P0–M7) green. The adaptations logged above are the complete
+set for this release; no contract was violated (specs absent → playbook bound).
+The certification track (schema, profiles, elicitation, tiers, dossiers,
+attestation, incidents, staleness, public verification) is shipped. Subsequent
+milestones (M9+) will append new entries below.
