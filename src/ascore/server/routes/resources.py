@@ -15,9 +15,18 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from ascore import ops
 from ascore.registry.sqlite_store import NotFoundError
 from ascore.schema.agent import DeclaredAgent
-from ascore.server.auth import require_operator
+from ascore.server.auth import is_evaluator, require_operator
 
 router = APIRouter(tags=["resources"])
+
+
+def _deny_raw_traces_for_evaluator(request: Request) -> None:
+    """Evaluator isolation (SPEC-2 T15.3): an independent evaluator reads only
+    certified-run artifacts (dossiers, scorecards), never the owner's raw agent
+    traces. Raw-trace access is hidden (404) — the trace simply doesn't exist for
+    them, so no owner execution detail leaks."""
+    if is_evaluator(getattr(request.state, "role", None)):
+        raise HTTPException(404, "not found")
 
 
 @router.get("/suites")
@@ -69,11 +78,13 @@ def get_rubric(rubric_id: str, request: Request, version: int | None = None):
 @router.get("/traces")
 def list_traces(request: Request, agent_id: str | None = None,
                 mode: str | None = None, limit: int = 50, offset: int = 0):
+    _deny_raw_traces_for_evaluator(request)
     return request.state.store.list_traces(agent_id, mode, limit, offset)
 
 
 @router.get("/traces/{trace_id}")
 def get_trace(trace_id: str, request: Request):
+    _deny_raw_traces_for_evaluator(request)
     try:
         return request.state.reg.get_trace(trace_id).model_dump(mode="json")
     except NotFoundError:
