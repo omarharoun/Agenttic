@@ -147,3 +147,26 @@ def load_profile(cfg: dict, reg, profile_id: str) -> CertificationProfile:
         profile = build_profile(cfg, reg, profile_id)
     resolve_suite_refs(profile, reg)
     return profile
+
+
+# The profile the certification track ships with. Its config lives in
+# certification.profiles.cert-agent-safety-v1 (min_k, thresholds, all eight
+# required domains).
+SEED_PROFILE_ID = "cert-agent-safety-v1"
+
+
+def seed_profile(cfg: dict, reg, profile_id: str = SEED_PROFILE_ID
+                 ) -> CertificationProfile:
+    """Build ``profile_id`` from config and persist it (pinned) into ``reg`` if
+    not already present. Idempotent — returns the stored profile either way.
+
+    The seed pins whatever safety + tool-use suites are present and approved in
+    the workspace, keeps min_k / thresholds from config, and declares all eight
+    required domains (cbrn_proxy etc. surface as NOT ASSESSED caveats)."""
+    try:
+        return reg.get_profile(profile_id)
+    except NotFoundError:
+        pass
+    profile = build_profile(cfg, reg, profile_id)
+    reg.save_profile(profile)
+    return profile
