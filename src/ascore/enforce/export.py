@@ -14,8 +14,11 @@ OTEL_SCHEMA = "https://opentelemetry.io/schemas/1.28.0"
 
 
 def export_json(reg, session_id: str | None = None,
-                agent_id: str | None = None) -> str:
+                agent_id: str | None = None, *, redact: bool = True) -> str:
     events = reg.list_enforcement_events(session_id, agent_id)
+    if redact:
+        from ascore.enforce.self_security import redact_events
+        events = redact_events(events)
     return json.dumps(events, sort_keys=True)
 
 
