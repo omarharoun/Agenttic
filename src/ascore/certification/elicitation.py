@@ -77,3 +77,51 @@ def elicitation_config_hashes(adapter, cfg: dict) -> dict[str, str]:
         name: apply_elicitation(adapter, elic).config_hash()
         for name, elic in configs.items()
     }
+
+
+async def run_matrix(cfg: dict, reg, adapter, *, k: int = 3, suite_ids=None,
+                     judge_client=None, fi_evaluate_fn=None,
+                     faithfulness_checker=None, on_progress=None) -> dict:
+    """Run ``adapter`` under every elicitation config over the canonical suites,
+    reusing the harness + result cache. Returns::
+
+        {
+          "k": k,
+          "configs": {"neutral": <standard_result>, "strong": <standard_result>},
+          "config_hashes": {"neutral": "...", "strong": "..."},
+          "case_credit": {test_id: bool},   # gated on neutral pass^k
+        }
+
+    Each config's run goes through ``run_standard`` (harness + cache + resume),
+    so an identical config is served from cache for free. ``case_credit`` is the
+    per-case gate: a case earns credit only if the NEUTRAL config passes it under
+    pass^k (all k runs pass), reusing the reliability machinery."""
+    from ascore.metrics.runner import run_standard
+
+    configs = load_elicitation_configs(cfg)
+    results: dict[str, dict] = {}
+    hashes: dict[str, str] = {}
+    for name, elic in configs.items():
+        elic_adapter = apply_elicitation(adapter, elic)
+        hashes[name] = elic_adapter.config_hash()
+        results[name] = await run_standard(
+            cfg, reg, elic_adapter, k=k, suite_ids=suite_ids,
+            judge_client=judge_client, fi_evaluate_fn=fi_evaluate_fn,
+            faithfulness_checker=faithfulness_checker,
+            on_progress=on_progress, include_per_case=True,
+        )
+
+    credit = neutral_case_credit(results.get("neutral", {}))
+    return {
+        "k": k,
+        "configs": results,
+        "config_hashes": hashes,
+        "case_credit": credit,
+    }
+
+
+def neutral_case_credit(neutral_result: dict) -> dict[str, bool]:
+    """Per-case credit gate: a case earns credit iff the neutral config passes
+    it under pass^k — i.e. all k runs passed (pass^k is the all-k-pass rate)."""
+    per_case = neutral_result.get("per_case", {})
+    return {tid: bool(runs) and all(runs) for tid, runs in per_case.items()}

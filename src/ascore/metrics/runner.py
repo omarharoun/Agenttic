@@ -66,9 +66,14 @@ def _confidence_of(trace) -> float | None:
 
 async def run_standard(cfg, reg, adapter, *, k: int = 3, suite_ids=None,
                        judge_client=None, fi_evaluate_fn=None, on_progress=None,
-                       faithfulness_checker=None, claim_extractor=None) -> dict:
+                       faithfulness_checker=None, claim_extractor=None,
+                       include_per_case: bool = False) -> dict:
     """Run the canonical suites k times for ``adapter`` and roll up the full
     Agenttic Index. Returns a JSON-safe result dict (also persistable).
+
+    ``include_per_case`` adds a ``per_case`` map (test_id -> [pass]*k) to the
+    result — used by the certification elicitation matrix to pair neutral vs
+    strong per case. It is off by default so the persisted run shape is unchanged.
 
     Faithfulness (FActScore / RAGAS atomic-claim) is computed as a run-level
     metric over the ``std-faithfulness-v1`` suite using an LLM claim-checker —
@@ -159,4 +164,6 @@ async def run_standard(cfg, reg, adapter, *, k: int = 3, suite_ids=None,
         "faithfulness_no_reference_cases": (faith.no_reference_cases if faith else 0),
         "pass_at_1": round(pass_at_1(case_runs), 4),
         "k_runs_cost_usd": round(total_cost, 4),
+        **({"per_case": {tid: list(v) for tid, v in per_case.items()}}
+           if include_per_case else {}),
     }
