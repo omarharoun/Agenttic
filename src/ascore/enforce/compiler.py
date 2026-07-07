@@ -163,9 +163,24 @@ def _materialize_rules(posture: _Posture) -> list[Rule]:
     return rules
 
 
+def _apply_oversight(posture: _Posture, cfg: dict, rubber_stamp: bool):
+    """Oversight-driven tightening (T30.2). Only acts when the config toggle
+    ``oversight.posture_toggle`` is on AND sustained rubber-stamping is detected —
+    then it TIGHTENS (second approver via write-approvals + raised sampling). With
+    the toggle off it is indicator-only (never changes posture). Absent/weak
+    oversight may tighten, never relax (Rule 26)."""
+    toggle = bool((cfg or {}).get("oversight", {}).get("posture_toggle", False))
+    if not (toggle and rubber_stamp):
+        return
+    origin = "oversight:rubber_stamp"
+    posture.require("write", origin)     # require approval (a second approver)
+    posture.sample(0.5, origin)          # raise lane-3 sampling
+
+
 def compile_policy(dossier, card, incidents, cfg: dict, *,
                    status: str | None = None,
-                   stage: str | None = None) -> EnforcementPolicy:
+                   stage: str | None = None,
+                   oversight_rubber_stamp: bool = False) -> EnforcementPolicy:
     """Compile an enforcement policy from certification evidence. ``dossier`` is
     a Dossier, ``card`` an AgentCard or None, ``incidents`` a list of incident
     dicts (with ``severity`` and computed ``state``), ``cfg`` the config.
@@ -185,6 +200,7 @@ def compile_policy(dossier, card, incidents, cfg: dict, *,
     _apply_autonomy(posture, autonomy_level, ccfg)
     _apply_staleness(posture, status, ccfg)
     _apply_incident_pressure(posture, open_s1_s2, ccfg)
+    _apply_oversight(posture, cfg, oversight_rubber_stamp)
     # stage dimension: higher-exposure stages are stricter-or-equal (tighten-only)
     if stage:
         from ascore.release.ladder import apply_stage_to_posture
@@ -226,7 +242,17 @@ def recompile_for_agent(reg, cfg: dict, agent_id: str, *, persist: bool = True):
         incidents = []
     status = compute_status(reg, dossier)
 
-    policy = compile_policy(dossier, card, incidents, cfg, status=status)
+    # oversight-driven tightening only when the toggle is on (indicator-only off)
+    rubber_stamp = False
+    if (cfg or {}).get("oversight", {}).get("posture_toggle", False):
+        try:
+            from ascore.oversight.analytics import approval_analytics
+            rubber_stamp = approval_analytics(reg, cfg, agent_id)["rubber_stamp"]
+        except Exception:  # noqa: BLE001
+            rubber_stamp = False
+
+    policy = compile_policy(dossier, card, incidents, cfg, status=status,
+                            oversight_rubber_stamp=rubber_stamp)
 
     if persist:
         try:
