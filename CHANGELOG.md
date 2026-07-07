@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.4.0-enforce — Enforcement gateway + policy compiler (M11–M13)
+
+An inline enforcement gateway compiled from certification evidence: hash-verified
+policy load → Lane 1 (deterministic) → Lane 2 (classifiers) → append-only log →
+Lane 3 (async judge). Nothing enforces without a logged decision.
+
+### Added
+- **Enforcement contracts** (`schema/enforcement.py`): Rule (closed action vocab),
+  EnforcementPolicy (content-hashed), Decision, single append-only
+  EnforcementEvent, ApprovalRequest. Registry migration v19.
+- **Gateway** (`enforce/gateway.py`): session model, hash-verified policy load
+  (refusal-on-mismatch is itself an event), pipeline, in-process + HTTP proxy
+  (`/api/enforce/*`) with identical event shape.
+- **Lane 1** — allow/deny lists, action classes, arg matchers, egress allowlist
+  (SSRF reuse), rate ceilings; deny evidence names rule + pattern.
+- **Lane 2** — injection screen on results (quarantine, original preserved) +
+  secret/PII redaction on outbound args. Per-class fail policy (write ⇒ closed,
+  read ⇒ open + fail_open logged) with hard timeout.
+- **Policy compiler** (`enforce/compiler.py`): pure, config-driven; tier posture,
+  caps → rule templates, autonomy scaling, staleness, incident pressure; every
+  rule's origin names its mapping; byte-identical determinism; tighten-only
+  overrides; recompilation on evidence change (certify + revoke wired).
+- **Lane 3 async judge**: sampled verdicts retro-tag, open incidents, enqueue
+  hardening, terminate/revoke — never inline. **Approvals**: park → resolve with
+  PAT identity → expiry follows class fail policy; resolutions become measured
+  card evidence. Hardening/checker-eval feedback loop.
+- **Dashboard** metrics + FP button, **event export** (JSON + OTel-GenAI),
+  **self-security** (chain-to-dossier provenance, secret redaction in exports,
+  tenancy isolation, no self-exemption), public "enforced under policy <hash>".
+
 ## v0.3.0-cards — Agent cards + autonomy (M9–M10)
 
 Provenance-tracked agent cards on the AI Agent Index taxonomy, autonomy

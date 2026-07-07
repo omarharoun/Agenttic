@@ -27,7 +27,7 @@ Cross-links and status for the platform spec surfaces.
 | M8 | Certification release | ✅ done | `v0.2.0-cert` |
 | M9 | Agent cards + autonomy | ✅ done | — |
 | M10 | Autonomy policy + Index interop | ✅ done | `v0.3.0-cards` |
-| M11–M13 | Enforcement gateway + compiler + lanes | ⏳ planned | `v0.4.0-enforce` |
+| M11–M13 | Enforcement gateway + compiler + lanes | ✅ done | `v0.4.0-enforce` |
 | M14–M15 | Staged release ladder + canaries/oversight | ⏳ planned | `v0.5.0-staged` |
 | M16–M17 | Passport + receipts + verifier SDK + risk feed | ⏳ planned | `v0.6.0-passport` |
 

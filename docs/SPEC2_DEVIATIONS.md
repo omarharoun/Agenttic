@@ -54,3 +54,12 @@ Milestones M9–M10 complete, tagged `v0.3.0-cards`. Suite: **1422 passed, 4 ski
 SUCCEEDED — network was available; dataset record 19592546 (CC BY 4.0, 30 agents)
 vendored to data/vendor/ai-agent-index/. Card field taxonomy generated deterministically
 from it. All M9/M10 gate assertions green.
+
+## Ledger update — v0.4.0-enforce (after M13)
+Milestones M11–M13 complete, tagged `v0.4.0-enforce`. Suite: **1449 passed, 4 skipped**
+(+27 since v0.3.0-cards, zero new skips). All M11/M12/M13 gate assertions green.
+Path notes: the enforcement dashboard + approvals UI are delivered as the tested
+REST contract (`/api/enforce/*`) rather than a bespoke SPA view (consistent with
+earlier UI-as-API-contract decisions); Lane-3 async judge uses a seeded RNG +
+injectable verdict_fn so the LLM judge is mocked in tests (real judge is out of
+band, never inline).
