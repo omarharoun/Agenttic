@@ -22,6 +22,39 @@ from ascore.server.keys import tenant_run_clients
 
 router = APIRouter(tags=["certification"])
 
+# Public, UNAUTHENTICATED dossier verification (SPEC-2 T18.1). Renders entirely
+# from the persisted dossier JSON: offline hash verification + computed status.
+public_router = APIRouter(tags=["certification-public"])
+
+
+def public_dossier_view(reg, dossier_id: str) -> dict:
+    """Build the public verification view from the dossier JSON alone: the
+    dossier, its offline hash-verification result, and its computed status.
+    Pure enough to snapshot with an otherwise-empty registry."""
+    from ascore.certification.dossier import verify_dossier
+    from ascore.certification.staleness import status, status_reasons
+    d = reg.get_dossier(dossier_id)
+    v = verify_dossier(d, reg)
+    return {
+        "dossier": d.model_dump(mode="json"),
+        "verified": v.ok,
+        "problems": v.problems,
+        "status": status(reg, d),
+        "status_reasons": status_reasons(reg, d),
+        "tier": d.tier_decision.tier,
+        "attestation": d.attestation.mode,
+    }
+
+
+@public_router.get("/certification/{dossier_id}")
+def public_certification(dossier_id: str, request: Request):
+    reg = request.app.state.reg
+    try:
+        view = public_dossier_view(reg, dossier_id)
+    except NotFoundError:
+        raise HTTPException(404, f"dossier {dossier_id} not found")
+    return view
+
 
 class CertifyRequest(BaseModel):
     agent_id: str = "ref-agent"
