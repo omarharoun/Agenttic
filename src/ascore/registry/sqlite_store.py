@@ -422,6 +422,31 @@ class IncidentEventRow(SQLModel, table=True):
     payload: str = "{}"
 
 
+class PassportRow(SQLModel, table=True):
+    """An issued passport (immutable). Revocation is an append-only
+    passport_event, never an UPDATE. Status is computed from the events."""
+    __tablename__ = "passports"
+    __table_args__ = (UniqueConstraint("tenant_id", "passport_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    passport_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    created_at: datetime
+    payload: str
+
+
+class PassportEventRow(SQLModel, table=True):
+    """Append-only passport lifecycle events (issued | revoked)."""
+    __tablename__ = "passport_events"
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    passport_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    event_type: str = Field(index=True)
+    reason: str = ""
+    created_at: datetime
+
+
 class CanarySetRow(SQLModel, table=True):
     """A per-agent versioned canary set (SPEC-2 M15). Append-only + versioned;
     rotation stores the next version. Trip history lives in enforcement_events."""
@@ -1368,6 +1393,65 @@ class Registry:
             return [{"incident_id": r.incident_id, "agent_id": r.agent_id,
                      "severity": r.severity, "origin": r.origin,
                      "opened_at": r.opened_at.isoformat()} for r in rows]
+
+    # -- passports (immutable) + append-only passport_events -------------------
+
+    def save_passport(self, passport) -> None:
+        with Session(self.engine) as s:
+            exists = s.exec(select(PassportRow).where(
+                PassportRow.tenant_id == self.tenant,
+                PassportRow.passport_id == passport.passport_id)).first()
+            if exists:
+                raise DuplicateVersionError(
+                    f"passport {passport.passport_id} already issued")
+            s.add(PassportRow(
+                tenant_id=self.tenant, passport_id=passport.passport_id,
+                agent_id=passport.claims.agent_id, created_at=_now(),
+                payload=passport.model_dump_json()))
+            s.add(PassportEventRow(
+                tenant_id=self.tenant, passport_id=passport.passport_id,
+                agent_id=passport.claims.agent_id, event_type="issued",
+                created_at=_now()))
+            s.commit()
+
+    def get_passport(self, passport_id: str):
+        from ascore.schema.passport import Passport
+        with Session(self.engine) as s:
+            row = s.exec(select(PassportRow).where(
+                PassportRow.tenant_id == self.tenant,
+                PassportRow.passport_id == passport_id)).first()
+            if not row:
+                raise NotFoundError(f"passport {passport_id}")
+            return Passport.model_validate_json(row.payload)
+
+    def append_passport_event(self, passport_id: str, agent_id: str,
+                              event_type: str, reason: str = "") -> None:
+        with Session(self.engine) as s:
+            s.add(PassportEventRow(
+                tenant_id=self.tenant, passport_id=passport_id, agent_id=agent_id,
+                event_type=event_type, reason=reason, created_at=_now()))
+            s.commit()
+
+    def passport_status(self, passport_id: str) -> str:
+        with Session(self.engine) as s:
+            rows = s.exec(select(PassportEventRow).where(
+                PassportEventRow.tenant_id == self.tenant,
+                PassportEventRow.passport_id == passport_id
+            ).order_by(PassportEventRow.id)).all()
+            status = "active"
+            for r in rows:
+                if r.event_type == "revoked":
+                    status = "revoked"
+            return status
+
+    def list_passports(self, agent_id: str | None = None) -> list[dict]:
+        with Session(self.engine) as s:
+            q = select(PassportRow).where(PassportRow.tenant_id == self.tenant)
+            if agent_id is not None:
+                q = q.where(PassportRow.agent_id == agent_id)
+            rows = s.exec(q.order_by(PassportRow.id)).all()
+            return [{"passport_id": r.passport_id, "agent_id": r.agent_id,
+                     "status": self.passport_status(r.passport_id)} for r in rows]
 
     # -- canary sets (append-only, versioned) ----------------------------------
 
