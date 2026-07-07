@@ -338,6 +338,90 @@ class EmailTokenRow(SQLModel, table=True):
     used_at: datetime | None = None
 
 
+# --------------------------------------------------------------------------- #
+# Certification track (SPEC-2 M4/M6). Profiles + dossiers + incidents, with
+# append-only *_events tables. State that changes over time (a dossier's
+# revocation, an incident's lifecycle) is modeled as events; current state is
+# computed by folding the event stream. These tables are never UPDATEd.
+# --------------------------------------------------------------------------- #
+
+
+class CertProfileRow(SQLModel, table=True):
+    """A pinned certification profile version. Append-only + versioned like
+    suites/rubrics."""
+    __tablename__ = "cert_profiles"
+    __table_args__ = (UniqueConstraint("tenant_id", "profile_id", "version"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    profile_id: str = Field(index=True)
+    version: int
+    created_at: datetime
+    payload: str
+
+
+class DossierRow(SQLModel, table=True):
+    """A certification dossier — immutable once written. Revocation/renewal are
+    recorded as dossier_events, never as an UPDATE to this row. Keyed by
+    dossier_id; ``content_sha256`` and ``prev_dossier_sha256`` carry the chain."""
+    __tablename__ = "dossiers"
+    __table_args__ = (UniqueConstraint("tenant_id", "dossier_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    dossier_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    profile_id: str = Field(index=True)
+    tier: str = ""
+    content_sha256: str = Field(default="", index=True)
+    prev_dossier_sha256: str | None = None
+    created_at: datetime
+    payload: str
+
+
+class DossierEventRow(SQLModel, table=True):
+    """Append-only dossier lifecycle events (created | revoked | renewed).
+    Current status is computed by folding these (staleness engine, M7)."""
+    __tablename__ = "dossier_events"
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    dossier_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    event_type: str = Field(index=True)  # created | revoked | renewed
+    reason: str = ""
+    created_at: datetime
+    payload: str = "{}"
+
+
+class IncidentRow(SQLModel, table=True):
+    """The opening record of an incident. Lifecycle state is *computed* from the
+    append-only incident_events stream (FSM in live/incidents.py); this row is
+    never UPDATEd."""
+    __tablename__ = "incidents"
+    __table_args__ = (UniqueConstraint("tenant_id", "incident_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    incident_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    severity: str = Field(index=True)
+    origin: str = "manual"
+    opened_at: datetime
+    payload: str
+
+
+class IncidentEventRow(SQLModel, table=True):
+    """Append-only incident lifecycle events (opened | triaged | reported |
+    closed | note). The current state is the fold of these events."""
+    __tablename__ = "incident_events"
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    incident_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    event_type: str = Field(index=True)  # opened | triaged | reported | closed | note
+    actor: str = ""
+    note: str = ""
+    created_at: datetime
+    payload: str = "{}"
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -997,6 +1081,184 @@ class Registry:
                 ReEvalRow.tenant_id == self.tenant,
                 ReEvalRow.agent_id == agent_id).order_by(ReEvalRow.id)).all()
             return [r.reason for r in rows]
+
+    # -- certification profiles (append-only, versioned) -----------------------
+
+    def save_profile(self, profile) -> None:
+        """Persist a certification profile version. Append-only: re-saving an
+        existing (profile_id, version) raises."""
+        with Session(self.engine) as s:
+            exists = s.exec(select(CertProfileRow).where(
+                CertProfileRow.tenant_id == self.tenant,
+                CertProfileRow.profile_id == profile.profile_id,
+                CertProfileRow.version == profile.version)).first()
+            if exists:
+                raise DuplicateVersionError(
+                    f"profile {profile.profile_id} v{profile.version} already stored")
+            s.add(CertProfileRow(
+                tenant_id=self.tenant, profile_id=profile.profile_id,
+                version=profile.version, created_at=_now(),
+                payload=profile.model_dump_json()))
+            s.commit()
+
+    def get_profile(self, profile_id: str, version: int | None = None):
+        from ascore.schema.certification import CertificationProfile
+        with Session(self.engine) as s:
+            q = select(CertProfileRow).where(
+                CertProfileRow.tenant_id == self.tenant,
+                CertProfileRow.profile_id == profile_id)
+            q = q.where(CertProfileRow.version == version) if version is not None \
+                else q.order_by(CertProfileRow.version.desc())
+            row = s.exec(q).first()
+            if not row:
+                raise NotFoundError(f"profile {profile_id} v{version}")
+            return CertificationProfile.model_validate_json(row.payload)
+
+    def list_profiles(self) -> list[dict]:
+        with Session(self.engine) as s:
+            rows = s.exec(select(CertProfileRow).where(
+                CertProfileRow.tenant_id == self.tenant
+            ).order_by(CertProfileRow.profile_id, CertProfileRow.version)).all()
+            return [{"profile_id": r.profile_id, "version": r.version} for r in rows]
+
+    # -- dossiers (immutable) + append-only dossier_events ---------------------
+
+    def save_dossier(self, dossier) -> None:
+        """Persist an immutable dossier and record a 'created' event."""
+        with Session(self.engine) as s:
+            exists = s.exec(select(DossierRow).where(
+                DossierRow.tenant_id == self.tenant,
+                DossierRow.dossier_id == dossier.dossier_id)).first()
+            if exists:
+                raise DuplicateVersionError(
+                    f"dossier {dossier.dossier_id} already stored (immutable)")
+            s.add(DossierRow(
+                tenant_id=self.tenant, dossier_id=dossier.dossier_id,
+                agent_id=dossier.agent_id, profile_id=dossier.profile_id,
+                tier=dossier.tier_decision.tier,
+                content_sha256=dossier.content_sha256 or "",
+                prev_dossier_sha256=dossier.prev_dossier_sha256,
+                created_at=_now(), payload=dossier.model_dump_json()))
+            s.add(DossierEventRow(
+                tenant_id=self.tenant, dossier_id=dossier.dossier_id,
+                agent_id=dossier.agent_id, event_type="created",
+                reason="", created_at=_now(), payload="{}"))
+            s.commit()
+
+    def get_dossier(self, dossier_id: str):
+        from ascore.schema.certification import Dossier
+        with Session(self.engine) as s:
+            row = s.exec(select(DossierRow).where(
+                DossierRow.tenant_id == self.tenant,
+                DossierRow.dossier_id == dossier_id)).first()
+            if not row:
+                raise NotFoundError(f"dossier {dossier_id}")
+            return Dossier.model_validate_json(row.payload)
+
+    def list_dossiers(self, agent_id: str | None = None) -> list[dict]:
+        with Session(self.engine) as s:
+            q = select(DossierRow).where(DossierRow.tenant_id == self.tenant)
+            if agent_id is not None:
+                q = q.where(DossierRow.agent_id == agent_id)
+            rows = s.exec(q.order_by(DossierRow.id)).all()
+            return [{"dossier_id": r.dossier_id, "agent_id": r.agent_id,
+                     "profile_id": r.profile_id, "tier": r.tier,
+                     "content_sha256": r.content_sha256,
+                     "prev_dossier_sha256": r.prev_dossier_sha256} for r in rows]
+
+    def latest_dossier(self, agent_id: str):
+        with Session(self.engine) as s:
+            row = s.exec(select(DossierRow).where(
+                DossierRow.tenant_id == self.tenant,
+                DossierRow.agent_id == agent_id
+            ).order_by(DossierRow.id.desc())).first()
+            if not row:
+                raise NotFoundError(f"no dossier for agent {agent_id}")
+            from ascore.schema.certification import Dossier
+            return Dossier.model_validate_json(row.payload)
+
+    def append_dossier_event(self, dossier_id: str, agent_id: str,
+                             event_type: str, reason: str = "",
+                             payload: str = "{}") -> None:
+        with Session(self.engine) as s:
+            s.add(DossierEventRow(
+                tenant_id=self.tenant, dossier_id=dossier_id, agent_id=agent_id,
+                event_type=event_type, reason=reason,
+                created_at=_now(), payload=payload))
+            s.commit()
+
+    def list_dossier_events(self, dossier_id: str) -> list[dict]:
+        with Session(self.engine) as s:
+            rows = s.exec(select(DossierEventRow).where(
+                DossierEventRow.tenant_id == self.tenant,
+                DossierEventRow.dossier_id == dossier_id
+            ).order_by(DossierEventRow.id)).all()
+            return [{"event_type": r.event_type, "reason": r.reason,
+                     "created_at": r.created_at.isoformat(),
+                     "payload": r.payload} for r in rows]
+
+    # -- incidents (opening record) + append-only incident_events --------------
+
+    def save_incident(self, incident) -> None:
+        """Persist an incident's opening record + its 'opened' event."""
+        with Session(self.engine) as s:
+            exists = s.exec(select(IncidentRow).where(
+                IncidentRow.tenant_id == self.tenant,
+                IncidentRow.incident_id == incident.incident_id)).first()
+            if exists:
+                raise DuplicateVersionError(
+                    f"incident {incident.incident_id} already opened")
+            s.add(IncidentRow(
+                tenant_id=self.tenant, incident_id=incident.incident_id,
+                agent_id=incident.agent_id, severity=incident.severity,
+                origin=incident.origin, opened_at=incident.opened_at,
+                payload=incident.model_dump_json()))
+            s.add(IncidentEventRow(
+                tenant_id=self.tenant, incident_id=incident.incident_id,
+                agent_id=incident.agent_id, event_type="opened",
+                actor=incident.origin, note=incident.title,
+                created_at=incident.opened_at, payload="{}"))
+            s.commit()
+
+    def get_incident_record(self, incident_id: str):
+        from ascore.schema.incident import Incident
+        with Session(self.engine) as s:
+            row = s.exec(select(IncidentRow).where(
+                IncidentRow.tenant_id == self.tenant,
+                IncidentRow.incident_id == incident_id)).first()
+            if not row:
+                raise NotFoundError(f"incident {incident_id}")
+            return Incident.model_validate_json(row.payload)
+
+    def append_incident_event(self, incident_id: str, agent_id: str,
+                              event_type: str, actor: str = "", note: str = "",
+                              payload: str = "{}") -> None:
+        with Session(self.engine) as s:
+            s.add(IncidentEventRow(
+                tenant_id=self.tenant, incident_id=incident_id, agent_id=agent_id,
+                event_type=event_type, actor=actor, note=note,
+                created_at=_now(), payload=payload))
+            s.commit()
+
+    def list_incident_events(self, incident_id: str) -> list[dict]:
+        with Session(self.engine) as s:
+            rows = s.exec(select(IncidentEventRow).where(
+                IncidentEventRow.tenant_id == self.tenant,
+                IncidentEventRow.incident_id == incident_id
+            ).order_by(IncidentEventRow.id)).all()
+            return [{"event_type": r.event_type, "actor": r.actor, "note": r.note,
+                     "created_at": r.created_at.isoformat(),
+                     "payload": r.payload} for r in rows]
+
+    def list_incidents(self, agent_id: str | None = None) -> list[dict]:
+        with Session(self.engine) as s:
+            q = select(IncidentRow).where(IncidentRow.tenant_id == self.tenant)
+            if agent_id is not None:
+                q = q.where(IncidentRow.agent_id == agent_id)
+            rows = s.exec(q.order_by(IncidentRow.id)).all()
+            return [{"incident_id": r.incident_id, "agent_id": r.agent_id,
+                     "severity": r.severity, "origin": r.origin,
+                     "opened_at": r.opened_at.isoformat()} for r in rows]
 
     # -- spend ledger (budget caps) --------------------------------------------
 

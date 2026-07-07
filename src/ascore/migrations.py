@@ -183,6 +183,20 @@ def _training_camp_async_progress(conn) -> None:
             conn.execute(text(f"ALTER TABLE camprunrow ADD COLUMN {name} {ddl}"))
 
 
+def _certification_track_tables(conn) -> None:
+    """v16 — SPEC-2 certification track: cert_profiles, dossiers +
+    dossier_events, incidents + incident_events. The *_events tables are
+    append-only; state is folded from them."""
+    import ascore.registry.sqlite_store  # noqa: F401
+    from ascore.registry.sqlite_store import (
+        CertProfileRow, DossierEventRow, DossierRow, IncidentEventRow,
+        IncidentRow,
+    )
+    for model in (CertProfileRow, DossierRow, DossierEventRow,
+                  IncidentRow, IncidentEventRow):
+        model.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -200,6 +214,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (13, "assistant_sessions_table", _assistant_sessions_table),
     (14, "training_camp_tables", _training_camp_tables),
     (15, "training_camp_async_progress", _training_camp_async_progress),
+    (16, "certification_track_tables", _certification_track_tables),
 ]
 
 
