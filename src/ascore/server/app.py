@@ -194,6 +194,9 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         app.state.bus = default.bus
         app.state.manager = default.manager
         app.state.clients = clients or {}
+        # app-level passport signing key (one JWKS for the deployment)
+        from ascore.passport.keys import PassportKeyManager
+        app.state.passport_keys = PassportKeyManager(cfg)
         # first-admin bootstrap (env-driven, idempotent)
         admin_email = os.environ.get("ASCORE_ADMIN_EMAIL")
         from ascore.secrets import get_secret
@@ -318,6 +321,11 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(dossiers_public)
     from ascore.server.routes.enforce import router as enforce_router
     app.include_router(enforce_router, prefix="/api", dependencies=protected)
+    # public JWKS + passport status (unauthenticated); issuer routes are protected
+    from ascore.server.routes.passport import public_router as passport_public
+    from ascore.server.routes.passport import router as passport_router
+    app.include_router(passport_public)
+    app.include_router(passport_router, prefix="/api", dependencies=protected)
     app.include_router(camp_router, prefix="/api", dependencies=protected)
 
     if UI_DIST.is_dir():
