@@ -937,6 +937,83 @@ def profiles_show(
             console.print(f"  • {cav}")
 
 
+cards_app = typer.Typer(help="Agent cards: autofill, show, annotate.")
+app.add_typer(cards_app, name="cards")
+
+
+@cards_app.command("autofill")
+def cards_autofill(
+    agent: str = typer.Argument(..., help="agent id"),
+    config: str = "config.yaml",
+):
+    """Autofill a card from Agenttic's own measured evidence and persist it."""
+    from ascore.cards.agency import detect_covered_agent
+    from ascore.cards.autofill import autofill_card
+    from ascore.cards.autonomy import classify_autonomy
+    cfg, reg = _ctx(config)
+    card = autofill_card(cfg, reg, agent)
+    aut = classify_autonomy(reg, agent, cfg)
+    fv = aut.to_field_value()
+    if fv is not None:
+        card.fields[fv.field_key] = fv
+    reg.save_card(card)
+    cov = detect_covered_agent(reg, agent, cfg)
+    console.print(f"[green]Autofilled[/] card for {agent} "
+                  f"({len(card.present_fields())} measured fields)")
+    console.print(f"  autonomy: {aut.level or 'None'} ({aut.label or '—'})")
+    console.print(f"  covered agent: {cov.covered}")
+
+
+@cards_app.command("show")
+def cards_show(
+    agent: str = typer.Argument(...),
+    config: str = "config.yaml",
+):
+    """Show the latest card for an agent (field key → status/provenance)."""
+    from ascore.registry.sqlite_store import NotFoundError
+    _cfg, reg = _ctx(config)
+    try:
+        card = reg.get_card(agent)
+    except NotFoundError:
+        raise typer.BadParameter(f"no card for {agent} (run `ascore cards autofill`)")
+    table = Table("field", "status", "provenance", "refs")
+    for key, fv in card.fields.items():
+        refs = ", ".join((fv.evidence_refs or fv.citations)[:2]) or "—"
+        table.add_row(key, fv.status, fv.provenance or "—", refs)
+    console.print(f"[bold]card {agent}[/] v{card.version} (source {card.source})")
+    console.print(table)
+
+
+@cards_app.command("annotate")
+def cards_annotate(
+    agent: str = typer.Argument(...),
+    field: str = typer.Option(..., "--field", "-f", help="field key"),
+    value: str = typer.Option(..., "--value", "-v"),
+    citation: list[str] = typer.Option([], "--citation", "-c",
+                                       help="citation URL (required for documented)"),
+    config: str = "config.yaml",
+):
+    """Add a DOCUMENTED field value. Rejects documented values without citations."""
+    from ascore.registry.sqlite_store import NotFoundError
+    from ascore.schema.agent_card import AgentCard, FieldValue
+    _cfg, reg = _ctx(config)
+    if not citation:
+        raise typer.BadParameter(
+            "documented values require at least one --citation (Hard Rule 16)")
+    try:
+        card = reg.get_card(agent)
+    except NotFoundError:
+        card = AgentCard(agent_id=agent, source="agenttic")
+    try:
+        fv = FieldValue.documented(field, value, list(citation))
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc))
+    card.fields[field] = fv
+    reg.save_card(card)
+    console.print(f"[green]Annotated[/] {agent}.{field} (documented, "
+                  f"{len(citation)} citation(s))")
+
+
 incidents_app = typer.Typer(help="Safety incidents: open, triage, report, close.")
 app.add_typer(incidents_app, name="incidents")
 
