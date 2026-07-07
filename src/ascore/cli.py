@@ -937,6 +937,96 @@ def profiles_show(
             console.print(f"  • {cav}")
 
 
+incidents_app = typer.Typer(help="Safety incidents: open, triage, report, close.")
+app.add_typer(incidents_app, name="incidents")
+
+
+@incidents_app.command("list")
+def incidents_list(
+    agent: str = typer.Option("", "--agent", "-a", help="filter by agent id"),
+    config: str = "config.yaml",
+):
+    """List incidents with computed state + SLA due clock + overdue flag."""
+    from ascore.live.incidents import IncidentManager
+    cfg, reg = _ctx(config)
+    rows = IncidentManager(reg).list_with_sla(cfg, agent_id=agent or None)
+    if not rows:
+        console.print("[dim]no incidents[/]")
+        return
+    table = Table("id", "agent", "sev", "state", "origin", "due", "overdue")
+    for r in rows:
+        overdue = "[red]OVERDUE[/]" if r["overdue"] else ""
+        table.add_row(r["incident_id"], r["agent_id"], r["severity"],
+                      r["state"], r["origin"], r["sla_due"][:16], overdue)
+    console.print(table)
+
+
+@incidents_app.command("open")
+def incidents_open(
+    agent: str = typer.Argument(..., help="agent id"),
+    severity: str = typer.Option("S3", "--severity", "-s", help="S1|S2|S3|S4"),
+    title: str = typer.Option("", "--title", "-t"),
+    summary: str = typer.Option("", "--summary"),
+    config: str = "config.yaml",
+):
+    """Manually open an incident."""
+    from ascore.live.incidents import open_manual
+    _cfg, reg = _ctx(config)
+    inc = open_manual(reg, agent_id=agent, severity=severity, title=title,
+                      summary=summary)
+    console.print(f"[green]Opened[/] {inc.incident_id} ({severity}) for {agent}")
+
+
+@incidents_app.command("report")
+def incidents_report(
+    incident_id: str = typer.Argument(...),
+    note: str = typer.Option("", "--note", "-n"),
+    config: str = "config.yaml",
+):
+    """Move an incident to the 'reported' state (must be triaged first)."""
+    from ascore.live.incidents import IllegalTransitionError, IncidentManager
+    _cfg, reg = _ctx(config)
+    m = IncidentManager(reg)
+    try:
+        if m.current_state(incident_id) == "open":
+            m.transition(incident_id, "triaged", actor="cli", note=note)
+        inc = m.transition(incident_id, "reported", actor="cli", note=note)
+    except IllegalTransitionError as exc:
+        raise typer.BadParameter(str(exc))
+    console.print(f"[green]Reported[/] {inc.incident_id} (state {inc.state})")
+
+
+@incidents_app.command("close")
+def incidents_close(
+    incident_id: str = typer.Argument(...),
+    note: str = typer.Option("", "--note", "-n"),
+    config: str = "config.yaml",
+):
+    """Close an incident."""
+    from ascore.live.incidents import IllegalTransitionError, IncidentManager
+    _cfg, reg = _ctx(config)
+    try:
+        inc = IncidentManager(reg).transition(incident_id, "closed",
+                                              actor="cli", note=note)
+    except IllegalTransitionError as exc:
+        raise typer.BadParameter(str(exc))
+    console.print(f"[green]Closed[/] {inc.incident_id}")
+
+
+@incidents_app.command("export")
+def incidents_export(
+    incident_id: str = typer.Argument(...),
+    config: str = "config.yaml",
+):
+    """Print the regulator-facing JSON export for an incident."""
+    import json as _json
+
+    from ascore.live.incidents import IncidentManager
+    cfg, reg = _ctx(config)
+    inc = IncidentManager(reg).get(incident_id)
+    console.print_json(_json.dumps(inc.export(cfg)))
+
+
 @app.command()
 def certify(
     agent: str = typer.Option("ref-agent", "--agent", "-a", help="agent id (label)"),
