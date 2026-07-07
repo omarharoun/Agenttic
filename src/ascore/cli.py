@@ -937,5 +937,86 @@ def profiles_show(
             console.print(f"  • {cav}")
 
 
+@app.command()
+def certify(
+    agent: str = typer.Option("ref-agent", "--agent", "-a", help="agent id (label)"),
+    profile: str = typer.Option("cert-agent-safety-v1", "--profile", "-p",
+                                help="certification profile id"),
+    out: str = typer.Option("", "--out", "-o", help="write the dossier JSON here"),
+    url: str = typer.Option("", "--url", help="black-box agent endpoint (else reference)"),
+    system_prompt: str = typer.Option("", "--system-prompt"),
+    mock: bool = typer.Option(False, "--mock", help="offline deterministic provider (no API key)"),
+    config: str = "config.yaml",
+):
+    """Certify an agent against a profile → an evidence dossier (Tier A/B/C).
+
+    Provisional judge ⇒ tier ≤ B. Cache-aware: an identical agent config + profile
+    is served for $0. Use --mock for an offline, no-key run."""
+    import asyncio
+
+    from ascore.certification.certify import certify as _certify
+    from ascore.reporting.dossier_report import render_json
+    cfg, reg = _ctx(config)
+    variant = "blackbox" if url else "reference"
+    client = None
+    if mock:
+        from ascore.certification.mock_provider import MockAnthropicClient
+        client = MockAnthropicClient()
+    res = asyncio.run(_certify(cfg, reg, agent_id=agent, profile_id=profile,
+                               variant=variant, url=url, system_prompt=system_prompt,
+                               client=client, judge_client=client))
+    d = res.dossier
+    tag = "[dim](cached, $0)[/]" if res.cached else f"[dim](${res.cost_usd:.4f})[/]"
+    console.print(f"[bold]Dossier {d.dossier_id}[/] — Tier [bold]{d.tier_decision.tier}[/] "
+                  f"{tag}")
+    if d.tier_decision.caps_applied:
+        console.print("[yellow]Caps:[/] " + ", ".join(d.tier_decision.caps_applied))
+    for c in d.coverage:
+        if c.status == "not_assessed":
+            console.print(f"  [red]NOT ASSESSED[/] {c.domain}")
+    if out:
+        Path(out).write_text(render_json(d))
+        console.print(f"[green]Wrote[/] {out}")
+
+
+dossier_app = typer.Typer(help="Certification dossiers: verify, inspect.")
+app.add_typer(dossier_app, name="dossier")
+
+
+@dossier_app.command("verify")
+def dossier_verify(
+    target: str = typer.Argument(..., help="dossier JSON path or dossier id"),
+    config: str = "config.yaml",
+):
+    """Recompute the dossier's hashes offline; names the offending ref on mismatch."""
+    from ascore.certification.dossier import verify
+    reg = None
+    try:
+        _cfg, reg = _ctx(config)
+    except Exception:  # noqa: BLE001 — verify works offline from a path alone
+        reg = None
+    res = verify(target, reg=reg)
+    if res.ok:
+        console.print(f"[green]VERIFIED[/] dossier {res.dossier_id} — Tier {res.tier}")
+    else:
+        console.print(f"[red]FAILED[/] dossier {res.dossier_id}")
+        for p in res.problems:
+            console.print(f"  • {p}")
+        raise typer.Exit(1)
+
+
+@dossier_app.command("show")
+def dossier_show(
+    dossier_id: str = typer.Argument(...),
+    fmt: str = typer.Option("md", "--format", "-f", help="md|json|inspect"),
+    config: str = "config.yaml",
+):
+    """Render a persisted dossier (md/json/inspect)."""
+    from ascore.reporting.dossier_report import render
+    _cfg, reg = _ctx(config)
+    d = reg.get_dossier(dossier_id)
+    console.print(render(d, fmt))
+
+
 if __name__ == "__main__":
     app()
