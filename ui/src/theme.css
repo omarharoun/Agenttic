@@ -1,29 +1,29 @@
 /* ============================================================================
-   Agenttic — Noor design system.
-   Editorial & warm: terracotta Clay accent, Newsreader serif for headlines &
-   money figures, Hanken Grotesk for UI, JetBrains Mono for IDs/code/amounts.
-   Dark is the DEFAULT (warm charcoal, ink-on-dark). A persisted [data-theme]
-   on <html> flips to the exact Noor warm-cream light variant.
-
-   The Clay ramp, viz palette, radii, spacing, shadow and type scales come
-   straight from the Noor handoff. Noor ships no dark tokens, so the dark
-   neutrals + dark status colours are derived from the same hue family so they
-   read as the same system.
+   Agenttic — Chronometer design system.
+   Precision-instrument aesthetic for an enterprise certification bureau:
+   engraved Marcellus capitals for hallmarks & headlines, Geist for UI,
+   Geist Mono (tabular) for serials, hashes and every numeral. Cool metallic
+   neutrals — obsidian case-back dark (default) and silvered-opaline light —
+   with a restrained gilt accent, rhodium secondary, and a single vermillion
+   "seconds hand" reserved for live status. Motion uses an escapement curve:
+   quick, precise, never bouncy.
+   NOTE: the gilt ramp intentionally keeps the legacy `--clay-*` names so the
+   whole component layer retunes without a rename sweep.
    ========================================================================== */
 
 :root {
   /* fonts */
-  --font-ui: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
-  --font-serif: "Newsreader", Georgia, "Times New Roman", serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+  --font-ui: "Geist", system-ui, -apple-system, sans-serif;
+  --font-serif: "Marcellus", "Times New Roman", serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
-  /* Clay ramp — hue-fixed, shared by both themes */
-  --clay-50: #FBF3EE; --clay-100: #F4E1D6; --clay-200: #E8C2AE; --clay-300: #DBA288;
-  --clay-400: #CF8164; --clay: #C96442; --clay-600: #B5512F; --clay-700: #97421F; --clay-800: #74331A;
+  /* gilt ramp — hue-fixed, shared by both themes (legacy clay names) */
+  --clay-50: #F4EFE3; --clay-100: #E7DCC2; --clay-200: #D5C49B; --clay-300: #C6B07D;
+  --clay-400: #C2A878; --clay: #B0925C; --clay-600: #93794B; --clay-700: #75603B; --clay-800: #59492D;
 
-  /* radii */
-  --r-xs: 6px; --r-sm: 8px; --r-md: 12px; --r: 12px; --r-lg: 16px; --r-xl: 20px;
-  --r-2xl: 28px; --r-pill: 999px;
+  /* radii — machined edges */
+  --r-xs: 2px; --r-sm: 3px; --r-md: 5px; --r: 5px; --r-lg: 8px; --r-xl: 10px;
+  --r-2xl: 14px; --r-pill: 999px;
 
   /* spacing (4px base) */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px;
@@ -32,35 +32,47 @@
   /* type scale */
   --t-display: 56px; --t-h1: 34px; --t-h2: 26px; --t-h3: 20px; --t-title: 17px;
   --t-lg: 16px; --t-base: 14px; --t-sm: 13px; --t-xs: 12px; --t-label: 11px;
+  --track-caps: 0.14em;
 
-  /* ===== true-black dark (default) — near-#000 base, warm ink for Noor character ===== */
-  --bg: #000000;
-  --panel: #0c0c0d;
-  --panel-2: #161617;
-  --field: #0a0a0b;
-  --border: #272528;
-  --border-soft: #1a1a1c;
-  --border-strong: #38353a;
-  --text: #f1ece4;
-  --muted: #9d958b;
-  --faint: #6e6a64;            /* ink-3, used for uppercase micro-labels */
+  /* motion — escapement */
+  --ease-escape: cubic-bezier(0.3, 0, 0.1, 1);
+  --dur-fast: 0.16s; --dur-gauge: 0.8s;
 
-  /* accent */
+  /* ===== obsidian case-back dark (default) ===== */
+  --bg: #08090B;
+  --panel: #0E1013;
+  --panel-2: #14171B;
+  --field: #0B0D10;
+  --border: #242930;
+  --border-soft: #171B20;
+  --border-strong: #363D46;
+  --text: #E8E9E4;             /* silvered ink */
+  --muted: #99A0A7;            /* rhodium */
+  --faint: #6A7077;            /* engraved micro-labels */
+
+  /* accent — restrained gilt */
   --accent: var(--clay);
   --accent-hover: var(--clay-400);
-  --accent-soft: rgba(201, 100, 66, 0.16);
-  --accent-line: rgba(201, 100, 66, 0.42);
+  --accent-soft: rgba(176, 146, 92, 0.14);
+  --accent-line: rgba(176, 146, 92, 0.45);
   --accent-ink: var(--clay-50);
 
-  /* status — dark-tuned lifts of the Noor semantic hues */
-  --ok: #7ba86a;   --ok-soft: rgba(123, 168, 106, 0.16);  --ok-border: rgba(123, 168, 106, 0.5);
-  --wait: #d6a24a; --wait-soft: rgba(214, 162, 74, 0.16); --wait-border: rgba(214, 162, 74, 0.5);
-  --fail: #e0715a; --fail-soft: rgba(224, 113, 90, 0.16); --fail-border: rgba(224, 113, 90, 0.5);
-  --info: #6f9bc0; --info-soft: rgba(111, 155, 192, 0.16); --info-border: rgba(111, 155, 192, 0.5);
-  --neutral: #b9ab9a; --neutral-soft: rgba(185, 171, 154, 0.14);
+  /* instrument metals + the one red */
+  --metal: #C7CBD1;                       /* rhodium detail */
+  --metal-soft: rgba(199, 203, 209, 0.14);
+  --live: #C8402F;                        /* seconds-hand vermillion — live/alert ONLY */
+  --live-soft: rgba(200, 64, 47, 0.16);
+  --hairline: rgba(232, 233, 228, 0.10);
 
-  /* dataviz */
-  --viz-1: #C96442; --viz-2: #5A7D8C; --viz-3: #C99A4A; --viz-4: #7FA56B; --viz-grid: #3b322b;
+  /* status — cool, dial-tuned */
+  --ok: #6FA07A;   --ok-soft: rgba(111, 160, 122, 0.14);  --ok-border: rgba(111, 160, 122, 0.5);
+  --wait: #C9A34E; --wait-soft: rgba(201, 163, 78, 0.14); --wait-border: rgba(201, 163, 78, 0.5);
+  --fail: #C8503F; --fail-soft: rgba(200, 80, 63, 0.14);  --fail-border: rgba(200, 80, 63, 0.5);
+  --info: #7D96B8; --info-soft: rgba(125, 150, 184, 0.14); --info-border: rgba(125, 150, 184, 0.5);
+  --neutral: #A9AFB6; --neutral-soft: rgba(169, 175, 182, 0.12);
+
+  /* dataviz — gilt, steel, rhodium, verdigris */
+  --viz-1: #B0925C; --viz-2: #7D96B8; --viz-3: #C7CBD1; --viz-4: #6FA07A; --viz-grid: #262B31;
 
   /* category hues (advanced canvas) — mapped onto the family */
   --cat-input: var(--info);
@@ -70,72 +82,74 @@
   --cat-delivery: var(--clay-400);
 
   /* inline code */
-  --code-bg: #161617; --code-text: var(--clay-200);
+  --code-bg: #14171B; --code-text: var(--clay-200);
 
-  /* shadows (dark) + focus ring */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.30);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28), 0 2px 6px rgba(0, 0, 0, 0.32);
-  --shadow: 0 2px 4px rgba(0, 0, 0, 0.30), 0 8px 20px rgba(0, 0, 0, 0.40);
-  --shadow-lg: 0 10px 38px rgba(0, 0, 0, 0.50);
-  --ring: 0 0 0 3px rgba(201, 100, 66, 0.30);
+  /* shadows (dark) + focus ring — crisp, machined */
+  --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.28);
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.38);
+  --shadow-lg: 0 14px 44px rgba(0, 0, 0, 0.50);
+  --ring: 0 0 0 3px rgba(176, 146, 92, 0.28);
 
   /* ===== shared card contract — the ONE surface look every boxed panel uses.
-     Every content card (Dashboard, Leaderboard, Executions, Compare, Optimize,
-     Hardening, Training Camp, Certifications, Settings, Methodology) reads from
-     these so radius/border/shadow stay identical page-to-page. Padding is left
-     to each context. Shadow tokens are theme-aware, so light inherits for free. */
+     Radius/border/shadow stay identical page-to-page; padding is contextual. */
   --card-radius: var(--r-lg);
   --card-border: 1px solid var(--border);
   --card-shadow: var(--shadow-sm);
   --card-bg: var(--panel);
-  --content-max: 1400px;      /* console reading width — keeps wide pages tidy */
+  --content-max: 1400px;
 
-  /* readable ink on the amber "approve" button (theme-aware, see light block) */
-  --on-wait: #2a1d05;
+  /* readable ink on the amber "approve" button (theme-aware) */
+  --on-wait: #241B07;
 }
 
-/* ===== exact Noor warm-cream light variant ===== */
+/* ===== silvered-opaline light variant ===== */
 html[data-theme="light"] {
-  --bg: #FAF9F5;             /* cream — app bg */
-  --panel: #FFFFFF;          /* surface */
-  --panel-2: #F4F2EA;        /* cream-deep */
-  --field: #FCFBF8;          /* surface-2 */
-  --border: #E9E5DA;
-  --border-soft: #EFEADC;    /* manilla */
-  --border-strong: #DBD6C8;
-  --text: #211F1A;           /* ink */
-  --muted: #57534A;          /* ink-2 */
-  --faint: #8B857A;          /* ink-3 */
+  --bg: #ECEDEA;
+  --panel: #F8F8F5;
+  --panel-2: #FFFFFF;
+  --field: #FFFFFF;
+  --border: #D8DAD4;
+  --border-soft: #E4E6E1;
+  --border-strong: #B8BBB4;
+  --text: #16181B;
+  --muted: #565B60;
+  --faint: #82878C;
 
-  --accent: var(--clay);
-  --accent-hover: var(--clay-600);
-  --accent-soft: #FBF3EE;    /* clay-50 */
-  --accent-line: #E8C2AE;    /* clay-200 */
+  --accent: #8F7644;
+  --accent-hover: #75603B;
+  --accent-soft: #F2EDE0;
+  --accent-line: #D5C49B;
   --accent-ink: #FFFFFF;
 
-  --ok: #3F6B34;   --ok-soft: #EAF1E1;   --ok-border: #CFE0BD;
-  --wait: #98671B; --wait-soft: #F7ECD6; --wait-border: #ECD8AE;
-  --fail: #A8412A; --fail-soft: #F6E1D9; --fail-border: #E8C4B5;
-  --info: #3E6486; --info-soft: #E5EDF3; --info-border: #C6D9E7;
-  --neutral: #5A5246; --neutral-soft: #EFEADD;
+  --metal: #7E858D;
+  --metal-soft: rgba(126, 133, 141, 0.14);
+  --live: #B23A2B;
+  --live-soft: rgba(178, 58, 43, 0.14);
+  --hairline: rgba(22, 24, 27, 0.10);
 
-  --viz-1: #C96442; --viz-2: #5A7D8C; --viz-3: #98671B; --viz-4: #6B8E5A; --viz-grid: #EBE7DC;
+  --ok: #45704F;   --ok-soft: #E7EFE6;   --ok-border: #C8DCC6;
+  --wait: #93701F; --wait-soft: #F4ECD8; --wait-border: #E4D3A3;
+  --fail: #A63E2E; --fail-soft: #F5E3DE; --fail-border: #E5C0B6;
+  --info: #3C5B82; --info-soft: #E5EBF2; --info-border: #C5D4E5;
+  --neutral: #565B60; --neutral-soft: #E9EBE6;
 
-  --cat-input: #3E6486;
-  --cat-benchmark: #98671B;
-  --cat-agents: #C96442;
-  --cat-evaluation: #6B8E5A;
-  --cat-delivery: #5A5246;
+  --viz-1: #8F7644; --viz-2: #3C5B82; --viz-3: #6E747B; --viz-4: #45704F; --viz-grid: #E1E3DD;
 
-  --code-bg: #F4F2EA; --code-text: #97421F;   /* cream-deep bg, clay-700 text */
+  --cat-input: #3C5B82;
+  --cat-benchmark: #93701F;
+  --cat-agents: #8F7644;
+  --cat-evaluation: #45704F;
+  --cat-delivery: #6E747B;
 
-  --shadow-xs: 0 1px 2px rgba(40, 33, 24, 0.05);
-  --shadow-sm: 0 1px 2px rgba(40, 33, 24, 0.04), 0 2px 6px rgba(40, 33, 24, 0.05);
-  --shadow: 0 2px 4px rgba(40, 33, 24, 0.04), 0 8px 20px rgba(40, 33, 24, 0.07);
-  --shadow-lg: 0 10px 38px rgba(40, 33, 24, 0.12);
-  --ring: 0 0 0 3px rgba(201, 100, 66, 0.18);
+  --code-bg: #EFF0EC; --code-text: #75603B;
 
-  /* white ink reads better than dark-brown on the deeper light-mode amber */
+  --shadow-xs: 0 1px 2px rgba(20, 24, 28, 0.05);
+  --shadow-sm: 0 1px 2px rgba(20, 24, 28, 0.04), 0 2px 6px rgba(20, 24, 28, 0.05);
+  --shadow: 0 2px 4px rgba(20, 24, 28, 0.04), 0 8px 20px rgba(20, 24, 28, 0.07);
+  --shadow-lg: 0 10px 38px rgba(20, 24, 28, 0.12);
+  --ring: 0 0 0 3px rgba(143, 118, 68, 0.22);
+
   --on-wait: #FFFFFF;
 }
 
@@ -2224,3 +2238,73 @@ table.data tbody tr { transition: background 0.1s; }
   max-width: 820px; margin: 0 auto; padding: 20px;
   background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--r-xl);
 }
+
+
+/* ========================= chronometer utilities ==========================
+   Precision details shared across the app: tabular numerals everywhere data
+   appears, serial-number treatment for hashes, hairline rules, the certificate
+   guilloché, the live "seconds hand", the gauge complication, escapement
+   motion, and a visible machined focus ring. */
+.mono, code, .serial, [data-num], .cert-dim-val, .cert-index, .gauge-num,
+table td.num, .lb-score { font-variant-numeric: tabular-nums lining-nums; }
+
+.serial {
+  font: 500 var(--t-xs)/1.4 var(--font-mono);
+  letter-spacing: 0.12em; color: var(--muted); word-break: break-all;
+}
+
+.rule-hair { border: 0; height: 1px; background: var(--hairline); }
+
+/* engraved dial texture — certificate hero only; sits behind content */
+.guilloche { position: relative; isolation: isolate; }
+.guilloche::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; opacity: 0.55;
+  background: repeating-radial-gradient(circle at 50% 24%,
+    transparent 0 6px, var(--hairline) 6px 6.75px);
+  -webkit-mask-image: radial-gradient(130% 95% at 50% 18%, #000 28%, transparent 74%);
+  mask-image: radial-gradient(130% 95% at 50% 18%, #000 28%, transparent 74%);
+  pointer-events: none;
+}
+
+/* the one red on any screen: live status */
+.tick-live {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--live); box-shadow: 0 0 0 3px var(--live-soft);
+  animation: tick-sweep 1.6s var(--ease-escape) infinite;
+}
+@keyframes tick-sweep { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+/* hallmark lettering — the seal reads as an engraved caseback */
+.seal text { font-family: var(--font-serif); letter-spacing: 0.24em; }
+.seal .seal-grade { letter-spacing: 0.02em; }
+
+/* gauge complication (power-reserve style) */
+.gauge { display: block; }
+.gauge-track { stroke: var(--hairline); }
+.gauge-sweep { transition: stroke-dashoffset var(--dur-gauge) var(--ease-escape); }
+.gauge-num { font: 600 30px/1 var(--font-mono); fill: var(--text); }
+.gauge-cap {
+  font: 600 8.5px/1 var(--font-ui); letter-spacing: var(--track-caps);
+  text-transform: uppercase; fill: var(--muted);
+}
+
+/* escapement easing on primary interactions + score bars */
+.btn-primary, .btn-ghost, .navlink {
+  transition: background var(--dur-fast) var(--ease-escape),
+              border-color var(--dur-fast) var(--ease-escape),
+              color var(--dur-fast) var(--ease-escape);
+}
+.cert-dim-fill { transition: width var(--dur-gauge) var(--ease-escape); }
+
+/* machined focus ring — keyboard users get the gilt */
+a:focus-visible, button:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+  outline: none; box-shadow: var(--ring); border-radius: var(--r-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gauge-sweep, .cert-dim-fill, .btn-primary, .btn-ghost, .navlink { transition: none; }
+  .tick-live { animation: none; }
+}
+
+.route-loading { min-height: 40vh; }
