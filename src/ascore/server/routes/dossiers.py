@@ -43,7 +43,18 @@ def public_dossier_view(reg, dossier_id: str) -> dict:
         "status_reasons": status_reasons(reg, d),
         "tier": d.tier_decision.tier,
         "attestation": d.attestation.mode,
+        "enforcement": _enforcement_view(reg, d.agent_id),
     }
+
+
+def _enforcement_view(reg, agent_id: str) -> dict | None:
+    """"Enforced under policy <hash>" + posture, from the compiled policy alone."""
+    from ascore.enforce.compiler import posture_summary
+    try:
+        policy = reg.latest_policy(agent_id)
+    except Exception:  # noqa: BLE001 — no policy yet
+        return None
+    return posture_summary(policy)
 
 
 @public_router.get("/certification/{dossier_id}")
@@ -78,6 +89,7 @@ def public_card_view(reg, agent_id: str) -> dict:
         "attribution": card.attribution,
         "completeness": card_completeness(card),
         "fields_by_provenance": by_provenance,
+        "enforcement": _enforcement_view(reg, card.agent_id),
     }
 
 

@@ -240,6 +240,20 @@ def recompile_for_agent(reg, cfg: dict, agent_id: str, *, persist: bool = True):
     return policy
 
 
+def posture_summary(policy) -> dict:
+    """A human/UI-friendly posture summary derived from the policy rules alone —
+    what a public verify/card page shows as "enforced under policy <hash>"."""
+    p = _posture_from_rules(policy.rules)
+    return {
+        "policy_hash": policy.content_hash,
+        "serve": p.serve,
+        "approvals": p.approvals,
+        "lane3_sampling": p.lane3_sampling,
+        "domain_sampling": {k: v[0] for k, v in p.domain_sampling.items()},
+        "compiled_from": list(policy.compiled_from),
+    }
+
+
 class OverrideError(ValueError):
     """A manual override attempted to LOOSEN a policy. The message names the
     exact diff (Hard Rule 20: manual changes only tighten)."""
