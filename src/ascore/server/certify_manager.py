@@ -22,7 +22,7 @@ class CertifyManager:
 
     def start(self, *, agent_id: str, profile_id: str, variant: str = "reference",
               url: str = "", system_prompt: str = "", clients: dict | None = None,
-              tenant: str = "default") -> str:
+              tenant: str = "default", role: str | None = None) -> str:
         job_id = uuid.uuid4().hex[:12]
         self._jobs[job_id] = {"job_id": job_id, "status": "running",
                               "agent_id": agent_id, "profile_id": profile_id,
@@ -30,13 +30,13 @@ class CertifyManager:
         run_clients = clients or self.clients
         task = asyncio.create_task(self._run(
             job_id, agent_id, profile_id, variant, url, system_prompt,
-            run_clients, tenant))
+            run_clients, tenant, role))
         self._tasks[job_id] = task
         task.add_done_callback(lambda _t: self._tasks.pop(job_id, None))
         return job_id
 
     async def _run(self, job_id, agent_id, profile_id, variant, url,
-                   system_prompt, clients, tenant):
+                   system_prompt, clients, tenant, role=None):
         from ascore.certification.certify import certify
         client = (clients or {}).get("agent")
         judge = (clients or {}).get("judge") or client
@@ -44,7 +44,8 @@ class CertifyManager:
             res = await certify(
                 self.cfg, self.reg, agent_id=agent_id, profile_id=profile_id,
                 variant=variant, url=url, system_prompt=system_prompt,
-                client=client, judge_client=judge, tenant=tenant)
+                client=client, judge_client=judge, tenant=tenant,
+                caller_role=role)
             self._jobs[job_id].update(
                 status="succeeded", dossier_id=res.dossier.dossier_id,
                 tier=res.dossier.tier_decision.tier, cached=res.cached,
