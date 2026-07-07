@@ -422,6 +422,20 @@ class IncidentEventRow(SQLModel, table=True):
     payload: str = "{}"
 
 
+class AgentCardRow(SQLModel, table=True):
+    """Append-only, versioned agent cards (SPEC-2 M9). Editing a card stores the
+    next version; ``source`` is agenttic | index_import."""
+    __tablename__ = "agent_cards"
+    __table_args__ = (UniqueConstraint("tenant_id", "agent_id", "version"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    agent_id: str = Field(index=True)
+    version: int
+    source: str = "agenttic"
+    created_at: datetime
+    payload: str
+
+
 class ElicitationSummaryRow(SQLModel, table=True):
     """Append-only elicitation-matrix summaries per agent (SPEC-2 T13.5). Each
     row is one certification-time neutral-vs-strong analysis."""
@@ -1272,6 +1286,53 @@ class Registry:
             return [{"incident_id": r.incident_id, "agent_id": r.agent_id,
                      "severity": r.severity, "origin": r.origin,
                      "opened_at": r.opened_at.isoformat()} for r in rows]
+
+    # -- agent cards (append-only, versioned) ----------------------------------
+
+    def save_card(self, card) -> None:
+        """Persist a card version. Append-only: re-saving (agent_id, version) raises.
+        If version is 1 and a card already exists, auto-bumps to the next version."""
+        with Session(self.engine) as s:
+            existing = s.exec(select(AgentCardRow).where(
+                AgentCardRow.tenant_id == self.tenant,
+                AgentCardRow.agent_id == card.agent_id
+            ).order_by(AgentCardRow.version.desc())).first()
+            version = card.version
+            if existing is not None and version <= existing.version:
+                version = existing.version + 1
+                card = card.model_copy(update={"version": version})
+            s.add(AgentCardRow(
+                tenant_id=self.tenant, agent_id=card.agent_id, version=version,
+                source=card.source, created_at=_now(),
+                payload=card.model_dump_json()))
+            s.commit()
+
+    def get_card(self, agent_id: str, version: int | None = None):
+        from ascore.schema.agent_card import AgentCard
+        with Session(self.engine) as s:
+            q = select(AgentCardRow).where(
+                AgentCardRow.tenant_id == self.tenant,
+                AgentCardRow.agent_id == agent_id)
+            q = q.where(AgentCardRow.version == version) if version is not None \
+                else q.order_by(AgentCardRow.version.desc())
+            row = s.exec(q).first()
+            if not row:
+                raise NotFoundError(f"card {agent_id} v{version}")
+            return AgentCard.model_validate_json(row.payload)
+
+    def list_cards(self, source: str | None = None) -> list[dict]:
+        with Session(self.engine) as s:
+            q = select(AgentCardRow).where(AgentCardRow.tenant_id == self.tenant)
+            if source is not None:
+                q = q.where(AgentCardRow.source == source)
+            rows = s.exec(q.order_by(AgentCardRow.agent_id,
+                                     AgentCardRow.version)).all()
+            # latest version per agent
+            latest: dict[str, dict] = {}
+            for r in rows:
+                latest[r.agent_id] = {"agent_id": r.agent_id, "version": r.version,
+                                      "source": r.source}
+            return list(latest.values())
 
     # -- elicitation summaries (append-only) -----------------------------------
 
