@@ -422,6 +422,19 @@ class IncidentEventRow(SQLModel, table=True):
     payload: str = "{}"
 
 
+class ElicitationSummaryRow(SQLModel, table=True):
+    """Append-only elicitation-matrix summaries per agent (SPEC-2 T13.5). Each
+    row is one certification-time neutral-vs-strong analysis."""
+    __tablename__ = "elicitation_summaries"
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    agent_id: str = Field(index=True)
+    inconsistent: bool = False
+    underpowered: bool = False
+    created_at: datetime
+    payload: str
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -1259,6 +1272,36 @@ class Registry:
             return [{"incident_id": r.incident_id, "agent_id": r.agent_id,
                      "severity": r.severity, "origin": r.origin,
                      "opened_at": r.opened_at.isoformat()} for r in rows]
+
+    # -- elicitation summaries (append-only) -----------------------------------
+
+    def save_elicitation_summary(self, agent_id: str, summary: dict) -> None:
+        import json as _json
+        with Session(self.engine) as s:
+            s.add(ElicitationSummaryRow(
+                tenant_id=self.tenant, agent_id=agent_id,
+                inconsistent=bool(summary.get("inconsistent")),
+                underpowered=bool(summary.get("underpowered")),
+                created_at=_now(), payload=_json.dumps(summary)))
+            s.commit()
+
+    def list_elicitation_summaries(self, agent_id: str) -> list[dict]:
+        import json as _json
+        with Session(self.engine) as s:
+            rows = s.exec(select(ElicitationSummaryRow).where(
+                ElicitationSummaryRow.tenant_id == self.tenant,
+                ElicitationSummaryRow.agent_id == agent_id
+            ).order_by(ElicitationSummaryRow.id)).all()
+            return [_json.loads(r.payload) for r in rows]
+
+    def latest_elicitation_summary(self, agent_id: str) -> dict | None:
+        import json as _json
+        with Session(self.engine) as s:
+            row = s.exec(select(ElicitationSummaryRow).where(
+                ElicitationSummaryRow.tenant_id == self.tenant,
+                ElicitationSummaryRow.agent_id == agent_id
+            ).order_by(ElicitationSummaryRow.id.desc())).first()
+            return _json.loads(row.payload) if row else None
 
     # -- spend ledger (budget caps) --------------------------------------------
 
