@@ -28,7 +28,8 @@ Cross-links and status for the platform spec surfaces.
 | M9 | Agent cards + autonomy | ✅ done | — |
 | M10 | Autonomy policy + Index interop | ✅ done | `v0.3.0-cards` |
 | M11–M13 | Enforcement gateway + compiler + lanes | ✅ done | `v0.4.0-enforce` |
-| M14–M15 | Staged release ladder + canaries/oversight | ⏳ planned | `v0.5.0-staged` |
+| M14–M15 | Staged release ladder + canaries/oversight | ✅ done | `v0.5.0-staged` |
+| — | Interactive RL oversight loop (opt-in addendum) | ✅ done | (in v0.5.0-staged) |
 | M16–M17 | Passport + receipts + verifier SDK + risk feed | ⏳ planned | `v0.6.0-passport` |
 
 ## Key entry points

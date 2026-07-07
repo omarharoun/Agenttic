@@ -75,3 +75,11 @@ auto-applies via the tighten_only override path; loosening is only ever a gated
 proposal). Lightweight Thompson contextual bandit (auditable, seeded-deterministic,
 every posture change traces to logged feedback event ids). Model is optional
 enrichment (config-swappable, BYO-key, mocked in tests). Suite: 1457 passed, 4 skipped.
+
+## Ledger update — v0.5.0-staged (after M15)
+Milestones M14–M15 complete + the interactive oversight loop addendum, tagged
+`v0.5.0-staged`. Suite: **1475 passed, 4 skipped** (+18 since v0.4.0-enforce, zero
+new skips). Model note: the staged-ladder `agent_stage` is folded from append-only
+promotion records (the agent's promotion track), while cohorts assign caller groups
+to stages — a caller above the agent's promoted stage is stage-gate denied. All
+M14/M15 gate assertions green.

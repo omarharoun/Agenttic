@@ -603,3 +603,21 @@ GET  /api/enforce/export?fmt=otel   # OTel-GenAI spans (no payloads)
 
 Public verify/card pages render "enforced under policy `<hash>`" + posture from
 the compiled policy alone.
+
+## Staged release + canaries + oversight (SPEC-2 M14–M15)
+
+Agents are served through an ordered **release ladder** (internal → vetted →
+limited → ga) with tightening posture per stage; access is stage-gated (callers
+above the agent's promoted stage are denied). Promotion is **evidence-gated**
+(observation hours, incident ceiling, tier) and one stage at a time — forced
+promotion is impossible; an open S1/S2 auto-demotes immediately.
+
+**Honeypot canaries** plant decoy tools + credentials + tripwire domains; any use
+is a confirmed positive → deny + S1 incident. Canaries never touch certification
+scorecards and rotate while preserving trip history.
+
+**Oversight analytics** track approval-process health (latency, approval rate,
+rubber-stamp indicator). An opt-in **interactive RL loop** (`ascore oversight
+watch`) surfaces borderline decisions to a human and adapts posture via a
+contextual bandit — auto-tightening, but only ever *proposing* loosening behind an
+explicit confirmation. All disabled by default.
