@@ -579,3 +579,27 @@ ascore cards annotate ref-agent -f company_accountability.developer -v Acme -c h
 Public: `GET /cards/{agent_id}` (renders from card JSON alone, provenance classes
 distinct), `GET /catalog`. Index import brings in the CC BY dataset as Catalog-only
 `documented` cards — never mixed into score leaderboards.
+
+## Enforcement gateway (SPEC-2 M11–M13)
+
+An inline gateway compiled from certification evidence guards an agent's tool
+calls: hash-verified policy load → **Lane 1** (deterministic allow/deny, action
+classes, egress SSRF, rate ceilings) → **Lane 2** (injection quarantine with the
+original preserved, secret/PII redaction) → append-only log → **Lane 3** (async
+judge — never inline). Write-class actions fail closed; every fail-open is logged.
+
+Policies are **compiled** (`enforce/compiler.py`) from the dossier tier + caps,
+the card's autonomy, incidents, and staleness — deterministic, tighten-only,
+recompiled on evidence change. Approvals park a call and resolve with PAT identity;
+resolutions become measured card evidence.
+
+```
+POST /api/enforce/sessions          # hash-verified policy load
+POST /api/enforce/tool-call         # → Decision (allow/deny/transform/require_approval)
+POST /api/enforce/tool-result       # injection screen → quarantine
+GET  /api/enforce/dashboard         # block rate, fail-open count, approval latency
+GET  /api/enforce/export?fmt=otel   # OTel-GenAI spans (no payloads)
+```
+
+Public verify/card pages render "enforced under policy `<hash>`" + posture from
+the compiled policy alone.
