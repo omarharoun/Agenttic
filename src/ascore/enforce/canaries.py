@@ -120,6 +120,44 @@ class CanaryManager:
         return [e for e in self.reg.list_enforcement_events(None, agent_id)
                 if e.get("kind") == "canary"]
 
+    # -- separation + rotation (T29.2) ---------------------------------------
+
+    def separation_ok(self, agent_id: str) -> tuple[bool, list[str]]:
+        """Invariant: canaries must NEVER perturb certification scorecards — no
+        decoy tool or planted credential may appear in any of the agent's
+        scorecards. Returns (ok, offending)."""
+        cs = self.reg.active_canary_set(agent_id)
+        if cs is None:
+            return True, []
+        markers = set(cs.decoy_tools) | set(cs.canary_credentials) \
+            | set(cs.tripwire_domains)
+        offending: list[str] = []
+        try:
+            scorecards = self.reg.scorecards_for(agent_id)
+        except Exception:  # noqa: BLE001
+            scorecards = []
+        for sc in scorecards:
+            blob = sc.model_dump_json()
+            for m in markers:
+                if m and m in blob:
+                    offending.append(f"scorecard:{sc.scorecard_id}~{m}")
+        return (not offending), offending
+
+    def needs_rotation(self, agent_id: str, *, now=None) -> bool:
+        """True if the active canary set is older than ``canaries.rotation_days``."""
+        from datetime import datetime, timezone
+        cs = self.reg.active_canary_set(agent_id)
+        if cs is None:
+            return False
+        days = float((self.cfg.get("canaries", {}) or {}).get("rotation_days", 30))
+        now = now or datetime.now(timezone.utc)
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        created = cs.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        return (now - created).total_seconds() / 86400.0 >= days
+
 
 def _flatten(data) -> str:
     if isinstance(data, str):
