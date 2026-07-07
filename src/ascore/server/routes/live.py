@@ -8,6 +8,7 @@ Live data stays in its own tables — nothing here touches batch scorecards.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 
 from ascore.live.monitor import LiveMonitor
 from ascore.registry.sqlite_store import NotFoundError
@@ -16,6 +17,68 @@ from ascore.scoring.judge import LLMJudge
 from ascore.server.auth import require_operator
 
 router = APIRouter(tags=["live"])
+
+
+# --------------------------------------------------------------------------- #
+# Incidents surface (SPEC-2 T16.6).
+# --------------------------------------------------------------------------- #
+
+
+class OpenIncidentRequest(BaseModel):
+    agent_id: str
+    severity: str = "S3"
+    title: str = ""
+    summary: str = ""
+    trace_refs: list[str] = []
+
+
+class TransitionRequest(BaseModel):
+    to_state: str  # triaged | reported | closed
+    note: str = ""
+
+
+@router.get("/incidents")
+def list_incidents(request: Request, agent_id: str | None = None):
+    """Incidents with computed state + SLA due clock + overdue flag."""
+    from ascore.live.incidents import IncidentManager
+    state = request.state
+    return IncidentManager(state.reg).list_with_sla(state.cfg, agent_id=agent_id)
+
+
+@router.post("/incidents", dependencies=[Depends(require_operator)])
+def open_incident(body: OpenIncidentRequest, request: Request):
+    from ascore.live.incidents import open_manual
+    inc = open_manual(request.state.reg, agent_id=body.agent_id,
+                      severity=body.severity, title=body.title,
+                      summary=body.summary, trace_refs=body.trace_refs)
+    return {"incident_id": inc.incident_id, "state": "open"}
+
+
+@router.post("/incidents/{incident_id}/transition",
+             dependencies=[Depends(require_operator)])
+def transition_incident(incident_id: str, body: TransitionRequest,
+                        request: Request):
+    from ascore.live.incidents import IllegalTransitionError, IncidentManager
+    try:
+        inc = IncidentManager(request.state.reg).transition(
+            incident_id, body.to_state,
+            actor=getattr(request.state, "user_email", "api") or "api",
+            note=body.note)
+    except IllegalTransitionError as exc:
+        raise HTTPException(409, str(exc))
+    except NotFoundError:
+        raise HTTPException(404, f"incident {incident_id} not found")
+    return {"incident_id": inc.incident_id, "state": inc.state}
+
+
+@router.get("/incidents/{incident_id}/export")
+def export_incident(incident_id: str, request: Request):
+    from ascore.live.incidents import IncidentManager
+    try:
+        inc = IncidentManager(request.state.reg).get(incident_id)
+    except NotFoundError:
+        raise HTTPException(404, f"incident {incident_id} not found")
+    return inc.export(request.state.cfg)
 
 
 def _monitor(state, rubric_id: str, agent_id: str) -> LiveMonitor:

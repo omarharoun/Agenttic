@@ -32,3 +32,9 @@ reasonable defaults. If an authoritative spec later surfaces, reconcile these:
   (`certification/domains.py`) keyed off `suite_id`, not as a stored field on each
   immutable `TestSuite`. suites are append-only; the mapping is a pure function of
   suite_id, so this is config-over-code with no schema migration.
+- T16.6: the incidents "surface" is delivered as the REST API contract
+  (`GET/POST /api/incidents`, `/transition`, `/export`) plus the `ascore incidents`
+  CLI (list/open/report/close/export). The bespoke SPA incidents *page* + SSE feed
+  is deferred to the frontend build; the tested REST list endpoint (with computed
+  state + SLA due clock + overdue flag) is the page's data contract. Live updates
+  are available by polling `/api/incidents`.
