@@ -147,6 +147,18 @@ def _find_prev(reg, dossier: Dossier) -> Dossier | None:
     return None
 
 
+def revoke(reg, dossier_id: str, *, reason: str, actor: str = "") -> None:
+    """Revoke a dossier by appending a ``revoked`` event (append-only). The
+    dossier remains readable forever; its computed status flips to ``revoked``
+    (Hard Rule 14: status is computed or revoked, never manually granted — there
+    is deliberately NO promotion path). A blank reason is rejected."""
+    if not (reason or "").strip():
+        raise ValueError("revocation requires a reason")
+    d = reg.get_dossier(dossier_id)  # raises NotFoundError if absent
+    reg.append_dossier_event(dossier_id, d.agent_id, "revoked",
+                             reason=reason.strip())
+
+
 def verify(target, reg=None) -> VerifyResult:
     """Verify a dossier given a filesystem path (offline, JSON alone), or a
     dossier id resolved against ``reg``."""
