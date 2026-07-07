@@ -45,7 +45,8 @@ async def start_certify(body: CertifyRequest, request: Request):
     job_id = state.certifier.start(
         agent_id=body.agent_id, profile_id=body.profile_id, variant=body.variant,
         url=body.url, system_prompt=body.system_prompt, clients=clients or None,
-        tenant=getattr(state, "tenant", "default"))
+        tenant=getattr(state, "tenant", "default"),
+        role=getattr(state, "role", None))
     return {"job_id": job_id}
 
 

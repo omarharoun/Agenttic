@@ -35,6 +35,14 @@ class CertifyResult:
     elicitation: dict
 
 
+def attestation_mode_for(caller_role: str | None) -> str:
+    """Attestation is COMPUTED from the caller's principal, never selected
+    (Hard Rule 13): an independent evaluator principal ⇒ ``independent``; the
+    agent's own owner ⇒ ``self_attested``."""
+    from ascore.server.auth import is_evaluator
+    return "independent" if is_evaluator(caller_role) else "self_attested"
+
+
 def judge_is_calibrated(cfg: dict) -> bool:
     """Whether the judge is calibrated for certification purposes.
 
@@ -72,7 +80,7 @@ async def certify(
     faithfulness_checker=None,
     fi_evaluate_fn=None,
     k: int | None = None,
-    attestation_mode: str = "self_attested",
+    caller_role: str | None = None,
     tenant: str | None = None,
     on_progress=None,
     force: bool = False,
@@ -140,7 +148,8 @@ async def certify(
     dossier = assemble(
         reg, agent_id=agent_id, agent_config_hash=base_hash, profile=profile,
         tier_decision=tier_decision, coverage=cov,
-        attestation=Attestation(mode=attestation_mode, tenant=tenant or reg.tenant),
+        attestation=Attestation(mode=attestation_mode_for(caller_role),
+                                tenant=tenant or reg.tenant),
         scorecard_refs=evidence_refs,
         calibration=calibration, elicitation=analysis.summary(),
         inspect_log_ref=f"inspect:{neutral.get('run_id')}",
