@@ -93,3 +93,26 @@ class Incident(BaseModel):
 
     def ref(self) -> str:
         return f"incident:{self.incident_id}"
+
+    def export(self, cfg: dict | None = None) -> dict:
+        """A stable, regulator-facing JSON view of the incident.
+
+        Field names map onto the disclosure fields common to CA SB 53, NY RAISE,
+        and the EU GPAI Code of Practice (see docs/INCIDENT_CROSSWALK.md). This is
+        an evidence export, not a compliance determination."""
+        return {
+            "schema": "agenttic-incident-export/v1",
+            "incident_id": self.incident_id,
+            "affected_system": self.agent_id,
+            "severity": self.severity,
+            "status": self.state,
+            "summary": self.summary,
+            "title": self.title,
+            "origin": self.origin,
+            "discovered_at": self.opened_at.astimezone(timezone.utc).isoformat(),
+            "sla_due_at": self.sla_due(cfg).astimezone(timezone.utc).isoformat(),
+            "closed_at": (self.closed_at.astimezone(timezone.utc).isoformat()
+                          if self.closed_at else None),
+            "evidence_refs": list(self.evidence_refs),
+            "trace_refs": list(self.trace_refs),
+        }
