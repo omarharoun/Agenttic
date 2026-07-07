@@ -35,6 +35,12 @@ class CertifyResult:
     elicitation: dict
 
 
+class CertificationAborted(RuntimeError):
+    """The certification was aborted mid-run (e.g. the caller's PAT was revoked).
+    No dossier is written and no reusable-dossier cache entry is created, so a
+    later certify simply re-runs — the abort never poisons the cache."""
+
+
 def attestation_mode_for(caller_role: str | None) -> str:
     """Attestation is COMPUTED from the caller's principal, never selected
     (Hard Rule 13): an independent evaluator principal ⇒ ``independent``; the
@@ -84,6 +90,7 @@ async def certify(
     tenant: str | None = None,
     on_progress=None,
     force: bool = False,
+    abort_check=None,
 ) -> CertifyResult:
     from ascore.metrics.redteam import seed_redteam_injection_suite
     from ascore.metrics.safety_suite import seed_safety_content_suite
@@ -108,6 +115,13 @@ async def certify(
             return CertifyResult(dossier=reused, cost_usd=0.0, cached=True,
                                  elicitation=reused.elicitation or {})
 
+    def _check_abort(stage: str):
+        if abort_check is not None and abort_check():
+            raise CertificationAborted(
+                f"certification of {agent_id} aborted at {stage} "
+                f"(caller no longer authorized) — no dossier written")
+
+    _check_abort("start")
     k = int(k or profile.min_k)
     suite_ids = [ref.suite_id for ref in profile.suite_refs]
     matrix = await run_matrix(
@@ -125,6 +139,10 @@ async def certify(
         cost += float(result.get("k_runs_cost_usd", 0.0))
     for ref in profile.suite_refs:
         evidence_refs.append(ref.ref())
+
+    # abort before any dossier is assembled/persisted — leaves no dossier and no
+    # reusable-dossier cache entry (the canonical runs are harmless evidence).
+    _check_abort("assembly")
 
     neutral = matrix["configs"].get("neutral", {})
     components = neutral.get("components", {})
