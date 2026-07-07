@@ -61,13 +61,14 @@ def safe_static_path(base: Path, rel: str) -> Path | None:
 class Workspace:
     """One tenant's isolated stack."""
     def __init__(self, cfg, reg, store, bus, manager, tenant, ab=None,
-                 optimizer=None, camp=None, certifier=None):
+                 optimizer=None, camp=None, certifier=None, enforcer=None):
         self.cfg, self.reg, self.store = cfg, reg, store
         self.bus, self.manager, self.tenant = bus, manager, tenant
         self.ab = ab
         self.optimizer = optimizer
         self.camp = camp
         self.certifier = certifier
+        self.enforcer = enforcer
 
 
 class Workspaces:
@@ -138,13 +139,16 @@ class Workspaces:
             optimizer = OptimizerManager(self.cfg, reg, clients=self.clients)
             from ascore.server.certify_manager import CertifyManager
             certifier = CertifyManager(self.cfg, reg, clients=self.clients)
+            from ascore.enforce.gateway import EnforcementGateway
+            enforcer = EnforcementGateway(reg, self.cfg)
             from ascore.camp.store import CampStore
             camp_tenant = tenant if self._postgres else "default"
             camp = CampStore(reg.engine, tenant=camp_tenant)
             camp.interrupt_orphans()  # sweep runs left 'running' by a dead process
             self._ws[tenant] = Workspace(self.cfg, reg, store, bus, manager,
                                          tenant, ab=ab, optimizer=optimizer,
-                                         camp=camp, certifier=certifier)
+                                         camp=camp, certifier=certifier,
+                                         enforcer=enforcer)
         return self._ws[tenant]
 
 
@@ -161,6 +165,7 @@ def bind_workspace(request: Request) -> None:
     request.state.optimizer = ws.optimizer
     request.state.camp = ws.camp
     request.state.certifier = ws.certifier
+    request.state.enforcer = ws.enforcer
     request.state.bus = ws.bus
     request.state.clients = request.app.state.clients
 
@@ -311,6 +316,8 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     # before the SPA catch-all so it isn't shadowed).
     from ascore.server.routes.dossiers import public_router as dossiers_public
     app.include_router(dossiers_public)
+    from ascore.server.routes.enforce import router as enforce_router
+    app.include_router(enforce_router, prefix="/api", dependencies=protected)
     app.include_router(camp_router, prefix="/api", dependencies=protected)
 
     if UI_DIST.is_dir():
