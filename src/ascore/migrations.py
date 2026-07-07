@@ -236,6 +236,14 @@ def _canary_sets_table(conn) -> None:
     CanarySetRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _passport_tables(conn) -> None:
+    """v22 — passports + append-only passport events (SPEC-2 M16)."""
+    import ascore.registry.sqlite_store  # noqa: F401
+    from ascore.registry.sqlite_store import PassportEventRow, PassportRow
+    for model in (PassportRow, PassportEventRow):
+        model.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -259,6 +267,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (19, "enforcement_tables", _enforcement_tables),
     (20, "release_ladder_tables", _release_ladder_tables),
     (21, "canary_sets_table", _canary_sets_table),
+    (22, "passport_tables", _passport_tables),
 ]
 
 
