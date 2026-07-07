@@ -179,6 +179,16 @@ class EnforcementGateway:
             actor="gateway", decision_ref=decision.ref(),
             policy_hash=session.policy.content_hash, detail=detail))
 
+        # every deny/quarantine feeds the hardening loop (T26.4): the blocked
+        # call is a hardening candidate (a future checker-eval seed).
+        if action in ("deny", "transform"):
+            self._log(EnforcementEvent(
+                event_id=_new_id("evt"), session_id=session_id,
+                agent_id=session.agent_id, kind="admin", actor="gateway",
+                decision_ref=decision.ref(),
+                detail={"hardening_candidate": tool_name, "action": action,
+                        "phase": phase, "evidence": evidence}))
+
         # terminal actions flip session state
         if action in ("terminate_session", "revoke_access"):
             session.active = False
