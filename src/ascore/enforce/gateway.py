@@ -108,14 +108,18 @@ class EnforcementGateway:
     # -- evaluation pipeline -------------------------------------------------
 
     def evaluate_tool_call(self, session_id: str, tool_name: str,
-                           args: dict | None = None) -> Decision:
-        return self._evaluate(session_id, "tool_call", tool_name, args or {})
+                           args: dict | None = None,
+                           caller_cohort: str | None = None) -> Decision:
+        return self._evaluate(session_id, "tool_call", tool_name, args or {},
+                              caller_cohort)
 
     def evaluate_tool_result(self, session_id: str, tool_name: str,
-                             result) -> Decision:
-        return self._evaluate(session_id, "tool_result", tool_name, result)
+                             result, caller_cohort: str | None = None) -> Decision:
+        return self._evaluate(session_id, "tool_result", tool_name, result,
+                              caller_cohort)
 
-    def _evaluate(self, session_id: str, phase: str, tool_name: str, data) -> Decision:
+    def _evaluate(self, session_id: str, phase: str, tool_name: str, data,
+                  caller_cohort: str | None = None) -> Decision:
         session = self.get_session(session_id)
         t0 = time.perf_counter()
 
@@ -125,6 +129,18 @@ class EnforcementGateway:
         action_class = "unknown"
         fail_open = False
         preserved_ref = None
+
+        # stage gate (T28.2): a caller above the agent's promoted stage is denied.
+        if caller_cohort is not None:
+            try:
+                from ascore.release.ladder import STAGE_GATE_ORIGIN, stage_gate
+                gate = stage_gate(self.reg, session.agent_id, caller_cohort)
+                if not gate.allowed:
+                    return self._gated_deny(session, phase, tool_name, t0, [
+                        f"{STAGE_GATE_ORIGIN}:cohort={caller_cohort}:"
+                        f"{gate.caller_stage}>{gate.agent_stage}"])
+            except Exception:  # noqa: BLE001 — release ladder optional
+                pass
 
         from ascore.enforce.lanes import (
             action_class_of, lane1_evaluate, lane2_evaluate,
@@ -202,6 +218,23 @@ class EnforcementGateway:
             except Exception:  # noqa: BLE001 — async is best-effort
                 pass
 
+        return decision
+
+    def _gated_deny(self, session, phase, tool_name, t0, evidence) -> Decision:
+        """A deterministic stage-gate deny, still fully logged (Hard Rule 19)."""
+        latency_ms = (time.perf_counter() - t0) * 1000.0
+        decision = Decision(
+            decision_id=_new_id("dec"), session_id=session.session_id,
+            agent_id=session.agent_id, phase=phase, action="deny", lane="lane1",
+            tool_name=tool_name, latency_ms=latency_ms, evidence=evidence,
+            policy_hash=session.policy.content_hash)
+        self._log(EnforcementEvent(
+            event_id=_new_id("evt"), session_id=session.session_id,
+            agent_id=session.agent_id, kind="decision", action="deny",
+            actor="gateway", decision_ref=decision.ref(),
+            policy_hash=session.policy.content_hash,
+            detail={"phase": phase, "tool": tool_name, "lane": "lane1",
+                    "evidence": evidence, "origin": "stage_gate"}))
         return decision
 
     def _fail_policy(self, action_class: str):
