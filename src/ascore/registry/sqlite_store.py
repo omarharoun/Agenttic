@@ -422,6 +422,49 @@ class IncidentEventRow(SQLModel, table=True):
     payload: str = "{}"
 
 
+class EnforcementPolicyRow(SQLModel, table=True):
+    """A compiled enforcement policy, keyed by content hash (append-only —
+    recompilation writes a new row; the newest per agent is active)."""
+    __tablename__ = "enforcement_policies"
+    __table_args__ = (UniqueConstraint("tenant_id", "policy_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    policy_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    content_hash: str = Field(index=True)
+    created_at: datetime
+    payload: str
+
+
+class EnforcementEventRow(SQLModel, table=True):
+    """The single append-only enforcement log — agent decisions AND admin/judge
+    actions. Never UPDATEd (Hard Rule 19)."""
+    __tablename__ = "enforcement_events"
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    session_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    kind: str = Field(index=True)
+    action: str = ""
+    created_at: datetime
+    payload: str
+
+
+class ApprovalRequestRow(SQLModel, table=True):
+    """A parked tool call awaiting human approval. ``state`` resolves
+    (pending → approved/denied/expired) like a run lifecycle."""
+    __tablename__ = "enforcement_approvals"
+    __table_args__ = (UniqueConstraint("tenant_id", "approval_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    approval_id: str = Field(index=True)
+    session_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    state: str = Field(default="pending", index=True)
+    created_at: datetime
+    payload: str
+
+
 class AgentCardRow(SQLModel, table=True):
     """Append-only, versioned agent cards (SPEC-2 M9). Editing a card stores the
     next version; ``source`` is agenttic | index_import."""
@@ -1286,6 +1329,110 @@ class Registry:
             return [{"incident_id": r.incident_id, "agent_id": r.agent_id,
                      "severity": r.severity, "origin": r.origin,
                      "opened_at": r.opened_at.isoformat()} for r in rows]
+
+    # -- enforcement policies / events / approvals -----------------------------
+
+    def save_policy(self, policy) -> None:
+        """Persist a compiled policy (append-only; newest per agent is active)."""
+        with Session(self.engine) as s:
+            exists = s.exec(select(EnforcementPolicyRow).where(
+                EnforcementPolicyRow.tenant_id == self.tenant,
+                EnforcementPolicyRow.policy_id == policy.policy_id)).first()
+            if exists:
+                raise DuplicateVersionError(
+                    f"policy {policy.policy_id} already stored")
+            s.add(EnforcementPolicyRow(
+                tenant_id=self.tenant, policy_id=policy.policy_id,
+                agent_id=policy.agent_id, content_hash=policy.content_hash,
+                created_at=_now(), payload=policy.model_dump_json()))
+            s.commit()
+
+    def get_policy(self, policy_id: str):
+        from ascore.schema.enforcement import EnforcementPolicy
+        with Session(self.engine) as s:
+            row = s.exec(select(EnforcementPolicyRow).where(
+                EnforcementPolicyRow.tenant_id == self.tenant,
+                EnforcementPolicyRow.policy_id == policy_id)).first()
+            if not row:
+                raise NotFoundError(f"policy {policy_id}")
+            return EnforcementPolicy.model_validate_json(row.payload)
+
+    def latest_policy(self, agent_id: str):
+        from ascore.schema.enforcement import EnforcementPolicy
+        with Session(self.engine) as s:
+            row = s.exec(select(EnforcementPolicyRow).where(
+                EnforcementPolicyRow.tenant_id == self.tenant,
+                EnforcementPolicyRow.agent_id == agent_id
+            ).order_by(EnforcementPolicyRow.id.desc())).first()
+            if not row:
+                raise NotFoundError(f"no policy for agent {agent_id}")
+            return EnforcementPolicy.model_validate_json(row.payload)
+
+    def append_enforcement_event(self, event) -> None:
+        with Session(self.engine) as s:
+            s.add(EnforcementEventRow(
+                tenant_id=self.tenant, session_id=event.session_id,
+                agent_id=event.agent_id, kind=event.kind,
+                action=event.action or "", created_at=_now(),
+                payload=event.model_dump_json()))
+            s.commit()
+
+    def list_enforcement_events(self, session_id: str | None = None,
+                                agent_id: str | None = None) -> list[dict]:
+        import json as _json
+        with Session(self.engine) as s:
+            q = select(EnforcementEventRow).where(
+                EnforcementEventRow.tenant_id == self.tenant)
+            if session_id is not None:
+                q = q.where(EnforcementEventRow.session_id == session_id)
+            if agent_id is not None:
+                q = q.where(EnforcementEventRow.agent_id == agent_id)
+            rows = s.exec(q.order_by(EnforcementEventRow.id)).all()
+            return [_json.loads(r.payload) for r in rows]
+
+    def save_approval(self, approval) -> None:
+        with Session(self.engine) as s:
+            s.add(ApprovalRequestRow(
+                tenant_id=self.tenant, approval_id=approval.approval_id,
+                session_id=approval.session_id, agent_id=approval.agent_id,
+                state=approval.state, created_at=_now(),
+                payload=approval.model_dump_json()))
+            s.commit()
+
+    def get_approval(self, approval_id: str):
+        from ascore.schema.enforcement import ApprovalRequest
+        with Session(self.engine) as s:
+            row = s.exec(select(ApprovalRequestRow).where(
+                ApprovalRequestRow.tenant_id == self.tenant,
+                ApprovalRequestRow.approval_id == approval_id)).first()
+            if not row:
+                raise NotFoundError(f"approval {approval_id}")
+            return ApprovalRequest.model_validate_json(row.payload)
+
+    def update_approval(self, approval) -> None:
+        with Session(self.engine) as s:
+            row = s.exec(select(ApprovalRequestRow).where(
+                ApprovalRequestRow.tenant_id == self.tenant,
+                ApprovalRequestRow.approval_id == approval.approval_id)).first()
+            if not row:
+                raise NotFoundError(f"approval {approval.approval_id}")
+            row.state = approval.state
+            row.payload = approval.model_dump_json()
+            s.add(row)
+            s.commit()
+
+    def list_approvals(self, session_id: str | None = None,
+                       state: str | None = None) -> list[dict]:
+        import json as _json
+        with Session(self.engine) as s:
+            q = select(ApprovalRequestRow).where(
+                ApprovalRequestRow.tenant_id == self.tenant)
+            if session_id is not None:
+                q = q.where(ApprovalRequestRow.session_id == session_id)
+            if state is not None:
+                q = q.where(ApprovalRequestRow.state == state)
+            rows = s.exec(q.order_by(ApprovalRequestRow.id)).all()
+            return [_json.loads(r.payload) for r in rows]
 
     # -- agent cards (append-only, versioned) ----------------------------------
 
