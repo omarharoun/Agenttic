@@ -873,5 +873,69 @@ def standard_metrics():
     console.print(table)
 
 
+# --------------------------------------------------------------------------- #
+# Certification profiles (SPEC-2 M4).
+# --------------------------------------------------------------------------- #
+profiles_app = typer.Typer(help="Certification profiles: pinned recipes + coverage.")
+app.add_typer(profiles_app, name="profiles")
+
+
+@profiles_app.command("list")
+def profiles_list(config: str = "config.yaml"):
+    """List certification profiles defined in config."""
+    cfg, _reg = _ctx(config)
+    defined = (cfg.get("certification", {}) or {}).get("profiles", {})
+    if not defined:
+        console.print("[dim]no certification profiles defined[/]")
+        return
+    table = Table("profile", "min_k", "required domains")
+    for pid, pc in defined.items():
+        table.add_row(pid, str(pc.get("min_k", 1)),
+                      str(len(pc.get("required_domains", []))))
+    console.print(table)
+
+
+@profiles_app.command("show")
+def profiles_show(
+    profile_id: str = typer.Argument(..., help="profile id, e.g. cert-agent-safety-v1"),
+    config: str = "config.yaml",
+):
+    """Show a profile's composition, pinned suite versions, coverage table, and
+    caveats (verbatim). Seeds the standard suites first so coverage is populated."""
+    from ascore.certification.coverage import coverage
+    from ascore.certification.profiles import ProfileError, build_profile
+    from ascore.metrics.standard_suites import seed_standard_suites
+    cfg, reg = _ctx(config)
+    seed_standard_suites(reg)
+    try:
+        profile = build_profile(cfg, reg, profile_id)
+    except ProfileError as exc:
+        raise typer.BadParameter(str(exc))
+
+    console.print(f"[bold]{profile.profile_id}[/] v{profile.version}  "
+                  f"(min_k={profile.min_k})")
+    if profile.thresholds:
+        console.print("[dim]thresholds:[/] " + ", ".join(
+            f"{k}={v}" for k, v in profile.thresholds.items()))
+
+    pins = Table("pinned suite", "version")
+    for ref in profile.suite_refs:
+        pins.add_row(ref.suite_id, str(ref.version))
+    console.print(pins)
+
+    cov = Table("domain", "coverage", "evidence")
+    for c in coverage(reg, profile):
+        label = ("[red]NOT ASSESSED[/]" if c.status == "not_assessed"
+                 else f"[yellow]{c.status}[/]" if c.status == "assessed_seed"
+                 else f"[green]{c.status}[/]")
+        cov.add_row(c.domain, label, ", ".join(c.evidence_refs) or "—")
+    console.print(cov)
+
+    if profile.caveats:
+        console.print("[bold]Caveats:[/]")
+        for cav in profile.caveats:
+            console.print(f"  • {cav}")
+
+
 if __name__ == "__main__":
     app()
