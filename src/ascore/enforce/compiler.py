@@ -164,7 +164,8 @@ def _materialize_rules(posture: _Posture) -> list[Rule]:
 
 
 def compile_policy(dossier, card, incidents, cfg: dict, *,
-                   status: str | None = None) -> EnforcementPolicy:
+                   status: str | None = None,
+                   stage: str | None = None) -> EnforcementPolicy:
     """Compile an enforcement policy from certification evidence. ``dossier`` is
     a Dossier, ``card`` an AgentCard or None, ``incidents`` a list of incident
     dicts (with ``severity`` and computed ``state``), ``cfg`` the config.
@@ -184,9 +185,15 @@ def compile_policy(dossier, card, incidents, cfg: dict, *,
     _apply_autonomy(posture, autonomy_level, ccfg)
     _apply_staleness(posture, status, ccfg)
     _apply_incident_pressure(posture, open_s1_s2, ccfg)
+    # stage dimension: higher-exposure stages are stricter-or-equal (tighten-only)
+    if stage:
+        from ascore.release.ladder import apply_stage_to_posture
+        apply_stage_to_posture(posture, cfg, stage)
 
     rules = _materialize_rules(posture)
     compiled_from = [dossier.ref()]
+    if stage:
+        compiled_from.append(f"stage:{stage}")
     if card is not None:
         compiled_from.append(card.ref())
     compiled_from += [f"incident:{i['incident_id']}" for i in (incidents or [])
