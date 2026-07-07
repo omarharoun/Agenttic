@@ -23,6 +23,11 @@ def leaderboard(request: Request,
     board = compute_leaderboard(
         state.store.list_scorecards(), weights=weights, suite_filter=suite_filter,
         declared_types=declared_types)
+    # Hard Rule 17: Index-imported (Catalog-only) agents never appear on score
+    # leaderboards. They have no scorecards, but exclude by convention too.
+    index_agents = {c["agent_id"] for c in state.reg.list_cards(source="index_import")}
+    board["agents"] = [r for r in board.get("agents", [])
+                       if r["agent_id"] not in index_agents]
     _attach_certification_badges(state.reg, board.get("agents", []))
     if certified:
         board["agents"] = [r for r in board.get("agents", [])
