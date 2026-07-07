@@ -63,3 +63,15 @@ REST contract (`/api/enforce/*`) rather than a bespoke SPA view (consistent with
 earlier UI-as-API-contract decisions); Lane-3 async judge uses a seeded RNG +
 injectable verdict_fn so the LLM judge is mocked in tests (real judge is out of
 band, never inline).
+
+## Addendum — Interactive RL oversight loop (post-M13, pre-M14)
+Added an opt-in interactive oversight loop (`enforce/interactive_oversight.py`) at the
+user's request, between v0.4.0-enforce and M14. Five commits (config, review loop,
+bandit adaptation, CLI, tests). DISABLED by default (`oversight.interactive_loop.enabled`).
+Reuses M13 async_judge/approvals/feedback + the policy compiler — no reimplementation.
+Safety-critical invariant proven by test: a stream of "allow" feedback can never
+auto-loosen a rule without an explicit, logged confirmation event (tightening
+auto-applies via the tighten_only override path; loosening is only ever a gated
+proposal). Lightweight Thompson contextual bandit (auditable, seeded-deterministic,
+every posture change traces to logged feedback event ids). Model is optional
+enrichment (config-swappable, BYO-key, mocked in tests). Suite: 1457 passed, 4 skipped.
