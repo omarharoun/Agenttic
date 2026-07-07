@@ -266,10 +266,23 @@ async def certify(
     cov = compute_coverage(reg, profile)
     calibrated = judge_is_calibrated(cfg)
 
+    # documentation prerequisite (T21.2): a covered agent must be documented
+    # (autonomy classified + a card present), else the tier is capped at B.
+    from ascore.cards.agency import detect_covered_agent
+    from ascore.cards.autonomy import classify_autonomy
+    autonomy = classify_autonomy(reg, agent_id, cfg)
+    covered = detect_covered_agent(reg, agent_id, cfg).covered
+    try:
+        reg.get_card(agent_id)
+        has_card = True
+    except Exception:  # noqa: BLE001
+        has_card = False
+
     tier_decision = decide(
         profile=profile, components=components, coverage=cov,
         judge_calibrated=calibrated, elicitation_analysis=analysis,
-        evidence_refs=evidence_refs, cfg=cfg)
+        evidence_refs=evidence_refs, cfg=cfg,
+        autonomy_level=autonomy.level, covered_agent=covered, has_card=has_card)
 
     reg.save_elicitation_summary(agent_id, analysis.summary())
 
