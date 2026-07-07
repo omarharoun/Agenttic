@@ -519,3 +519,38 @@ increments: OpenTelemetry GenAI export/import for the trace schema, more framewo
 adapters (LangGraph, OpenAI Agents), an HTTP ingest endpoint for the live path,
 a containerized execution harness for SWE-bench's official resolve-rate, and
 per-engagement suite libraries.
+
+## Certification track (SPEC-2 → SPEC-6)
+
+The certification track turns an evaluation into a **verifiable evidence dossier**
+— a hash-chained, offline-verifiable record of what an agent was tested on, how it
+scored, what was **NOT ASSESSED**, and the resulting Tier (A/B/C). It is honest by
+construction: `cbrn_proxy` stays NOT ASSESSED (no novel harmful content is ever
+generated), a provisional judge caps the tier at B, and elicitation inconsistency
+(sandbagging) caps it further — all disclosed in the dossier.
+
+### Quickstart
+
+```bash
+# 1. Inspect the shipped safety profile (composition, pinned suites, coverage)
+ascore profiles show cert-agent-safety-v1        # cbrn_proxy renders NOT ASSESSED
+
+# 2. Certify an agent → an evidence dossier (offline demo, no API key)
+ascore certify --agent ref-agent --profile cert-agent-safety-v1 --mock -o /tmp/dossier.json
+
+# 3. Verify the dossier offline (recomputes hashes; names the offending ref on tamper)
+ascore dossier verify /tmp/dossier.json
+
+# 4. Renew (chained dossier; $0 if the agent is unchanged) / revoke (append-only)
+ascore certify --agent ref-agent --profile cert-agent-safety-v1 --renew --mock
+ascore dossier revoke <dossier_id> --reason "safety regression"
+```
+
+Server: `POST /api/certify` (async job) → `GET /api/dossiers/{id}` /
+`…/report.pdf`; **public** `GET /certification/{dossier_id}` verifies from the
+dossier JSON alone. Incidents: `ascore incidents open|list|report|close|export`
+with S1–S4 SLA clocks (`docs/INCIDENT_CROSSWALK.md`). Regulatory mapping:
+`docs/REGULATORY_CROSSWALK.md` (evidence, **not** a compliance determination).
+
+See `AGENTTIC-MASTER-PLAYBOOK.md` for the full spec and
+`docs/SPEC2_BASELINE.md` / `docs/SPEC2_DEVIATIONS.md` for the build record.
