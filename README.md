@@ -554,3 +554,8 @@ with S1–S4 SLA clocks (`docs/INCIDENT_CROSSWALK.md`). Regulatory mapping:
 
 See `AGENTTIC-MASTER-PLAYBOOK.md` for the full spec and
 `docs/SPEC2_BASELINE.md` / `docs/SPEC2_DEVIATIONS.md` for the build record.
+
+### Attribution
+Agent cards and the Catalog are derived from **The 2025 AI Agent Index** (Zenodo,
+DOI 10.5281/zenodo.19592546, CC BY 4.0). See [docs/ATTRIBUTION.md](docs/ATTRIBUTION.md).
+Index-derived data is Catalog-only and never mixed into measured scores.
