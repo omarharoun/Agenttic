@@ -93,3 +93,80 @@ class IncidentManager:
         self.reg.append_incident_event(
             incident_id, record.agent_id, event_type="note", actor=actor,
             note=note)
+
+
+# --------------------------------------------------------------------------- #
+# Triggers (T16.2): drift escalation, incident:sN-tagged live criteria, manual.
+# --------------------------------------------------------------------------- #
+
+import uuid as _uuid  # noqa: E402
+
+
+def _new_incident_id() -> str:
+    return f"inc-{_uuid.uuid4().hex[:10]}"
+
+
+def severity_from_tag(tag: str) -> str | None:
+    """Parse an ``incident:sN`` criterion tag into a severity ("S3"), or None."""
+    t = (tag or "").strip().lower()
+    if t.startswith("incident:s") and t[len("incident:s"):].isdigit():
+        sev = "S" + t[len("incident:s"):]
+        if sev in ("S1", "S2", "S3", "S4"):
+            return sev
+    return None
+
+
+def open_from_drift(reg, cfg: dict, *, agent_id: str, reason: str,
+                    trace_refs: list[str] | None = None) -> Incident:
+    """Auto-open an incident from a drift escalation. Severity defaults to
+    ``incidents.drift_default_severity`` (S3), with the drift trace refs
+    attached and origin=drift."""
+    sev = (cfg or {}).get("incidents", {}).get("drift_default_severity", "S3")
+    inc = Incident(
+        incident_id=_new_incident_id(), agent_id=agent_id, severity=sev,
+        origin="drift", title="drift escalation",
+        summary=reason, trace_refs=list(trace_refs or []))
+    IncidentManager(reg).open(inc)
+    return inc
+
+
+def open_from_live_criterion(reg, *, agent_id: str, tag: str,
+                             criterion_id: str = "",
+                             trace_refs: list[str] | None = None) -> Incident | None:
+    """Open an incident when an ``incident:sN``-tagged live criterion fires.
+    Returns None if the tag isn't an incident tag."""
+    sev = severity_from_tag(tag)
+    if sev is None:
+        return None
+    inc = Incident(
+        incident_id=_new_incident_id(), agent_id=agent_id, severity=sev,
+        origin="live_criteria",
+        title=f"live criterion {criterion_id or tag} fired",
+        trace_refs=list(trace_refs or []))
+    IncidentManager(reg).open(inc)
+    return inc
+
+
+def escalate_drift(reg, cfg: dict, status) -> Incident | None:
+    """Given a :class:`~ascore.live.monitor.DriftStatus`, auto-open an S3
+    incident if drift was detected. Returns the incident or None. Trace refs are
+    the drifted criteria (the evidence pointer for the on-call reviewer)."""
+    if not getattr(status, "drift_detected", False):
+        return None
+    drifted = getattr(status, "drifted", [])
+    reason = ("live drift on criteria: " + ", ".join(drifted)) if drifted \
+        else "live drift detected"
+    return open_from_drift(reg, cfg, agent_id=status.agent_id, reason=reason,
+                           trace_refs=[f"criterion:{c}" for c in drifted])
+
+
+def open_manual(reg, *, agent_id: str, severity: str, title: str = "",
+                summary: str = "", trace_refs: list[str] | None = None,
+                actor: str = "manual") -> Incident:
+    """Manually open an incident (CLI/API)."""
+    inc = Incident(
+        incident_id=_new_incident_id(), agent_id=agent_id, severity=severity,
+        origin="manual", title=title, summary=summary,
+        trace_refs=list(trace_refs or []))
+    IncidentManager(reg).open(inc)
+    return inc
