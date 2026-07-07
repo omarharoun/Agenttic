@@ -26,6 +26,7 @@ K_INCIDENTS = "safety_evaluation_impact.any_known_incidents_or_reported_vulnerab
 K_MONITORING = "autonomy_control.execution_monitoring_traces_and_transparency"
 K_CERT = "safety_evaluation_impact.internal_safety_evaluations_and_results"
 K_NAME = "product_overview.name_of_agent"
+K_APPROVAL = "autonomy_control.user_approval_requirements_for_different_decision_types"
 
 
 def _model_field(cfg, reg, agent_id):
@@ -120,6 +121,28 @@ def _certification_field(reg, agent_id):
     return FieldValue.measured(K_CERT, value, [f"dossier:{d.dossier_id}"])
 
 
+def _approval_gates_field(reg, agent_id):
+    """Resolved approvals are MEASURED evidence for the card's approval-gates
+    field (SPEC-2 T26.3): they prove which decision types are approval-gated."""
+    try:
+        approvals = [a for a in reg.list_approvals()
+                     if a.get("agent_id") == agent_id
+                     and a.get("state") in ("approved", "denied", "expired")]
+    except Exception:  # noqa: BLE001
+        return None
+    if not approvals:
+        return None
+    refs = [f"approval:{a['approval_id']}" for a in approvals]
+    by_outcome: dict[str, int] = {}
+    gated_classes: set[str] = set()
+    for a in approvals:
+        by_outcome[a["state"]] = by_outcome.get(a["state"], 0) + 1
+        gated_classes.add(a.get("action_class", "unknown"))
+    value = {"gated_action_classes": sorted(gated_classes),
+             "resolutions": by_outcome}
+    return FieldValue.measured(K_APPROVAL, value, refs[:20])
+
+
 def autofill_card(cfg, reg, agent_id: str) -> AgentCard:
     """Build a card for ``agent_id`` from Agenttic's own measured evidence."""
     fields: dict[str, FieldValue] = {}
@@ -131,6 +154,7 @@ def autofill_card(cfg, reg, agent_id: str) -> AgentCard:
         _incidents_field(reg, agent_id),
         _monitoring_field(reg, agent_id),
         _certification_field(reg, agent_id),
+        _approval_gates_field(reg, agent_id),
     ]:
         if fv is not None:
             fields[fv.field_key] = fv
