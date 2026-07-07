@@ -221,6 +221,14 @@ def _enforcement_tables(conn) -> None:
         model.__table__.create(bind=conn, checkfirst=True)
 
 
+def _release_ladder_tables(conn) -> None:
+    """v20 — release cohorts + append-only promotion records (SPEC-2 M14)."""
+    import ascore.registry.sqlite_store  # noqa: F401
+    from ascore.registry.sqlite_store import CohortRow, PromotionRecordRow
+    for model in (CohortRow, PromotionRecordRow):
+        model.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -242,6 +250,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (17, "elicitation_summaries_table", _elicitation_summaries_table),
     (18, "agent_cards_table", _agent_cards_table),
     (19, "enforcement_tables", _enforcement_tables),
+    (20, "release_ladder_tables", _release_ladder_tables),
 ]
 
 

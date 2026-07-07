@@ -422,6 +422,32 @@ class IncidentEventRow(SQLModel, table=True):
     payload: str = "{}"
 
 
+class CohortRow(SQLModel, table=True):
+    """A caller cohort at a release stage. ``stage`` resolves to the current
+    stage; changes are recorded as append-only PromotionRecords."""
+    __tablename__ = "release_cohorts"
+    __table_args__ = (UniqueConstraint("tenant_id", "cohort_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    cohort_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    stage: str = Field(index=True)
+    payload: str
+
+
+class PromotionRecordRow(SQLModel, table=True):
+    """Append-only stage-change audit (promotion | demotion). Never UPDATEd."""
+    __tablename__ = "release_promotions"
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    record_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    cohort_id: str = Field(index=True)
+    kind: str = Field(index=True)
+    created_at: datetime
+    payload: str
+
+
 class EnforcementPolicyRow(SQLModel, table=True):
     """A compiled enforcement policy, keyed by content hash (append-only —
     recompilation writes a new row; the newest per agent is active)."""
@@ -1329,6 +1355,78 @@ class Registry:
             return [{"incident_id": r.incident_id, "agent_id": r.agent_id,
                      "severity": r.severity, "origin": r.origin,
                      "opened_at": r.opened_at.isoformat()} for r in rows]
+
+    # -- release cohorts + promotion records -----------------------------------
+
+    def save_cohort(self, cohort) -> None:
+        with Session(self.engine) as s:
+            exists = s.exec(select(CohortRow).where(
+                CohortRow.tenant_id == self.tenant,
+                CohortRow.cohort_id == cohort.cohort_id)).first()
+            if exists:
+                raise DuplicateVersionError(f"cohort {cohort.cohort_id} exists")
+            s.add(CohortRow(tenant_id=self.tenant, cohort_id=cohort.cohort_id,
+                            agent_id=cohort.agent_id, stage=cohort.stage,
+                            payload=cohort.model_dump_json()))
+            s.commit()
+
+    def get_cohort(self, cohort_id: str):
+        from ascore.schema.release import Cohort
+        with Session(self.engine) as s:
+            row = s.exec(select(CohortRow).where(
+                CohortRow.tenant_id == self.tenant,
+                CohortRow.cohort_id == cohort_id)).first()
+            if not row:
+                raise NotFoundError(f"cohort {cohort_id}")
+            return Cohort.model_validate_json(row.payload)
+
+    def set_cohort_stage(self, cohort_id: str, stage: str) -> None:
+        """The one permitted in-place field (like the suite approval flag) — the
+        current stage. The transition itself is recorded as a PromotionRecord."""
+        from ascore.schema.release import Cohort
+        with Session(self.engine) as s:
+            row = s.exec(select(CohortRow).where(
+                CohortRow.tenant_id == self.tenant,
+                CohortRow.cohort_id == cohort_id)).first()
+            if not row:
+                raise NotFoundError(f"cohort {cohort_id}")
+            cohort = Cohort.model_validate_json(row.payload)
+            cohort.stage = stage
+            row.stage = stage
+            row.payload = cohort.model_dump_json()
+            s.add(row)
+            s.commit()
+
+    def list_cohorts(self, agent_id: str | None = None) -> list[dict]:
+        with Session(self.engine) as s:
+            q = select(CohortRow).where(CohortRow.tenant_id == self.tenant)
+            if agent_id is not None:
+                q = q.where(CohortRow.agent_id == agent_id)
+            rows = s.exec(q.order_by(CohortRow.id)).all()
+            return [{"cohort_id": r.cohort_id, "agent_id": r.agent_id,
+                     "stage": r.stage} for r in rows]
+
+    def append_promotion_record(self, record) -> None:
+        with Session(self.engine) as s:
+            s.add(PromotionRecordRow(
+                tenant_id=self.tenant, record_id=record.record_id,
+                agent_id=record.agent_id, cohort_id=record.cohort_id,
+                kind=record.kind, created_at=_now(),
+                payload=record.model_dump_json()))
+            s.commit()
+
+    def list_promotion_records(self, agent_id: str | None = None,
+                               cohort_id: str | None = None) -> list[dict]:
+        import json as _json
+        with Session(self.engine) as s:
+            q = select(PromotionRecordRow).where(
+                PromotionRecordRow.tenant_id == self.tenant)
+            if agent_id is not None:
+                q = q.where(PromotionRecordRow.agent_id == agent_id)
+            if cohort_id is not None:
+                q = q.where(PromotionRecordRow.cohort_id == cohort_id)
+            rows = s.exec(q.order_by(PromotionRecordRow.id)).all()
+            return [_json.loads(r.payload) for r in rows]
 
     # -- enforcement policies / events / approvals -----------------------------
 
