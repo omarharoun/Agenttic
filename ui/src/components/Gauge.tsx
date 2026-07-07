@@ -32,10 +32,12 @@ export function Gauge({ value, size = 132, label = "Agenttic Index",
                 strokeDasharray={`${arc} ${C}`}
                 strokeDashoffset={swept ? off : arc} />
       </g>
-      <text x={60} y={62} textAnchor="middle" className="gauge-num">
+      <text x={60} y={66} textAnchor="middle" className="gauge-num">
         {Math.round(v)}
       </text>
-      <text x={60} y={80} textAnchor="middle" className="gauge-cap">
+      {/* caption sits in the dial's open reserve gap (bottom 90°), where a
+          power-reserve label lives on a real watch — clear of the ring. */}
+      <text x={60} y={106} textAnchor="middle" className="gauge-cap">
         {label}
       </text>
     </svg>
