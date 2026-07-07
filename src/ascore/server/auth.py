@@ -33,7 +33,20 @@ import secrets
 
 from fastapi import HTTPException, Request, status
 
-ROLES = {"viewer": 0, "operator": 1, "admin": 2}
+# Roles form a capability hierarchy. ``evaluator`` (SPEC-2 M6) sits at the
+# operator tier — it can RUN certifications — but is an *independent* principal:
+# it certifies agents it does not own, its dossiers are attested "independent"
+# (computed from tenancy, never selected), and it is isolated to certified-run
+# artifacts (see certification isolation). Adding a role is migration-safe: the
+# role is a plain string column on users/PATs; existing rows are unaffected.
+ROLES = {"viewer": 0, "evaluator": 1, "operator": 1, "admin": 2}
+
+#: Roles that mark an independent (third-party) evaluator principal.
+EVALUATOR_ROLES = {"evaluator"}
+
+
+def is_evaluator(role: str | None) -> bool:
+    return role in EVALUATOR_ROLES
 
 SESSION_COOKIE = "ascore_session"
 CSRF_COOKIE = "ascore_csrf"          # readable (double-submit) CSRF token

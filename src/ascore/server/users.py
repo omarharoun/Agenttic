@@ -14,7 +14,7 @@ from sqlmodel import Session, func, select
 from ascore.registry.sqlite_store import UserRow
 from ascore.server.passwords import hash_password, verify_password
 
-ROLES = {"viewer", "operator", "admin"}
+ROLES = {"viewer", "evaluator", "operator", "admin"}
 
 
 class DuplicateUserError(ValueError):
