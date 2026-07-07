@@ -375,6 +375,35 @@ class InteractiveOversightLoop:
             kind=kind, action=action, actor="oversight", detail=detail))
 
 
+def pending_reviews(reg, agent_id: str | None = None) -> list[dict]:
+    """Review prompts that have no matching human response yet (stateless — read
+    from the append-only log)."""
+    events = reg.list_enforcement_events(None, agent_id)
+    responded = {(e.get("detail") or {}).get("review_id")
+                 for e in events
+                 if (e.get("detail") or {}).get("event") == "human_response"}
+    out = []
+    for e in events:
+        d = e.get("detail") or {}
+        if d.get("event") == "review_prompt" and d.get("review_id") not in responded:
+            out.append(d)
+    return out
+
+
+def pending_loosen_proposals(reg, agent_id: str | None = None) -> list[dict]:
+    """Loosen proposals awaiting explicit confirmation (never auto-applied)."""
+    events = reg.list_enforcement_events(None, agent_id)
+    confirmed = {(e.get("detail") or {}).get("proposal_id")
+                 for e in events
+                 if (e.get("detail") or {}).get("event") == "loosen_confirmed"}
+    out = []
+    for e in events:
+        d = e.get("detail") or {}
+        if d.get("event") == "loosen_proposal" and d.get("proposal_id") not in confirmed:
+            out.append(d)
+    return out
+
+
 def _decision_confidence(decision) -> float | None:
     for e in getattr(decision, "evidence", []) or []:
         if isinstance(e, str) and e.startswith("confidence:"):

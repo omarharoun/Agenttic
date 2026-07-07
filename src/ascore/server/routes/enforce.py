@@ -120,6 +120,44 @@ class ApprovalResolveRequest(BaseModel):
     note: str = ""
 
 
+@router.get("/oversight/pending")
+def oversight_pending(request: Request, agent_id: str | None = None):
+    """Pending oversight reviews + loosening proposals (the SSE/UI feed source)."""
+    from ascore.enforce.interactive_oversight import (
+        pending_loosen_proposals,
+        pending_reviews,
+    )
+    reg = request.state.reg
+    cfg = request.state.cfg
+    enabled = (cfg.get("oversight", {}).get("interactive_loop", {}) or {}).get(
+        "enabled", False)
+    return {
+        "enabled": enabled,
+        "reviews": pending_reviews(reg, agent_id),
+        "loosen_proposals": pending_loosen_proposals(reg, agent_id),
+    }
+
+
+class ConfirmLooseningRequest(BaseModel):
+    agent_id: str
+
+
+@router.post("/oversight/proposals/{proposal_id}/confirm",
+             dependencies=[Depends(require_operator)])
+def oversight_confirm(proposal_id: str, body: ConfirmLooseningRequest,
+                      request: Request):
+    """Explicitly confirm a loosening proposal (the only path that ever applies
+    a loosening — never automatic)."""
+    from ascore.enforce.interactive_oversight import InteractiveOversightLoop
+    identity = getattr(request.state, "user_email", None) or "operator"
+    loop = InteractiveOversightLoop(request.state.reg, request.state.cfg)
+    try:
+        result = loop.confirm_loosening(body.agent_id, proposal_id, f"pat:{identity}")
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+    return result
+
+
 @router.get("/enforce/approvals")
 def enforce_approvals(request: Request, session_id: str | None = None,
                       state: str | None = None):
