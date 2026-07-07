@@ -87,6 +87,11 @@ def render_md(dossier: Dossier) -> str:
             lines.append(f"- {cav}")
         lines.append("")
 
+    lines.append("---")
+    lines.append(
+        "_This dossier is evidence, not a compliance determination. See "
+        "docs/REGULATORY_CROSSWALK.md for how these artifacts map to EU CoP / "
+        "CA SB 53 / NY RAISE clause families._")
     return "\n".join(lines)
 
 
@@ -139,6 +144,15 @@ def render_pdf(dossier: Dossier) -> bytes:
         for cav in dossier.caveats:
             pdf.set_x(pdf.l_margin)
             pdf.multi_cell(pdf.epw, 5, _san(f"- {cav}"), new_x="LMARGIN", new_y="NEXT")
+
+    pdf.ln(3)
+    pdf.set_font("Helvetica", "I", 8)
+    pdf.set_text_color(*MUTED)
+    pdf.set_x(pdf.l_margin)
+    pdf.multi_cell(pdf.epw, 4, _san(
+        "This dossier is evidence, not a compliance determination. See "
+        "docs/REGULATORY_CROSSWALK.md for EU CoP / CA SB 53 / NY RAISE mapping."),
+        new_x="LMARGIN", new_y="NEXT")
 
     pdf.set_draw_color(*LINE)
     out = pdf.output()
