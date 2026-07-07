@@ -131,6 +131,9 @@ class InteractiveOversightLoop:
             exploration=float(bcfg.get("exploration", 0.05)),
             seed=int(bcfg.get("seed", 1234)))
         self._seen_patterns: set[str] = set()
+        # explicit always_block/always_allow directives per pattern (override the
+        # softer bandit signal deterministically)
+        self._directives: dict[str, str] = {}
 
     # -- config --------------------------------------------------------------
 
@@ -209,7 +212,160 @@ class InteractiveOversightLoop:
                 "response": response, "pattern": item.pattern,
                 "human": human}))
         self.bandit.update(item.pattern, response, f"event:{feedback_id}")
+        if response in ("always_block_pattern", "always_allow_pattern"):
+            self._directives[item.pattern] = response
         return feedback_id
+
+    def model_suggestion(self, decision):
+        """Optional model enrichment (config-swappable, BYO-key). Returns a
+        suggested response or None. The loop runs fine without a model."""
+        if self.judge is None:
+            return None
+        try:
+            verdict = self.judge.verdict_fn(decision)
+            return "block" if verdict.get("malicious") else "allow"
+        except Exception:  # noqa: BLE001 — model is optional enrichment only
+            return None
+
+    # -- 3/4. LEARN + SAFE-DEFAULT ADAPTATION --------------------------------
+
+    def _directive(self, pattern: str) -> str:
+        """'tighten' | 'loosen' | 'neutral'. Explicit always_* directives win;
+        otherwise the bandit recommends."""
+        explicit = self._directives.get(pattern)
+        if explicit == "always_block_pattern":
+            return "tighten"
+        if explicit == "always_allow_pattern":
+            return "loosen"
+        return self.bandit.recommend(pattern)
+
+    def propose_adaptation(self, agent_id: str) -> list[dict]:
+        """Compute posture adaptations from accumulated feedback.
+
+        Tightening is compiled + applied automatically (via the tighten_only
+        override path). Loosening is emitted ONLY as a proposal requiring an
+        explicit human confirmation — never auto-applied (Rule 20/26). Every
+        adaptation names the feedback event ids that produced it."""
+        from ascore.registry.sqlite_store import NotFoundError
+        try:
+            policy = self.reg.latest_policy(agent_id)
+        except NotFoundError:
+            return []
+        proposals: list[dict] = []
+        for pattern in sorted(self.bandit.arms):
+            directive = self._directive(pattern)
+            feedback_ids = list(self.bandit.feedback_ids.get(pattern, []))
+            if directive == "tighten":
+                applied = self._auto_tighten(policy, agent_id, pattern, feedback_ids)
+                if applied is not None:
+                    policy = applied["policy"]  # chain further tightens
+                    proposals.append({k: v for k, v in applied.items()
+                                      if k != "policy"})
+            elif directive == "loosen":
+                proposals.append(
+                    self._propose_loosen(agent_id, pattern, feedback_ids))
+        return proposals
+
+    def _tighten_rule(self, pattern: str, feedback_ids: list[str]):
+        from ascore.schema.enforcement import Rule
+        tool, _, action_class = pattern.partition(":")
+        explicit_block = self._directives.get(pattern) == "always_block_pattern"
+        action = "deny" if explicit_block else "require_approval"
+        rid = f"oversight-{action}-{tool}".replace(".", "_")
+        return Rule(rule_id=rid, lane="lane1", action=action,
+                    matcher={"tool": tool} if tool else {"action_class": action_class},
+                    origin=f"oversight:tighten:{','.join(feedback_ids)}",
+                    description=f"interactive oversight tighten for {pattern}")
+
+    def _auto_tighten(self, policy, agent_id, pattern, feedback_ids) -> dict | None:
+        """Add a pattern-specific restriction (a tightening — safe to auto-apply).
+        No-op if the rule is already present."""
+        from ascore.enforce.gateway import compute_policy_hash
+        from ascore.schema.enforcement import EnforcementPolicy
+        rule = self._tighten_rule(pattern, feedback_ids)
+        if any(r.rule_id == rule.rule_id for r in policy.rules):
+            return None  # already tightened for this pattern
+        rules = sorted(list(policy.rules) + [rule], key=lambda r: r.rule_id)
+        new = EnforcementPolicy(
+            policy_id="", agent_id=agent_id, rules=rules,
+            compiled_from=list(policy.compiled_from) + feedback_ids)
+        new.content_hash = compute_policy_hash(new)
+        new.policy_id = f"policy-{agent_id}-{new.content_hash[:12]}"
+        self.reg.save_policy(new)
+        self._log("", agent_id, "oversight", rule.action, {
+            "event": "adaptation_applied", "direction": "tighten",
+            "pattern": pattern, "rule_id": rule.rule_id,
+            "feedback_ids": feedback_ids, "policy_hash": new.content_hash})
+        return {"applied": True, "direction": "tighten", "pattern": pattern,
+                "rule_id": rule.rule_id, "feedback_ids": feedback_ids,
+                "policy_hash": new.content_hash, "policy": new}
+
+    def _propose_loosen(self, agent_id, pattern, feedback_ids) -> dict:
+        """Record a loosening PROPOSAL. Does NOT change any policy — a stream of
+        allow feedback can never auto-loosen a rule (Rule 20/26)."""
+        proposal_id = f"prop-{uuid.uuid4().hex[:12]}"
+        self._log("", agent_id, "oversight", None, {
+            "event": "loosen_proposal", "proposal_id": proposal_id,
+            "pattern": pattern, "feedback_ids": feedback_ids,
+            "state": "pending", "requires_confirmation": True})
+        return {"applied": False, "direction": "loosen",
+                "proposal_id": proposal_id, "pattern": pattern,
+                "feedback_ids": feedback_ids, "requires_confirmation": True}
+
+    def confirm_loosening(self, agent_id: str, proposal_id: str, human: str
+                          ) -> dict:
+        """Apply a loosening ONLY after an explicit human confirmation. The
+        confirmation is itself a logged event; without it, no loosening ever
+        happens."""
+        from ascore.enforce.gateway import compute_policy_hash
+        from ascore.registry.sqlite_store import NotFoundError
+        from ascore.schema.enforcement import EnforcementPolicy
+
+        proposal = self._find_proposal(agent_id, proposal_id)
+        if proposal is None:
+            raise ValueError(f"no pending loosen proposal {proposal_id}")
+        pattern = proposal["pattern"]
+        # log the explicit confirmation FIRST (auditable authorization)
+        self._log("", agent_id, "oversight", None, {
+            "event": "loosen_confirmed", "proposal_id": proposal_id,
+            "human": human, "pattern": pattern,
+            "feedback_ids": proposal.get("feedback_ids", [])})
+        # now (and only now) apply the loosening: drop the pattern's tighten rule
+        try:
+            policy = self.reg.latest_policy(agent_id)
+        except NotFoundError:
+            return {"applied": False, "reason": "no policy"}
+        tool = pattern.partition(":")[0]
+        drop_ids = {f"oversight-require_approval-{tool}".replace(".", "_"),
+                    f"oversight-deny-{tool}".replace(".", "_")}
+        remaining = [r for r in policy.rules if r.rule_id not in drop_ids]
+        if len(remaining) == len(policy.rules):
+            return {"applied": False, "reason": "no oversight rule to loosen"}
+        new = EnforcementPolicy(
+            policy_id="", agent_id=agent_id, rules=sorted(remaining, key=lambda r: r.rule_id),
+            compiled_from=list(policy.compiled_from) + [f"confirmed_by:{human}", proposal_id])
+        new.content_hash = compute_policy_hash(new)
+        new.policy_id = f"policy-{agent_id}-{new.content_hash[:12]}"
+        self.reg.save_policy(new)
+        self._log("", agent_id, "oversight", "allow", {
+            "event": "adaptation_applied", "direction": "loosen",
+            "pattern": pattern, "confirmed_by": human,
+            "proposal_id": proposal_id, "policy_hash": new.content_hash})
+        return {"applied": True, "direction": "loosen", "pattern": pattern,
+                "confirmed_by": human, "policy_hash": new.content_hash}
+
+    def _find_proposal(self, agent_id: str, proposal_id: str) -> dict | None:
+        confirmed = set()
+        proposal = None
+        for e in self.reg.list_enforcement_events(None, agent_id):
+            d = e.get("detail") or {}
+            if d.get("event") == "loosen_confirmed":
+                confirmed.add(d.get("proposal_id"))
+            if d.get("event") == "loosen_proposal" and d.get("proposal_id") == proposal_id:
+                proposal = d
+        if proposal is None or proposal_id in confirmed:
+            return None  # unknown or already confirmed+applied
+        return proposal
 
     # -- helpers -------------------------------------------------------------
 
