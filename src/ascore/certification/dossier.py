@@ -147,7 +147,8 @@ def _find_prev(reg, dossier: Dossier) -> Dossier | None:
     return None
 
 
-def revoke(reg, dossier_id: str, *, reason: str, actor: str = "") -> None:
+def revoke(reg, dossier_id: str, *, reason: str, actor: str = "",
+           cfg: dict | None = None) -> None:
     """Revoke a dossier by appending a ``revoked`` event (append-only). The
     dossier remains readable forever; its computed status flips to ``revoked``
     (Hard Rule 14: status is computed or revoked, never manually granted — there
@@ -157,6 +158,18 @@ def revoke(reg, dossier_id: str, *, reason: str, actor: str = "") -> None:
     d = reg.get_dossier(dossier_id)  # raises NotFoundError if absent
     reg.append_dossier_event(dossier_id, d.agent_id, "revoked",
                              reason=reason.strip())
+    # revocation is an evidence change → recompile to a serve:deny posture
+    try:
+        from ascore.config import load_config
+        from ascore.enforce.compiler import recompile_for_agent
+        if cfg is None:
+            try:
+                cfg = load_config()
+            except Exception:  # noqa: BLE001
+                cfg = {}
+        recompile_for_agent(reg, cfg, d.agent_id)
+    except Exception:  # noqa: BLE001 — enforcement optional
+        pass
 
 
 def verify(target, reg=None) -> VerifyResult:
