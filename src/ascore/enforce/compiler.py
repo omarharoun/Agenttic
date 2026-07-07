@@ -199,6 +199,67 @@ def compile_policy(dossier, card, incidents, cfg: dict, *,
     return policy
 
 
+class OverrideError(ValueError):
+    """A manual override attempted to LOOSEN a policy. The message names the
+    exact diff (Hard Rule 20: manual changes only tighten)."""
+
+
+def _posture_from_rules(rules) -> _Posture:
+    p = _Posture()
+    for r in rules:
+        if r.rule_id == "serve-deny":
+            p.serve, p.serve_origin = "deny", r.origin
+        elif r.rule_id == "approvals-write":
+            p.approvals, p.approvals_origin = "write", r.origin
+        elif r.rule_id == "lane3-sampling":
+            p.lane3_sampling = float(r.matcher.get("sampling", 0))
+            p.sampling_origin = r.origin
+        elif r.rule_id.startswith("lane3-sampling-"):
+            dom = r.rule_id[len("lane3-sampling-"):]
+            p.domain_sampling[dom] = (float(r.matcher.get("sampling", 0)), r.origin)
+    return p
+
+
+def apply_overrides(policy: EnforcementPolicy, overrides: dict,
+                    origin: str = "override") -> EnforcementPolicy:
+    """Apply a manual override to a compiled policy — **tighten-only**. Any key
+    that would loosen the posture is rejected naming the diff. Returns a new
+    (rehashed) policy."""
+    base = _posture_from_rules(policy.rules)
+
+    if "serve" in overrides:
+        if overrides["serve"] == "allow" and base.serve == "deny":
+            raise OverrideError(
+                "loosening rejected: serve deny -> allow")
+        if overrides["serve"] == "deny":
+            base.deny(origin)
+    if "approvals" in overrides:
+        want = overrides["approvals"]
+        if _APPROVALS_ORDER.get(want, 0) < _APPROVALS_ORDER[base.approvals]:
+            raise OverrideError(
+                f"loosening rejected: approvals {base.approvals} -> {want}")
+        base.require(want, origin)
+    if "lane3_sampling" in overrides:
+        want = float(overrides["lane3_sampling"])
+        if want < base.lane3_sampling:
+            raise OverrideError(
+                f"loosening rejected: lane3_sampling {base.lane3_sampling} -> {want}")
+        base.sample(want, origin)
+    for dom, rate in (overrides.get("domain_sampling") or {}).items():
+        cur = base.domain_sampling.get(dom, (0.0, ""))[0]
+        if float(rate) < cur:
+            raise OverrideError(
+                f"loosening rejected: domain_sampling[{dom}] {cur} -> {rate}")
+        base.sample_domain(dom, float(rate), origin)
+
+    rules = _materialize_rules(base)
+    new = EnforcementPolicy(policy_id="", agent_id=policy.agent_id, rules=rules,
+                           compiled_from=policy.compiled_from + [f"{origin}"])
+    new.content_hash = compute_policy_hash(new)
+    new.policy_id = f"policy-{policy.agent_id}-{new.content_hash[:12]}"
+    return new
+
+
 def _autonomy_from_card(card) -> str | None:
     if card is None:
         return None
