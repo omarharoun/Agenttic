@@ -13,7 +13,10 @@ domains carry no fabricated numbers.
 
 from __future__ import annotations
 
+import json
 import uuid
+from dataclasses import dataclass, field
+from pathlib import Path
 
 from ascore.certification.hashing import compute_dossier_hash
 from ascore.registry.sqlite_store import NotFoundError
@@ -74,3 +77,82 @@ def assemble(
     if persist and reg is not None:
         reg.save_dossier(dossier)  # also appends the 'created' event
     return dossier
+
+
+# --------------------------------------------------------------------------- #
+# Offline verification (T14.3).
+# --------------------------------------------------------------------------- #
+
+
+@dataclass
+class VerifyResult:
+    ok: bool
+    dossier_id: str
+    tier: str = ""
+    problems: list[str] = field(default_factory=list)  # each names the offending ref
+
+    def raise_for_status(self) -> "VerifyResult":
+        if not self.ok:
+            raise DossierVerificationError(
+                f"dossier {self.dossier_id} failed verification: "
+                + "; ".join(self.problems))
+        return self
+
+
+class DossierVerificationError(ValueError):
+    """A dossier failed offline verification. The message names the offending
+    ref (Hard Rule 27: verification failures are hard, named errors)."""
+
+
+def verify_dossier(dossier: Dossier, reg=None) -> VerifyResult:
+    """Recompute the dossier's content hash offline and check it against the
+    stored value. When ``reg`` is given and the dossier chains to a previous
+    one, verify the chain link too. Every problem names the offending ref."""
+    problems: list[str] = []
+    recomputed = compute_dossier_hash(dossier)
+    if not dossier.content_sha256:
+        problems.append(f"{dossier.ref()}: missing content_sha256")
+    elif recomputed != dossier.content_sha256:
+        problems.append(
+            f"{dossier.ref()}: content hash mismatch "
+            f"(stored {dossier.content_sha256[:12]}… != "
+            f"recomputed {recomputed[:12]}…)")
+
+    # tier evidence must resolve to at least one persisted id (schema guarantees
+    # non-empty; we name it if somehow empty on a hand-built object).
+    if not dossier.tier_decision.evidence_refs:
+        problems.append(f"{dossier.ref()}: tier decision cites no evidence")
+
+    # chain link (needs the registry to fetch the previous dossier)
+    if reg is not None and dossier.prev_dossier_sha256:
+        prev = _find_prev(reg, dossier)
+        if prev is None:
+            problems.append(
+                f"{dossier.ref()}: prev_dossier_sha256 "
+                f"{dossier.prev_dossier_sha256[:12]}… has no matching dossier")
+        elif prev.content_sha256 != dossier.prev_dossier_sha256:
+            problems.append(
+                f"{dossier.ref()}: broken chain link to {prev.ref()} "
+                f"(expected {dossier.prev_dossier_sha256[:12]}…, "
+                f"found {prev.content_sha256[:12]}…)")
+
+    return VerifyResult(ok=not problems, dossier_id=dossier.dossier_id,
+                        tier=dossier.tier_decision.tier, problems=problems)
+
+
+def _find_prev(reg, dossier: Dossier) -> Dossier | None:
+    for row in reg.list_dossiers(dossier.agent_id):
+        if row["content_sha256"] == dossier.prev_dossier_sha256:
+            return reg.get_dossier(row["dossier_id"])
+    return None
+
+
+def verify(target, reg=None) -> VerifyResult:
+    """Verify a dossier given a filesystem path (offline, JSON alone), or a
+    dossier id resolved against ``reg``."""
+    p = Path(str(target))
+    if reg is not None and not p.exists():
+        dossier = reg.get_dossier(str(target))
+        return verify_dossier(dossier, reg)
+    dossier = Dossier.model_validate(json.loads(p.read_text()))
+    return verify_dossier(dossier, reg)
