@@ -60,16 +60,28 @@ def certify_job(job_id: str, request: Request):
 
 @router.get("/dossiers")
 def list_dossiers(request: Request, agent_id: str | None = None):
-    return request.state.reg.list_dossiers(agent_id)
+    from ascore.certification.staleness import status
+    reg = request.state.reg
+    rows = reg.list_dossiers(agent_id)
+    for row in rows:
+        try:
+            row["status"] = status(reg, reg.get_dossier(row["dossier_id"]))
+        except Exception:  # noqa: BLE001
+            row["status"] = "current"
+    return rows
 
 
 @router.get("/dossiers/{dossier_id}")
 def get_dossier(dossier_id: str, request: Request):
+    from ascore.certification.staleness import status, status_reasons
     try:
         d = request.state.reg.get_dossier(dossier_id)
     except NotFoundError:
         raise HTTPException(404, f"dossier {dossier_id} not found")
-    return d.model_dump(mode="json")
+    body = d.model_dump(mode="json")
+    body["status"] = status(request.state.reg, d)
+    body["status_reasons"] = status_reasons(request.state.reg, d)
+    return body
 
 
 @router.get("/dossiers/{dossier_id}/report.pdf")
