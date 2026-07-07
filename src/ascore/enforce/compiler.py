@@ -199,6 +199,47 @@ def compile_policy(dossier, card, incidents, cfg: dict, *,
     return policy
 
 
+def recompile_for_agent(reg, cfg: dict, agent_id: str, *, persist: bool = True):
+    """Recompile an agent's enforcement policy from its CURRENT evidence (latest
+    dossier + card + open incidents + computed staleness status). Wired to run on
+    staleness / evidence change. Idempotent: if the resulting policy hash is
+    unchanged, the existing policy is returned and nothing new is written."""
+    from ascore.certification.staleness import status as compute_status
+    from ascore.registry.sqlite_store import NotFoundError
+
+    dossier = reg.latest_dossier(agent_id)  # raises NotFoundError if none
+    try:
+        card = reg.get_card(agent_id)
+    except NotFoundError:
+        card = None
+    try:
+        from ascore.live.incidents import IncidentManager
+        incidents = IncidentManager(reg).list_with_sla(cfg, agent_id=agent_id)
+    except Exception:  # noqa: BLE001
+        incidents = []
+    status = compute_status(reg, dossier)
+
+    policy = compile_policy(dossier, card, incidents, cfg, status=status)
+
+    if persist:
+        try:
+            current = reg.latest_policy(agent_id)
+            if current.content_hash == policy.content_hash:
+                return current  # unchanged — no-op
+        except NotFoundError:
+            pass
+        reg.save_policy(policy)
+        from ascore.schema.enforcement import EnforcementEvent
+        import uuid
+        reg.append_enforcement_event(EnforcementEvent(
+            event_id=f"evt-{uuid.uuid4().hex[:12]}", session_id="",
+            agent_id=agent_id, kind="policy_load", actor="compiler",
+            policy_hash=policy.content_hash,
+            detail={"recompiled": True, "status": status,
+                    "compiled_from": policy.compiled_from}))
+    return policy
+
+
 class OverrideError(ValueError):
     """A manual override attempted to LOOSEN a policy. The message names the
     exact diff (Hard Rule 20: manual changes only tighten)."""

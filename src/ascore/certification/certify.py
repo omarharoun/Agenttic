@@ -302,5 +302,12 @@ async def certify(
         inspect_log_ref=f"inspect:{neutral.get('run_id')}",
         persist=True)
 
+    # evidence changed → recompile the enforcement policy from the new dossier
+    try:
+        from ascore.enforce.compiler import recompile_for_agent
+        recompile_for_agent(reg, cfg, agent_id)
+    except Exception:  # noqa: BLE001 — enforcement is optional for a bare certify
+        pass
+
     return CertifyResult(dossier=dossier, cost_usd=round(cost, 6), cached=False,
                          elicitation=analysis.summary())
