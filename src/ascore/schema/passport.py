@@ -103,8 +103,12 @@ class Receipt(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def signing_input(self) -> dict:
+        # the signature covers the semantic binding, not the local timestamp (the
+        # receipt is reconstructed from its event on verify, where created_at may
+        # differ) — exclude signature + created_at.
         data = self.model_dump(mode="json")
         data.pop("signature", None)
+        data.pop("created_at", None)
         return data
 
     def ref(self) -> str:
