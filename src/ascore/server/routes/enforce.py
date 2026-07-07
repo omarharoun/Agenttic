@@ -78,3 +78,55 @@ def enforce_tool_result(body: ToolResultRequest, request: Request):
 def enforce_events(request: Request, session_id: str | None = None,
                    agent_id: str | None = None):
     return request.state.reg.list_enforcement_events(session_id, agent_id)
+
+
+@router.get("/enforce/dashboard")
+def enforce_dashboard(request: Request, agent_id: str | None = None,
+                      session_id: str | None = None):
+    from ascore.enforce.dashboard import dashboard_metrics
+    return dashboard_metrics(request.state.reg, agent_id, session_id)
+
+
+class FalsePositiveRequest(BaseModel):
+    session_id: str
+    agent_id: str
+    decision_ref: str
+    note: str = ""
+
+
+@router.post("/enforce/false-positive", dependencies=[Depends(require_operator)])
+def enforce_false_positive(body: FalsePositiveRequest, request: Request):
+    """The dashboard FP button: mark a flagged decision benign → checker-eval case."""
+    from ascore.enforce.feedback import mark_false_positive
+    reviewer = getattr(request.state, "user_email", None) or "reviewer"
+    case_id = mark_false_positive(request.state.reg, body.session_id,
+                                  body.agent_id, body.decision_ref, reviewer,
+                                  note=body.note)
+    return {"checker_eval_case": case_id}
+
+
+class ApprovalResolveRequest(BaseModel):
+    approve: bool
+    note: str = ""
+
+
+@router.get("/enforce/approvals")
+def enforce_approvals(request: Request, session_id: str | None = None,
+                      state: str | None = None):
+    return request.state.reg.list_approvals(session_id, state)
+
+
+@router.post("/enforce/approvals/{approval_id}/resolve",
+             dependencies=[Depends(require_operator)])
+def resolve_approval(approval_id: str, body: ApprovalResolveRequest,
+                     request: Request):
+    from ascore.enforce.approvals import ApprovalManager
+    from ascore.registry.sqlite_store import NotFoundError
+    identity = getattr(request.state, "user_email", None) or "operator"
+    am = ApprovalManager(request.state.reg, request.state.cfg)
+    try:
+        ar = am.resolve(approval_id, body.approve, f"pat:{identity}")
+    except NotFoundError:
+        raise HTTPException(404, f"approval {approval_id} not found")
+    return {"approval_id": ar.approval_id, "state": ar.state,
+            "resolver_identity": ar.resolver_identity}
