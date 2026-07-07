@@ -937,6 +937,67 @@ def profiles_show(
             console.print(f"  • {cav}")
 
 
+oversight_app = typer.Typer(help="Interactive oversight loop (opt-in).")
+app.add_typer(oversight_app, name="oversight")
+
+
+@oversight_app.command("watch")
+def oversight_watch(
+    agent: str = typer.Option("", "--agent", "-a", help="filter by agent id"),
+    config: str = "config.yaml",
+):
+    """Watch pending oversight reviews + loosening proposals (from the append-only
+    enforcement log). The loop is opt-in (oversight.interactive_loop.enabled)."""
+    from ascore.enforce.interactive_oversight import (
+        pending_loosen_proposals,
+        pending_reviews,
+    )
+    cfg, reg = _ctx(config)
+    enabled = (cfg.get("oversight", {}).get("interactive_loop", {}) or {}).get(
+        "enabled", False)
+    console.print(f"interactive oversight loop: "
+                  f"{'[green]ENABLED[/]' if enabled else '[dim]disabled[/]'}")
+    reviews = pending_reviews(reg, agent or None)
+    if reviews:
+        table = Table("review_id", "pattern", "reasons", "options")
+        for r in reviews:
+            table.add_row(r.get("review_id", ""), r.get("pattern", ""),
+                          ", ".join(r.get("reasons", [])),
+                          " | ".join(r.get("options", [])))
+        console.print("[bold]Pending reviews:[/]")
+        console.print(table)
+    else:
+        console.print("[dim]no pending reviews[/]")
+    proposals = pending_loosen_proposals(reg, agent or None)
+    if proposals:
+        console.print("[bold yellow]Loosening proposals (need confirmation):[/]")
+        for p in proposals:
+            console.print(f"  {p.get('proposal_id')} — pattern {p.get('pattern')} "
+                          f"(feedback: {len(p.get('feedback_ids', []))})")
+
+
+@oversight_app.command("confirm")
+def oversight_confirm(
+    agent: str = typer.Argument(..., help="agent id"),
+    proposal_id: str = typer.Argument(..., help="loosening proposal id"),
+    config: str = "config.yaml",
+):
+    """Explicitly confirm a loosening proposal (the only way loosening is ever
+    applied). Records the confirmation and applies it."""
+    from ascore.enforce.interactive_oversight import InteractiveOversightLoop
+    cfg, reg = _ctx(config)
+    loop = InteractiveOversightLoop(reg, cfg)
+    try:
+        result = loop.confirm_loosening(agent, proposal_id, "cli")
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc))
+    if result.get("applied"):
+        console.print(f"[green]Loosening applied[/] for {result['pattern']} "
+                      f"(policy {result['policy_hash'][:12]}…)")
+    else:
+        console.print(f"[yellow]Confirmed[/] — {result.get('reason', 'no change')}")
+
+
 cards_app = typer.Typer(help="Agent cards: autofill, show, annotate.")
 app.add_typer(cards_app, name="cards")
 
