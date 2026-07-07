@@ -101,6 +101,59 @@ class ReceiptIssuer:
                 "backed_by_allow": backed, "valid": sig_valid}
 
 
+def find_receipt(reg, receipt_id: str) -> "tuple[Receipt, str] | None":
+    """Locate a receipt (and its session) by id from the append-only log."""
+    for e in reg.list_enforcement_events():
+        if e.get("kind") == "receipt" and (e.get("detail") or {}).get(
+                "receipt_id") == receipt_id:
+            r = load_receipt_from_event(e)
+            return (r, e.get("session_id", "")) if r else None
+    return None
+
+
+def verify_chain(reg, receipt_id: str, key_manager, *, max_hops: int = 32) -> dict:
+    """Walk a delegation chain from ``receipt_id`` up through ``parent_receipt_id``
+    to the human principal (the root receipt with no parent), carrying every hop's
+    policy hash. Names a broken hop; every hop's signature is verified."""
+    hops: list[dict] = []
+    problems: list[str] = []
+    current = receipt_id
+    seen = set()
+    principal = None
+    for _ in range(max_hops):
+        if current in seen:
+            problems.append(f"cycle at receipt {current}")
+            break
+        seen.add(current)
+        found = find_receipt(reg, current)
+        if found is None:
+            problems.append(f"broken hop: receipt {current} does not resolve")
+            break
+        receipt, session_id = found
+        sig = key_manager.keyref_for(receipt.key_id)
+        from ascore.passport.keys import verify_payload
+        sig_valid = sig is not None and verify_payload(
+            sig.public_key_b64, receipt.signing_input(), receipt.signature)
+        if not sig_valid:
+            problems.append(f"invalid signature at receipt {current}")
+        hops.append({"receipt_id": receipt.receipt_id,
+                     "agent_id": receipt.agent_id,
+                     "policy_hash": receipt.policy_hash,
+                     "passport_id": receipt.passport_id,
+                     "signature_valid": sig_valid})
+        if not receipt.parent_receipt_id:
+            # root receipt → resolves to the human principal behind the passport
+            principal = {"passport_id": receipt.passport_id,
+                         "agent_id": receipt.agent_id}
+            break
+        current = receipt.parent_receipt_id
+    else:
+        problems.append("max hops exceeded (possible unbounded chain)")
+
+    return {"resolved": principal is not None and not problems,
+            "hops": hops, "principal": principal, "problems": problems}
+
+
 def load_receipt_from_event(event: dict) -> Receipt | None:
     """Reconstruct a Receipt from its persisted enforcement event."""
     d = event.get("detail") or {}
