@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 export type ThemePref = "dark" | "light" | "system";
 const KEY = "ascore_theme";
 
-/** Persisted appearance preference; dark is the default (Noor warm-dark). */
+/** Persisted appearance preference; dark is the default (Chronometer obsidian). */
 export function getThemePref(): ThemePref {
   try {
     const v = localStorage.getItem(KEY);

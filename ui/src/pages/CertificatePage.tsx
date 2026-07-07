@@ -6,6 +6,7 @@ import {
   gradeColor, statusView,
 } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
+import { Gauge } from "../components/Gauge";
 import { Skeleton } from "../components/ui";
 
 /* ============================================================================
@@ -146,14 +147,19 @@ function CertBody({ cert }: { cert: Certification }) {
               : "This certification has been revoked and no longer attests to the agent's safety."}
         </span>
         <span className="csb-sig" title="Cryptographic signature on the certificate payload">
-          {cert.signature_verified ? "🔏 Signature verified" : "⚠ Signature unverified"}
+          {cert.signature_verified ? "✓ Signature verified" : "⚠ Signature unverified"}
         </span>
       </div>
 
-      <header className="cert-hero">
+      <header className="cert-hero guilloche">
         <div className="cert-hero-seal">
           <Seal grade={cert.grade} size={150} />
         </div>
+        {typeof cert.index === "number" && (
+          <div className="cert-hero-gauge" aria-hidden={false}>
+            <Gauge value={cert.index} color={color} />
+          </div>
+        )}
         <div className="cert-hero-body">
           <span className="eyebrow">Agent Safety Certification</span>
           <h1>{cert.agent_name}</h1>
