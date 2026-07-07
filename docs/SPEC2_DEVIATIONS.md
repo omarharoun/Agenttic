@@ -28,3 +28,7 @@ reasonable defaults. If an authoritative spec later surfaces, reconcile these:
   `certification/__main__.py` so `python -m ascore.certification gen-key` still works. All
   existing importers (`scan.py`, `issues.py`, `server/crypto.py`, `server/app.py`,
   `server/routes/scan.py`) unchanged and green.
+- T12.1: capability-domain tags implemented as a deterministic catalog mapping
+  (`certification/domains.py`) keyed off `suite_id`, not as a stored field on each
+  immutable `TestSuite`. suites are append-only; the mapping is a pure function of
+  suite_id, so this is config-over-code with no schema migration.
