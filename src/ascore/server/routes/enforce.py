@@ -120,6 +120,13 @@ class ApprovalResolveRequest(BaseModel):
     note: str = ""
 
 
+@router.get("/oversight/analytics")
+def oversight_analytics(request: Request, agent_id: str | None = None):
+    """Approval-quality process-health metrics (renders from the log alone)."""
+    from ascore.oversight.analytics import approval_analytics
+    return approval_analytics(request.state.reg, request.state.cfg, agent_id)
+
+
 @router.get("/oversight/pending")
 def oversight_pending(request: Request, agent_id: str | None = None):
     """Pending oversight reviews + loosening proposals (the SSE/UI feed source)."""
