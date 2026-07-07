@@ -165,6 +165,12 @@ def auto_demote_on_incident(reg, cfg: dict, agent_id: str, *,
         reason=f"open {open_crit[0]['severity']} incident → auto-demote")
     reg.append_promotion_record(record)
     _recompile_at_stage(reg, cfg, agent_id, lowest)
+    try:
+        from ascore.feeds.webhooks import STAGE_DEMOTION, enqueue_webhook
+        enqueue_webhook(reg, cfg, STAGE_DEMOTION, agent_id,
+                        {"from_stage": current, "to_stage": lowest})
+    except Exception:  # noqa: BLE001 — feeds optional
+        pass
     return record
 
 

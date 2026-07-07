@@ -28,14 +28,25 @@ class IllegalTransitionError(ValueError):
 class IncidentManager:
     """Thin FSM over a tenant's incident registry tables."""
 
-    def __init__(self, reg):
+    def __init__(self, reg, cfg: dict | None = None):
         self.reg = reg
+        self._cfg = cfg or {}
 
     # -- open -----------------------------------------------------------------
 
     def open(self, incident: Incident) -> Incident:
         """Open a new incident (persists the opening record + 'opened' event)."""
         self.reg.save_incident(incident)
+        # webhook on S1/S2 (best-effort; only if configured)
+        if incident.severity in ("S1", "S2"):
+            try:
+                from ascore.feeds.webhooks import INCIDENT_S1_S2, enqueue_webhook
+                enqueue_webhook(self.reg, self._cfg, INCIDENT_S1_S2,
+                                incident.agent_id,
+                                {"severity": incident.severity,
+                                 "incident_id": incident.incident_id})
+            except Exception:  # noqa: BLE001 — feeds optional
+                pass
         return incident
 
     # -- state (computed) -----------------------------------------------------
@@ -150,7 +161,7 @@ def open_from_drift(reg, cfg: dict, *, agent_id: str, reason: str,
         incident_id=_new_incident_id(), agent_id=agent_id, severity=sev,
         origin="drift", title="drift escalation",
         summary=reason, trace_refs=list(trace_refs or []))
-    IncidentManager(reg).open(inc)
+    IncidentManager(reg, cfg).open(inc)
     return inc
 
 
@@ -186,12 +197,13 @@ def escalate_drift(reg, cfg: dict, status) -> Incident | None:
 
 def open_manual(reg, *, agent_id: str, severity: str, title: str = "",
                 summary: str = "", trace_refs: list[str] | None = None,
-                actor: str = "manual", origin: str = "manual") -> Incident:
+                actor: str = "manual", origin: str = "manual",
+                cfg: dict | None = None) -> Incident:
     """Manually open an incident (CLI/API). ``origin`` records the source
     (manual by default; e.g. ``canary`` for a canary trip)."""
     inc = Incident(
         incident_id=_new_incident_id(), agent_id=agent_id, severity=severity,
         origin=origin, title=title, summary=summary,
         trace_refs=list(trace_refs or []))
-    IncidentManager(reg).open(inc)
+    IncidentManager(reg, cfg).open(inc)
     return inc

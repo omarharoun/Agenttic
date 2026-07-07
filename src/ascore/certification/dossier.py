@@ -168,6 +168,9 @@ def revoke(reg, dossier_id: str, *, reason: str, actor: str = "",
             except Exception:  # noqa: BLE001
                 cfg = {}
         recompile_for_agent(reg, cfg, d.agent_id)
+        from ascore.feeds.webhooks import REVOCATION, enqueue_webhook
+        enqueue_webhook(reg, cfg, REVOCATION, d.agent_id,
+                        {"dossier_id": dossier_id, "reason": reason.strip()})
     except Exception:  # noqa: BLE001 — enforcement optional
         pass
 

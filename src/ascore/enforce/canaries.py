@@ -105,7 +105,7 @@ class CanaryManager:
             title=f"canary trip: {trip.kind}",
             summary=f"canary {trip.canary_id} tripped ({trip.detail})",
             trace_refs=[trip.canary_id, trip.call_ref], actor="canary",
-            origin="canary")
+            origin="canary", cfg=self.cfg)
         self.reg.append_enforcement_event(EnforcementEvent(
             event_id=_evt_id(), session_id=session.session_id,
             agent_id=session.agent_id, kind="canary", action="deny",

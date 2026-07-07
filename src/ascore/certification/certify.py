@@ -309,5 +309,18 @@ async def certify(
     except Exception:  # noqa: BLE001 — enforcement is optional for a bare certify
         pass
 
+    # webhook on a tier change vs the previous dossier
+    try:
+        prior = [d for d in reg.list_dossiers(agent_id)
+                 if d["dossier_id"] != dossier.dossier_id]
+        prev_tier = reg.get_dossier(prior[-1]["dossier_id"]).tier_decision.tier \
+            if prior else None
+        if prev_tier is not None and prev_tier != tier_decision.tier:
+            from ascore.feeds.webhooks import TIER_CHANGE, enqueue_webhook
+            enqueue_webhook(reg, cfg, TIER_CHANGE, agent_id,
+                            {"from_tier": prev_tier, "to_tier": tier_decision.tier})
+    except Exception:  # noqa: BLE001 — feeds optional
+        pass
+
     return CertifyResult(dossier=dossier, cost_usd=round(cost, 6), cached=False,
                          elicitation=analysis.summary())
