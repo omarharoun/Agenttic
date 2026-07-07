@@ -65,6 +65,9 @@ def live_status(agent_id: str, request: Request, rubric_id: str,
         raise HTTPException(404, f"scorecard {baseline_scorecard_id} not found")
     monitor = _monitor(state, rubric_id, agent_id)
     status = monitor.status(agent_id, baseline)
+    # drift escalation → auto-open an S3 incident (SPEC-2 T16.2/T16.3).
+    from ascore.live.incidents import escalate_drift
+    incident = escalate_drift(state.reg, state.cfg, status)
     return {
         "agent_id": agent_id, "window": status.window,
         "per_criterion_mean": status.per_criterion_mean,
@@ -72,4 +75,5 @@ def live_status(agent_id: str, request: Request, rubric_id: str,
         "drifted": status.drifted,
         "drift_detected": status.drift_detected,
         "reeval_requests": state.reg.reeval_requests(agent_id),
+        "incident_opened": incident.incident_id if incident else None,
     }
