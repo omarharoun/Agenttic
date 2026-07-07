@@ -61,9 +61,11 @@ class EnforcementPolicy(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def hashable_content(self) -> dict:
+        # the hash is the policy's identity; the id handle, hash field, and
+        # timestamp are excluded so a deterministic compile is byte-identical.
         data = self.model_dump(mode="json")
-        data.pop("content_hash", None)
-        data.pop("created_at", None)
+        for k in ("policy_id", "content_hash", "created_at"):
+            data.pop(k, None)
         return data
 
     def ref(self) -> str:
