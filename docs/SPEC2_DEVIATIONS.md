@@ -47,3 +47,10 @@ set for this release; no contract was violated (specs absent → playbook bound)
 The certification track (schema, profiles, elicitation, tiers, dossiers,
 attestation, incidents, staleness, public verification) is shipped. Subsequent
 milestones (M9+) will append new entries below.
+
+## Ledger update — v0.3.0-cards (after M10)
+Milestones M9–M10 complete, tagged `v0.3.0-cards`. Suite: **1422 passed, 4 skipped**
+(+21 since v0.2.0-cert, zero new skips). T19.0 (Zenodo AI Agent Index vendoring)
+SUCCEEDED — network was available; dataset record 19592546 (CC BY 4.0, 30 agents)
+vendored to data/vendor/ai-agent-index/. Card field taxonomy generated deterministically
+from it. All M9/M10 gate assertions green.
