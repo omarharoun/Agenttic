@@ -84,6 +84,26 @@ def import_index_cards(reg, path=None) -> int:
 # --------------------------------------------------------------------------- #
 
 
+def export_field_keys() -> set[str]:
+    """The set of valid card field keys, from the generated registry."""
+    from ascore.cards.fields import all_field_keys
+    return set(all_field_keys())
+
+
+def validate_export_round_trip(card: AgentCard) -> bool:
+    """Export the card and confirm every exported field key round-trips against
+    the *generated* registry (no hand-invented keys leak into an export)."""
+    exported = json.loads(export_card(card, "json"))
+    valid = export_field_keys()
+    reserved = {"agent_id", "source", "attribution"}
+    for key in exported:
+        if key in reserved:
+            continue
+        if key not in valid:
+            return False
+    return True
+
+
 def export_card(card: AgentCard, fmt: str = "json"):
     """Export a card to Index-schema JSON or CSV (flat field_key → value)."""
     flat = {
