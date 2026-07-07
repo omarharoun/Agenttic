@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.6.0-passport — Passport + receipts + verifier SDK + risk feed (M16–M17)
+
+Real Ed25519 (via the `cryptography` library — never hand-rolled).
+
+### Added
+- **Passport** (`schema/passport.py`, `passport/keys.py`, `passport/issuer.py`):
+  short-lived Ed25519-signed credentials bound to the latest certification
+  evidence; JWKS at `/.well-known/agenttic-jwks.json`; key rotation with overlap;
+  private keys held in memory only (grep-tested never to land in
+  registry/logs/events/exports). Revoked/stale certification cannot carry a live
+  passport; status is checked separately from signature (revocation beats a valid
+  signature). Migration v22.
+- **Signed action receipts** (`passport/receipts.py`): bind a passport to one
+  logged allow-decision (no receipt without a logged allow); hashes not payloads
+  by default (opt-in content is redaction-checked); delegation chains resolve to
+  the human principal with every hop's policy hash.
+- **Verifier SDK** — Python (`verify/`) + JS (`verify/js/`), offline against a
+  fetched JWKS with distinct named errors (Tampered/Expired/Revoked/UnknownKey);
+  cross-implementation golden-fixture parity. `Agent-Passport` header + example
+  relying-party server (accepts valid, rejects revoked).
+- **Risk feed** (`feeds/risk_api.py`): authenticated aggregate signal
+  (tier+status, posture, incident+SLA counts, block/approval/canary rates,
+  oversight health, passport validity) — no traces/payloads/PII; agrees with
+  independent SDK verification. **Webhooks** on tier_change / revocation /
+  incident_s1_s2 / stage_demotion (SSRF-checked delivery).
+
 ## v0.5.0-staged — Staged release ladder + canaries + oversight (M14–M15)
 
 ### Added

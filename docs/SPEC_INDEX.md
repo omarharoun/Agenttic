@@ -30,7 +30,7 @@ Cross-links and status for the platform spec surfaces.
 | M11–M13 | Enforcement gateway + compiler + lanes | ✅ done | `v0.4.0-enforce` |
 | M14–M15 | Staged release ladder + canaries/oversight | ✅ done | `v0.5.0-staged` |
 | — | Interactive RL oversight loop (opt-in addendum) | ✅ done | (in v0.5.0-staged) |
-| M16–M17 | Passport + receipts + verifier SDK + risk feed | ⏳ planned | `v0.6.0-passport` |
+| M16–M17 | Passport + receipts + verifier SDK + risk feed | ✅ done | `v0.6.0-passport` |
 
 ## Key entry points
 - Profiles: `ascore profiles list|show` · `src/ascore/certification/profiles.py`
