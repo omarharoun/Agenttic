@@ -147,6 +147,21 @@ class EnforcementGateway:
         )
         action_class = action_class_of(tool_name, self.cfg)
 
+        # honeypot canaries (T29.1): a trip is a confirmed positive → deny +
+        # incident at severity_on_trip, detected in Lane 1.
+        try:
+            from ascore.enforce.canaries import CanaryManager
+            cm = CanaryManager(self.reg, self.cfg)
+            trip = cm.check(session.agent_id, phase, tool_name, data)
+            if trip is not None:
+                incident_id = cm.trip(session, trip)
+                return self._gated_deny(
+                    session, phase, tool_name, t0,
+                    [f"canary:{trip.canary_id}", trip.call_ref,
+                     f"incident:{incident_id}"], origin="canary")
+        except Exception:  # noqa: BLE001 — canaries optional
+            pass
+
         # Lane 1 — deterministic (T24.1). Errors here apply the fail policy.
         try:
             l1 = lane1_evaluate(session, phase, tool_name, data, self.cfg)
@@ -220,8 +235,9 @@ class EnforcementGateway:
 
         return decision
 
-    def _gated_deny(self, session, phase, tool_name, t0, evidence) -> Decision:
-        """A deterministic stage-gate deny, still fully logged (Hard Rule 19)."""
+    def _gated_deny(self, session, phase, tool_name, t0, evidence,
+                    origin: str = "stage_gate") -> Decision:
+        """A deterministic Lane-1 deny (stage gate / canary), fully logged."""
         latency_ms = (time.perf_counter() - t0) * 1000.0
         decision = Decision(
             decision_id=_new_id("dec"), session_id=session.session_id,
@@ -234,7 +250,7 @@ class EnforcementGateway:
             actor="gateway", decision_ref=decision.ref(),
             policy_hash=session.policy.content_hash,
             detail={"phase": phase, "tool": tool_name, "lane": "lane1",
-                    "evidence": evidence, "origin": "stage_gate"}))
+                    "evidence": evidence, "origin": origin}))
         return decision
 
     def _fail_policy(self, action_class: str):

@@ -186,11 +186,12 @@ def escalate_drift(reg, cfg: dict, status) -> Incident | None:
 
 def open_manual(reg, *, agent_id: str, severity: str, title: str = "",
                 summary: str = "", trace_refs: list[str] | None = None,
-                actor: str = "manual") -> Incident:
-    """Manually open an incident (CLI/API)."""
+                actor: str = "manual", origin: str = "manual") -> Incident:
+    """Manually open an incident (CLI/API). ``origin`` records the source
+    (manual by default; e.g. ``canary`` for a canary trip)."""
     inc = Incident(
         incident_id=_new_incident_id(), agent_id=agent_id, severity=severity,
-        origin="manual", title=title, summary=summary,
+        origin=origin, title=title, summary=summary,
         trace_refs=list(trace_refs or []))
     IncidentManager(reg).open(inc)
     return inc

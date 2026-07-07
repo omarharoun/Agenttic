@@ -422,6 +422,19 @@ class IncidentEventRow(SQLModel, table=True):
     payload: str = "{}"
 
 
+class CanarySetRow(SQLModel, table=True):
+    """A per-agent versioned canary set (SPEC-2 M15). Append-only + versioned;
+    rotation stores the next version. Trip history lives in enforcement_events."""
+    __tablename__ = "canary_sets"
+    __table_args__ = (UniqueConstraint("tenant_id", "agent_id", "version"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    agent_id: str = Field(index=True)
+    version: int
+    created_at: datetime
+    payload: str
+
+
 class CohortRow(SQLModel, table=True):
     """A caller cohort at a release stage. ``stage`` resolves to the current
     stage; changes are recorded as append-only PromotionRecords."""
@@ -1355,6 +1368,33 @@ class Registry:
             return [{"incident_id": r.incident_id, "agent_id": r.agent_id,
                      "severity": r.severity, "origin": r.origin,
                      "opened_at": r.opened_at.isoformat()} for r in rows]
+
+    # -- canary sets (append-only, versioned) ----------------------------------
+
+    def save_canary_set(self, canary) -> None:
+        from ascore.schema.enforcement import CanarySet
+        with Session(self.engine) as s:
+            latest = s.exec(select(CanarySetRow).where(
+                CanarySetRow.tenant_id == self.tenant,
+                CanarySetRow.agent_id == canary.agent_id
+            ).order_by(CanarySetRow.version.desc())).first()
+            version = canary.version
+            if latest is not None and version <= latest.version:
+                version = latest.version + 1
+                canary = canary.model_copy(update={"version": version})
+            s.add(CanarySetRow(
+                tenant_id=self.tenant, agent_id=canary.agent_id, version=version,
+                created_at=_now(), payload=canary.model_dump_json()))
+            s.commit()
+
+    def active_canary_set(self, agent_id: str):
+        from ascore.schema.enforcement import CanarySet
+        with Session(self.engine) as s:
+            row = s.exec(select(CanarySetRow).where(
+                CanarySetRow.tenant_id == self.tenant,
+                CanarySetRow.agent_id == agent_id
+            ).order_by(CanarySetRow.version.desc())).first()
+            return CanarySet.model_validate_json(row.payload) if row else None
 
     # -- release cohorts + promotion records -----------------------------------
 
