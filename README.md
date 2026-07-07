@@ -559,3 +559,23 @@ See `AGENTTIC-MASTER-PLAYBOOK.md` for the full spec and
 Agent cards and the Catalog are derived from **The 2025 AI Agent Index** (Zenodo,
 DOI 10.5281/zenodo.19592546, CC BY 4.0). See [docs/ATTRIBUTION.md](docs/ATTRIBUTION.md).
 Index-derived data is Catalog-only and never mixed into measured scores.
+
+## Agent cards (SPEC-2 M9–M10)
+
+Provenance-tracked agent descriptions on the AI Agent Index taxonomy. Every value
+is `measured` (evidence refs), `documented` (citations), or `attested` (signature)
+— **no refs ⇒ no value**; `none_found` ≠ `confirmed_none` (confirming absence needs
+evidence). Autonomy is classified L1–L5 conservatively (unclassifiable ⇒ None), and
+a covered-agent detector flags agentic systems (True/False/None). A covered agent
+without a card caps its certification tier at B; frontier autonomy (L4/L5) adds
+required domains and tightens floors.
+
+```bash
+ascore cards autofill ref-agent     # measured fields from traces/scorecards/dossiers
+ascore cards show ref-agent
+ascore cards annotate ref-agent -f company_accountability.developer -v Acme -c https://acme.com
+```
+
+Public: `GET /cards/{agent_id}` (renders from card JSON alone, provenance classes
+distinct), `GET /catalog`. Index import brings in the CC BY dataset as Catalog-only
+`documented` cards — never mixed into score leaderboards.
