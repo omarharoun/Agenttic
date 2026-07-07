@@ -211,6 +211,16 @@ def _agent_cards_table(conn) -> None:
     AgentCardRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _enforcement_tables(conn) -> None:
+    """v19 — enforcement policies, append-only events, approvals (SPEC-2 M11)."""
+    import ascore.registry.sqlite_store  # noqa: F401
+    from ascore.registry.sqlite_store import (
+        ApprovalRequestRow, EnforcementEventRow, EnforcementPolicyRow,
+    )
+    for model in (EnforcementPolicyRow, EnforcementEventRow, ApprovalRequestRow):
+        model.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -231,6 +241,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (16, "certification_track_tables", _certification_track_tables),
     (17, "elicitation_summaries_table", _elicitation_summaries_table),
     (18, "agent_cards_table", _agent_cards_table),
+    (19, "enforcement_tables", _enforcement_tables),
 ]
 
 
