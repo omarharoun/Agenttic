@@ -229,6 +229,13 @@ def _release_ladder_tables(conn) -> None:
         model.__table__.create(bind=conn, checkfirst=True)
 
 
+def _canary_sets_table(conn) -> None:
+    """v21 — per-agent versioned canary sets (SPEC-2 M15)."""
+    import ascore.registry.sqlite_store  # noqa: F401
+    from ascore.registry.sqlite_store import CanarySetRow
+    CanarySetRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -251,6 +258,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (18, "agent_cards_table", _agent_cards_table),
     (19, "enforcement_tables", _enforcement_tables),
     (20, "release_ladder_tables", _release_ladder_tables),
+    (21, "canary_sets_table", _canary_sets_table),
 ]
 
 

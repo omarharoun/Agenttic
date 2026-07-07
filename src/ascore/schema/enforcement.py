@@ -111,6 +111,23 @@ class EnforcementEvent(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class CanarySet(BaseModel):
+    """A per-agent versioned set of honeypot canaries (SPEC-2 M15): decoy tools
+    that no legitimate flow calls, planted canary credentials whose reuse trips,
+    and tripwire egress domains. Rotating installs a new version; trip history is
+    kept separately (append-only events)."""
+
+    agent_id: str
+    version: int = 1
+    decoy_tools: list[str] = Field(default_factory=list)
+    canary_credentials: list[str] = Field(default_factory=list)
+    tripwire_domains: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    def ref(self) -> str:
+        return f"canary:{self.agent_id}@v{self.version}"
+
+
 class ApprovalRequest(BaseModel):
     """A tool call parked awaiting human approval."""
 
