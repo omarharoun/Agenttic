@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from ascore.registry.sqlite_store import Registry
 from ascore.server.app import create_app
+from pathlib import Path
 
 CONFIG = """\
 models: {agent_default: a, judge_strong: j, judge_light: l}
@@ -58,7 +59,7 @@ def test_incidents_cli(tmp_path, monkeypatch):
 
     from ascore.cli import app
     monkeypatch.setenv("ASCORE_TENANT", "inccli")
-    monkeypatch.chdir("/home/omar/agenttic")
+    monkeypatch.chdir(Path(__file__).resolve().parents[1])
     runner = CliRunner()
     try:
         out = runner.invoke(app, ["incidents", "open", "ref-agent",
