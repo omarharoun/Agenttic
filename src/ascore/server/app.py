@@ -307,6 +307,10 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(certifications_router, prefix="/api", dependencies=protected)
     from ascore.server.routes.dossiers import router as dossiers_router
     app.include_router(dossiers_router, prefix="/api", dependencies=protected)
+    # Public, unauthenticated dossier verification at the root path (registered
+    # before the SPA catch-all so it isn't shadowed).
+    from ascore.server.routes.dossiers import public_router as dossiers_public
+    app.include_router(dossiers_public)
     app.include_router(camp_router, prefix="/api", dependencies=protected)
 
     if UI_DIST.is_dir():
