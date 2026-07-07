@@ -326,6 +326,8 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     from ascore.server.routes.passport import router as passport_router
     app.include_router(passport_public)
     app.include_router(passport_router, prefix="/api", dependencies=protected)
+    from ascore.server.routes.feeds import router as feeds_router
+    app.include_router(feeds_router, prefix="/api", dependencies=protected)
     app.include_router(camp_router, prefix="/api", dependencies=protected)
 
     if UI_DIST.is_dir():
