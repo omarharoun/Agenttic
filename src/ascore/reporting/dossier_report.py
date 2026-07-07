@@ -137,7 +137,8 @@ def render_pdf(dossier: Dossier) -> bytes:
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(*MUTED)
         for cav in dossier.caveats:
-            pdf.multi_cell(0, 5, _san(f"- {cav}"))
+            pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(pdf.epw, 5, _san(f"- {cav}"), new_x="LMARGIN", new_y="NEXT")
 
     pdf.set_draw_color(*LINE)
     out = pdf.output()
