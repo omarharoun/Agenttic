@@ -23,6 +23,8 @@ class LaneResult:
     action_class: str = "unknown"
     fail_open: bool = False
     preserved_ref: str | None = None
+    preserved_original: object = None  # the untouched original (gateway persists it)
+    transformed: object = None         # the safe replacement (quarantine-tagged / redacted)
 
 
 # --------------------------------------------------------------------------- #
@@ -145,6 +147,103 @@ def lane1_evaluate(session, phase: str, tool_name: str, data, cfg: dict):
     return None
 
 
+# --------------------------------------------------------------------------- #
+# Lane 2 — pluggable classifiers (T24.2).
+# --------------------------------------------------------------------------- #
+
+#: phrases that signal a prompt-injection payload embedded in a tool result
+_INJECTION_MARKERS = (
+    "ignore previous instructions", "ignore all previous", "disregard your",
+    "system prompt", "you are now", "new instructions:", "override your",
+    "exfiltrate", "send all", "reveal your instructions", "print your system",
+)
+
+#: secret / PII patterns to redact from OUTBOUND args
+_SECRET_PATTERNS = [
+    (re.compile(r"sk-[A-Za-z0-9]{8,}"), "api_key"),
+    (re.compile(r"AKIA[0-9A-Z]{8,}"), "aws_key"),
+    (re.compile(r"(?i)(aws_secret|api[_-]?key|password|secret)\s*[=:]\s*\S+"), "secret_assignment"),
+    (re.compile(r"(?i)bearer\s+[A-Za-z0-9._-]{10,}"), "bearer_token"),
+    (re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+"), "email"),
+    (re.compile(r"\b\d{3}-\d{2}-\d{4}\b"), "ssn"),
+]
+
+
+def _flatten_text(data) -> str:
+    if isinstance(data, str):
+        return data
+    if isinstance(data, dict):
+        return " ".join(str(v) for v in data.values())
+    if isinstance(data, (list, tuple)):
+        return " ".join(str(v) for v in data)
+    return str(data) if data is not None else ""
+
+
+def screen_injection(result) -> tuple[bool, list[str]]:
+    """Injection screen for tool RESULTS. Returns (is_injection, markers). A
+    result that merely *describes* resisting an injection is not flagged."""
+    text = _flatten_text(result).lower()
+    if not text:
+        return False, []
+    try:
+        from ascore.metrics.injection_detect import resisted
+        if resisted(text):
+            return False, []
+    except Exception:  # noqa: BLE001
+        pass
+    hits = [m for m in _INJECTION_MARKERS if m in text]
+    return (len(hits) > 0), hits
+
+
+def redact_secrets(args) -> tuple[bool, object, list[str]]:
+    """Redact secrets/PII from OUTBOUND args. Returns (changed, redacted, kinds)."""
+    kinds: list[str] = []
+
+    def _redact_str(s: str) -> str:
+        out = s
+        for pat, kind in _SECRET_PATTERNS:
+            if pat.search(out):
+                kinds.append(kind)
+                out = pat.sub("[REDACTED]", out)
+        return out
+
+    if isinstance(args, str):
+        red = _redact_str(args)
+        return (red != args), red, kinds
+    if isinstance(args, dict):
+        red = {}
+        changed = False
+        for k, v in args.items():
+            if isinstance(v, str):
+                nv = _redact_str(v)
+                changed = changed or (nv != v)
+                red[k] = nv
+            else:
+                red[k] = v
+        return changed, red, kinds
+    return False, args, kinds
+
+
 def lane2_evaluate(session, phase: str, tool_name: str, data, cfg: dict):
-    """Lane 2 placeholder — filled in by T24.2."""
+    """Lane-2 classifiers. Injection screen on results ⇒ quarantine-tag (original
+    preserved); secret/PII redaction on outbound args ⇒ transform (original
+    preserved). Returns a :class:`LaneResult` transform, or None (allow)."""
+    if phase == "tool_result":
+        is_injection, markers = screen_injection(data)
+        if is_injection:
+            quarantined = {"quarantined": True, "reason": "prompt_injection_detected",
+                           "markers": markers}
+            return LaneResult(
+                action="transform", action_class="read",
+                evidence=[f"lane2:injection:{','.join(markers[:3])}"],
+                preserved_original=data, transformed=quarantined)
+        return None
+
+    # tool_call: redact secrets/PII from outbound args
+    changed, redacted, kinds = redact_secrets(data)
+    if changed:
+        return LaneResult(
+            action="transform", action_class=action_class_of(tool_name, cfg),
+            evidence=[f"lane2:redact:{','.join(sorted(set(kinds)))}"],
+            preserved_original=data, transformed=redacted)
     return None

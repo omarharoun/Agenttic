@@ -140,13 +140,19 @@ class EnforcementGateway:
                 lane = "lane1"
 
         # Lane 2 — classifiers (T24.2), only if Lane 1 allowed
+        transformed = None
         if action == "allow" and lane2_evaluate is not None:
             l2 = lane2_evaluate(session, phase, tool_name, data, self.cfg)
             if l2 is not None:
-                action, evidence, preserved_ref, fail_open = (
-                    l2.action, l2.evidence, l2.preserved_ref, l2.fail_open)
+                action, evidence, fail_open = l2.action, l2.evidence, l2.fail_open
                 action_class = l2.action_class or action_class
                 lane = "lane2"
+                transformed = l2.transformed
+                # preserve the untouched original as its own append-only event;
+                # the decision refs it (nothing is silently dropped — Hard Rule 23)
+                if l2.preserved_original is not None:
+                    preserved_ref = self._preserve_original(
+                        session, phase, tool_name, l2.preserved_original)
 
         latency_ms = (time.perf_counter() - t0) * 1000.0
         decision = Decision(
@@ -158,13 +164,16 @@ class EnforcementGateway:
             policy_hash=session.policy.content_hash)
 
         # log the decision (no enforcement without a logged decision)
+        detail = {"phase": phase, "tool": tool_name, "lane": lane,
+                  "evidence": evidence, "fail_open": fail_open}
+        if transformed is not None:
+            detail["transformed"] = transformed
+            detail["original_preserved_ref"] = preserved_ref
         self._log(EnforcementEvent(
             event_id=_new_id("evt"), session_id=session_id,
             agent_id=session.agent_id, kind="decision", action=action,
             actor="gateway", decision_ref=decision.ref(),
-            policy_hash=session.policy.content_hash,
-            detail={"phase": phase, "tool": tool_name, "lane": lane,
-                    "evidence": evidence, "fail_open": fail_open}))
+            policy_hash=session.policy.content_hash, detail=detail))
 
         # terminal actions flip session state
         if action in ("terminate_session", "revoke_access"):
@@ -180,6 +189,25 @@ class EnforcementGateway:
                 pass
 
         return decision
+
+    def _preserve_original(self, session, phase, tool_name, original) -> str:
+        """Store the untouched original as an append-only 'preserved' event and
+        return a ref to it, so a transform/quarantine never loses the original."""
+        event_id = _new_id("evt")
+        self._log(EnforcementEvent(
+            event_id=event_id, session_id=session.session_id,
+            agent_id=session.agent_id, kind="preserved", actor="gateway",
+            policy_hash=session.policy.content_hash,
+            detail={"phase": phase, "tool": tool_name, "original": original}))
+        return f"preserved:{event_id}"
+
+    def resolve_preserved(self, session_id: str, preserved_ref: str):
+        """Resolve a preserved-original ref back to its stored value."""
+        target = preserved_ref.split(":", 1)[1] if ":" in preserved_ref else preserved_ref
+        for e in self.reg.list_enforcement_events(session_id):
+            if e.get("kind") == "preserved" and e.get("event_id") == target:
+                return e.get("detail", {}).get("original")
+        return None
 
     # -- logging -------------------------------------------------------------
 
