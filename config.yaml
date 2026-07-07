@@ -169,6 +169,17 @@ oversight:
   reflexive_under_seconds: 3
   rubber_stamp_threshold: 0.6
   posture_toggle: false
+  # Interactive RL oversight loop (opt-in). DISABLED by default. When on, it
+  # monitors enforcement decisions live, surfaces borderline ones to a human,
+  # and adapts posture from that feedback via a lightweight contextual bandit.
+  # SAFETY: tightening feedback may auto-apply (overrides stay tighten_only);
+  # loosening is ONLY ever a proposal requiring an explicit human confirmation.
+  interactive_loop:
+    enabled: false
+    review_selectors: { near_budget_ms: 2, lane2_confidence_below: 0.7, first_seen_pattern: true }
+    bandit: { algorithm: thompson, exploration: 0.05, seed: 1234 }
+    adaptation: { auto_apply: tighten_only, loosening: require_confirmation }
+    model: { provider: null, byo_key: true }   # off unless configured
 passport:
   ttl_hours: 168
   jwks_path: /.well-known/agenttic-jwks.json
