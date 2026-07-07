@@ -1101,10 +1101,16 @@ def dossier_show(
     fmt: str = typer.Option("md", "--format", "-f", help="md|json|inspect"),
     config: str = "config.yaml",
 ):
-    """Render a persisted dossier (md/json/inspect)."""
+    """Render a persisted dossier (md/json/inspect) with its computed status."""
+    from ascore.certification.staleness import status, status_reasons
     from ascore.reporting.dossier_report import render
     _cfg, reg = _ctx(config)
     d = reg.get_dossier(dossier_id)
+    st = status(reg, d)
+    color = {"current": "green", "stale": "yellow", "revoked": "red"}.get(st, "dim")
+    console.print(f"[{color}]status: {st}[/]"
+                  + (f" — {'; '.join(status_reasons(reg, d))}"
+                     if st != "current" else ""))
     console.print(render(d, fmt))
 
 
