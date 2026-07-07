@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.5.0-staged — Staged release ladder + canaries + oversight (M14–M15)
+
+### Added
+- **Staged release ladder** (`schema/release.py`, `release/ladder.py`): ordered
+  stages internal→vetted→limited→ga, cohorts, stage-gated access (above-stage
+  calls denied with origin=stage_gate), compiler stage dimension (GA
+  stricter-or-equal, tighten-only). Registry migration v20.
+- **Evidence-gated promotion** (`release/promotion.py`): criteria-checked
+  (observation hours, incident ceiling, tier prereq), one stage at a time, forced
+  promotion impossible, append-only PromotionRecord + recompile; open S1/S2
+  auto-demotes immediately.
+- **Honeypot canaries** (`enforce/canaries.py`): per-agent versioned decoy tools,
+  planted credentials, tripwire domains; Lane-1 trip ⇒ deny + S1 incident naming
+  canary id + call ref; zero false positives; scorecard-separation invariant;
+  rotation preserves append-only trip history. Migration v21.
+- **Oversight analytics** (`oversight/analytics.py`): approval latency, approval
+  rate, override-of-deny, post-approval incident attribution, rubber-stamp
+  indicator (aggregate process health). Config toggle: sustained rubber-stamp
+  tightens posture (second approver + raised sampling) — indicator-only when off.
+- **Interactive RL oversight loop** (opt-in addendum, `enforce/interactive_oversight.py`):
+  live review of borderline decisions + a Thompson contextual bandit that
+  auto-tightens on feedback but only ever *proposes* loosening (gated by an
+  explicit, logged human confirmation). `ascore oversight watch|confirm`.
+
 ## v0.4.0-enforce — Enforcement gateway + policy compiler (M11–M13)
 
 An inline enforcement gateway compiled from certification evidence: hash-verified
