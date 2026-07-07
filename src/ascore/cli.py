@@ -1099,6 +1099,24 @@ def dossier_verify(
         raise typer.Exit(1)
 
 
+@dossier_app.command("revoke")
+def dossier_revoke(
+    dossier_id: str = typer.Argument(...),
+    reason: str = typer.Option(..., "--reason", help="why this dossier is revoked"),
+    config: str = "config.yaml",
+):
+    """Revoke a dossier (append-only). The dossier stays readable; its status
+    flips to 'revoked'. There is no un-revoke / manual-promotion path."""
+    from ascore.certification.dossier import revoke
+    from ascore.registry.sqlite_store import NotFoundError
+    _cfg, reg = _ctx(config)
+    try:
+        revoke(reg, dossier_id, reason=reason)
+    except NotFoundError:
+        raise typer.BadParameter(f"dossier {dossier_id} not found")
+    console.print(f"[red]REVOKED[/] dossier {dossier_id} — {reason}")
+
+
 @dossier_app.command("show")
 def dossier_show(
     dossier_id: str = typer.Argument(...),
