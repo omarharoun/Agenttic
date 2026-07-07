@@ -88,5 +88,8 @@ Paths are `file` or `file:line`. This is a locator, not a review.
   check_refs, status); `METRICS:29` (21 canonical, 7 index-weighted).
 - `index_weights():362`, `catalog_payload():367`. Datasets under `metrics/datasets/`.
 
-## Test baseline
-See `## Green baseline` section (recorded at T0.2).
+## Green baseline (T0.2)
+- Command: `python -m pytest -q`
+- Result: **1347 passed, 4 skipped, 1 warning**
+- Runtime: **133.23s** (~2m13s)
+- Status: GREEN. Certification track must keep the suite ≥ this baseline with zero new skips.
