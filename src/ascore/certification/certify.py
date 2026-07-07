@@ -59,6 +59,42 @@ def judge_is_calibrated(cfg: dict) -> bool:
     return False
 
 
+def _enforce_certification_ceiling(cfg: dict, reg, *, n_configs: int,
+                                   n_suites: int, k: int) -> None:
+    """Gate the run against the tenant spend cap using the cost estimator. No-op
+    when caps are 0 (unlimited) or no suites/estimator context exists."""
+    from ascore.budget import BudgetExceededError, check_pre_run
+    from ascore.cost import estimate_for_run
+
+    # hard ceiling: if the tenant is already at/over its daily cap, refuse before
+    # spending anything more (BYO-key evaluators can't exceed their own cap).
+    daily_cap = float((cfg.get("budget", {}) or {}).get("max_daily_cost_usd", 0) or 0)
+    if daily_cap and reg is not None and reg.spend_today() >= daily_cap:
+        raise BudgetExceededError(
+            f"daily spend cap ${daily_cap:.4f} already reached "
+            f"(spent ${reg.spend_today():.4f}); certification refused")
+
+    projected = 0.0
+    # estimate per-suite cost; multiply by configs (neutral+strong) × k
+    for ref_id in _suite_ids_from_cfg(cfg, reg):
+        try:
+            est = estimate_for_run(cfg, reg, ref_id)
+            projected += float(getattr(est, "projected_usd", 0.0))
+        except Exception:  # noqa: BLE001 — estimator is best-effort
+            continue
+    projected *= max(1, n_configs) * max(1, k)
+    if projected > 0:
+        check_pre_run(cfg, reg, projected)  # raises BudgetExceededError if over cap
+
+
+def _suite_ids_from_cfg(cfg, reg):
+    try:
+        from ascore.metrics.standard_suites import canonical_suite_ids
+        return canonical_suite_ids(reg)
+    except Exception:  # noqa: BLE001
+        return []
+
+
 def _find_reusable_dossier(reg, agent_id: str, agent_config_hash: str,
                            profile_id: str):
     """An existing dossier for this exact (agent_config_hash, profile) — the
@@ -124,6 +160,14 @@ async def certify(
     _check_abort("start")
     k = int(k or profile.min_k)
     suite_ids = [ref.suite_id for ref in profile.suite_refs]
+
+    # BYO-key billing ceiling (SPEC-2 T15.5): enforce the tenant's spend cap
+    # up-front. For an independent evaluator this is *their* key + *their*
+    # ceiling — certification never spends past it. No-op when caps are 0
+    # (unlimited). A rough projection (per config × per suite × k) gates the run;
+    # per-suite RunBudget still aborts mid-run if the per-run cap is crossed.
+    _enforce_certification_ceiling(cfg, reg, n_configs=2, n_suites=len(suite_ids), k=k)
+
     matrix = await run_matrix(
         cfg, reg, adapter, k=k, suite_ids=suite_ids or None,
         judge_client=judge_client or client, fi_evaluate_fn=fi_evaluate_fn,
@@ -139,6 +183,11 @@ async def certify(
         cost += float(result.get("k_runs_cost_usd", 0.0))
     for ref in profile.suite_refs:
         evidence_refs.append(ref.ref())
+
+    # bill the certification run to THIS tenant's spend ledger (the BYO key that
+    # served the judge + agent calls) so the evaluator's spend is attributable.
+    if cost:
+        reg.record_spend(cfg.get("models", {}).get("judge_strong", "judge"), cost)
 
     # abort before any dossier is assembled/persisted — leaves no dossier and no
     # reusable-dossier cache entry (the canonical runs are harmless evidence).
