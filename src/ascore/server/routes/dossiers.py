@@ -56,6 +56,48 @@ def public_certification(dossier_id: str, request: Request):
     return view
 
 
+def public_card_view(reg, agent_id: str) -> dict:
+    """Public card view rendered from the card JSON alone: fields grouped by
+    provenance class (measured/documented/attested/none) + per-category
+    completeness. Provenance classes are surfaced so the UI can style them
+    distinctly."""
+    from ascore.cards.fields import card_completeness
+    card = reg.get_card(agent_id)
+    by_provenance = {"measured": [], "documented": [], "attested": [],
+                     "none_found": [], "confirmed_none": [], "not_applicable": []}
+    for key, fv in card.fields.items():
+        bucket = fv.provenance if fv.status == "value_present" else fv.status
+        by_provenance.setdefault(bucket, []).append({
+            "field_key": key, "value": fv.value, "status": fv.status,
+            "provenance": fv.provenance,
+            "refs": list(fv.evidence_refs or fv.citations)})
+    return {
+        "agent_id": card.agent_id,
+        "version": card.version,
+        "source": card.source,
+        "attribution": card.attribution,
+        "completeness": card_completeness(card),
+        "fields_by_provenance": by_provenance,
+    }
+
+
+@public_router.get("/cards/{agent_id:path}")
+def public_card(agent_id: str, request: Request):
+    reg = request.app.state.reg
+    try:
+        return public_card_view(reg, agent_id)
+    except NotFoundError:
+        raise HTTPException(404, f"card {agent_id} not found")
+
+
+@public_router.get("/catalog")
+def public_catalog(request: Request, source: str | None = None):
+    """The Catalog: all agent cards (optionally filtered by source). Index-imported
+    agents live here; they never appear on score leaderboards (Hard Rule 17)."""
+    reg = request.app.state.reg
+    return {"cards": reg.list_cards(source=source)}
+
+
 class CertifyRequest(BaseModel):
     agent_id: str = "ref-agent"
     profile_id: str = "cert-agent-safety-v1"

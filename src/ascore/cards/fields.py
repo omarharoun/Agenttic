@@ -88,6 +88,27 @@ def all_field_keys() -> list[str]:
     return [fk for cat in CATEGORIES for (_name, fk) in reg[cat]]
 
 
+def card_completeness(card) -> dict:
+    """Per-category completeness for a card: how many fields carry a present
+    value out of the category's total (from the generated registry)."""
+    reg = generate_field_registry()
+    out: dict[str, dict] = {}
+    total_present = total_fields = 0
+    for cat in CATEGORIES:
+        keys = [fk for (_n, fk) in reg[cat]]
+        present = sum(1 for fk in keys
+                      if (fv := card.fields.get(fk)) is not None
+                      and fv.status == "value_present")
+        out[cat] = {"present": present, "total": len(keys),
+                    "pct": round(100 * present / len(keys), 1) if keys else 0.0}
+        total_present += present
+        total_fields += len(keys)
+    out["_overall"] = {"present": total_present, "total": total_fields,
+                       "pct": round(100 * total_present / total_fields, 1)
+                       if total_fields else 0.0}
+    return out
+
+
 def registry_digest() -> str:
     """A stable digest of the generated registry — proves deterministic
     regeneration (two runs over the same dataset agree)."""
