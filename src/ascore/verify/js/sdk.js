@@ -61,7 +61,7 @@ function verifyReceipt(receipt, jwks) {
   const pub = pubKeyFromJwks(jwks, receipt.key_id || '');
   const payload = {};
   for (const k of Object.keys(receipt)) {
-    if (k !== 'signature' && k !== 'created_at') payload[k] = receipt[k];
+    if (k !== 'signature') payload[k] = receipt[k];
   }
   verifySignature(pub, payload, receipt.signature || '');
   return receipt;

@@ -18,6 +18,7 @@ from ascore.config import load_config
 from ascore.metrics.standard_suites import seed_standard_suites
 from ascore.registry.sqlite_store import Registry
 from ascore.schema.testcase import TestCase, TestSuite
+from pathlib import Path
 
 
 @pytest.fixture()
@@ -98,7 +99,7 @@ def test_unapproved_suite_not_pinned(cfg):
 
 def test_cli_profiles_show_snapshot(tmp_path, monkeypatch):
     monkeypatch.setenv("ASCORE_TENANT", "cliproftest")
-    monkeypatch.chdir("/home/omar/agenttic")
+    monkeypatch.chdir(Path(__file__).resolve().parents[1])
     runner = CliRunner()
     res = runner.invoke(app_ref(), ["profiles", "show", "cert-agent-safety-v1"])
     assert res.exit_code == 0

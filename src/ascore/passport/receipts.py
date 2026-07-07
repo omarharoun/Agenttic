@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
+from datetime import datetime
 
 from ascore.schema.enforcement import EnforcementEvent
 from ascore.schema.passport import Receipt
@@ -76,7 +77,8 @@ class ReceiptIssuer:
                   "input_sha256": receipt.input_sha256,
                   "output_sha256": receipt.output_sha256,
                   "parent_receipt_id": receipt.parent_receipt_id,
-                  "key_id": receipt.key_id, "signature": receipt.signature}
+                  "key_id": receipt.key_id, "signature": receipt.signature,
+                  "created_at": receipt.created_at.isoformat()}
         if include_content:
             from ascore.enforce.self_security import redact_obj
             detail["content"] = {"input": redact_obj(input_data),
@@ -167,4 +169,6 @@ def load_receipt_from_event(event: dict) -> Receipt | None:
         decision_id=d.get("decision_id", ""), input_sha256=d.get("input_sha256", ""),
         output_sha256=d.get("output_sha256", ""),
         parent_receipt_id=d.get("parent_receipt_id"), key_id=d.get("key_id", ""),
-        signature=d.get("signature", ""))
+        signature=d.get("signature", ""),
+        **({"created_at": datetime.fromisoformat(d["created_at"])}
+           if d.get("created_at") else {}))

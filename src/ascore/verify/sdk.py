@@ -97,8 +97,7 @@ def verify_receipt(receipt: dict, jwks: dict) -> dict:
     """Verify a receipt dict's signature against a JWKS."""
     kid = receipt.get("key_id", "")
     pub = _pubkey_from_jwks(jwks, kid)
-    payload = {k: v for k, v in receipt.items()
-               if k not in ("signature", "created_at")}
+    payload = {k: v for k, v in receipt.items() if k != "signature"}
     _verify_signature(pub, payload, receipt.get("signature", ""))
     return receipt
 
