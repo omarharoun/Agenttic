@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { HexMark } from "../components/Icons";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { GRADE_BANDS, gradeColor } from "../cert";
@@ -128,7 +129,7 @@ export function MethodologyPage() {
   return (
     <>
       <nav className="lp-nav">
-        <Link to="/" className="brand"><span className="hex">⬡</span> Agenttic</Link>
+        <Link to="/" className="brand"><HexMark className="hex" /> Agenttic</Link>
         <span className="spacer" />
         <Link className="navlink" to="/certified">Certified agents</Link>
         <Link className="navlink" to="/api-docs">API docs</Link>
@@ -492,7 +493,7 @@ export function MethodologyPage() {
 
       <footer className="lp">
         <div className="lp-footer">
-          <span><span className="hex" style={{ color: "var(--accent)" }}>⬡</span> Agenttic</span>
+          <span><span className="hex" style={{ color: "var(--accent)", display: "inline-flex", verticalAlign: "middle" }}><HexMark size={13} /></span> Agenttic</span>
           <Link to="/">Home</Link>
           <Link to="/api-docs">API docs</Link>
           <Link to="/app/leaderboard">Leaderboard</Link>
