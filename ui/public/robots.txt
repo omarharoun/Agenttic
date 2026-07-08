@@ -1,0 +1,8 @@
+# Agenttic — the safety lab for AI agents
+User-agent: *
+Allow: /
+
+# The authenticated console is a client-only SPA with no crawlable content.
+Disallow: /app/
+
+Sitemap: https://agenttic.io/sitemap.xml
