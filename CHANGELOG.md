@@ -1,5 +1,42 @@
 # Changelog
 
+## v0.7.0-integrate — Production integration: OTel ingest, adapters, CI gate, self-host/air-gap (SPEC-7 M18–M20)
+
+Agenttic goes to where production already is: the CI that gates merges, the
+frameworks agents are built in, the OTel bus enterprises already run, and the
+private networks regulated data can't leave.
+
+### Added
+- **CI safety gate** (`.github/actions/agent-safety/`): a composite GitHub Action
+  (+ hermetic container entry) that runs the safety battery via `ascore` and
+  posts a PR status check + summary. Per-dimension deltas vs the base branch and
+  **regression gating** fail the merge when a dimension erodes even if the letter
+  grade holds. Fully offline/self-contained (mock provider, no hosted account).
+- **OTel-GenAI ingest** (`src/ascore/ingest/`): an OTLP/HTTP `POST /v1/traces`
+  receiver + `ascore ingest otel <file>` batch importer. Spans following the
+  GenAI semantic conventions map to `Trace` (tools + I/O hashes, tokens,
+  `agent_config_hash` preserved) and enforcement spans to `Decision`. Provenance
+  `source="otel_ingest"`; stored `mode="live"` so ingested traces are
+  structurally excluded from batch certification scorecards (SPEC-1 Step 9
+  invariant). Incomplete spans degrade gracefully. Round-trip documented in
+  `docs/OTEL_INTEROP.md`. `Trace.source` added (SCHEMA_VERSION 0.2.0).
+- **Framework adapters** (`adapters/`): thin `agenttic-langgraph` (public
+  `BaseCallbackHandler`) and `agenttic-openai-agents` (public `RunHooks`)
+  packages — `trace(agent)` emits GenAI spans, behavior-identical, public-API
+  only. Optional `enforce=` routes through the gateway at the ramp's non-blocking
+  shadow default and fails loud without a compiled policy. Authoring guide in
+  `adapters/README.md`.
+- **Self-hosted / VPC / air-gapped** (`deploy/`): one-command Docker Compose
+  stack (BYO-Postgres), a Helm chart (secrets, JWKS, ingress, resource docs), and
+  a hard no-egress air-gap mode. A startup egress self-check refuses to boot
+  naming any capability that would require outbound network; egress-only features
+  are flagged unavailable, never silently degraded. `ascore airgap check`,
+  `docs/SELF_HOSTING.md`, `docs/AIRGAP.md` (with a data-residency statement).
+
+### Notes
+- Observability before enforcement, always: ingest and adapters observe and
+  never block. Progressive inline enforcement (the ramp) lands in M21.
+
 ## v0.6.0-passport — Passport + receipts + verifier SDK + risk feed (M16–M17)
 
 Real Ed25519 (via the `cryptography` library — never hand-rolled).

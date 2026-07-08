@@ -168,3 +168,32 @@ pass/fail status against a mock agent, fully offline. Suite: **1516 passed, 4 sk
   (behavior-identical, public-API-only AST scan, enforce fail-loud, round-trip).
 Gate M19: trace(agent)→spans→ingested Traces + behavior-identical + invariant
 regression all green. Suite: **1536 passed, 4 skipped**.
+
+## SPEC-7 — M20 (Step 38, self-hosted / VPC / air-gapped) — complete, tag v0.7.0-integrate
+- T38.1 deploy/docker-compose.yaml self-host stack (server + optional worker +
+  bundled/BYO Postgres + optional Redis); env_file marked optional so
+  `docker compose config` validates without a committed .env.
+- T38.2 deploy/helm/agenttic chart (Deployment+PVC, Service, Ingress, Secret,
+  ServiceAccount, NOTES). helm not installed in this env → the lint test runs
+  `helm lint`/`helm template` when present and falls back to structural checks
+  (files present, metadata valid, only-defined helpers referenced, balanced
+  control blocks) otherwise.
+- T38.3 src/ascore/airgap.py egress self-check (declarative append-only
+  capability table), wired into the server lifespan BEFORE tracing setup; refuses
+  boot naming offenders; `ascore airgap check` CLI; deploy/airgap overlay uses an
+  internal (no-gateway) Docker network.
+- T38.4 docs/SELF_HOSTING.md + docs/AIRGAP.md (with data-residency statement).
+- T38.5 tests: air-gap self-check units, server boot-vs-refuse, and TWO no-egress
+  runs with outbound sockets blocked (ingest round-trip + a full mock
+  certification to a dossier) — the "full scan + certification with network
+  disabled" acceptance; deploy compose/helm smoke.
+Gate M20: `docker compose config` validates the stack end-to-end (real docker
+present); the air-gap scan completes a full mock certification with egress
+blocked. LIMITATION: could not run an actual `docker compose up` (that needs
+image build + running containers; deployment is explicitly out of scope — git
+only), so the "compose up works" gate is validated by config-validation +
+the egress-blocked certification rather than a live stack.
+NOTE on skips: suite skips went 4→5. The +1 is `test_helm_lint_and_template_if_present`
+skipping because `helm` isn't installed — a conditional external-tool skip, not a
+weakened test (it runs the real lint wherever helm exists). Suite: **1553 passed,
+5 skipped**. Version bumped 0.6.0→0.7.0; CHANGELOG updated.
