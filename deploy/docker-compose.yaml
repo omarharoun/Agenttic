@@ -1,0 +1,103 @@
+# Agenttic self-hosted stack (SPEC-7 Step 38, T38.1).
+#
+# One command stands up a working scanner + certify + verify in the customer's
+# own environment. SQLite is the zero-config default; bring your own Postgres by
+# setting ASCORE_DB, or run the bundled one with the `bundled-db` profile.
+#
+#   docker compose -f deploy/docker-compose.yaml up            # server (SQLite)
+#   docker compose -f deploy/docker-compose.yaml --profile bundled-db up
+#   docker compose -f deploy/docker-compose.yaml --profile redis --profile worker up
+#
+# BYO-Postgres (recommended for prod): set in deploy/.env
+#   ASCORE_DB=postgresql+psycopg://user:pass@your-host:5432/agenttic
+# and do NOT enable the bundled-db profile.
+#
+# Air-gapped: overlay deploy/airgap/docker-compose.airgap.yaml (see AIRGAP.md).
+
+x-app-image: &app-image
+  # Build locally from the repo root, or pin a published image for reproducible
+  # / air-gapped installs (see deploy/airgap).
+  build:
+    context: ..
+    dockerfile: Dockerfile
+  image: ${AGENTTIC_IMAGE:-agenttic:selfhost}
+
+services:
+  server:
+    <<: *app-image
+    ports:
+      - "${ASCORE_PORT:-8700}:8700"
+    env_file:
+      - .env
+    environment:
+      ASCORE_HOST: "0.0.0.0"
+      # BYO-Postgres wins when set; otherwise SQLite under the data volume.
+      ASCORE_DB: ${ASCORE_DB:-}
+      ASCORE_REDIS_URL: ${ASCORE_REDIS_URL:-}
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - agenttic-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8700/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Optional horizontal-scale worker: a second app replica sharing the same
+  # Postgres + Redis event bus. Requires the `redis` profile (in-process events
+  # can't span processes). Enable with `--profile worker --profile redis`.
+  worker:
+    <<: *app-image
+    profiles: ["worker"]
+    env_file:
+      - .env
+    environment:
+      ASCORE_HOST: "0.0.0.0"
+      ASCORE_DB: ${ASCORE_DB:-}
+      ASCORE_REDIS_URL: ${ASCORE_REDIS_URL:-redis://redis:6379/0}
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - agenttic-data:/app/data
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # Bundled Postgres — for evaluation / when you don't BYO. Prod should point
+  # ASCORE_DB at a managed Postgres and leave this profile off.
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["bundled-db"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-agenttic}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agenttic}
+      POSTGRES_DB: ${POSTGRES_DB:-agenttic}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agenttic}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  agenttic-data:
+  pg-data:
+  redis-data:
