@@ -133,7 +133,7 @@ export function CertificatePage() {
           <SealMark />
           <Link to="/certified">Certified agents</Link>
           <Link to="/methodology">Methodology</Link>
-          <a href="/api-docs">API docs</a>
+          <Link to="/api-docs">API docs</Link>
           <span style={{ flex: 1 }} />
           <span>Agent Safety Certification</span>
         </div>
