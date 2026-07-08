@@ -1,13 +1,8 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import { App } from "./App";
+import { ViteReactSSG } from "vite-react-ssg";
+import { routes } from "./App";
 import "./theme.css";
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React.StrictMode>,
-);
+/* vite-react-ssg owns the router: it prerenders the public routes to static
+   HTML at build time and hydrates the same tree on the client. The heavy
+   /app/* console stays a client-only chunk (see App.tsx / vite.config.ts). */
+export const createRoot = ViteReactSSG({ routes });
