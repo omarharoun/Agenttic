@@ -28,7 +28,8 @@ services:
     ports:
       - "${ASCORE_PORT:-8700}:8700"
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       ASCORE_HOST: "0.0.0.0"
       # BYO-Postgres wins when set; otherwise SQLite under the data volume.
@@ -57,7 +58,8 @@ services:
     <<: *app-image
     profiles: ["worker"]
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       ASCORE_HOST: "0.0.0.0"
       ASCORE_DB: ${ASCORE_DB:-}
