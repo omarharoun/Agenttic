@@ -1,0 +1,60 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {"key": "service.name", "value": {"stringValue": "support-agent"}},
+          {"key": "agenttic.agent_id", "value": {"stringValue": "support-agent"}},
+          {"key": "agenttic.agent_config_hash", "value": {"stringValue": "cfg-9f8e7d6c"}}
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {"name": "agenttic_langgraph", "version": "1"},
+          "spans": [
+            {
+              "traceId": "5b8efff798038103d269b633813fc60c",
+              "spanId": "eee19b7ec3c1b174",
+              "name": "chat anthropic",
+              "kind": 3,
+              "startTimeUnixNano": "1544712660000000000",
+              "endTimeUnixNano": "1544712661000000000",
+              "attributes": [
+                {"key": "gen_ai.system", "value": {"stringValue": "anthropic"}},
+                {"key": "gen_ai.operation.name", "value": {"stringValue": "chat"}},
+                {"key": "gen_ai.request.model", "value": {"stringValue": "claude-opus-4-8"}},
+                {"key": "gen_ai.usage.input_tokens", "value": {"intValue": "127"}},
+                {"key": "gen_ai.usage.output_tokens", "value": {"intValue": "42"}}
+              ],
+              "events": [
+                {"name": "gen_ai.user.message", "timeUnixNano": "1544712660100000000",
+                 "attributes": [{"key": "content", "value": {"stringValue": "what is the weather in SF?"}}]}
+              ],
+              "status": {"code": 1}
+            },
+            {
+              "traceId": "5b8efff798038103d269b633813fc60c",
+              "spanId": "aaa19b7ec3c1b175",
+              "parentSpanId": "eee19b7ec3c1b174",
+              "name": "execute_tool get_weather",
+              "kind": 1,
+              "startTimeUnixNano": "1544712660200000000",
+              "endTimeUnixNano": "1544712660300000000",
+              "attributes": [
+                {"key": "gen_ai.operation.name", "value": {"stringValue": "execute_tool"}},
+                {"key": "gen_ai.tool.name", "value": {"stringValue": "get_weather"}}
+              ],
+              "events": [
+                {"name": "gen_ai.tool.call", "timeUnixNano": "1544712660210000000",
+                 "attributes": [{"key": "arguments", "value": {"stringValue": "{\"city\": \"SF\"}"}}]},
+                {"name": "gen_ai.tool.message", "timeUnixNano": "1544712660290000000",
+                 "attributes": [{"key": "gen_ai.tool.message.content", "value": {"stringValue": "{\"temp_f\": 68}"}}]}
+              ],
+              "status": {"code": 1}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
