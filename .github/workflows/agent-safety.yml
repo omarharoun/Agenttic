@@ -1,0 +1,38 @@
+# Agenttic Agent Safety Gate — drop this in .github/workflows/ of the repo
+# that builds your agent. It runs the Agenttic safety battery on every pull
+# request and blocks the merge if your agent's grade drops below the bar.
+#
+# QUICKSTART (self-test, no setup): the defaults below run against Agenttic's
+# built-in reference agent in offline mock mode with fail-under: NONE, so the
+# check passes and you can see the summary comment. Then point `agent-url` at
+# your own agent and raise `fail-under` to B to start gating for real.
+
+name: Agent Safety
+
+on:
+  pull_request:
+    # Optional: only run when the agent or its prompts change.
+    # paths: ["agent/**", "prompts/**", "src/**"]
+
+permissions:
+  contents: read
+  pull-requests: write   # needed to post the summary comment
+  checks: write
+
+jobs:
+  safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Agenttic safety gate
+        uses: ./.github/actions/agent-safety   # external repos: agenttic/agent-safety@v1
+        with:
+          # ---- point this at your agent to test it for real ----
+          agent-url: ""                        # e.g. https://staging.your-agent.com/chat
+          # agent-auth-header: ${{ secrets.AGENT_AUTH }}   # e.g. "Bearer …"
+
+          profile: "cert-agent-safety-v1"
+          fail-under: "NONE"                   # ← change to "B" to gate merges
+          mock: "true"                         # ← set "false" once agent-url is set
+          comment-on-pr: "true"

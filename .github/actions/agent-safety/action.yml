@@ -1,0 +1,109 @@
+name: "Agenttic Agent Safety Gate"
+description: >
+  Run the Agenttic safety battery against an AI agent and gate the pull request
+  on its certification grade. No production access, no runtime latency — the
+  agent is exercised in CI against published, licensed safety suites, and the
+  resulting grade (A/B/C) is posted as a status check and PR summary.
+author: "Agenttic"
+branding:
+  icon: "shield"
+  color: "yellow"
+
+inputs:
+  agent-url:
+    description: >
+      Black-box HTTP endpoint of the agent to test (chat/completions-style).
+      Leave empty to certify the built-in reference agent (useful for a smoke
+      test of the gate itself).
+    required: false
+    default: ""
+  profile:
+    description: "Certification profile id to run."
+    required: false
+    default: "cert-agent-safety-v1"
+  fail-under:
+    description: >
+      Minimum acceptable grade. The check fails if the agent grades below this.
+      One of A, B, C, or NONE (NONE never fails on grade — report-only).
+    required: false
+    default: "B"
+  mock:
+    description: >
+      Use the offline deterministic provider (no API key, no external calls).
+      Intended for pipeline self-tests and demos.
+    required: false
+    default: "false"
+  agent-auth-header:
+    description: >
+      Optional Authorization header value sent to agent-url (e.g. 'Bearer xyz').
+      Pass via a secret; never hardcode.
+    required: false
+    default: ""
+  comment-on-pr:
+    description: "Post a Markdown summary comment on the pull request."
+    required: false
+    default: "true"
+
+outputs:
+  grade:
+    description: "The certification grade the agent received (A/B/C)."
+    value: ${{ steps.certify.outputs.grade }}
+  passed:
+    description: "Whether the grade met fail-under (true/false)."
+    value: ${{ steps.certify.outputs.passed }}
+  dossier-path:
+    description: "Path to the signed dossier JSON artifact."
+    value: ${{ steps.certify.outputs.dossier_path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install Agenttic
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip >/dev/null
+        # Install from the checked-out repo (this action lives inside it).
+        # For external consumers this line becomes: pip install agenttic
+        pip install -e "${{ github.action_path }}/../../.." >/dev/null 2>&1 \
+          || pip install agenttic >/dev/null 2>&1 \
+          || pip install -e . >/dev/null
+
+    - name: Run safety battery & certify
+      id: certify
+      shell: bash
+      env:
+        AGENT_URL: ${{ inputs.agent-url }}
+        PROFILE: ${{ inputs.profile }}
+        FAIL_UNDER: ${{ inputs.fail-under }}
+        USE_MOCK: ${{ inputs.mock }}
+        AGENT_AUTH_HEADER: ${{ inputs.agent-auth-header }}
+      run: |
+        python "${{ github.action_path }}/gate.py"
+
+    - name: Comment results on PR
+      if: ${{ inputs.comment-on-pr == 'true' && github.event_name == 'pull_request' }}
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = process.env.GITHUB_WORKSPACE + '/agenttic-summary.md';
+          if (!fs.existsSync(path)) return;
+          const body = fs.readFileSync(path, 'utf8');
+          const { owner, repo } = context.repo;
+          const issue_number = context.issue.number;
+          // update our previous comment if present, else create
+          const marker = '<!-- agenttic-safety-gate -->';
+          const { data: comments } = await github.rest.issues.listComments(
+            { owner, repo, issue_number });
+          const mine = comments.find(c => c.body && c.body.includes(marker));
+          const payload = { owner, repo, body: marker + '\n' + body };
+          if (mine) {
+            await github.rest.issues.updateComment({ ...payload, comment_id: mine.id });
+          } else {
+            await github.rest.issues.createComment({ ...payload, issue_number });
+          }
