@@ -113,3 +113,28 @@ Full suite after apply: **1505 passed, 4 skipped, ~147s** (green baseline for Pa
 Patch #6 seeded `.github/actions/agent-safety/{action.yml,gate.py,README.md}`,
 `.github/workflows/agent-safety.yml`, and `tests/test_ci_gate.py` — M18 builds on
 this rather than duplicating it.
+
+## SPEC-7 — M18 (Step 37, CI safety gate) — complete
+Reconciled with the Part-A groundwork patch (which delivered the composite
+action.yml + gate.py + quickstart + basic gate tests). Tasks:
+- T37.1 added the *container entry* the composite skeleton lacked (a pinned
+  python:3.12-slim Dockerfile baking ascore+gate.py) so the battery runs with
+  zero network install / air-gapped (`docker run --network none`). Composite
+  stays the default path. DEVIATION: patch used composite (`runs.using: composite`)
+  not a Docker action; T37.1's "container entry" is delivered as an optional
+  Dockerfile rather than converting the action to `runs.using: docker`, because
+  composite is more portable for consumers and the container is only needed for
+  hermetic/air-gap runs.
+- T37.2/T37.3 per-dimension deltas + regression-vs-base gating. Per-dimension
+  numeric scores are extracted from the dossier itself (measured metrics parsed
+  from tier_decision.reasons + coverage-status ordinals) so the whole comparison
+  is offline and self-contained — no registry/scorecard lookup needed in CI. A
+  regression (dimension drop, grade drop, or new cap) fails the check even when
+  the absolute grade holds, naming the regressed dimension.
+- T37.4 offline/self-contained docs (mock + container) + regression-gating
+  recipe in the README; quickstart workflow already self-tests offline.
+- T37.5 unit tests for deltas/regression naming + 3 end-to-end offline gate.py
+  runs (pass, regression-blocks, report-only).
+Gate M18: `test_gate_offline_run_produces_dossier_and_passes` /
+`test_gate_regression_blocks_even_when_grade_passes` prove the action posts a
+pass/fail status against a mock agent, fully offline. Suite: **1516 passed, 4 skipped**.
