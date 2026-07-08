@@ -1,0 +1,74 @@
+# Default values for the Agenttic chart. Override for your VPC/on-prem install.
+
+image:
+  repository: agenttic
+  tag: "0.7.0"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# Resource requirements (documented in SELF_HOSTING.md). The scanner is
+# CPU-light but memory-bound during batch certification; start here and tune.
+resources:
+  requests:
+    cpu: "250m"
+    memory: "512Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1Gi"
+
+service:
+  type: ClusterIP
+  port: 8700
+
+# Ingress. JWKS (/.well-known/agenttic-jwks.json) and public verify pages are
+# served by the app, so a single host route is enough.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: agenttic.example.com
+  tls:
+    enabled: false
+    secretName: agenttic-tls
+
+# --- database --------------------------------------------------------------
+# Empty ⇒ SQLite on the mounted PVC. For prod, point at a managed Postgres.
+# The URL is read from the secret (key: database-url) so it never lands in a
+# ConfigMap.
+database:
+  url: ""
+
+# --- secrets ---------------------------------------------------------------
+# Provide these via `--set-string` / a sealed secret / an external secret store.
+# apiToken bootstraps admin auth; sessionSecret signs cookies; passport signing
+# keys are generated on first boot into the PVC unless supplied here.
+secrets:
+  apiToken: ""
+  sessionSecret: ""
+  # Optional: an existing Secret to use instead of the chart-managed one.
+  existingSecret: ""
+
+# --- passport / JWKS -------------------------------------------------------
+passport:
+  jwksPath: /.well-known/agenttic-jwks.json
+  ttlHours: 168
+
+# --- persistence -----------------------------------------------------------
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: ""
+
+# --- air-gap ---------------------------------------------------------------
+airgap:
+  enabled: false
+
+serviceAccount:
+  create: true
+  name: ""
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

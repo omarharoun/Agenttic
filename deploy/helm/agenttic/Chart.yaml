@@ -1,0 +1,16 @@
+apiVersion: v2
+name: agenttic
+description: Agenttic — self-hosted agent safety scanner, certification, and OTel ingest for VPC / on-prem.
+type: application
+version: 0.1.0
+appVersion: "0.7.0"
+home: https://github.com/omarharoun/agenttic
+sources:
+  - https://github.com/omarharoun/agenttic
+maintainers:
+  - name: Agenttic
+keywords:
+  - agent-safety
+  - certification
+  - opentelemetry
+  - self-hosted

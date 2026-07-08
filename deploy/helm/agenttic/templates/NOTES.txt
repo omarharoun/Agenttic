@@ -1,0 +1,19 @@
+Agenttic {{ .Chart.AppVersion }} is deploying.
+
+1. Wait for the pod to be ready:
+     kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }} -w
+
+2. Reach the API:
+{{- if .Values.ingress.enabled }}
+     https://{{ .Values.ingress.host }}/  (JWKS at {{ .Values.passport.jwksPath }})
+{{- else }}
+     kubectl port-forward svc/{{ include "agenttic.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+     then open http://localhost:{{ .Values.service.port }}/
+{{- end }}
+
+3. The admin token comes from secret {{ include "agenttic.secretName" . }} (key api-token).
+{{- if .Values.airgap.enabled }}
+
+AIR-GAP MODE is ON: the app runs its egress self-check at startup and refuses to
+boot if any enabled capability would require outbound network — see docs/AIRGAP.md.
+{{- end }}
