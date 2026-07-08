@@ -1,0 +1,41 @@
+# Air-gap overlay (SPEC-7 Step 38, T38.3).
+#
+# Overlay on the self-host stack to enforce no-egress at the network layer AND
+# turn on the app's startup self-check. Boot with:
+#
+#   docker compose -f deploy/docker-compose.yaml \
+#                  -f deploy/airgap/docker-compose.airgap.yaml up
+#
+# The `agenttic-airgap` network is `internal: true` — Docker gives it no gateway,
+# so containers on it physically cannot reach the internet. ASCORE_AIRGAP=true
+# makes the app run its egress self-check and refuse to boot if any enabled
+# capability would require outbound network, naming the offender (Hard Rule 34).
+#
+# Build for a disconnected host by pinning a pre-pulled image (AGENTTIC_IMAGE)
+# rather than building at deploy time; see deploy/airgap/README.md.
+
+services:
+  server:
+    environment:
+      ASCORE_AIRGAP: "true"
+    networks:
+      - agenttic-airgap
+    # No published egress; only the host port mapping for local access remains.
+
+  worker:
+    environment:
+      ASCORE_AIRGAP: "true"
+    networks:
+      - agenttic-airgap
+
+  postgres:
+    networks:
+      - agenttic-airgap
+
+  redis:
+    networks:
+      - agenttic-airgap
+
+networks:
+  agenttic-airgap:
+    internal: true    # no gateway → zero outbound reachability
