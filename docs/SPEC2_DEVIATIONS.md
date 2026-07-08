@@ -197,3 +197,33 @@ NOTE on skips: suite skips went 4→5. The +1 is `test_helm_lint_and_template_if
 skipping because `helm` isn't installed — a conditional external-tool skip, not a
 weakened test (it runs the real lint wherever helm exists). Suite: **1553 passed,
 5 skipped**. Version bumped 0.6.0→0.7.0; CHANGELOG updated.
+
+## SPEC-7 — M21 (Step 39, progressive enforcement ramp) — complete, tag v0.8.0-enforce-ramp
+Built LAST, after M18–M20 observability were green (CRITICAL ORDER honored).
+- T39.1 enforce/ramp.py: observe→shadow→enforce_reads→enforce_all state machine;
+  append-only actor-stamped set_mode (skip-ahead + step-down safety valve);
+  effective_action posture map; assert_policy_unchanged invariant guard.
+- T39.2 ramped_evaluate (gateway decision + mode → shadow-logged would-be block
+  or actual block) + shadow_report + mark_shadow_false_positive feeding the
+  SPEC-4 hardening loop (hardening_candidate + checker_eval_case).
+- T39.3 surfaces: CLI enforce mode/shadow-report; API GET/POST /api/enforce/mode,
+  GET /api/enforce/shadow-report, POST shadow-report/false-positive; a ramp
+  section on the /api/enforce/dashboard metrics.
+  DEVIATION (dashboard panel): the SPEC-4 enforcement dashboard is JSON-served
+  (/api/enforce/dashboard) — there is no bespoke React enforcement-dashboard page
+  in ui/ to bind a visual panel to. The ramp panel is therefore delivered as
+  dashboard *data* (the new `ramp` section) + the dedicated
+  /api/enforce/shadow-report endpoint, rather than a new UI page. This avoids
+  touching the public UI bundle the Chronometer patch tuned, and any dashboard
+  client renders the ramp from the JSON.
+- T39.4 tests: shadow non-blocking, enforce_all blocks (same policy/different
+  mode), enforce_reads split, step-down always works + reverts blocking, skip-ahead
+  by explicit action, append-only/actor-stamped (rejects empty actor/invalid mode),
+  mode change never alters the policy hash, FP feeds hardening, and the API surface.
+Gate M21: shadow logs would-be blocks without blocking; enforce_all blocks; revert
+always works — all green. Suite: **1565 passed, 5 skipped**. Version 0.7.0→0.8.0.
+
+FULL SPEC-7 COMPLETE: M18→M21, tags v0.7.0-integrate + v0.8.0-enforce-ramp.
+Baseline (post-patch) was 1505 passed / 4 skipped; final is 1565 / 5 (+60 tests;
+the +1 skip is the helm-lint conditional skip, not a weakened test). Every task
+one commit with the given message; every milestone Gate + full suite green.

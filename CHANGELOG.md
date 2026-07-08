@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.8.0-enforce-ramp — Progressive enforcement ramp (SPEC-7 M21)
+
+The trust ladder from unknown-vendor to inline-trusted: a per-agent enforcement
+mode layered on the SPEC-4 gateway, so a customer sees a clean shadow run before
+anything blocks.
+
+### Added
+- **Enforcement ramp** (`src/ascore/enforce/ramp.py`): a strictly-ordered
+  per-agent mode — `observe` → `shadow` → `enforce_reads` → `enforce_all`.
+  Shadow computes the decision the gateway *would* make and logs the would-be
+  block, but lets everything through; enforce_reads blocks only read-class;
+  enforce_all blocks all. Mode changes are append-only, actor-stamped events;
+  advancing is deliberate, stepping down to observe is always allowed (safety
+  valve). A mode change never touches the compiled policy — it can only choose
+  how much of it binds, never loosen it (Hard Rule 35).
+- **Shadow report** (`ramped_evaluate`, `shadow_report`): what would have been
+  blocked, projected block rate, and false-positive candidates. Marking a shadow
+  would-be block benign feeds the SPEC-4 hardening loop (a hardening candidate +
+  checker-eval case), so false positives are tuned down before enforcement is
+  enabled.
+- **Surfaces**: CLI `ascore enforce mode <agent> [mode]` and
+  `ascore enforce shadow-report <agent>`; API `GET`/`POST /api/enforce/mode`,
+  `GET /api/enforce/shadow-report`, `POST /api/enforce/shadow-report/false-positive`;
+  a `ramp` section on the enforcement dashboard (current mode + would-be blocks).
+
 ## v0.7.0-integrate — Production integration: OTel ingest, adapters, CI gate, self-host/air-gap (SPEC-7 M18–M20)
 
 Agenttic goes to where production already is: the CI that gates merges, the
