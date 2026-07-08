@@ -138,3 +138,33 @@ action.yml + gate.py + quickstart + basic gate tests). Tasks:
 Gate M18: `test_gate_offline_run_produces_dossier_and_passes` /
 `test_gate_regression_blocks_even_when_grade_passes` prove the action posts a
 pass/fail status against a mock agent, fully offline. Suite: **1516 passed, 4 skipped**.
+
+## SPEC-7 — M19 (Steps 35–36, OTel ingest + adapters) — complete
+- T35.1 ingest/otel.py: SDK-free OTLP/JSON parser (AnyValue/KeyValue decode,
+  resource/scope flattening) + batch dump loader + OTLP partialSuccess helper.
+- T35.2 ingest/mapping.py: OtelSpan→Trace (tools + I/O sha256 hashes, tokens,
+  agent_config_hash preserved never fabricated) and enforcement spans→Decision.
+  DEVIATION (keystone schema): added an optional `Trace.source` provenance field
+  and bumped SCHEMA_VERSION 0.1.0→0.2.0 (MINOR: new optional field, default
+  "native"). Verified safe first: no fixture hardcodes the version, no
+  test asserts the literal string (test_schema compares the constant), and
+  traces are not embedded in any signed/golden artifact (passport golden is
+  receipts/keys only) — so no fixture required editing. Scorecard-exclusion
+  invariant enforced via mode="live" at save (asserted in ingest_spans).
+- Added surface commit (endpoint + CLI, required by Step 35 + the CLI-additions
+  section but not a numbered task): POST /v1/traces OTLP receiver (auth+tenant
+  scoped, JSON only, 415 on protobuf) + `ascore ingest otel <file>`.
+- T35.3 ingest contracts: committed OTLP-GenAI golden fixture + 9 tests
+  (well-formed trace, graceful incomplete/malformed degrade, endpoint success,
+  invariant regression, no enforcement-log writes).
+- T36.1/T36.2 thin adapters (agenttic-langgraph public BaseCallbackHandler,
+  agenttic-openai-agents public RunHooks) + shared ascore.ingest.emit.SpanEmitter
+  (stdlib OTLP/JSON, best-effort non-blocking flush). Each round-trips through
+  /v1/traces ingest.
+- T36.3 ascore.enforce.adapter_guard: enforce= at non-blocking shadow default;
+  fails loud (EnforceConfigError) without a registry or compiled policy; rejects
+  inline blocking postures (they belong to M21) — preserving milestone order.
+- T36.4 authoring guide (adapters/README.md) + OTEL_INTEROP.md + 11 tests
+  (behavior-identical, public-API-only AST scan, enforce fail-loud, round-trip).
+Gate M19: trace(agent)→spans→ingested Traces + behavior-identical + invariant
+regression all green. Suite: **1536 passed, 4 skipped**.
