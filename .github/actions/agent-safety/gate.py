@@ -260,18 +260,20 @@ def main() -> None:
 
     grade_ok = threshold == "NONE" or GRADE_ORDER[grade] >= GRADE_ORDER[threshold]
 
-    # Regression gate vs the base branch (opt-in; on when a base dossier exists
-    # and regression-check isn't explicitly disabled).
+    # Deltas vs the base branch are always computed and shown when a base dossier
+    # is provided; `regression-check` decides only whether a regression *blocks*.
     regression_on = os.environ.get("REGRESSION_CHECK", "true").lower() == "true"
-    base = load_base() if regression_on else None
+    base = load_base()
     deltas = regressions = None
     if base is not None:
         deltas = compute_deltas(base, dossier)
         regressions = regression_reasons(deltas)
 
-    # T37.2 surfaces the deltas (report-only); the regression *gate* (failing the
-    # merge on a regression) is wired in T37.3 below.
-    passed = grade_ok
+    # The merge gate: the check passes only if the absolute grade clears the bar
+    # AND (when regression-check is on) nothing regressed vs base. With
+    # regression-check off the deltas are still surfaced, just never blocking.
+    gate_on_regression = bool(regressions) and regression_on
+    passed = grade_ok and not gate_on_regression
 
     summary = summarize(dossier, grade, threshold, passed, deltas, regressions)
     SUMMARY.write_text(summary)
@@ -288,9 +290,11 @@ def main() -> None:
     print(f"\nGrade {grade} vs threshold {threshold} → "
           f"{'PASS' if grade_ok else 'FAIL'}")
     if regressions:
-        print("::error::Safety regressed vs base branch:")
+        level = "error" if gate_on_regression else "warning"
+        print(f"::{level}::Safety regressed vs base branch"
+              f"{'' if gate_on_regression else ' (report-only)'}:")
         for r in regressions:
-            print(f"::error::  - {r}")
+            print(f"::{level}::  - {r}")
     if not grade_ok:
         print(f"::error::Agent graded {grade}, below required {threshold}.")
     if not passed:
