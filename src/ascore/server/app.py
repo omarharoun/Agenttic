@@ -202,6 +202,10 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         # app-level passport signing key (one JWKS for the deployment)
         from ascore.passport.keys import PassportKeyManager
         app.state.passport_keys = PassportKeyManager(cfg)
+        # live service-health checker — probes real components for /api/status
+        # and stamps process start time for an honest uptime figure.
+        from ascore.server.health import HealthChecker
+        app.state.health = HealthChecker()
         # first-admin bootstrap (env-driven, idempotent)
         admin_email = os.environ.get("ASCORE_ADMIN_EMAIL")
         from ascore.secrets import get_secret
@@ -238,6 +242,10 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
 
     @app.get("/health", include_in_schema=False)
     async def health():  # liveness — process is up
+        return {"status": "ok"}
+
+    @app.get("/healthz", include_in_schema=False)
+    async def healthz():  # lightweight liveness alias (no component probing)
         return {"status": "ok"}
 
     @app.get("/ready", include_in_schema=False)
@@ -288,6 +296,11 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     # "Tested with Agenttic" page + embeddable badges). Mounted before the
     # auth-protected routers; looked up by cert id regardless of tenant.
     app.include_router(certifications_public_router, prefix="/api")
+
+    # Public, UNAUTHENTICATED service-status rollup (powers the /status page).
+    # Aggregate-only; no auth so uptime is visible even during an incident.
+    from ascore.server.routes.status import public_router as status_public_router
+    app.include_router(status_public_router, prefix="/api")
 
     @app.get("/.well-known/agenttic-cert-keys.json", include_in_schema=False)
     def well_known_cert_keys(request: Request):
