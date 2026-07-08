@@ -262,6 +262,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     from ascore.server.routes.cost import router as cost_router
     from ascore.server.routes.executions import router as executions_router
     from ascore.server.routes.hardening import router as hardening_router
+    from ascore.server.routes.ingest import router as ingest_router
     from ascore.server.routes.leaderboard import router as leaderboard_router
     from ascore.server.routes.live import router as live_router
     from ascore.server.routes.optimize import router as optimize_router
@@ -321,6 +322,9 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(dossiers_public)
     from ascore.server.routes.enforce import router as enforce_router
     app.include_router(enforce_router, prefix="/api", dependencies=protected)
+    # OTLP/HTTP receiver — standard /v1/traces path (no /api prefix), auth+tenant
+    # scoped like every other protected route.
+    app.include_router(ingest_router, dependencies=protected)
     # public JWKS + passport status (unauthenticated); issuer routes are protected
     from ascore.server.routes.passport import public_router as passport_public
     from ascore.server.routes.passport import router as passport_router
