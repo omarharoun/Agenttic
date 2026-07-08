@@ -181,6 +181,11 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         cfg = load_config(config_path)
         configure_logging(cfg)
         from ascore.server.tracing import setup_tracing
+        # Air-gap self-check FIRST: if air-gap mode is on and any enabled
+        # capability would require egress, refuse to boot naming the offender
+        # (Hard Rule 34) — before we wire tracing/exporters that might egress.
+        from ascore.airgap import assert_airgap_safe
+        assert_airgap_safe(cfg)
         setup_tracing(cfg)  # OTel exporter when observability.otel_enabled
         check_startup(cfg)  # fail closed if auth.required without a token
         workspaces = Workspaces(cfg, default_registry=registry, clients=clients,
