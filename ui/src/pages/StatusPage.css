@@ -1,0 +1,98 @@
+/* Live service-status page — Agenttic's OWN uptime board. Reuses the
+   Chronometer tokens from theme.css (no new colors); scoped under .status-page
+   so it stays self-contained and out of the shared stylesheet. The single
+   vermillion --live accent is reserved for `down`, --ok for operational,
+   --wait for degraded, --neutral for unknown. */
+
+.status-page { max-width: 860px; margin: 0 auto; padding: var(--sp-10) var(--sp-6) var(--sp-20); }
+
+.status-head { margin-bottom: var(--sp-6); }
+.status-head h1 {
+  font: 500 var(--t-h1) / 1.1 var(--font-serif); letter-spacing: -0.01em; margin: 0 0 6px;
+}
+.status-head p { color: var(--muted); font-size: var(--t-base); margin: 0; max-width: 560px; }
+
+/* overall banner — status by text + shape + color (never color alone) */
+.status-banner {
+  display: flex; align-items: center; gap: var(--sp-4);
+  border: var(--card-border); border-radius: var(--card-radius);
+  background: var(--card-bg); box-shadow: var(--card-shadow);
+  padding: var(--sp-5) var(--sp-6); margin-bottom: var(--sp-6);
+  border-left-width: 4px;
+}
+.status-banner.s-operational { border-left-color: var(--ok); }
+.status-banner.s-degraded    { border-left-color: var(--wait); }
+.status-banner.s-unknown     { border-left-color: var(--neutral); }
+.status-banner.s-down        { border-left-color: var(--live); }
+
+.status-banner .headline { font: 500 var(--t-h3) / 1.15 var(--font-serif); margin: 0; }
+.status-banner .sub { color: var(--muted); font-size: var(--t-sm); margin: 3px 0 0; }
+.status-banner .banner-body { flex: 1; min-width: 0; }
+
+/* the status shape — a distinct glyph per state so meaning survives without color */
+.status-shape { flex-shrink: 0; width: 34px; height: 34px; }
+.s-operational .status-shape { color: var(--ok); }
+.s-degraded    .status-shape { color: var(--wait); }
+.s-unknown     .status-shape { color: var(--neutral); }
+.s-down        .status-shape { color: var(--live); }
+
+/* component list */
+.status-list {
+  border: var(--card-border); border-radius: var(--card-radius);
+  background: var(--card-bg); box-shadow: var(--card-shadow); overflow: hidden;
+}
+.status-row {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: 13px var(--sp-5); border-bottom: 1px solid var(--border-soft);
+}
+.status-row:last-child { border-bottom: none; }
+.status-row .dot-shape { flex-shrink: 0; width: 15px; height: 15px; }
+.status-row .r-name { font-weight: 600; font-size: var(--t-base); text-transform: capitalize; }
+.status-row .r-detail { color: var(--muted); font-size: var(--t-xs); margin-top: 1px; }
+.status-row .r-main { flex: 1; min-width: 0; }
+.status-row .r-state {
+  font: 600 var(--t-label) / 1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: 0.06em; padding: 4px 9px; border-radius: var(--r-pill);
+  border: 1px solid var(--border); color: var(--muted); flex-shrink: 0;
+}
+.status-row.s-operational .r-state { color: var(--ok); border-color: var(--ok-border); background: var(--ok-soft); }
+.status-row.s-degraded    .r-state { color: var(--wait); border-color: var(--wait-border); background: var(--wait-soft); }
+.status-row.s-unknown     .r-state { color: var(--neutral); border-color: var(--border); background: var(--neutral-soft); }
+.status-row.s-down        .r-state { color: var(--live); border-color: var(--live); background: var(--live-soft); }
+.status-row .r-latency {
+  font: 500 var(--t-xs) / 1 var(--font-mono); color: var(--faint);
+  font-variant-numeric: tabular-nums; min-width: 62px; text-align: right; flex-shrink: 0;
+}
+
+.s-operational .dot-shape { color: var(--ok); }
+.s-degraded    .dot-shape { color: var(--wait); }
+.s-unknown     .dot-shape { color: var(--neutral); }
+.s-down        .dot-shape { color: var(--live); }
+
+/* meta strip — version, uptime, freshness */
+.status-meta {
+  display: flex; flex-wrap: wrap; gap: var(--sp-3) var(--sp-8);
+  margin-top: var(--sp-5); color: var(--muted); font-size: var(--t-sm);
+}
+.status-meta .m-item { display: flex; flex-direction: column; gap: 2px; }
+.status-meta .m-lab {
+  font: 600 10px / 1 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint);
+}
+.status-meta .m-val { font: 500 var(--t-sm) / 1 var(--font-mono); color: var(--text); font-variant-numeric: tabular-nums; }
+
+.status-fresh {
+  margin-top: var(--sp-4); font: 500 var(--t-xs) / 1 var(--font-mono);
+  color: var(--faint); display: flex; align-items: center; gap: 7px;
+}
+.status-fresh .live-pip {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--ok);
+  animation: status-pip 2.4s var(--ease-escape) infinite;
+}
+.status-fresh.stale .live-pip { background: var(--wait); animation: none; }
+@keyframes status-pip { 50% { opacity: 0.25; } }
+
+.status-error {
+  margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--fail-border); background: var(--fail-soft);
+  border-radius: var(--r-sm); color: var(--fail); font-size: var(--t-sm);
+}
