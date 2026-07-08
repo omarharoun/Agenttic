@@ -1,4 +1,27 @@
 /* ============================================================================
+   Self-hosted type — Marcellus / Geist / Geist Mono (latin subsets, vendored
+   from @fontsource into /public/fonts). Replaces the render-blocking Google
+   Fonts stylesheet. Geist ships as one variable file covering 100–900, so every
+   UI/mono weight the tokens ask for resolves from a single request. font-display
+   swap keeps first paint instant and cooperates with the no-flash theme script.
+   The hero's two files (Marcellus 400 + Geist) are <link rel=preload>ed in
+   index.html. Custom family names are declared here so the design tokens below
+   ("Geist" / "Geist Mono" / "Marcellus") keep working unchanged.
+   ========================================================================== */
+@font-face {
+  font-family: "Marcellus"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("/fonts/marcellus-latin-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Geist"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("/fonts/geist-latin-var.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Geist Mono"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("/fonts/geist-mono-latin-var.woff2") format("woff2");
+}
+
+/* ============================================================================
    Agenttic — Chronometer design system.
    Precision-instrument aesthetic for an enterprise certification bureau:
    engraved Marcellus capitals for hallmarks & headlines, Geist for UI,
