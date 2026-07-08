@@ -33,7 +33,7 @@ def dashboard_metrics(reg, agent_id: str | None = None,
     # approval latency: parked → resolved, from approval events
     latencies = _approval_latencies(reg, session_id)
 
-    return {
+    metrics = {
         "decisions": n,
         "by_action": by_action,
         "block_rate": round(blocks / n, 4) if n else 0.0,
@@ -47,6 +47,20 @@ def dashboard_metrics(reg, agent_id: str | None = None,
             1 for e in events if e.get("kind") == "admin"
             and (e.get("detail") or {}).get("checker_eval_case")),
     }
+
+    # Ramp panel (SPEC-7 Step 39): current enforcement mode + shadow would-be
+    # blocks. Agent-scoped; the ramp mode is per-agent so it's meaningful only
+    # when an agent_id is given.
+    if agent_id is not None:
+        from ascore.enforce.ramp import current_mode
+        shadow = [e for e in events if e.get("kind") == "shadow"]
+        metrics["ramp"] = {
+            "mode": current_mode(reg, agent_id),
+            "would_be_blocks": len(shadow),
+            "projected_block_rate": round(len(shadow) / n, 4) if n else 0.0,
+        }
+
+    return metrics
 
 
 def _approval_latencies(reg, session_id: str | None) -> dict:
