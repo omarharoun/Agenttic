@@ -1307,6 +1307,56 @@ def airgap_check(config: str = "config.yaml"):
         console.print("[green]no egress offenders.[/]")
 
 
+# --- enforce: progressive enforcement ramp (SPEC-7 Step 39) ----------------
+enforce_app = typer.Typer(help="Progressive enforcement ramp (observe→enforce).")
+app.add_typer(enforce_app, name="enforce")
+
+
+@enforce_app.command("mode")
+def enforce_mode(
+    agent: str = typer.Argument(..., help="agent id"),
+    mode: str = typer.Argument("show",
+        help="observe|shadow|enforce_reads|enforce_all (omit to show current)"),
+    actor: str = typer.Option("cli", "--actor", help="who is making the change"),
+    config: str = "config.yaml",
+):
+    """Set (or, with no mode, show) an agent's enforcement mode.
+
+    Advancing is deliberate; stepping down to observe is always allowed (safety
+    valve). A mode change never loosens the compiled policy."""
+    from ascore.enforce import ramp
+    _cfg, reg = _ctx(config)
+    if mode.lower() in ("show", "current", ""):
+        console.print(f"{agent}: [cyan]{ramp.current_mode(reg, agent)}[/]")
+        return
+    try:
+        res = ramp.set_mode(reg, agent, mode.lower(), actor)
+    except ramp.RampError as e:
+        raise typer.BadParameter(str(e))
+    arrow = {"advance": "↑", "step_down": "↓", "noop": "="}[res["direction"]]
+    console.print(f"{agent}: {res['from']} {arrow} [cyan]{res['to']}[/] "
+                  f"(by {res['actor']})")
+
+
+@enforce_app.command("shadow-report")
+def enforce_shadow_report(
+    agent: str = typer.Argument(..., help="agent id"),
+    config: str = "config.yaml",
+):
+    """Show the would-be-block report: what shadow mode *would* have blocked, the
+    projected impact of enforcing, and false-positive candidates."""
+    from ascore.enforce import ramp
+    _cfg, reg = _ctx(config)
+    rep = ramp.shadow_report(reg, agent)
+    console.print(f"[bold]{agent}[/] — mode [cyan]{rep['mode']}[/]")
+    console.print(f"would-be blocks: [yellow]{rep['would_be_blocks']}[/] "
+                  f"of {rep['total_decisions']} decisions "
+                  f"(projected block rate {rep['projected_block_rate']})")
+    if rep["by_tool"]:
+        console.print("by tool: " + ", ".join(f"{k}={v}" for k, v in rep["by_tool"].items()))
+    console.print(f"false-positive candidates: {rep['fp_candidate_count']}")
+
+
 # --- ingest: OTel-GenAI span import (SPEC-7 Step 35) -----------------------
 ingest_app = typer.Typer(help="Ingest traces from an external OTel bus.")
 app.add_typer(ingest_app, name="ingest")
