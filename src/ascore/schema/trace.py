@@ -23,7 +23,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-SCHEMA_VERSION = "0.1.0"
+SCHEMA_VERSION = "0.2.0"  # 0.2.0: + optional Trace.source provenance (MINOR)
 
 SpanKind = Literal[
     "llm_call",
@@ -74,6 +74,11 @@ class Trace(BaseModel):
     total_cost_usd: float = 0.0
     total_latency_ms: float = 0.0
     total_steps: int = 0
+    # Provenance of the trace. "native" = produced by Agenttic's own scanner;
+    # "otel_ingest" = imported from an external OTel-GenAI bus (SPEC-7 Step 35).
+    # Ingested traces are additionally stored as mode="live" so they can never
+    # enter batch certification scorecards (SPEC-1 Step 9 invariant).
+    source: str = "native"
     schema_version: str = SCHEMA_VERSION
 
     @model_validator(mode="after")
