@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite-react-ssg build",
+    "build:spa": "tsc --noEmit && vite build",
     "test": "vitest run",
     "preview": "vite preview"
   },
@@ -22,6 +23,7 @@
     "@vitejs/plugin-react": "^4.3.0",
     "typescript": "^5.5.0",
     "vite": "^5.4.0",
+    "vite-react-ssg": "^0.9.1",
     "vitest": "^2.1.0"
   }
 }
