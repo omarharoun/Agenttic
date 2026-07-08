@@ -132,7 +132,7 @@ export function AppShell() {
   }
   if (state === "denied") {
     return <div className="app-shell"><div className="app-loading">
-      Could not reach the API. <a href="/login">Sign in</a></div></div>;
+      Could not reach the API. <Link to="/login">Sign in</Link></div></div>;
   }
 
   return (
@@ -157,8 +157,8 @@ export function AppShell() {
         <span style={{ flex: 1 }} />
         <div className="nav-group">
           <div className="nav-group-title">More</div>
-          <a href="/api-docs"><span className="ic">📖</span> API docs</a>
-          <a href="/assistant"><span className="ic">💬</span> Safe assistant</a>
+          <Link to="/api-docs"><span className="ic">📖</span> API docs</Link>
+          <Link to="/assistant"><span className="ic">💬</span> Safe assistant</Link>
         </div>
         <div className="nav-foot"><TokenControl /></div>
       </nav>
