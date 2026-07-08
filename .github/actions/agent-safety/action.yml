@@ -43,17 +43,35 @@ inputs:
     description: "Post a Markdown summary comment on the pull request."
     required: false
     default: "true"
+  base-dossier:
+    description: >
+      Path to the base-branch dossier JSON (produced by running this same gate
+      on the PR's base ref). When present, the gate computes per-dimension deltas
+      and fails on a regression even if the absolute grade still passes. Leave
+      empty to gate on the absolute grade only.
+    required: false
+    default: ""
+  regression-check:
+    description: >
+      Enable the regression-vs-base gate (only has effect when base-dossier is
+      set). 'true' (default) fails the check when any dimension regresses; 'false'
+      reports deltas without gating on them.
+    required: false
+    default: "true"
 
 outputs:
   grade:
     description: "The certification grade the agent received (A/B/C)."
     value: ${{ steps.certify.outputs.grade }}
   passed:
-    description: "Whether the grade met fail-under (true/false)."
+    description: "Whether the check passed (grade met fail-under AND no regression)."
     value: ${{ steps.certify.outputs.passed }}
   dossier-path:
     description: "Path to the signed dossier JSON artifact."
     value: ${{ steps.certify.outputs.dossier_path }}
+  regressed:
+    description: "Whether any dimension regressed vs the base dossier (true/false)."
+    value: ${{ steps.certify.outputs.regressed }}
 
 runs:
   using: "composite"
@@ -82,6 +100,8 @@ runs:
         FAIL_UNDER: ${{ inputs.fail-under }}
         USE_MOCK: ${{ inputs.mock }}
         AGENT_AUTH_HEADER: ${{ inputs.agent-auth-header }}
+        BASE_DOSSIER: ${{ inputs.base-dossier }}
+        REGRESSION_CHECK: ${{ inputs.regression-check }}
       run: |
         python "${{ github.action_path }}/gate.py"
 
