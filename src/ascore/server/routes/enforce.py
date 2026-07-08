@@ -97,6 +97,54 @@ def enforce_dashboard(request: Request, agent_id: str | None = None,
     return dashboard_metrics(request.state.reg, agent_id, session_id)
 
 
+@router.get("/enforce/shadow-report")
+def enforce_shadow_report(request: Request, agent_id: str):
+    """The would-be-block report for the ramp dashboard panel (SPEC-7 Step 39)."""
+    from ascore.enforce.ramp import shadow_report
+    return shadow_report(request.state.reg, agent_id)
+
+
+class RampModeRequest(BaseModel):
+    agent_id: str
+    mode: str
+
+
+@router.post("/enforce/mode", dependencies=[Depends(require_operator)])
+def enforce_set_mode(body: RampModeRequest, request: Request):
+    """Advance or step down an agent's enforcement mode (append-only, actor-stamped)."""
+    from ascore.enforce.ramp import RampError, set_mode
+    actor = getattr(request.state, "user_email", None) or "operator"
+    try:
+        return set_mode(request.state.reg, body.agent_id, body.mode, f"pat:{actor}")
+    except RampError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.get("/enforce/mode")
+def enforce_get_mode(request: Request, agent_id: str):
+    from ascore.enforce.ramp import current_mode, mode_history
+    return {"agent_id": agent_id,
+            "mode": current_mode(request.state.reg, agent_id),
+            "history": mode_history(request.state.reg, agent_id)}
+
+
+class ShadowFPRequest(BaseModel):
+    agent_id: str
+    shadow_ref: str
+    note: str = ""
+
+
+@router.post("/enforce/shadow-report/false-positive",
+             dependencies=[Depends(require_operator)])
+def enforce_shadow_fp(body: ShadowFPRequest, request: Request):
+    """Mark a shadow would-be-block benign → feed the hardening loop."""
+    from ascore.enforce.ramp import mark_shadow_false_positive
+    reviewer = getattr(request.state, "user_email", None) or "reviewer"
+    event_id = mark_shadow_false_positive(
+        request.state.reg, body.agent_id, body.shadow_ref, reviewer, body.note)
+    return {"event_id": event_id}
+
+
 class FalsePositiveRequest(BaseModel):
     session_id: str
     agent_id: str
