@@ -1491,6 +1491,9 @@ table.data tbody tr { transition: background 0.1s; }
   font: 600 var(--t-sm)/1 var(--font-ui); color: var(--text);
 }
 .seal-mark .sm-hex { color: var(--accent); font-size: 15px; }
+/* the brand hexagon is a stroke SVG (components/Icons HexMark) — keep it gilt
+   and baseline-aligned wherever a .brand lockup renders it, no emoji glyph. */
+.brand svg.hex, .brand .hex svg { color: var(--accent); vertical-align: middle; }
 .seal-mark .sm-text { letter-spacing: 0.01em; }
 
 /* landing hero seal + verify trust card */

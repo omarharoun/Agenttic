@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { HexMark } from "../components/Icons";
 import { ScanExperience } from "../components/ScanExperience";
 import { SealMark } from "../components/Seal";
 
@@ -21,7 +22,7 @@ export function ScanPage() {
     <>
       <header>
         <nav className="lp-nav">
-          <Link to="/" className="brand"><span className="hex">⬡</span> Agenttic</Link>
+          <Link to="/" className="brand"><HexMark className="hex" /> Agenttic</Link>
           <span className="spacer" />
           <Link className="navlink" to="/certified">Certified agents</Link>
           <Link className="navlink" to="/methodology">Methodology</Link>
