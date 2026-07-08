@@ -1274,6 +1274,39 @@ def dossier_show(
     console.print(render(d, fmt))
 
 
+# --- airgap: no-egress self-check (SPEC-7 Step 38) -------------------------
+airgap_app = typer.Typer(help="Air-gapped mode: no-egress self-check.")
+app.add_typer(airgap_app, name="airgap")
+
+
+@airgap_app.command("check")
+def airgap_check(config: str = "config.yaml"):
+    """Audit the config for egress-requiring capabilities (Step 38 self-check).
+
+    Exits non-zero if air-gap mode is on and any blocking capability is enabled —
+    the same gate the server runs at startup."""
+    import sys as _sys
+
+    from ascore.airgap import egress_self_check
+    cfg = load_config(config)
+    rep = egress_self_check(cfg)
+    console.print(f"air-gap mode: [{'green' if rep['enabled'] else 'yellow'}]"
+                  f"{'ON' if rep['enabled'] else 'off'}[/]")
+    if rep["unavailable"]:
+        console.print("[dim]egress-only features unavailable offline:[/]")
+        for u in rep["unavailable"]:
+            console.print(f"  - {u['name']}: {u['detail']}")
+    if rep["offenders"]:
+        console.print(f"[red]{len(rep['offenders'])} egress offender(s):[/]")
+        for o in rep["offenders"]:
+            console.print(f"  [red]✗[/] {o['name']}: {o['detail']}")
+        if rep["enabled"]:
+            console.print("[red]air-gap self-check FAILED — server would refuse to boot.[/]")
+            raise typer.Exit(code=1)
+    else:
+        console.print("[green]no egress offenders.[/]")
+
+
 # --- ingest: OTel-GenAI span import (SPEC-7 Step 35) -----------------------
 ingest_app = typer.Typer(help="Ingest traces from an external OTel bus.")
 app.add_typer(ingest_app, name="ingest")
