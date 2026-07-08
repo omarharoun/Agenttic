@@ -228,6 +228,7 @@ export function LandingPage() {
           <Link to="/scan">Find issues</Link>
           <Link to="/methodology">Methodology</Link>
           <a href="/api-docs">API docs</a>
+          <Link to="/status">System status</Link>
           <Link to="/login">Log in</Link>
           <span style={{ flex: 1 }} />
           <span>Score · Issues · Fix — Tested with Agenttic</span>
