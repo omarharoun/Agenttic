@@ -121,6 +121,110 @@ def effective_action(action: str, action_class: str, mode: str) -> dict:
     }
 
 
+def ramped_evaluate(gateway, reg, agent_id: str, session_id: str,
+                    tool_name: str, args: dict | None = None,
+                    caller_cohort: str | None = None) -> dict:
+    """Evaluate a tool call through the gateway, then apply the agent's ramp mode.
+
+    The gateway always computes and logs the decision (the audit trail is
+    identical in every mode). The ramp then decides whether that decision *binds*:
+    in observe/shadow the call is allowed regardless (shadow additionally records
+    a would-be-block event for the report); in enforce_reads/enforce_all the
+    matching classes actually block. Returns the outcome; the caller honors
+    ``blocked`` (the ramp itself never mutates the call)."""
+    mode = current_mode(reg, agent_id)
+    decision = gateway.evaluate_tool_call(session_id, tool_name, args or {},
+                                          caller_cohort)
+    eff = effective_action(decision.action, decision.action_class, mode)
+    # shadow modes record what WOULD have been blocked (observe = log only)
+    if eff["would_block"] and mode != "observe":
+        _log_shadow(reg, agent_id, session_id, decision, mode)
+    return {
+        "decision": decision,
+        "mode": mode,
+        "allowed": not eff["blocked"],
+        "blocked": eff["blocked"],
+        "would_block": eff["would_block"],
+        "effective_action": eff["effective_action"],
+        "evidence": list(decision.evidence),
+    }
+
+
+def _log_shadow(reg, agent_id: str, session_id: str, decision, mode: str) -> None:
+    reg.append_enforcement_event(EnforcementEvent(
+        event_id=_new_id("evt"), session_id=session_id, agent_id=agent_id,
+        kind="shadow", actor="ramp", decision_ref=decision.ref(),
+        action=decision.action, policy_hash=decision.policy_hash,
+        detail={"tool": decision.tool_name, "would_action": decision.action,
+                "action_class": decision.action_class, "mode": mode,
+                "evidence": list(decision.evidence)}))
+
+
+def mark_shadow_false_positive(reg, agent_id: str, shadow_ref: str,
+                               reviewer: str, note: str = "") -> str:
+    """A reviewer marks a shadow would-be-block benign. This feeds the SPEC-4
+    hardening loop (a hardening candidate + checker-eval case) so the classifier
+    that flagged it can be tuned down before enforcement is enabled. Returns the
+    event id."""
+    if not reviewer:
+        raise RampError("a false-positive mark must carry a reviewer identity")
+    event_id = _new_id("evt")
+    reg.append_enforcement_event(EnforcementEvent(
+        event_id=event_id, session_id="ramp", agent_id=agent_id, kind="admin",
+        actor=reviewer, decision_ref=shadow_ref,
+        detail={"shadow_fp": shadow_ref, "hardening_candidate": shadow_ref,
+                "checker_eval_case": True, "verdict": "benign",
+                "reviewer": reviewer, "note": note}))
+    return event_id
+
+
+def shadow_report(reg, agent_id: str) -> dict:
+    """The would-be-block report: over the logged shadow window, what *would*
+    have been blocked, the false-positive candidates flowing into hardening, and
+    the projected impact of enforcing (so a customer sees a clean run before
+    enabling blocking)."""
+    from collections import Counter
+
+    events = reg.list_enforcement_events(None, agent_id)
+    shadow = [e for e in events if e.get("kind") == "shadow"]
+    decisions = [e for e in events if e.get("kind") == "decision"]
+    fp = [e for e in events if e.get("kind") == "admin"
+          and (e.get("detail") or {}).get("shadow_fp")]
+
+    by_tool: Counter = Counter()
+    by_action: Counter = Counter()
+    for e in shadow:
+        d = e.get("detail") or {}
+        by_tool[d.get("tool", "?")] += 1
+        by_action[d.get("would_action", "?")] += 1
+
+    n = len(decisions)
+    would = len(shadow)
+    return {
+        "agent_id": agent_id,
+        "mode": current_mode(reg, agent_id),
+        "would_be_blocks": would,
+        "total_decisions": n,
+        "projected_block_rate": round(would / n, 4) if n else 0.0,
+        "by_tool": dict(by_tool),
+        "by_action": dict(by_action),
+        "fp_candidate_count": len(fp),
+        "fp_candidates": [
+            {"event_id": e.get("event_id"),
+             "shadow_ref": (e.get("detail") or {}).get("shadow_fp"),
+             "reviewer": e.get("actor"),
+             "note": (e.get("detail") or {}).get("note", "")}
+            for e in fp],
+        "shadow_events": [
+            {"event_id": e.get("event_id"),
+             "tool": (e.get("detail") or {}).get("tool"),
+             "would_action": (e.get("detail") or {}).get("would_action"),
+             "action_class": (e.get("detail") or {}).get("action_class"),
+             "decision_ref": e.get("decision_ref")}
+            for e in shadow],
+    }
+
+
 def assert_policy_unchanged(reg, agent_id: str, before_hash: str) -> None:
     """Invariant guard: a mode change must never alter the compiled policy. Call
     with the policy hash captured before the change; raises if it moved."""
