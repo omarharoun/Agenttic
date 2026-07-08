@@ -1274,5 +1274,34 @@ def dossier_show(
     console.print(render(d, fmt))
 
 
+# --- ingest: OTel-GenAI span import (SPEC-7 Step 35) -----------------------
+ingest_app = typer.Typer(help="Ingest traces from an external OTel bus.")
+app.add_typer(ingest_app, name="ingest")
+
+
+@ingest_app.command("otel")
+def ingest_otel(
+    file: str = typer.Argument(..., help="path to an OTLP span dump (JSON)"),
+    config: str = "config.yaml",
+):
+    """Import exported OTel-GenAI spans as live traces (source=otel_ingest).
+
+    Ingested traces are stored as mode='live' and are structurally excluded from
+    batch certification scorecards (SPEC-1 Step 9 invariant)."""
+    from ascore.ingest.mapping import ingest_spans
+    from ascore.ingest.otel import load_span_dump
+    _cfg, reg = _ctx(config)
+    spans = load_span_dump(file)
+    rep = ingest_spans(reg, spans)
+    console.print(
+        f"[green]Ingested[/] {rep['trace_count']} trace(s), "
+        f"{rep['decision_count']} decision(s) from {len(spans)} span(s).")
+    if rep["incomplete_spans"]:
+        console.print(f"[yellow]{len(rep['incomplete_spans'])} incomplete span(s)[/] "
+                      "(partial traces, no fabricated fields).")
+    for tid in rep["saved_trace_ids"]:
+        console.print(f"  live trace {tid}")
+
+
 if __name__ == "__main__":
     app()
