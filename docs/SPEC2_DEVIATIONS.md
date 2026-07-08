@@ -96,3 +96,20 @@ v0.4.0-enforce, v0.5.0-staged, v0.6.0-passport) + the interactive-oversight-loop
 addendum. Baseline was 1347 passed / 4 skipped; final is 1499 / 4 (+152 tests, zero
 new skips). Every task committed individually; every gate + full suite green at each
 milestone. Deviations logged throughout; no playbook contract violated.
+
+## SPEC-7 — Part A: patch application (SPEC7-review.patch)
+Applied the 6-patch `git format-patch` series onto `spec2-certification-track` with
+`git am --3way`. All six applied cleanly with **no conflicts** — no fallback to
+`git apply` per-patch was needed, and no hunks (including the binary deltas to the
+disposable SQLite test artifacts ascore.cliproftest.db-* / ascore.inccli.db-*) had
+to be dropped. Commits 23242f5..10982c2:
+  1. fix(passport): sign created_at end-to-end + golden regenerator + portable CLI tests
+  2. feat(ui): Chronometer design system
+  3. feat(ui): true metallic gold ramp
+  4. fix(ui): primary-button ink
+  5. fix(ui): gauge caption relocation
+  6. feat(ci): agent-safety GitHub Action (SPEC-7 Step 37 groundwork — reconciled in M18)
+Full suite after apply: **1505 passed, 4 skipped, ~147s** (green baseline for Part B).
+Patch #6 seeded `.github/actions/agent-safety/{action.yml,gate.py,README.md}`,
+`.github/workflows/agent-safety.yml`, and `tests/test_ci_gate.py` — M18 builds on
+this rather than duplicating it.
