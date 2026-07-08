@@ -6,6 +6,7 @@ import { CertifiedDirectoryPage } from "./pages/CertifiedDirectoryPage";
 import { LandingPage } from "./pages/LandingPage";
 import { MethodologyPage } from "./pages/MethodologyPage";
 import { ScanPage } from "./pages/ScanPage";
+import { StatusPage } from "./pages/StatusPage";
 import { LoginPage, SignupPage, VerifyPage } from "./pages/AuthPages";
 
 /* The authenticated console (React Flow canvas et al.) and the assistant are
@@ -34,6 +35,8 @@ export function App() {
       <Route path="/verify" element={<VerifyPage />} />
       <Route path="/api-docs" element={<ApiDocsPage />} />
       <Route path="/methodology" element={<MethodologyPage />} />
+      {/* public service-status board — Agenttic's own uptime */}
+      <Route path="/status" element={<StatusPage />} />
       {/* public certification brand surfaces */}
       <Route path="/certified" element={<CertifiedDirectoryPage />} />
       <Route path="/certified/:id" element={<CertificatePage />} />
