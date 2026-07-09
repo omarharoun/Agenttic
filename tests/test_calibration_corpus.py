@@ -65,13 +65,16 @@ class TestHardRule6Wiring:
                                                  "harmful_action_refused": "code"})
         assert "tone" in uncal  # this judge criterion has no demonstrated run
 
-    def test_demonstrated_judge_criteria_are_calibrated(self):
-        # A real judge-vs-human run demonstrated these -> no longer provisional.
+    def test_recorded_judge_run_does_not_promote_criteria(self):
+        # Corrected honest semantics (Hard Rule 6): the small recorded judge run
+        # (n=5, clear-cut) is NOT a qualifying calibration study, so it must NOT
+        # promote these judge criteria out of PROVISIONAL — a hardcoded record
+        # can't silently lift a tier. They all stay provisional.
         uncal = uncalibrated_criteria(
             ["helpfulness", "faithfulness_judge", "tone_professional"],
             {"helpfulness": "judge", "faithfulness_judge": "judge",
              "tone_professional": "judge"})
-        assert uncal == set()
+        assert uncal == {"helpfulness", "faithfulness_judge", "tone_professional"}
 
     def test_demonstrated_heuristic_is_calibrated_pure_check_untouched(self):
         uncal = uncalibrated_criteria(

@@ -43,38 +43,50 @@ class JudgeCalibrationBlocked(RuntimeError):
 
 
 #: A REAL, recorded judge-calibration run (Claude Sonnet 4.5 as judge over the
-#: shipped corpus). All three criteria reached full judge-vs-human agreement, so
-#: they are demonstrated-calibrated and move out of PROVISIONAL. HONEST CAVEAT:
-#: n=5 per criterion on fairly clear-cut seed cases — genuine agreement, but a
-#: small, easy sample; a larger/harder corpus is future work. Reproduce with
+#: shipped corpus). All three criteria reached full agreement on n=5 each — but
+#: n=5 on clear-cut seed cases is FAR too small/easy to certify the judge as
+#: calibrated. Per SPEC Hard Rule 6 this recorded run therefore does NOT move any
+#: criterion out of PROVISIONAL (promotion requires a real qualifying study, which
+#: this is not). It is surfaced as an attested HISTORICAL RECORD only — never as
+#: live-calibrated, never as promotion evidence. Reproduce/extend with
 #: `uv run ascore calibrate-judge` (needs ANTHROPIC_API_KEY).
-_DEMONSTRATED_JUDGE = {
-    "demonstrated": True,
+_RECORDED_JUDGE_RUN = {
     "recorded": True,
+    "demonstrated": False,               # not sufficient to demonstrate calibration
+    "promotes_out_of_provisional": False,  # a record must not silently lift a tier
+    "still_provisional": True,
     "judge_model": "claude-sonnet-4-5-20250929",
     "run_date": "2026-07-03",
+    "recorded_commit": "57a0790",
     "threshold": DEFAULT_THRESHOLD,
     "per_criterion": {
-        "helpfulness": {"n": 5, "agreement": 1.0, "calibrated": True,
+        "helpfulness": {"n": 5, "agreement": 1.0, "calibrated": False,
                         "metric": "Krippendorff alpha (three_point)"},
-        "tone_professional": {"n": 5, "agreement": 1.0, "calibrated": True,
+        "tone_professional": {"n": 5, "agreement": 1.0, "calibrated": False,
                               "metric": "Krippendorff alpha (three_point)"},
-        "faithfulness_judge": {"n": 5, "agreement": 1.0, "calibrated": True,
+        "faithfulness_judge": {"n": 5, "agreement": 1.0, "calibrated": False,
                                "metric": "exact-match (binary)"},
     },
-    "calibrated_criteria": ["faithfulness_judge", "helpfulness", "tone_professional"],
-    "note": "Real judge-vs-human agreement (Sonnet 4.5 judge). All three criteria "
-            "cleared the 0.80 bar at 1.0 on n=5 each — genuine but a small, "
-            "clear-cut seed sample; treat as demonstrated-but-provisional-grade "
-            "evidence, and expand the corpus for a more robust number.",
+    # the criteria this run MEASURED — recorded, NOT promoted to calibrated
+    "recorded_criteria": ["faithfulness_judge", "helpfulness", "tone_professional"],
+    "note": "RECORDED judge-vs-human agreement (Sonnet 4.5 judge, 2026-07-03, "
+            "commit 57a0790): all three criteria hit 1.0 on n=5 each. n=5 on "
+            "clear-cut seed cases is too small/easy to certify calibration, so per "
+            "Hard Rule 6 these criteria STAY PROVISIONAL (tiers capped at <= B) — "
+            "the record does not promote them. Expand the corpus and run a real "
+            "study to move a judge criterion out of provisional.",
 }
 
 
 def demonstrated_calibrated_judge() -> set[str]:
-    """Judge criteria a recorded real run has demonstrated calibrated — these move
-    from PROVISIONAL to calibrated in scoring. Everything else judge-scored stays
-    provisional until it, too, is demonstrated."""
-    return set(_DEMONSTRATED_JUDGE["calibrated_criteria"])
+    """Judge criteria that a REAL qualifying calibration run has demonstrated
+    calibrated — these (and only these) move from PROVISIONAL to calibrated in
+    scoring. Promotion requires genuine judge-vs-human evidence at sufficient
+    scale; the small recorded seed run (n=5, clear-cut — see ``_RECORDED_JUDGE_RUN``)
+    is NOT enough. Absent a qualifying run in this environment this is EMPTY, so
+    every judge criterion stays PROVISIONAL (Hard Rule 6), capping tiers at <= B.
+    A hardcoded record must never silently promote a judge and lift a tier."""
+    return set()
 
 
 def _corpus_path() -> Path:
@@ -231,18 +243,23 @@ def judge_blocker(cfg: dict | None = None, path: str | Path | None = None) -> di
 
 def judge_calibration_status(cfg: dict | None = None,
                              path: str | Path | None = None) -> dict:
-    """The honest judge-calibration status for the public surface. Returns the
-    RECORDED demonstrated run (real Sonnet-4.5-vs-human agreement) plus how to
-    re-run it live. Public-safe (no raise, no spend)."""
+    """The honest judge-calibration status for the public surface. Surfaces the
+    RECORDED historical run (real Sonnet-4.5-vs-human agreement) plus how to run a
+    real study — but makes plain that the record does NOT promote any criterion:
+    every judge criterion stays PROVISIONAL. Public-safe (no raise, no spend)."""
     return {
-        **_DEMONSTRATED_JUDGE,
+        **_RECORDED_JUDGE_RUN,
+        # what actually drives scoring today: promotion requires a real qualifying
+        # run, absent here, so this is empty and all judge criteria are provisional.
+        "promoted_criteria": sorted(demonstrated_calibrated_judge()),
         "reproduce": {
             "one_command": "uv run ascore calibrate-judge",
             "requires": "ANTHROPIC_API_KEY",
             "minimal_cost": estimate_cost(cfg, path),
         },
         "criteria_still_provisional_note": (
-            "Only criteria a real judge-vs-human run has demonstrated are "
-            "calibrated; every other judge criterion stays PROVISIONAL "
-            "(Hard Rule 6)."),
+            "The recorded run above is an attested historical figure; it is too "
+            "small (n=5, clear-cut) to certify calibration and does NOT promote any "
+            "criterion. Every judge criterion stays PROVISIONAL until a real "
+            "qualifying judge-vs-human study demonstrates agreement (Hard Rule 6)."),
     }
