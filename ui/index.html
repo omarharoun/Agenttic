@@ -3,27 +3,70 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#000000" />
-    <title>Agenttic</title>
-    <!-- no-flash theme: apply the persisted choice before first paint -->
+
+    <!-- theme-color is set per-theme by the no-flash script below (not hardcoded) -->
+    <meta name="theme-color" content="#08090B" />
+
+    <title>Agenttic — the safety lab for AI agents</title>
+    <meta
+      name="description"
+      content="Grade any AI agent against real, published safety benchmarks — not a vibe check. Get a signed, version-pinned certificate that says exactly what was tested, and what wasn't. Runs in your CI or your VPC — nothing leaves your environment."
+    />
+    <link rel="canonical" href="https://agenttic.io/" />
+
+    <!-- icons -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Agenttic" />
+    <meta property="og:title" content="Agenttic — the safety lab for AI agents" />
+    <meta
+      property="og:description"
+      content="Measure what your agent actually does. Real benchmarks, signed certificates, honest coverage — NOT ASSESSED travels with the grade."
+    />
+    <meta property="og:url" content="https://agenttic.io/" />
+    <meta property="og:image" content="https://agenttic.io/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Agenttic — an instrument reading a grade A safety report for an AI agent." />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Agenttic — the safety lab for AI agents" />
+    <meta
+      name="twitter:description"
+      content="Measure what your agent actually does. Real benchmarks, signed certificates, honest coverage."
+    />
+    <meta name="twitter:image" content="https://agenttic.io/og-image.png" />
+
+    <!-- no-flash theme: apply the persisted choice before first paint, and set
+         the browser chrome colour (theme-color) to match the resolved theme -->
     <script>
       (function () {
         try {
           var t = localStorage.getItem("ascore_theme");
-          var resolved = t === "light" ? "light"
-            : t === "system" ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
-            : "dark";
+          var resolved =
+            t === "light"
+              ? "light"
+              : t === "system"
+              ? matchMedia("(prefers-color-scheme: light)").matches
+                ? "light"
+                : "dark"
+              : "dark";
           document.documentElement.setAttribute("data-theme", resolved);
+          var m = document.querySelector('meta[name="theme-color"]');
+          if (m) m.setAttribute("content", resolved === "light" ? "#ECEDEA" : "#08090B");
         } catch (e) {}
       })();
     </script>
-    <!-- Noor type system -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Marcellus&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
+
+    <!-- Noor type system — self-hosted (see @font-face in theme.css). Preload
+         only the two files the hero needs; Geist Mono loads on demand. -->
+    <link rel="preload" href="/fonts/marcellus-latin-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/geist-latin-var.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
     <div id="root"></div>
