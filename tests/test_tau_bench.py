@@ -112,7 +112,8 @@ def test_suite_labeled_real_dataset_distinct_from_seeds(tmp_path):
     TauBenchAdapter().ingest(reg)
     suite, _ = reg.get_suite("tau-bench-v1")
     assert suite.approved is True
-    assert "REAL public dataset" in suite.business_context
+    assert "SEED SAMPLE" in suite.business_context  # default ingest = vendored sample
+    assert "REAL public dataset" not in suite.business_context
     assert "MIT" in suite.business_context
     assert not suite.suite_id.startswith("std-")          # distinct from seed suites
     assert "tau-bench-v1" in DATASET_SUITE_IDS

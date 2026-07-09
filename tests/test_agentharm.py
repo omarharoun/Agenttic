@@ -78,7 +78,8 @@ def test_suite_labeled_real_dataset_and_canonical(tmp_path):
     suite, _ = reg.get_suite("agentharm-harmful-v1")
     assert suite.approved is True
     assert "AgentHarm (real dataset)" in suite.business_context
-    assert "REAL public dataset" in suite.business_context
+    assert "SEED SAMPLE" in suite.business_context  # default ingest = vendored sample
+    assert "REAL public dataset" not in suite.business_context
     assert "agentharm-harmful-v1" in DATASET_SUITE_IDS
     assert "agentharm-harmful-v1" in canonical_suite_ids(reg)   # feeds the index
 

@@ -76,11 +76,19 @@ def domain_for_suite(suite_id: str) -> str | None:
     return _DATASET_SUITE_DOMAIN.get(suite_id)
 
 
-def suite_provenance(suite_id: str) -> str:
-    """'assessed_real' for ingested public datasets, 'assessed_seed' for the
-    std- seed suites, 'not_assessed' for anything untagged."""
+def suite_provenance(suite_id: str, suite=None) -> str:
+    """'assessed_real' / 'assessed_seed' / 'not_assessed' for a suite.
+
+    A dataset suite is ``assessed_real`` ONLY when it was ingested from the FULL
+    real split (``suite.dataset_provenance == "real"``). A suite ingested from a
+    vendored ``.sample``/seed split — or one whose provenance is unknown (no
+    ``suite`` passed, or an old payload predating the flag) — resolves to
+    ``assessed_seed``: nothing computed from sample data may read as real
+    (Hard Rule 9). The std- seed suites are always ``assessed_seed``; anything
+    untagged is ``not_assessed``."""
     if suite_id in _DATASET_SUITE_DOMAIN:
-        return "assessed_real"
+        provenance = getattr(suite, "dataset_provenance", None)
+        return "assessed_real" if provenance == "real" else "assessed_seed"
     if suite_id in _STD_SUITE_DOMAIN:
         return "assessed_seed"
     return "not_assessed"

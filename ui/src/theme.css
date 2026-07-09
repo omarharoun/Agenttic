@@ -2430,6 +2430,12 @@ a.btn-primary, button.btn-primary,
   font-size: 11px; letter-spacing: 0.08em; color: var(--faint);
 }
 .agx .inst-top .rec { display: flex; align-items: center; gap: 7px; color: var(--ok); }
+/* Non-live label for the illustrative hero readout — deliberately neutral (not
+   the green "live/measured" treatment) so the sample report can't read as real. */
+.agx .inst-top .demo {
+  color: var(--faint); border: 1px solid var(--border-soft); border-radius: 999px;
+  padding: 2px 9px; letter-spacing: 0.1em; text-transform: uppercase;
+}
 .agx .inst-body { display: grid; grid-template-columns: auto 1fr; }
 @media (max-width: 520px) { .agx .inst-body { grid-template-columns: 1fr; } }
 .agx .grade-cell {
@@ -2464,7 +2470,7 @@ a.btn-primary, button.btn-primary,
   border-top: 1px solid var(--border-soft); font-family: var(--font-mono);
   font-size: 11px; color: var(--faint);
 }
-.agx .inst-foot .sig { color: var(--ok); }
+.agx .inst-foot .sig { color: var(--faint); font-style: italic; }
 .agx .legend {
   display: flex; flex-wrap: wrap; gap: 3px 16px; padding: 2px 22px 16px;
   font-family: var(--font-mono); font-size: 10.5px; color: var(--muted);

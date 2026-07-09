@@ -183,7 +183,8 @@ class TestAdapter:
         AssistantBenchAdapter().ingest(reg)
         suite, _ = reg.get_suite("assistantbench-v1")
         assert suite.approved is True
-        assert "REAL public dataset" in suite.business_context
+        assert "SEED SAMPLE" in suite.business_context  # default ingest = vendored sample
+        assert "REAL public dataset" not in suite.business_context
         assert "Apache-2.0" in suite.business_context
         assert "assistantbench-v1" in DATASET_SUITE_IDS
         assert "assistantbench-v1" in canonical_suite_ids(reg)   # feeds the index

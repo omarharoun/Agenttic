@@ -103,14 +103,42 @@ def _now() -> datetime:
 class PassportKeyManager:
     """Holds the active signing key + publishes the JWKS (with overlap keys).
 
-    Inject ``private_key`` in tests (a real generated Ed25519 key). In production
-    the key comes from the environment; a dev-only ephemeral key is generated if
-    none is configured."""
+    Inject ``private_key`` in tests (a real generated Ed25519 key). Otherwise the
+    key comes from ``ASCORE_PASSPORT_SIGNING_KEY``. Fail-closed exactly like cert
+    signing (see ``certification.safety_cert.signing_key``): in **production**, if
+    no key is configured we REFUSE TO START rather than silently mint an ephemeral
+    key that no one can verify across restarts. Outside production we generate an
+    ephemeral key so local runs work, log a clear warning, and mark the manager
+    ephemeral so the health probe reports DEGRADED (not operational)."""
 
     def __init__(self, cfg: dict | None = None,
                  private_key: Ed25519PrivateKey | None = None):
         self.cfg = cfg or {}
-        self._priv = private_key or _load_from_env() or generate_key()
+        self._ephemeral = False
+        if private_key is not None:
+            self._priv = private_key
+        else:
+            configured = _load_from_env()
+            if configured is not None:
+                self._priv = configured
+            else:
+                from ascore.certification import is_production
+                if is_production(self.cfg):
+                    raise RuntimeError(
+                        f"no passport signing key configured ({_ENV_KEY}) — "
+                        "refusing to start in production with an ephemeral key "
+                        "that cannot be verified across restarts (fail closed). "
+                        "Generate a 32-byte Ed25519 seed and set "
+                        f"{_ENV_KEY} (base64).")
+                # dev/test only: ephemeral key, loudly flagged.
+                import logging
+                logging.getLogger("ascore").warning(
+                    "%s is not set — generating an EPHEMERAL passport signing "
+                    "key (dev/test only). Passports signed now will NOT verify "
+                    "after a restart; status reports DEGRADED. Set %s in "
+                    "production.", _ENV_KEY, _ENV_KEY)
+                self._priv = generate_key()
+                self._ephemeral = True
         pub = self._priv.public_key()
         self._kid = key_id(pub)
         # published keys: kid -> KeyRef (public only)
@@ -118,6 +146,13 @@ class PassportKeyManager:
             self._kid: KeyRef(key_id=self._kid, public_key_b64=public_key_b64(pub),
                               not_before=_now())
         }
+
+    def is_ephemeral(self) -> bool:
+        """True when the signing key was generated on start because none was
+        configured (dev/test only — production fails closed instead). An
+        ephemeral key cannot verify passports across restarts, so the health
+        probe surfaces it as DEGRADED rather than operational."""
+        return self._ephemeral
 
     def key_id(self) -> str:
         return self._kid

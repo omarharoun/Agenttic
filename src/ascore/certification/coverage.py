@@ -31,7 +31,7 @@ def domain_coverage(reg, domain: str) -> DomainCoverage:
             suite, _cases = reg.get_suite(suite_id)
         except NotFoundError:
             continue
-        prov = suite_provenance(suite_id)
+        prov = suite_provenance(suite_id, suite)
         evidence.append(f"suite:{suite_id}@v{suite.version}")
         if _RANK[prov] > _RANK[best_status]:
             best_status = prov

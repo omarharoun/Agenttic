@@ -63,19 +63,39 @@ def test_seed_suites_never_assessed_real(cfg, reg):
         assert c.status != "assessed_real"
 
 
-def test_ingest_record_flips_seed_to_real(cfg, reg):
+def test_ingest_full_split_flips_seed_to_real(cfg, reg):
     # Before ingest: tool_use is seed-only.
     assert domain_coverage(reg, "tool_use").status == "assessed_seed"
-    # Simulate ingesting a real public dataset suite mapped to tool_use.
+    # Ingesting the FULL real public split (dataset_provenance="real") promotes it.
     suite = TestSuite(suite_id="bfcl-simple-v3", version=1, approved=True,
-                      business_context="real dataset")
+                      business_context="real dataset", dataset_provenance="real")
     case = TestCase(test_id="bfcl-simple-v3-1", suite_id="bfcl-simple-v3",
                     version=1, task_description="d", rubric_id="r")
     reg.save_suite(suite, [case])
-    # After ingest: tool_use promotes to assessed_real.
+    # After a full-split ingest: tool_use promotes to assessed_real.
     cov = domain_coverage(reg, "tool_use")
     assert cov.status == "assessed_real"
     assert "suite:bfcl-simple-v3@v1" in cov.evidence_refs
+
+
+def test_sample_ingest_stays_seed_not_real(cfg, reg):
+    # Corrected honest semantics (Hard Rule 9): a suite ingested from the
+    # vendored .sample split (dataset_provenance="seed") must NOT lift the domain
+    # to assessed_real — sample data can never read as a real measurement.
+    assert domain_coverage(reg, "tool_use").status == "assessed_seed"
+    suite = TestSuite(suite_id="bfcl-simple-v3", version=1, approved=True,
+                      business_context="seed sample", dataset_provenance="seed")
+    case = TestCase(test_id="bfcl-simple-v3-1", suite_id="bfcl-simple-v3",
+                    version=1, task_description="d", rubric_id="r")
+    reg.save_suite(suite, [case])
+    cov = domain_coverage(reg, "tool_use")
+    assert cov.status == "assessed_seed"
+    # unknown provenance (old payloads / no flag) is also treated as seed, never real
+    suite2 = TestSuite(suite_id="tau-bench-v1", version=1, approved=True,
+                       business_context="no provenance flag")
+    reg.save_suite(suite2, [TestCase(test_id="tau-bench-v1-1", suite_id="tau-bench-v1",
+                                     version=1, task_description="d", rubric_id="r")])
+    assert domain_coverage(reg, "tool_use").status == "assessed_seed"
 
 
 def test_unknown_profile_fails_loud(cfg, reg):

@@ -91,13 +91,19 @@ class TestHonestBlocker:
 
 
 class TestReproductionStatusSurface:
-    def test_tool_calling_wedge_reproduced(self, monkeypatch):
+    def test_tool_calling_wedge_recorded_not_live(self, monkeypatch):
+        # Corrected honest semantics: the published-number reproduction is a
+        # RECORDED historical run, not a live re-measurement here (no key), so
+        # reproduced (live) is False while recorded is True. The recorded figure
+        # is still surfaced (not deleted).
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         from ascore.metrics.reproduction import reproduction_report
         rep = reproduction_report()
-        assert rep["any_reproduced"] is True
+        assert rep["any_reproduced"] is False           # nothing reproduced LIVE here
+        assert rep["any_reproduced_recorded"] is True   # BFCL has a recorded run
         tc = {w["wedge"]: w for w in rep["wedges"]}["tool_calling"]
-        assert tc["status"] == "reproduced" and tc["reproduced"] is True
+        assert tc["status"] == "reproduced_recorded"
+        assert tc["reproduced"] is False and tc["recorded"] is True
         detail = tc["detail"]
         # the validated-grader evidence is still surfaced (oracle 100%)
         assert detail["scorer_validation_full_split"]["n"] == 400
