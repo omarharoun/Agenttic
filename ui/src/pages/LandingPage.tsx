@@ -332,6 +332,7 @@ export function LandingPage() {
                 <Link to="/methodology">Methodology</Link>
                 <Link to="/methodology">Coverage &amp; limits</Link>
                 <Link to="/certified">Verify a certificate</Link>
+                <Link to="/status">System status</Link>
                 <Link to="/methodology">Data residency</Link>
               </div>
             </div>
