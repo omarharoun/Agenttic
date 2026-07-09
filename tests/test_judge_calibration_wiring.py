@@ -128,9 +128,14 @@ class TestPublicSurface:
             body = c.get("/api/public/calibration").json()   # no auth
             assert "tool_misuse_safety" in body["calibrated_criteria"]
             jc = body["judge_calibration"]
-            # the RECORDED real judge-vs-human run is surfaced
-            assert jc["demonstrated"] is True and jc["recorded"] is True
+            # the RECORDED real judge-vs-human run is surfaced as a historical
+            # record — but it does NOT promote any criterion out of provisional.
+            assert jc["recorded"] is True
+            assert jc["demonstrated"] is False
+            assert jc["promotes_out_of_provisional"] is False
             assert jc["judge_model"] == "claude-sonnet-4-5-20250929"
+            # the criteria it MEASURED are surfaced, but none are promoted
             assert {"helpfulness", "tone_professional", "faithfulness_judge"} == \
-                set(jc["calibrated_criteria"])
+                set(jc["recorded_criteria"])
+            assert jc["promoted_criteria"] == []
             assert jc["reproduce"]["requires"] == "ANTHROPIC_API_KEY"
