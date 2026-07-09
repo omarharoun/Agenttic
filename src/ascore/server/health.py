@@ -167,6 +167,10 @@ def _probe_passport(app) -> str:
     keys = (km.jwks() or {}).get("keys", [])
     if not keys:
         raise ProbeError(DEGRADED, "no passport signing keys published")
+    # An ephemeral (unconfigured) key signs passports that won't verify across
+    # restarts — real but not operational-grade. Never claim operational for it.
+    if getattr(km, "is_ephemeral", lambda: False)():
+        raise ProbeError(DEGRADED, "ephemeral signing key (not configured)")
     return "JWKS published"
 
 
