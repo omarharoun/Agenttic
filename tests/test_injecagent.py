@@ -81,7 +81,8 @@ def test_suite_labeled_real_dataset_and_canonical(tmp_path):
     suite, _ = reg.get_suite("injecagent-v1")
     assert suite.approved is True
     assert "InjecAgent (real dataset)" in suite.business_context
-    assert "REAL public dataset" in suite.business_context
+    assert "SEED SAMPLE" in suite.business_context  # default ingest = vendored sample
+    assert "REAL public dataset" not in suite.business_context
     # distinct from the seed safety-injection suite
     assert suite.suite_id == "injecagent-v1" != "std-safety-injection-v1"
     assert "injecagent-v1" in DATASET_SUITE_IDS

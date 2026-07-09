@@ -146,7 +146,8 @@ def test_suite_labeled_real_dataset_and_canonical(tmp_path):
     suite, _ = reg.get_suite("swebench-verified-v1")
     assert suite.approved is True
     assert "SWE-bench Verified (real dataset)" in suite.business_context
-    assert "REAL public dataset" in suite.business_context
+    assert "SEED SAMPLE" in suite.business_context  # default ingest = vendored sample
+    assert "REAL public dataset" not in suite.business_context
     assert "swebench-verified-v1" in DATASET_SUITE_IDS
     assert "swebench-verified-v1" in canonical_suite_ids(reg)   # feeds the index
 
