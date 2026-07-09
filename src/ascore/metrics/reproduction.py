@@ -32,18 +32,25 @@ class WedgeReproduction:
     label: str                 # human label
     benchmark: str             # the public benchmark it targets
     official_metric: str       # the metric that benchmark's leaderboard reports
-    # "reproduced"        — reproduces a published per-model number
-    # "attempted"         — a real model run was scored against a published number
-    #                       but landed outside our interval (honest near-miss)
-    # "scorer_validated"  — the deterministic grader is proven on real data (an
-    #                       oracle scores 100%); only model predictions are missing
-    # "proxy"             — an offline proxy stands in for the official metric
-    # "seed_sample"       — real methodology on a vendored sample, not the split
+    # "reproduced"          — reproduces a published per-model number LIVE, now
+    # "reproduced_recorded" — a real run reproduced the number on a recorded date/
+    #                         commit; an attested historical figure, NOT re-measured
+    #                         live here (see `recorded` + evidence in `extra`)
+    # "attempted"           — a real model run was scored against a published number
+    #                         but landed outside our interval (honest near-miss)
+    # "scorer_validated"    — the deterministic grader is proven on real data (an
+    #                         oracle scores 100%); only model predictions are missing
+    # "proxy"               — an offline proxy stands in for the official metric
+    # "seed_sample"         — real methodology on a vendored sample, not the split
     status: str
-    reproduced: bool           # True only when it reproduces a PUBLIC number
+    reproduced: bool           # True only when it reproduces a PUBLIC number LIVE
     scored_by: str             # what actually produces our number today
     requires: str              # what reproducing the public number needs
     reason: str                # one-line honest explanation
+    #: True when a recorded (historical, attested) run reproduced the number, even
+    #: though it is not being re-measured live now. Kept distinct from ``reproduced``
+    #: so a recorded figure never masquerades as a fresh live measurement.
+    recorded: bool = False
     extra: dict = field(default_factory=dict)  # wedge-specific detail (evidence)
 
 
@@ -68,7 +75,10 @@ _BFCL_FULL_VALIDATION = {
 #: gap was entirely the grader, i.e. BFCL's documented normalisation, not the
 #: model. We report both for transparency.)
 _BFCL_REPRODUCTION_ATTEMPT = {
-    "status": "reproduced",
+    "status": "reproduced_recorded",
+    "recorded": True,
+    "live": False,
+    "recorded_commit": "2aa8a68",
     "model": "claude-sonnet-4-5-20250929",
     "mode": "native function-calling (FC), temperature 0",
     "dataset": "BFCL V4 simple_python (real, n=400)",
@@ -87,7 +97,9 @@ _BFCL_REPRODUCTION_ATTEMPT = {
     "run_date": "2026-07-03",
     "reproduce_cmd": "uv run ascore reproduce-bfcl --live --model "
                      "claude-sonnet-4-5-20250929 --published 0.9775",
-    "note": "REPRODUCED: 97.50% (390/400, Wilson95 [0.9546,0.9864]) vs the "
+    "note": "RECORDED reproduction (run 2026-07-03, commit 2aa8a68; an attested "
+            "historical figure, not re-measured live here): 97.50% (390/400, "
+            "Wilson95 [0.9546,0.9864]) vs the "
             "published 97.75% — published falls inside our interval (gap 0.25 pts). "
             "Scored with a faithful port of BFCL's official AST checker (validated: "
             "gold oracle scores 100%, wrong answers still rejected). Anti-gaming: "
@@ -97,9 +109,11 @@ _BFCL_REPRODUCTION_ATTEMPT = {
 
 
 def _tool_calling_wedge() -> WedgeReproduction:
-    """BFCL tool-calling wedge. The deterministic AST grader is VALIDATED on real
-    data (oracle → 100%); only the model's predictions (a key) are missing to
-    reproduce a published per-model number. Honest: reproduced stays False."""
+    """BFCL tool-calling wedge. The deterministic AST grader is VALIDATED live on
+    real data here (oracle → 100%). The published per-model number was reproduced
+    in a RECORDED run (2026-07-03, commit 2aa8a68) but is NOT re-measured live in
+    this environment (no model key), so ``reproduced`` (live) is False and the
+    recorded figure is surfaced as an attested historical value (``recorded``)."""
     from ascore.metrics.bfcl_reproduce import validate_scorer
     # Live, offline, network-free grader check on the real vendored sample.
     try:
@@ -110,21 +124,25 @@ def _tool_calling_wedge() -> WedgeReproduction:
         wedge="tool_calling", label="Tool-calling (BFCL — Berkeley Function Calling)",
         benchmark="Berkeley Function-Calling Leaderboard (BFCL)",
         official_metric="AST accuracy",
-        # Claude Sonnet 4.5, scored with a faithful port of BFCL's official AST
-        # checker, reproduced the published Python Simple AST number (within CI).
-        status="reproduced",
-        reproduced=True,
+        # A RECORDED run reproduced the published Python Simple AST number; not a
+        # live re-measurement here. reproduced (live) stays False; recorded=True.
+        status="reproduced_recorded",
+        reproduced=False,
+        recorded=True,
         scored_by="faithful port of BFCL's official AST checker "
-                  "(metrics.bfcl_ast_official; oracle scores 100%, wrong answers "
-                  "rejected)",
-        requires="already reproduced — re-run with `ascore reproduce-bfcl --live`",
-        reason=("Ran Claude Sonnet 4.5 (native function-calling, temp 0) over the "
-                "real V4 Python `simple` split (n=400) and scored with a faithful "
-                "port of BFCL's OFFICIAL AST checker: 97.50% (390/400, Wilson95 "
-                "[0.9546,0.9864]) — the published 97.75% falls INSIDE our interval, "
-                "so the number is reproduced (gap 0.25 pts). The port credits only "
-                "BFCL's documented normalisations and still fails 10/400 genuinely "
-                "wrong answers (not gamed)."),
+                  "(metrics.bfcl_ast_official; oracle scores 100% LIVE here, wrong "
+                  "answers rejected). The published-number reproduction is a "
+                  "recorded run, not re-measured live.",
+        requires="a live re-run to re-measure: `ascore reproduce-bfcl --live` with "
+                 "a model API key",
+        reason=("RECORDED (2026-07-03, commit 2aa8a68; an attested historical "
+                "figure, not re-measured live here): Claude Sonnet 4.5 (native "
+                "function-calling, temp 0) over the real V4 Python `simple` split "
+                "(n=400) scored with a faithful port of BFCL's OFFICIAL AST "
+                "checker: 97.50% (390/400, Wilson95 [0.9546,0.9864]) — the "
+                "published 97.75% falls INSIDE that interval (gap 0.25 pts). The "
+                "grader is re-validated LIVE here (oracle 100%); re-run "
+                "`ascore reproduce-bfcl --live` to reproduce the model number."),
         extra={
             "scorer_validation_sample": sample,
             "scorer_validation_full_split": _BFCL_FULL_VALIDATION,
@@ -172,23 +190,34 @@ def _wedges() -> list[WedgeReproduction]:
 
 
 def reproduction_report() -> dict:
-    """The honest, machine-readable reproduction status of every wedge."""
+    """The honest, machine-readable reproduction status of every wedge.
+
+    ``any_reproduced`` is the LIVE sense — did any wedge reproduce a public number
+    in THIS environment right now (needs a model key / execution harness). It is
+    False here. ``any_reproduced_recorded`` is True when a recorded, attested
+    historical run reproduced a number (BFCL) even though it isn't re-measured
+    live — surfaced so the figure is credited without being passed off as live."""
     wedges = _wedges()
     return {
         "any_reproduced": any(w.reproduced for w in wedges),
-        "summary": ("The BFCL tool-calling wedge REPRODUCES a public leaderboard "
-                    "number: Claude Sonnet 4.5 (native FC, temp 0) over the n=400 "
-                    "Python simple split scored 97.50% (Wilson95 [0.9546,0.9864]) "
-                    "with a faithful port of BFCL's official AST checker — the "
-                    "published 97.75% falls inside the interval. The code wedge "
-                    "(SWE-bench) still needs the Docker resolve-rate harness and "
-                    "stays a proxy; model-scored wedges without a live run stay "
-                    "seed-sample. Status is shown per wedge, not hidden."),
+        "any_reproduced_recorded": any(w.reproduced or w.recorded for w in wedges),
+        "summary": ("BFCL tool-calling has a RECORDED reproduction of a public "
+                    "leaderboard number (run 2026-07-03, commit 2aa8a68): Claude "
+                    "Sonnet 4.5 (native FC, temp 0) over the n=400 Python simple "
+                    "split scored 97.50% (Wilson95 [0.9546,0.9864]) with a faithful "
+                    "port of BFCL's official AST checker — the published 97.75% "
+                    "falls inside the interval. That is an attested historical "
+                    "figure, NOT re-measured live here (no model key); the AST "
+                    "grader IS re-validated live (oracle 100%). The code wedge "
+                    "(SWE-bench) needs the Docker resolve-rate harness and stays a "
+                    "proxy; model-scored wedges without a live run stay seed-sample. "
+                    "Status (incl. recorded-vs-live) is shown per wedge, not hidden."),
         "wedges": [
             {
                 "wedge": w.wedge, "label": w.label, "benchmark": w.benchmark,
                 "official_metric": w.official_metric, "status": w.status,
-                "reproduced": w.reproduced, "scored_by": w.scored_by,
+                "reproduced": w.reproduced, "recorded": w.recorded,
+                "scored_by": w.scored_by,
                 "requires": w.requires, "reason": w.reason,
                 **({"detail": w.extra} if w.extra else {}),
             } for w in wedges

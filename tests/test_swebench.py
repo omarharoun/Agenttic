@@ -216,10 +216,14 @@ def test_reproduction_status_is_honest(monkeypatch):
     # the code wedge is still a proxy (needs the Docker resolve-rate harness)
     assert by_wedge["code"]["status"] == "proxy"
     assert by_wedge["code"]["official_metric"] == "resolve-rate"
-    # BFCL was reproduced for real (published value inside our Wilson interval)
-    assert rep["any_reproduced"] is True
-    assert by_wedge["tool_calling"]["status"] == "reproduced"
-    assert by_wedge["tool_calling"]["reproduced"] is True
+    # BFCL has a RECORDED reproduction (published value inside our Wilson
+    # interval), but it is not re-measured live here: reproduced (live) False,
+    # recorded True.
+    assert rep["any_reproduced"] is False
+    assert rep["any_reproduced_recorded"] is True
+    assert by_wedge["tool_calling"]["status"] == "reproduced_recorded"
+    assert by_wedge["tool_calling"]["reproduced"] is False
+    assert by_wedge["tool_calling"]["recorded"] is True
     mr = by_wedge["tool_calling"]["detail"]["model_reproduction"]
     assert mr["published_within_interval"] is True
     assert mr["wilson_low"] <= mr["published_accuracy"] <= mr["wilson_high"]
@@ -249,10 +253,11 @@ def test_public_reproduction_endpoint(tmp_path):
         r = c.get("/api/public/reproduction")    # no auth
         assert r.status_code == 200
         body = r.json()
-        assert body["any_reproduced"] is True    # BFCL reproduced
+        assert body["any_reproduced"] is False            # nothing reproduced LIVE
+        assert body["any_reproduced_recorded"] is True    # BFCL recorded run
         assert any(w["wedge"] == "code" for w in body["wedges"])
         tc = {w["wedge"]: w for w in body["wedges"]}["tool_calling"]
-        assert tc["reproduced"] is True
+        assert tc["reproduced"] is False and tc["recorded"] is True
 
 
 # -- idempotent ingest -----------------------------------------------------
