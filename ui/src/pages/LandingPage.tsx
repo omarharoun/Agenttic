@@ -17,7 +17,8 @@ import { HexMark, IcoRail, IcoBus, IcoShield } from "../components/Icons";
 
 /** The seven metrics behind the Agenttic Index, in trace order. Each x/y is a
  *  point on the 0–340 × 0–132 ruled field (y inverted: lower y = higher score).
- *  Values are an illustrative reference profile, matching the hero aria-label. */
+ *  Values are an ILLUSTRATIVE sample profile (not a real measurement), matching
+ *  the hero aria-label; the hero is badged "ILLUSTRATIVE EXAMPLE" on screen. */
 const METRICS: { key: string; label: string; value: number; x: number; y: number }[] = [
   { key: "tool-call", label: "tool-call", value: 93, x: 24, y: 32 },
   { key: "reliability", label: "reliability", value: 88, x: 72, y: 44 },
@@ -108,10 +109,10 @@ function Instrument() {
   const gradeCol = gradeColor("A");
   return (
     <div className="inst" role="img"
-         aria-label="Safety report for agent “Orchestra”: grade A, Agenttic Index 91. Seven metrics plotted — tool-call 93, reliability 88, faithfulness 90, harmful-refusal 99, injection 95, calibration 86, cost 78.">
+         aria-label="Illustrative example of a safety report (a sample agent, not a real measurement): grade A, Agenttic Index 91. Seven sample metrics plotted — tool-call 93, reliability 88, faithfulness 90, harmful-refusal 99, injection 95, calibration 86, cost 78.">
       <div className="inst-top">
-        <span>SAFETY REPORT · AGENT “ORCHESTRA”</span>
-        <span className="rec"><span className="live-dot" aria-hidden />MEASURED</span>
+        <span>EXAMPLE REPORT · SAMPLE AGENT</span>
+        <span className="demo">ILLUSTRATIVE EXAMPLE</span>
       </div>
       <div className="inst-body">
         <div className="grade-cell">
@@ -147,7 +148,7 @@ function Instrument() {
       </div>
       <div className="inst-foot">
         <span>profile cert-agent-safety-v1</span>
-        <span className="sig" style={{ color: gradeCol }}>✓ signed · 3f5acc3c…</span>
+        <span className="sig">example signature — illustrative, not verifiable</span>
       </div>
     </div>
   );
@@ -287,7 +288,7 @@ export function LandingPage() {
               or tools and it lapses — so a passing grade always means <em>this</em>{" "}
               agent, as measured.
             </p>
-            <p className="hash">dossier fcdb6810 · Ed25519 · verify at /.well-known/agenttic-cert-keys.json</p>
+            <p className="hash">example dossier · Ed25519 · verify a real one at /.well-known/agenttic-cert-keys.json</p>
           </div>
         </div>
       </section>
