@@ -4,7 +4,7 @@ import { defineConfig } from "vite";
 /** Only the public content routes are emitted as static HTML. /scan stays
  *  interactive (client-rendered) and /app/* is a pure client SPA — neither is
  *  prerendered, so the heavy React Flow console never runs in the build. */
-const PRERENDER = new Set(["/", "/methodology", "/certified", "/api-docs"]);
+const PRERENDER = new Set(["/", "/methodology", "/certified", "/api-docs", "/status"]);
 
 export default defineConfig({
   plugins: [react()],

@@ -236,6 +236,25 @@ async function json<T>(res: Response): Promise<T> {
 
 export interface Me { role: string; tenant: string; email: string | null; auth_method: string; }
 
+/** Live service-status rollup (Agenttic's OWN uptime — GET /api/status). */
+export type HealthState = "operational" | "degraded" | "down" | "unknown";
+export interface ComponentHealth {
+  name: string;
+  status: HealthState;
+  latency_ms: number | null;
+  detail: string;
+  last_checked: string;
+}
+export interface ServiceStatus {
+  status: HealthState;
+  version: string | null;
+  build: string | null;
+  started_at: string;
+  uptime_seconds: number;
+  checked_at: string;
+  components: ComponentHealth[];
+}
+
 export const api = {
   // --- auth / session ---
   me: () => afetch("/api/me").then((r) => json<Me>(r)),
@@ -426,6 +445,9 @@ export const api = {
   // page + landing. Never a placeholder.
   assistantCertification: () =>
     fetch("/api/public/assistant/certification").then((r) => json<any>(r)),
+  // Public, unauthenticated service-status rollup — backs the /status page.
+  serviceStatus: () =>
+    fetch("/api/status").then((r) => json<ServiceStatus>(r)),
   // Authenticated — issue from a scorecard, list, revoke.
   listCertifications: () =>
     afetch("/api/certifications").then((r) => json<any>(r)),

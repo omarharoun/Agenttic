@@ -4,8 +4,9 @@ import { ApiDocsPage } from "./pages/ApiDocsPage";
 import { CertifiedDirectoryPage } from "./pages/CertifiedDirectoryPage";
 import { LandingPage } from "./pages/LandingPage";
 import { MethodologyPage } from "./pages/MethodologyPage";
+import { StatusPage } from "./pages/StatusPage";
 
-/* The four content routes below are imported eagerly because they are emitted
+/* The public content routes below are imported eagerly because they are emitted
    as static HTML at build time (renderToString can't resolve a lazy chunk).
    Everything else — the interactive scanner, auth, the certificate detail, the
    assistant, and the heavy React Flow console — is code-split so the public /
@@ -34,7 +35,7 @@ const suspense = (node: React.ReactNode) => (
 );
 
 /* The route table, shared by the client router and the build-time prerenderer.
-   Only the four content routes are emitted as static HTML (see
+   Only the public content routes are emitted as static HTML (see
    `ssgOptions.includedRoutes` in vite.config.ts) — /scan stays interactive and
    /app/* is a pure client SPA that the prerenderer never touches. */
 export const routes: RouteRecord[] = [
@@ -49,6 +50,8 @@ export const routes: RouteRecord[] = [
   { path: "/verify", element: suspense(<VerifyPage />) },
   { path: "/api-docs", element: <ApiDocsPage />, entry: "src/pages/ApiDocsPage.tsx" },
   { path: "/methodology", element: <MethodologyPage />, entry: "src/pages/MethodologyPage.tsx" },
+  // public service-status board — Agenttic's own uptime (prerendered shell, live-polled)
+  { path: "/status", element: <StatusPage />, entry: "src/pages/StatusPage.tsx" },
   // public certification brand surfaces
   { path: "/certified", element: <CertifiedDirectoryPage />, entry: "src/pages/CertifiedDirectoryPage.tsx" },
   { path: "/certified/:id", element: suspense(<CertificatePage />) },
