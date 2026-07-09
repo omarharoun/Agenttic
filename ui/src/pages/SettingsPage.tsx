@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, type Me } from "../api";
 import { PageHeader, Spinner } from "../components/ui";
 import { type ThemePref, useThemePref } from "../theme";
@@ -244,7 +244,7 @@ function PersonalTokensCard() {
       )}
       <p className="muted-sm" style={{ marginTop: 12 }}>
         🔒 Stored hashed — only shown once at creation. Revoking takes effect immediately.
-        See the <a href="/api-docs" style={{ color: "var(--accent)" }}>API docs</a> for the run-a-test quickstart.
+        See the <Link to="/api-docs">API docs</Link> for the run-a-test quickstart.
       </p>
     </Card>
   );

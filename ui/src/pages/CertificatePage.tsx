@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { HexMark } from "../components/Icons";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import {
@@ -45,7 +46,7 @@ function normalizeScores(raw: any): CertScore[] {
 function PublicNav() {
   return (
     <nav className="lp-nav">
-      <Link to="/" className="brand"><span className="hex">⬡</span> Agenttic</Link>
+      <Link to="/" className="brand"><HexMark className="hex" /> Agenttic</Link>
       <span className="spacer" />
       <Link className="navlink" to="/certified">Certified agents</Link>
       <Link className="navlink" to="/methodology">Methodology</Link>
@@ -132,7 +133,7 @@ export function CertificatePage() {
           <SealMark />
           <Link to="/certified">Certified agents</Link>
           <Link to="/methodology">Methodology</Link>
-          <a href="/api-docs">API docs</a>
+          <Link to="/api-docs">API docs</Link>
           <span style={{ flex: 1 }} />
           <span>Agent Safety Certification</span>
         </div>

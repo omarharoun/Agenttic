@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { HexMark } from "../components/Icons";
 import { Link } from "react-router-dom";
 
 const GROUP_TITLES: Record<string, string> = {
@@ -55,7 +56,7 @@ export function ApiDocsPage() {
   return (
     <>
       <nav className="lp-nav">
-        <Link to="/" className="brand"><span className="hex">⬡</span> Agenttic</Link>
+        <Link to="/" className="brand"><HexMark className="hex" /> Agenttic</Link>
         <span className="spacer" />
         <a className="navlink" href="/openapi.json">openapi.json</a>
         <a className="navlink" href="/docs">Swagger</a>

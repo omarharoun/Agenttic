@@ -20,6 +20,11 @@ import { Seal } from "./Seal";
 
 type Phase = "idle" | "scanning" | "graded" | "error";
 
+/* The scan runs async server-side and is observed by polling GET /scan/{id}.
+   We intentionally poll rather than stream: the backend exposes SSE only for
+   graph executions (/api/executions/{id}/events, see sse.ts), NOT for scans —
+   there is no /scan/{id}/events endpoint. Streaming the scan would require a
+   backend change, so until that exists this stays an honest poll. */
 const POLL_MS = 700;
 const INTENT_KEY = "agenttic_scan_intent";
 
