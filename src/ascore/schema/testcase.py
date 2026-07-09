@@ -32,3 +32,8 @@ class TestSuite(BaseModel):
     business_context: str
     test_ids: list[str] = Field(default_factory=list)
     approved: bool = False  # human gate (Step 8): unapproved suites refuse to run
+    #: Dataset ingest provenance (Hard Rule 9): "real" when ingested from the FULL
+    #: public split, "seed" when ingested from a vendored .sample split, None for
+    #: non-dataset suites (std seeds, hand-built). Coverage resolves a domain to
+    #: assessed_real ONLY for a "real" dataset suite — never for a sample/seed one.
+    dataset_provenance: str | None = None
