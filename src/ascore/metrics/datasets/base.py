@@ -52,11 +52,26 @@ class DatasetAdapter(ABC):
     def rubric(self) -> Rubric:
         """The canonical-check rubric the suite is scored with."""
 
-    def build_suite(self, cases: list[TestCase]) -> TestSuite:
+    def build_suite(self, cases: list[TestCase], *, full: bool = False) -> TestSuite:
+        """Build the suite, recording HONEST provenance. Only a ``--full`` ingest
+        of the real public split is described as a REAL public dataset and marked
+        ``dataset_provenance="real"``; the default vendored ``.sample`` split is a
+        SEED SAMPLE (``"seed"``) — never described or resolved as real (Hard Rule 9)."""
+        if full:
+            business_context = (
+                f"{self.info.name} — REAL public dataset ({self.info.license}). "
+                f"Source: {self.info.source_url}. {self.info.citation}")
+            provenance = "real"
+        else:
+            business_context = (
+                f"{self.info.name} — SEED SAMPLE ({self.info.license}): a small "
+                f"vendored slice of the public dataset for methodology demonstration, "
+                f"NOT the full public split; re-ingest with --full for the real "
+                f"benchmark. Source: {self.info.source_url}. {self.info.citation}")
+            provenance = "seed"
         return TestSuite(
             suite_id=self.info.suite_id, version=1, approved=True,
-            business_context=f"{self.info.name} — REAL public dataset "
-            f"({self.info.license}). Source: {self.info.source_url}. {self.info.citation}",
+            business_context=business_context, dataset_provenance=provenance,
             test_ids=[c.test_id for c in cases])
 
     def ingest(self, reg, *, full: bool = False) -> dict:
@@ -68,7 +83,8 @@ class DatasetAdapter(ABC):
             pass
         cases = self.load_records(full=full)
         reg.save_rubric(self.rubric())
-        reg.save_suite(self.build_suite(cases), cases)
+        reg.save_suite(self.build_suite(cases, full=full), cases)
         return {"suite_id": self.info.suite_id, "ingested": len(cases),
                 "already_present": False, "dataset": self.info.dataset_id,
-                "license": self.info.license, "source": self.info.source_url}
+                "license": self.info.license, "source": self.info.source_url,
+                "provenance": "real" if full else "seed"}

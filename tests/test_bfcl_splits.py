@@ -118,7 +118,8 @@ def test_new_split_suites_registered_and_feed_index(tmp_path):
         Adapter().ingest(reg)
         suite, _ = reg.get_suite(suite_id)
         assert suite.approved is True
-        assert "REAL public dataset" in suite.business_context
+        assert "SEED SAMPLE" in suite.business_context  # default ingest = vendored sample
+        assert "REAL public dataset" not in suite.business_context
         assert "Apache-2.0" in suite.business_context
         assert suite_id in canonical_suite_ids(reg)    # rolls into the index
 
