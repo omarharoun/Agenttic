@@ -112,6 +112,18 @@ connect:
   timeout_s: 20                     # per-request timeout against the user's endpoint
   rate_limit_s: 0.5                 # min seconds between requests (sequential/1 in-flight)
 
+# In-app Copilot (read-only guide assistant). Runs SERVER-SIDE on Agenttic's OWN
+# Anthropic key (env COPILOT_ANTHROPIC_KEY, else ANTHROPIC_API_KEY) — never a
+# tenant BYO key. If the key is unset the endpoint returns 503 (the one
+# deploy-time gap; see docs/COPILOT.md). Credits gate is stubbed (always allowed)
+# until billing lands.
+copilot:
+  model: claude-sonnet-4-6          # Claude Sonnet 4.6 (fixed for v1)
+  max_output_tokens: 1024           # hard cap per answer
+  max_user_chars: 6000              # per user message before truncation
+  max_history_messages: 20          # trailing turns kept for context
+  rate_limit_per_minute: 20         # per session/IP, independent of security.rate_limit
+
 # ------------------------------------------------------------------------- #
 # Certification track (SPEC-2 → SPEC-6). All thresholds/taxonomy/SLA/posture
 # live here (Hard Rule 5: config over code).
