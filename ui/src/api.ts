@@ -612,14 +612,28 @@ export const api = {
    in the payload (see routes/copilot.py `_sse`), which we reverse here.
  * ------------------------------------------------------------------------ */
 
-export interface CopilotMsg {
-  role: "user" | "assistant";
-  content: string;
+/** A tool-activity event (the agent using the platform API on your behalf). */
+export interface CopilotToolEvent {
+  tool: string;
+  phase: "start" | "done";
+  kind?: "read" | "write";
+  ok?: boolean;
+  summary?: string;
+}
+
+/** A write/cost action the agent proposes; the user must confirm before it runs. */
+export interface CopilotApproval {
+  tool: string;
+  input: Record<string, any>;
+  card: { title?: string; detail?: string; cost_note?: string; risk?: string };
 }
 
 export interface CopilotHandlers {
+  onSession?: (info: { session_id: string; status: string }) => void;
   onToken: (text: string) => void;
-  onDone?: (status: string) => void;
+  onTool?: (ev: CopilotToolEvent) => void;
+  onApproval?: (a: CopilotApproval) => void;
+  onDone?: (info: { session_id: string; status: string }) => void;
   onError?: (message: string) => void;
 }
 
@@ -636,18 +650,13 @@ function unescapeSse(s: string): string {
   return out;
 }
 
-/** POST a conversation and stream the Copilot's answer. Resolves when the
- *  stream ends; rejects on a non-2xx (the caller shows the message). Pass an
- *  AbortSignal to cancel an in-flight answer. */
-export async function copilotChat(
-  messages: CopilotMsg[],
-  handlers: CopilotHandlers,
-  signal?: AbortSignal,
+async function streamCopilot(
+  path: string, body: unknown, handlers: CopilotHandlers, signal?: AbortSignal,
 ): Promise<void> {
-  const res = await afetch("/api/copilot/chat", {
+  const res = await afetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify(body),
     signal,
   });
   if (!res.ok || !res.body) {
@@ -676,8 +685,31 @@ export async function copilotChat(
       }
       const payload = unescapeSse(data);
       if (ev === "token") handlers.onToken(payload);
-      else if (ev === "done") handlers.onDone?.(payload);
+      else if (ev === "tool") { try { handlers.onTool?.(JSON.parse(payload)); } catch { /* ignore */ } }
+      else if (ev === "approval_required") { try { handlers.onApproval?.(JSON.parse(payload)); } catch { /* ignore */ } }
+      else if (ev === "session") { try { handlers.onSession?.(JSON.parse(payload)); } catch { /* ignore */ } }
+      else if (ev === "done") { try { handlers.onDone?.(JSON.parse(payload)); } catch { /* ignore */ } }
       else if (ev === "error") handlers.onError?.(payload);
     }
   }
+}
+
+/** Send a message to the agentic Copilot and stream its reasoning, tool activity,
+ *  and any approval request. Pass session_id to continue a session. */
+export function copilotChat(
+  message: string, sessionId: string | null, handlers: CopilotHandlers,
+  signal?: AbortSignal,
+): Promise<void> {
+  return streamCopilot("/api/copilot/chat",
+    { message, session_id: sessionId ?? undefined }, handlers, signal);
+}
+
+/** Confirm (approved=true) or decline (false) the agent's pending write action;
+ *  streams the resumed turn. */
+export function copilotApprove(
+  sessionId: string, approved: boolean, handlers: CopilotHandlers,
+  signal?: AbortSignal,
+): Promise<void> {
+  return streamCopilot("/api/copilot/approve",
+    { session_id: sessionId, approved }, handlers, signal);
 }
