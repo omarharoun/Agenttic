@@ -34,12 +34,17 @@ class CreditDecision:
 
 @dataclass(frozen=True)
 class UsageRecord:
-    """What we persist for billing — counts only, never message content."""
+    """What we persist for billing — counts + executed-action metadata only,
+    never message content. ``action`` names an executed write/cost tool (e.g.
+    ``start_certification``) when this record is for an action rather than a chat
+    turn; ``cost_usd`` is its (optional) estimated/known spend."""
     tenant: str
     model: str
     input_tokens: int
     output_tokens: int
     at: datetime
+    action: str | None = None
+    cost_usd: float = 0.0
 
 
 class CreditsProvider:
@@ -57,8 +62,9 @@ class CreditsProvider:
         return CreditDecision(allowed=True, reason="free-preview", remaining=None)
 
     def record(self, record: UsageRecord) -> None:
-        """Called AFTER a turn with the token counts. The stub logs them for
-        future billing; a real provider debits credits / writes a meter row."""
+        """Called AFTER a turn (token counts) or an executed write action
+        (``action`` set). The stub logs it for future billing; a real provider
+        debits credits / writes a meter row."""
         log.info(
             "copilot_usage",
             extra={"extra_fields": {
@@ -66,6 +72,8 @@ class CreditsProvider:
                 "model": record.model,
                 "input_tokens": record.input_tokens,
                 "output_tokens": record.output_tokens,
+                "action": record.action,
+                "cost_usd": record.cost_usd,
                 "at": record.at.isoformat(),
             }},
         )
@@ -90,3 +98,12 @@ def record_usage(tenant: str, model: str, input_tokens: int,
         tenant=tenant, model=model,
         input_tokens=int(input_tokens or 0), output_tokens=int(output_tokens or 0),
         at=datetime.now(timezone.utc)))
+
+
+def record_action(tenant: str, model: str, action: str,
+                  cost_usd: float = 0.0) -> None:
+    """Record an executed write/cost tool for billing/audit (no message content).
+    This is the hook where a real biller debits a per-action credit."""
+    get_provider().record(UsageRecord(
+        tenant=tenant, model=model, input_tokens=0, output_tokens=0,
+        at=datetime.now(timezone.utc), action=action, cost_usd=cost_usd))

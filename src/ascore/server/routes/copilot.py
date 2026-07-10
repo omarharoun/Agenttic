@@ -1,44 +1,52 @@
-"""HTTP/SSE surface for the Agenttic Copilot — the in-app guide assistant.
+"""HTTP/SSE surface for the Agenttic Copilot — an AGENTIC in-app assistant.
+
+The Copilot is a Claude Sonnet 4.6 agent whose tools are the platform's own API,
+scoped to the signed-in user (see :mod:`ascore.copilot.tools`,
+:mod:`ascore.copilot.agent`). It reads freely and PROPOSES write/cost actions,
+which the user must confirm before they run.
 
 Endpoints (auth + tenant scoped like the rest of ``/api``):
 * ``GET  /api/copilot/status``  — is the Copilot available on this server?
-  (Does NOT require the user's Anthropic key — the Copilot runs on Agenttic's own
-  server-side key.) Powers the panel's honest "unavailable" state.
-* ``POST /api/copilot/chat``    — stream an answer as Server-Sent Events. Body:
-  ``{"messages": [{"role": "user"|"assistant", "content": str}, ...]}``. The
-  server injects the system prompt (skill) + curated platform knowledge, calls
-  Claude Sonnet 4.6 with Agenttic's own key, and streams tokens back.
+  (Runs on Agenttic's OWN server-side key — not the user's.)
+* ``POST /api/copilot/chat``    — ``{session_id?, message}``. Creates/loads a
+  tenant-scoped session, runs the agent loop, and streams events as SSE. If the
+  agent wants to run a write/cost tool it emits ``approval_required`` and the
+  stream ends awaiting the user's decision.
+* ``POST /api/copilot/approve`` — ``{session_id, approved}``. Resolves the pending
+  write action (run it / decline it) and resumes the agent, streaming as SSE.
 
-Guardrails layered here (see also :mod:`ascore.copilot.service`):
-* **Credits gate** — :func:`check_credits` runs BEFORE the model (stub: always
-  allowed; the billing seam).  A refusal becomes HTTP 402.
-* **Rate limit** — a dedicated per-session/per-IP sliding window, independent of
-  the global middleware, so the Copilot is always bounded.
-* **Untrusted input** — user messages are passed as data; the system prompt
-  forbids following instructions embedded in them, and output is secret-scrubbed.
-* **Usage logging** — token counts recorded for future billing (no message
-  content is persisted).
+SSE events: ``session`` (id/status), ``token`` (answer text delta), ``tool``
+(tool activity: start/done + summary), ``approval_required`` (a write action
+awaiting confirmation, with its confirmation card), ``error``, ``done``
+(id/status). Guardrails: per-session/IP rate limit, credits gate (coarse here;
+per-write inside the agent), server-key-required (503), secret scrubbing, tenant
+isolation. Token usage is recorded for billing (no message content persisted
+beyond the tenant-scoped session transcript needed to resume).
 """
 
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
+from ascore.copilot.agent import CopilotAgent, new_session
 from ascore.copilot.credits import check_credits, record_usage
 from ascore.copilot.service import (
-    CopilotConfig, CopilotNotConfigured, CopilotService, is_configured,
-    resolve_client,
+    CopilotConfig, CopilotNotConfigured, is_configured, resolve_client,
 )
+from ascore.copilot.store import CopilotStore
+from ascore.copilot.tools import ToolContext
+from ascore.registry.sqlite_store import NotFoundError
 from ascore.secrets import known_secret_values
 from ascore.server.ratelimit import InMemoryRateLimiter
 
 router = APIRouter(tags=["copilot"], prefix="/copilot")
 
-# A dedicated limiter for the Copilot chat, separate from the global middleware
-# so the assistant is always bounded even when the app-wide limit is off. Per
-# session (cookie/token) or IP; sliding 60s window.
+# Dedicated per-session/IP limiter, independent of the global middleware, so the
+# Copilot is always bounded. Shared across chat + approve.
 _RL = InMemoryRateLimiter()
 _RL_WINDOW = 60.0
 
@@ -67,81 +75,125 @@ def _injected(request: Request) -> dict:
     return getattr(request.state, "clients", None) or {}
 
 
-class ChatMessage(BaseModel):
-    role: str
-    content: str
+def _store(request: Request) -> CopilotStore:
+    return CopilotStore(request.state.reg.engine,
+                        getattr(request.state, "tenant", "default"))
 
 
 class ChatBody(BaseModel):
-    messages: list[ChatMessage] = Field(default_factory=list)
+    message: str
+    session_id: str | None = None
+
+
+class ApproveBody(BaseModel):
+    session_id: str
+    approved: bool
 
 
 @router.get("/status")
 def copilot_status(request: Request):
-    """Whether the Copilot is usable on this server (server-side key present or a
-    dev/test client injected). Read-only; no secrets."""
     cfg = _copilot_cfg(request)
-    return {"available": is_configured(_injected(request)), "model": cfg.model}
+    return {"available": is_configured(_injected(request)), "model": cfg.model,
+            "agentic": True}
 
 
 def _sse(event: str, data: str) -> str:
-    """Format one SSE frame. ``data`` is sent as a single ``data:`` line with
-    newlines escaped so the framing can't be broken by model output."""
     safe = data.replace("\\", "\\\\").replace("\n", "\\n")
     return f"event: {event}\ndata: {safe}\n\n"
 
 
-@router.post("/chat")
-def copilot_chat(body: ChatBody, request: Request):
-    """Stream a Copilot answer as SSE. Ordered guardrails: rate limit → credits
-    gate → configured? → stream (secret-scrubbed) → record usage."""
-    tenant = getattr(request.state, "tenant", "default")
-
-    # 1) rate limit (per session/IP), independent of the global middleware
+def _guards(request: Request):
+    """Shared pre-flight for chat/approve: rate limit → credits → configured →
+    (agent, ctx). Raises HTTPException on refusal; returns (agent, ctx, cfg)."""
     if not _RL.allow(_rl_key(request), _rl_limit(request), _RL_WINDOW):
         raise HTTPException(
             429, "You're sending messages a little fast — give it a few seconds.")
-
-    # 2) credits gate (stub today; the billing seam)
+    tenant = getattr(request.state, "tenant", "default")
     decision = check_credits(tenant)
     if not decision.allowed:
-        raise HTTPException(
-            402, decision.reason or "Out of Copilot credits.")
-
-    # 3) configured? (server-side key OR injected dev/test client)
+        raise HTTPException(402, decision.reason or "Out of Copilot credits.")
     injected = _injected(request)
     if not is_configured(injected):
         raise HTTPException(
             503, "The Copilot assistant isn't configured on this server yet.")
-
     cfg = _copilot_cfg(request)
     try:
         client = resolve_client(injected)
     except CopilotNotConfigured as exc:
         raise HTTPException(503, str(exc))
-
-    service = CopilotService(
-        client, cfg,
+    agent = CopilotAgent(
+        client, cfg.model, max_tokens=cfg.max_output_tokens,
         extra_secrets=known_secret_values(getattr(request.state, "cfg", None) or {}))
-    messages = [m.model_dump() for m in body.messages]
+    return agent, ToolContext(request), cfg
+
+
+def _stream(request: Request, session: dict, events):
+    """Turn agent events into an SSE response, recording usage and persisting the
+    session (incl. any pending approval) when the stream ends."""
+    store = _store(request)
+    tenant = getattr(request.state, "tenant", "default")
+    model = _copilot_cfg(request).model
 
     def gen():
-        answered = False
-        for event, data in service.stream(messages):
-            if event == "token":
-                answered = True
-                yield _sse("token", str(data))
-            elif event == "usage":
-                record_usage(tenant, cfg.model,
-                             getattr(data, "input_tokens", 0),
-                             getattr(data, "output_tokens", 0))
-            elif event == "error":
-                yield _sse("error", str(data))
-            elif event == "done":
-                yield _sse("done", "ok" if answered else "empty")
+        yield _sse("session", json.dumps(
+            {"session_id": session["session_id"], "status": session["status"]}))
+        try:
+            for ev in events:
+                kind = ev.get("type")
+                if kind == "token":
+                    yield _sse("token", ev.get("text", ""))
+                elif kind == "tool":
+                    yield _sse("tool", json.dumps({
+                        "tool": ev.get("tool"), "phase": ev.get("phase"),
+                        "kind": ev.get("kind"), "ok": ev.get("ok"),
+                        "summary": ev.get("summary")}))
+                elif kind == "approval_required":
+                    yield _sse("approval_required", json.dumps({
+                        "tool": ev.get("tool"), "input": ev.get("input", {}),
+                        "card": ev.get("card", {})}))
+                elif kind == "usage":
+                    record_usage(tenant, model, ev.get("input_tokens", 0),
+                                 ev.get("output_tokens", 0))
+                elif kind == "final":
+                    # the answer text already streamed as `token` events during
+                    # the model turn; `final` is just the end-of-answer marker.
+                    pass
+                elif kind == "error":
+                    yield _sse("error", ev.get("text", ""))
+        finally:
+            store.save(session)
+            yield _sse("done", json.dumps(
+                {"session_id": session["session_id"],
+                 "status": session.get("status", "ready")}))
 
     return StreamingResponse(
-        gen(),
-        media_type="text/event-stream",
+        gen(), media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no",
                  "Connection": "keep-alive"})
+
+
+@router.post("/chat")
+def copilot_chat(body: ChatBody, request: Request):
+    agent, ctx, _cfg = _guards(request)
+    store = _store(request)
+    if body.session_id:
+        try:
+            session = store.get(body.session_id)
+        except NotFoundError:
+            raise HTTPException(404, "copilot session not found")
+    else:
+        session = new_session()
+    events = agent.start_turn(session, ctx, body.message)
+    return _stream(request, session, events)
+
+
+@router.post("/approve")
+def copilot_approve(body: ApproveBody, request: Request):
+    agent, ctx, _cfg = _guards(request)
+    store = _store(request)
+    try:
+        session = store.get(body.session_id)
+    except NotFoundError:
+        raise HTTPException(404, "copilot session not found")
+    events = agent.resume(session, ctx, approved=body.approved)
+    return _stream(request, session, events)
