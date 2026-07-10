@@ -2745,3 +2745,39 @@ a.btn-primary, button.btn-primary,
   .cp-launch, .cp-scrim, .cp-panel { transition: none !important; }
   .cp-typing span, .cp-caret, .cp-spin { animation: none !important; }
 }
+
+/* --- Copilot agentic additions: tool activity + approval cards ----------- */
+.cp-msg-body { display: flex; flex-direction: column; gap: 8px; max-width: 84%; }
+.cp-msg.user .cp-msg-body { align-items: flex-end; }
+
+.cp-tools { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.cp-tool { display: flex; align-items: baseline; gap: 7px; font-size: 12px;
+  color: var(--muted); background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 9px; }
+.cp-tool.write { border-color: var(--accent-line); }
+.cp-tool.bad { border-color: var(--bad-border, var(--border)); color: var(--bad, var(--warn)); }
+.cp-tool-ic { color: var(--ok); font-size: 11px; }
+.cp-tool.bad .cp-tool-ic { color: var(--bad, var(--warn)); }
+.cp-tool-lbl { color: var(--text); font-weight: 500; }
+.cp-tool-sum { color: var(--muted); font-family: var(--mono, ui-monospace, monospace); font-size: 11px; }
+
+.cp-approval { border: 1px solid var(--accent-line); background: var(--accent-soft);
+  border-radius: 12px; padding: 11px 12px; outline: none; }
+.cp-approval.risk-high { border-color: var(--bad-border, var(--warn-border, var(--border))); }
+.cp-approval:focus-visible { box-shadow: 0 0 0 2px var(--accent-line); }
+.cp-approval-head { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.cp-approval-ic { font-size: 14px; }
+.cp-approval-tag { font-size: 11px; font-weight: 600; letter-spacing: 0.03em; color: var(--text); }
+.cp-approval-risk { margin-left: auto; font-size: 10.5px; text-transform: capitalize;
+  border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; color: var(--muted); }
+.cp-approval-risk.risk-high { color: var(--bad, var(--warn)); border-color: var(--bad-border, var(--border)); }
+.cp-approval-title { font-size: 13.5px; margin: 0 0 5px; }
+.cp-approval-detail { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: 0 0 6px; }
+.cp-approval-cost { font-size: 12px; color: var(--text); margin: 0 0 6px; }
+.cp-approval-reassure { font-size: 11px; color: var(--muted); margin: 0 0 9px; }
+.cp-approval-actions { display: flex; gap: 8px; }
+.cp-btn-confirm { flex: 1; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink); border: none; border-radius: 9px; padding: 7px 10px; }
+.cp-btn-deny { font: inherit; font-size: 12.5px; cursor: pointer; color: var(--text);
+  background: var(--panel); border: 1px solid var(--border); border-radius: 9px; padding: 7px 12px; }
+.cp-btn-confirm:disabled, .cp-btn-deny:disabled { opacity: 0.5; cursor: not-allowed; }
