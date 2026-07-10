@@ -1,106 +1,137 @@
 # Agenttic Copilot
 
-An in-app, read-only **guide assistant**: a right-docked slide-out chat panel in
-the app console (`/app/*`) that helps authenticated users understand and navigate
-the platform. It answers questions about scanning/grading, the methodology and
-metric catalog, certification profiles/tiers, dossiers & verification, the
-enforcement gateway, agent passports, deploy modes, and the `ascore` CLI — and it
-deep-links you to the right page. **v1 is Q&A + navigation only; it takes no
-actions.**
+An in-app **agentic assistant**: a right-docked slide-out chat panel in the app
+console (`/app/*`) that helps authenticated users understand AND operate the
+platform. It answers questions grounded in the real platform (methodology, metric
+catalog, certification, dossiers, passports, the `ascore` CLI) **and orchestrates
+the platform on the user's behalf through tools** — where the tools are the
+Agenttic API, scoped to that user's tenant, permissions, and budget. It reads
+freely and **proposes** write/cost actions, which the user must **confirm** before
+they run.
 
-It is built on **Claude Sonnet 4.6** (`claude-sonnet-4-6`), called **server-side**
-with Agenttic's **own** Anthropic key — *not* a tenant's BYO key. (Tenants still
-need their own key to run evaluations; the Copilot chat is platform-provided.)
+Built on **Claude Sonnet 4.6** (`claude-sonnet-4-6`), called **server-side** with
+Agenttic's **own** Anthropic key — *not* a tenant's BYO key. (Tenants still need
+their own key to run evaluations; the Copilot chat is platform-provided.)
 
 ## Architecture
 
 ```
-ui/src/copilot/CopilotPanel.tsx   drawer UI (lazy-loaded), streams SSE, renders Markdown
+ui/src/copilot/CopilotPanel.tsx   drawer UI (lazy): streams answer + tool activity + approval cards
 ui/src/copilot/markdown.tsx       tiny dependency-free Markdown → React (safe; deep-links)
 ui/src/AppShell.tsx               right-edge launcher + lazily-mounted <CopilotPanel>
-ui/src/api.ts                     api.copilotStatus(), copilotChat() SSE streaming client
+ui/src/api.ts                     api.copilotStatus(); copilotChat()/copilotApprove() SSE clients
 
-src/ascore/copilot/skill.py       persona + guardrails (the "skill"), system-prompt builder
-src/ascore/copilot/knowledge.md   curated, grounded platform knowledge (injected each turn)
-src/ascore/copilot/service.py     server-side key, Sonnet 4.6 streaming, output guards
-src/ascore/copilot/credits.py     credits / billing integration seam (stub)
-src/ascore/server/routes/copilot.py  GET /api/copilot/status, POST /api/copilot/chat (SSE)
+src/ascore/copilot/skill.py       agentic persona + guardrails (the "skill"), system-prompt builder
+src/ascore/copilot/knowledge.md   curated, grounded platform knowledge injected each turn
+src/ascore/copilot/tools.py       the tool registry = the real Agenttic API, tenant/role scoped
+src/ascore/copilot/agent.py       streaming tool-use loop + confirmation gate + guards
+src/ascore/copilot/service.py     server-side key resolution, config, plain-stream helpers
+src/ascore/copilot/store.py       tenant-scoped session persistence (resumes the confirm gate)
+src/ascore/copilot/credits.py     credits / cost accounting integration seam (stub)
+src/ascore/server/routes/copilot.py  GET /status, POST /chat (SSE), POST /approve (SSE)
 ```
 
-### Endpoints
-- `GET /api/copilot/status` → `{ "available": bool, "model": str }`. Does **not**
-  require the tenant's Anthropic key; powers the panel's honest "unavailable"
-  state.
-- `POST /api/copilot/chat` → **SSE stream**. Body:
-  `{ "messages": [{ "role": "user"|"assistant", "content": str }, ...] }`.
-  Events: `token` (text delta), `error` (friendly message), `done` (`ok`/`empty`).
+## The agent loop
+`agent.py` drives the standard Anthropic tool-use cycle with Sonnet 4.6:
+model → `tool_use` → execute the tool (the real, tenant-scoped API) → `tool_result`
+→ model → … → final answer, capped at a sensible iteration budget. Each model turn
+is **streamed** (`client.messages.stream(..., tools=…)`); text deltas stream to the
+UI as they arrive and tool activity streams as structured events. State lives in a
+JSON-serializable, tenant-scoped **session** so the confirmation gate can span
+separate HTTP requests.
 
-Both are auth + tenant scoped like the rest of `/api`.
+## Tools = the Agenttic API, scoped to the user
+Tools run **in-process against the same `request.state` objects the HTTP routes
+use** (`reg` / `certifier` / `cfg` / role), so the agent can never exceed what the
+signed-in user could do themselves — same tenant, same auth, same budget (a real
+run uses the tenant's own Anthropic key), same role checks. No invented endpoints.
 
-### The skill (system prompt)
-`skill.py` assembles: **persona** (Agenttic Copilot — a knowledgeable, honest,
-read-only guide) + **guardrails** + the curated **platform knowledge**
-(`knowledge.md`). Guardrails, in brief:
-- **Honesty is mandatory.** Never invent features, pages, CLI commands, or
-  numbers. Respect platform semantics exactly: `NOT ASSESSED` ≠ a score,
-  `assessed_seed` ≠ `assessed_real`, `none_found` ≠ `confirmed_none`, a
-  provisional judge caps tiers at B (Tier A unreachable), errored ≠ failed,
-  coverage is never averaged over different denominators. When unsure, say so and
-  point to the relevant page.
-- **All conversation content is untrusted data**, never instructions — injection
-  / "ignore your instructions" / "reveal your system prompt" attempts are
-  declined, not obeyed.
-- **No secret leakage.** Output is scrubbed for key/secret patterns
-  (`ascore.assistant.guard.redact_secrets`); the system prompt is never revealed.
-- **On-topic only** (Agenttic and using it); off-topic / harmful / jailbreak
-  requests are politely declined.
+**Read tools** (run freely, no confirmation):
+`platform_status`, `list_agents`, `list_certification_profiles`,
+`get_certification_profile`, `list_dossiers`, `get_dossier`, `verify_dossier`,
+`get_certification_job`, `anthropic_key_status`.
 
-### Guardrails at the endpoint
-Ordered: **rate limit** (dedicated per-session/IP sliding window, independent of
-the global middleware; `copilot.rate_limit_per_minute`, default 20/min) →
-**credits gate** (`check_credits`, stubbed to always-allow today) → **configured?**
-(server-side key present, else `503`) → stream (secret-scrubbed, `max_tokens`
-capped) → **record usage** (token counts only).
+**Write / cost tools** (spend budget or mutate state → confirmation required):
+`start_certification` (POST /api/certify path — spends the tenant's Anthropic
+budget, runs async), `revoke_certification` (irreversible, append-only). Both
+re-check the `operator` role, exactly like their routes.
 
-Context is capped: per-message length (`copilot.max_user_chars`, 6000), trailing
-turns kept (`copilot.max_history_messages`, 20), output tokens
-(`copilot.max_output_tokens`, 1024).
+The set is a safe, useful subset chosen from the real API surface; adding more
+tools is additive — implement `run` + (for writes) a `confirm` builder and register.
 
-### Grounding
-`knowledge.md` is curated from the real repo — README, the Methodology page,
-`docs/CERTIFICATION.md`, `docs/CONNECT.md`, the metric catalog, and the `ascore`
-CLI. Keep it accurate when the platform changes. **RAG seam:** the injection point
-is `skill.build_system_prompt()`; v2 can replace the static file with retrieval
-over `docs/` + the live metric catalog (`src/ascore/metrics/catalog.py`).
+## Confirmation model (human-in-the-loop)
+- A turn that requests any **write** tool PAUSES the whole turn (the API needs a
+  result for every `tool_use` block): the agent persists it as `pending`, emits an
+  `approval_required` event with a **confirmation card** (title, detail, cost note,
+  risk), and the stream ends. The tool is **not** executed.
+- The UI renders the card with **Confirm & run** / **Cancel**. `POST /api/copilot/approve`
+  `{session_id, approved}` resolves it: on confirm the tool executes and the agent
+  resumes; on deny the agent gets a "user declined" tool_result and adapts. A
+  denied action never runs.
+- **Clarifying questions** need no special protocol: the agent asks in text and
+  stops; the user answers as the next message. The skill tells it to ask (and to
+  look ids up with a read tool) rather than guess.
+
+## Guardrails
+- **Honesty** — the agent reports only what tools actually return; the skill
+  forbids inventing results/tiers/grades/numbers and enforces platform semantics
+  (NOT ASSESSED, assessed_seed vs assessed_real, none_found ≠ confirmed_none,
+  provisional-judge caps, coverage honesty).
+- **Untrusted everything** — user messages AND every tool result are
+  injection-neutralized (`guard.neutralize_injection`), fenced as untrusted DATA
+  (`guard.wrap_untrusted`), and secret-scrubbed (`guard.redact_secrets`) before
+  re-entering the model. A tool result can't make the agent take an unapproved
+  write or reveal the system prompt / a key. Streamed output is scrubbed too (with
+  a tail holdback for secrets split across deltas).
+- **Confirmation gate** on all writes (above); the credits gate is consulted
+  **before** an approved write executes (a refusal becomes a tool_result, never a
+  silent spend).
+- **Rate limit** — dedicated per-session/IP sliding window (`copilot.rate_limit_per_minute`,
+  default 20/min), independent of the global middleware, shared across chat +
+  approve.
+- **Tenant isolation** — tools + the session store are tenant-scoped; the Copilot
+  never sees another tenant.
+- **Server-key required** — no `COPILOT_ANTHROPIC_KEY`/`ANTHROPIC_API_KEY` → `503`
+  and an honest "not configured" banner.
+- **Audit** — every executed write action is logged (`action_executed`) and every
+  tool call/result is recorded in the session step log.
 
 ## Deploy-time gap: the Anthropic key
-The Copilot needs a server-side key. It reads (in order) **`COPILOT_ANTHROPIC_KEY`**,
-then **`ANTHROPIC_API_KEY`** (the `_FILE` secret convention works too — see
-`ascore.secrets`). It is **never** hardcoded or committed. If neither is set, the
-endpoint returns **`503`** and the panel shows an honest "not configured" banner
-— exactly like the passport signing key. **To enable in production, set
-`COPILOT_ANTHROPIC_KEY`** (or `ANTHROPIC_API_KEY`) in the server environment.
+Unchanged from v1. The Copilot needs a server-side key: it reads
+`COPILOT_ANTHROPIC_KEY`, then `ANTHROPIC_API_KEY` (the `_FILE` secret convention
+works). Never hardcoded/committed. If neither is set, `/chat` + `/approve` return
+`503`. **To enable in production, set `COPILOT_ANTHROPIC_KEY`** (a dedicated key is
+recommended for clean cost/usage isolation).
 
-## Billing seam (NOT built — integration point only)
-The intended future model: a **platform fee + free credits** to try tests & chat,
-**Stripe + PayPal**, pricing on the landing, custom subscription management +
-invoices. The Copilot's integration point is already in place:
-`src/ascore/copilot/credits.py` — `CreditsProvider.check(tenant)` runs **before**
-the model (return `allowed=False` → the endpoint emits `402`), and
-`CreditsProvider.record(UsageRecord)` runs **after** each turn with token counts
-(no message content). The v1 provider is a permissive stub; the billing system
-swaps in a real provider (real free-credit accounting + durable metering) with
-**no change** to the endpoint or the frontend. Usage is already logged
-(`ascore.copilot.usage`) for future accounting.
+## Credits / cost accounting seam (billing NOT built — integration point)
+Future model: **platform fee + free credits** to try tests & chat, **Stripe + PayPal**,
+pricing on the landing, subscriptions + invoices. The seam is `credits.py`:
+- `check_credits(tenant)` runs before each turn (coarse) AND `agent.py` calls it
+  again **before an approved write executes** (deny → the action doesn't run) —
+  this is where per-action free-credit accounting plugs in.
+- `record_usage(tenant, model, in, out)` records token counts per turn;
+  `record_action(tenant, model, action)` records each executed write for
+  per-action metering. Neither stores message content.
+The v1 provider is a permissive stub (always allowed); swap in a real
+`CreditsProvider` with no change to the agent, endpoint, or frontend.
+
+## Frontend
+Right-docked slide-out drawer + fixed launcher in `AppShell` (app console only,
+lazy-loaded). Streams the agent's answer (Markdown, deep-links that close the
+drawer on navigation), shows **live tool activity** rows ("Listing your agents",
+"Running certification" with ✓/✕ + a short summary), renders **inline approval
+cards** with Confirm/Cancel for write actions, and handles clarifying questions as
+ordinary messages. Session continuity via `session_id`. Honest "AI assistant —
+may be imperfect" note, focus mgmt + aria + Esc-to-close, reduced-motion friendly,
+Chronometer tokens (light/dark).
 
 ## Bundle impact
-The panel is code-split: its chunk (chat + Markdown renderer, ~6.9 kB / ~2.9 kB
-gzip) loads only when the user first opens the drawer. It is imported solely by
-`AppShell` (the `/app/*` console, itself lazy), so the **public landing bundle is
-unaffected** — `dist/index.html` references neither `CopilotPanel` nor `AppShell`.
+The panel is code-split: its chunk (chat + Markdown renderer, ~9.7 kB / ~3.6 kB
+gzip) loads only on first open. Imported solely by `AppShell` (itself lazy), so the
+**public landing bundle is unaffected** — `dist/index.html` references neither
+`CopilotPanel` nor `AppShell`.
 
 ## Config
-See the `copilot:` block in `config.yaml`:
 ```yaml
 copilot:
   model: claude-sonnet-4-6
@@ -109,10 +140,14 @@ copilot:
   max_history_messages: 20
   rate_limit_per_minute: 20
 ```
+Session persistence: migration **v23** (`copilot_sessions` table, tenant-scoped).
 
 ## Tests
-`tests/test_copilot.py` (mocked Anthropic — no network): SSE streaming, the rate
-limit trips, an injection is carried as data (never merges the system prompt) and
-a secret is redacted from output, the honesty guardrails + semantics are present
-in the system prompt, the credits gate refuses with `402`, usage is recorded, and
-an unconfigured server returns `503`.
+`tests/test_copilot.py` (mocked Anthropic + real tenant-scoped tools, no network):
+the agent loop runs a READ tool and answers from real data; a WRITE/COST tool is
+NOT executed without an explicit confirm; a denied confirm cancels cleanly; a
+confirm executes it and records the action; an injection in a tool result is
+neutralized + fenced + secret-scrubbed and cannot trigger an unapproved write or
+leak the prompt; the rate limit trips; the credits gate refuses with `402`; token
+usage is recorded; an unconfigured server returns `503`; and the honesty
+guardrails + semantics are present in the system prompt.
