@@ -35,6 +35,7 @@ I use what." This index annotates every doc and how they relate.
 | [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md) | Security/ops readiness review: auth, multi-tenancy, secrets, persistence/migrations, API hardening, observability, SSRF, cost controls, scaling — with what's fixed vs. residual | You're hardening a deployment or assessing risk |
 | [OPERATIONS.md](OPERATIONS.md) | Public access via Cloudflare Tunnel, backups (SQLite/Postgres + Litestream), restore drill, data retention & PII controls | You're deploying, backing up, or setting retention |
 | [MAIL.md](MAIL.md) | Email for `agenttic.io`: sending via Resend (HTTPS API), receiving via Cloudflare Email Routing | You're wiring up signup verification or support email |
+| [BILLING.md](BILLING.md) | The platform-fee + free-credits billing system: the credits ledger, plans/tiers (config), metering the Copilot/scan/certification spend, the out-of-credits 402, Stripe + PayPal setup (which env keys go live), custom invoices, and how it replaces the Copilot stub gate | You're setting up payments, plans, or credits — or need the go-live env keys |
 
 ## How the docs relate
 
