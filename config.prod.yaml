@@ -97,6 +97,17 @@ security:
 connect:                                  # "Connect your agent" gentle-traffic limits
   timeout_s: 20                           # per-request timeout against the user's endpoint
   rate_limit_s: 0.5                       # min seconds between requests (sequential/1 in-flight)
+abuse:                                    # ceilings on cost-bearing endpoints + signup (fail closed, 429)
+  scan:                                   # POST /api/scan
+    per_ip_per_minute: 3
+    per_tenant_per_minute: 6
+    global_per_day: 500                   # server-wide ceiling across all tenants
+  certify:                                # POST /api/certify (starts a cost-bearing run)
+    per_ip_per_minute: 2
+    per_tenant_per_minute: 4
+    global_per_day: 200
+  signup:                                 # POST /auth/signup
+    per_ip_per_hour: 10                   # cap new accounts per IP per hour
 retention:                                # run `ascore retention --apply` on a schedule (cron/k8s CronJob)
   trace_redact_days: 30                    # strip inputs/outputs from traces older than N days (PII); 0 = off
   trace_prune_days: 90                     # delete traces older than N days; scorecards keep aggregates; 0 = off
