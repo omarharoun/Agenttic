@@ -21,6 +21,8 @@ dependencies = [
     "python-docx>=1.1",      # extract text from uploaded DOCX requirement docs
     "sqlglot>=25",           # SQL syntax validity for the structured/IR metrics
     "jsonschema>=4",         # JSON Schema validation for structured-output metrics
+    "stripe>=10.0",          # billing: Stripe Checkout + webhook signature verify
+    "requests>=2.31",        # billing: PayPal REST API + webhook verification
 ]
 
 [project.optional-dependencies]

@@ -120,7 +120,9 @@ def billing_config(request: Request):
     """Which providers are configured (so the UI shows only live options)."""
     return {
         "stripe": {"configured": stripe_gateway.is_configured(),
-                   "test_mode": stripe_gateway.is_test_mode()},
+                   "test_mode": stripe_gateway.is_test_mode(),
+                   # publishable key is NOT secret — safe for the client
+                   "publishable_key": stripe_gateway.publishable_key()},
         "paypal": {"configured": paypal_gateway.is_configured(),
                    "sandbox": paypal_gateway.is_sandbox()},
     }
@@ -142,26 +144,34 @@ def checkout_stripe(body: CheckoutBody, request: Request):
             tp = plans.topup(cfg, body.topup_id or "")
             if not tp:
                 raise HTTPException(422, "unknown top-up")
+            # Prefer the real Stripe price id when configured; else build the line
+            # item inline (dev/first-run before prices are provisioned).
+            if tp.get("stripe_price_id"):
+                line_items = [{"price": tp["stripe_price_id"], "quantity": 1}]
+            else:
+                line_items = [{"price_data": {"currency": currency,
+                    "product_data": {"name": tp["name"]},
+                    "unit_amount": int(tp["price_cents"])}, "quantity": 1}]
             session = stripe_gateway.create_checkout_session(
                 tenant=tenant, mode="payment", success_url=success,
-                cancel_url=cancel,
-                line_items=[{"price_data": {"currency": currency,
-                    "product_data": {"name": tp["name"]},
-                    "unit_amount": int(tp["price_cents"])}, "quantity": 1}],
+                cancel_url=cancel, line_items=line_items,
                 metadata={"topup_id": tp["id"], "credits": str(tp["credits"]),
                           "description": tp["name"]})
         else:
             p = plans.plan(cfg, body.plan_id or "")
             if not p or int(p.get("price_cents", 0)) <= 0:
                 raise HTTPException(422, "unknown or non-purchasable plan")
-            session = stripe_gateway.create_checkout_session(
-                tenant=tenant, mode="subscription", success_url=success,
-                cancel_url=cancel,
-                line_items=[{"price_data": {"currency": currency,
+            if p.get("stripe_price_id"):
+                line_items = [{"price": p["stripe_price_id"], "quantity": 1}]
+            else:
+                line_items = [{"price_data": {"currency": currency,
                     "product_data": {"name": f"Agenttic {p['name']}"},
                     "unit_amount": int(p["price_cents"]),
                     "recurring": {"interval": p.get("interval", "month")}},
-                    "quantity": 1}],
+                    "quantity": 1}]
+            session = stripe_gateway.create_checkout_session(
+                tenant=tenant, mode="subscription", success_url=success,
+                cancel_url=cancel, line_items=line_items,
                 metadata={"plan_id": body.plan_id})
         return {"url": session["url"], "id": session["id"]}
     except HTTPException:
@@ -228,6 +238,8 @@ def _plans_payload(cfg: dict) -> dict:
         "credit_cent_value": plans.credit_cent_value(cfg),
         "plans": plist,
         "topups": plans.topups(cfg),
+        # publishable key is NOT secret — exposed so the client can init Stripe.js
+        "stripe_publishable_key": stripe_gateway.publishable_key(),
     }
 
 
