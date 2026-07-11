@@ -89,6 +89,17 @@ def get_provider() -> CreditsProvider:
     return _PROVIDER
 
 
+def set_provider(provider: CreditsProvider) -> CreditsProvider:
+    """Install a new process-wide provider, returning the previous one (so a
+    caller — e.g. the app lifespan — can restore it on shutdown). This is the
+    hook the billing system uses to replace the permissive stub with real
+    free-credit accounting; see :mod:`ascore.billing.credits_provider`."""
+    global _PROVIDER
+    prev = _PROVIDER
+    _PROVIDER = provider
+    return prev
+
+
 def check_credits(tenant: str) -> CreditDecision:
     return get_provider().check(tenant)
 
