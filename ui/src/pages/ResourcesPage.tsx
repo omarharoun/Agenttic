@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, downloadBlob } from "../api";
 import { DataView, EmptyState, PageHeader, RawToggle, Skeleton } from "../components/ui";
+import { shortTraceId, traceId } from "../traces";
 
 type Tab = "suites" | "scorecards" | "traces";
 
@@ -131,21 +132,24 @@ export function ResourcesPage() {
                 <thead><tr><th>trace</th><th>agent</th><th>case</th><th className="num">spans</th>
                            <th>output</th><th></th></tr></thead>
                 <tbody>
-                  {rows.map((t) => (
-                    <tr key={t.trace_id}>
-                      <td className="mono">{t.trace_id.slice(0, 12)}</td>
+                  {rows.map((t, i) => {
+                    const id = traceId(t);
+                    return (
+                    <tr key={id || `trace-${i}`}>
+                      <td className="mono">{shortTraceId(t)}</td>
                       <td>{t.agent_id}</td>
                       <td>{t.test_case_id ?? "live"}</td>
                       <td className="num">{t.n_spans}</td>
                       <td>{t.final_output}</td>
-                      <td><button onClick={() =>
-                        api.getTrace(t.trace_id).then((full) => {
+                      <td><button disabled={!id} onClick={() =>
+                        api.getTrace(id).then((full) => {
                           setDoc(""); setSpans(full.spans ?? []);
                         })}>
                         spans
                       </button></td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             )}
