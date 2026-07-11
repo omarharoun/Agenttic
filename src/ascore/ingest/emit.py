@@ -119,6 +119,42 @@ class SpanEmitter:
             {"gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": tool_name},
             events, parent_id=parent_id, kind=1)
 
+    def emit_agent_run(self, *, input: Any = None, output: Any = None,
+                       latency_ms: float | None = None, partial: bool = False,
+                       reason: str = "", model: str = "",
+                       parent_id: str | None = None) -> str:
+        """Emit one ``invoke_agent`` span for a wrapped custom function.
+
+        Used by the SPEC-8 ``@instrument`` decorator and the generic ``trace()``
+        fallback: it records input, output and timing for a ``query -> response``
+        callable. When the tool trajectory could not be observed the span is
+        marked ``partial`` with a reason — Agenttic never fabricates a trajectory
+        (Hard Rule 39). The span name contains ``final_output`` so ingest lifts
+        the completion as the run's final output."""
+        attrs: dict[str, Any] = {
+            "gen_ai.operation.name": "invoke_agent",
+            "agenttic.instrument": True,
+            "agenttic.trajectory": "partial" if partial else "complete",
+        }
+        if reason:
+            attrs["agenttic.trajectory.reason"] = reason
+        if latency_ms is not None:
+            attrs["agenttic.latency_ms"] = latency_ms
+        if model:
+            attrs["gen_ai.request.model"] = model
+        if output is not None:
+            out_str = output if isinstance(output, str) else json.dumps(output, default=str)
+            attrs["gen_ai.completion"] = out_str
+        events = []
+        if input is not None:
+            in_str = input if isinstance(input, str) else json.dumps(input, default=str)
+            events.append(self._event("gen_ai.user.message", {"content": in_str}))
+        if output is not None:
+            events.append(self._event("gen_ai.assistant.message",
+                                      {"content": attrs["gen_ai.completion"]}))
+        return self._add_span("invoke_agent final_output", attrs, events,
+                              parent_id=parent_id, kind=1)
+
     # -- output ------------------------------------------------------------
     def payload(self) -> dict:
         """The OTLP ExportTraceServiceRequest for the spans collected so far."""
