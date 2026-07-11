@@ -220,7 +220,17 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
             except Exception as exc:  # noqa: BLE001 — never block startup
                 logging.getLogger("ascore").warning("admin bootstrap failed: %s",
                                                      type(exc).__name__)
-        yield
+        # Billing: replace the permissive Copilot credits stub with real
+        # free-credit accounting (only if it's still the default stub, so tests
+        # that install their own provider aren't clobbered). Restored on shutdown.
+        from ascore.billing import credits_provider as _billing_credits
+        app.state.billing_provider_token = _billing_credits.install_if_default(
+            workspaces, cfg)
+        try:
+            yield
+        finally:
+            _billing_credits.restore(
+                getattr(app.state, "billing_provider_token", None))
 
     app = FastAPI(title="Agenttic", lifespan=lifespan)
     app.add_middleware(RateLimitMiddleware)
@@ -303,6 +313,14 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     from ascore.server.routes.status import public_router as status_public_router
     app.include_router(status_public_router, prefix="/api")
 
+    # Public billing surfaces (UNAUTHENTICATED): the pricing catalog for the
+    # landing/pricing page, and the Stripe + PayPal webhooks (signature-verified,
+    # idempotent). Mounted before the auth-protected routers.
+    from ascore.server.routes.billing import public_router as billing_public_router
+    from ascore.server.routes.billing import webhook_router as billing_webhook_router
+    app.include_router(billing_public_router, prefix="/api")
+    app.include_router(billing_webhook_router, prefix="/api")
+
     @app.get("/.well-known/agenttic-cert-keys.json", include_in_schema=False)
     def well_known_cert_keys(request: Request):
         """Stable, well-known location for the Ed25519 public keys that sign
@@ -333,6 +351,8 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(connect_router, prefix="/api", dependencies=protected)
     app.include_router(assistant_router, prefix="/api", dependencies=protected)
     app.include_router(copilot_router, prefix="/api", dependencies=protected)
+    from ascore.server.routes.billing import router as billing_router
+    app.include_router(billing_router, prefix="/api", dependencies=protected)
     app.include_router(certifications_router, prefix="/api", dependencies=protected)
     from ascore.server.routes.dossiers import router as dossiers_router
     app.include_router(dossiers_router, prefix="/api", dependencies=protected)
