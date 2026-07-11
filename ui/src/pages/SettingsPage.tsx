@@ -4,9 +4,8 @@ import { api, type Me } from "../api";
 import { PageHeader, Spinner } from "../components/ui";
 import { type ThemePref, useThemePref } from "../theme";
 
-// Billing is intentionally omitted until payments are actually wired — a
-// "Billing coming soon" stub with a $—/mo plan reads as unfinished, not as
-// credible. Re-add the section (and BillingSection) when it does something.
+// Billing lives on its own page now (/app/billing) — plan, credit balance,
+// usage, upgrade/top-ups, and invoices. Settings stays account + API keys.
 type Section = "account" | "api-keys";
 const SECTIONS: { key: Section; label: string; icon: string }[] = [
   { key: "account", label: "Account", icon: "◑" },
