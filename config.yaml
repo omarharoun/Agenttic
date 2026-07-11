@@ -159,6 +159,7 @@ billing:
       interval: month
       included_credits: 5000
       features: ["$50 in monthly credits", "Everything in Free", "Custom invoices", "Email support"]
+      stripe_price_id: price_1TrxxcCR9yQBJEMWWcaMNxjR   # Stripe TEST recurring price ($29/mo); not secret
     pro:
       name: Pro
       price_cents: 9900
@@ -166,11 +167,15 @@ billing:
       included_credits: 20000
       highlight: true
       features: ["$200 in monthly credits", "Everything in Starter", "Priority scans & certification", "Priority support"]
+      stripe_price_id: price_1TrxxdCR9yQBJEMWQhIu0B2J   # Stripe TEST recurring price ($99/mo); not secret
       # paypal_plan_id: "P-XXXXXXXX"   # set to offer this plan via PayPal subscriptions
+  # Stripe price IDs are NOT secret (they're referenced client-side in Checkout) —
+  # safe to commit. Created in Stripe TEST mode; recreate in live mode + swap these
+  # to go live. See scripts/stripe_provision.py.
   topups:                     # one-off credit purchases (pay-as-you-go platform fee)
-    - {id: topup_10, name: "$10 credit top-up", price_cents: 1000, credits: 1000}
-    - {id: topup_50, name: "$50 credit top-up", price_cents: 5000, credits: 5000}
-    - {id: topup_100, name: "$100 credit top-up", price_cents: 10000, credits: 10000}
+    - {id: topup_10,  name: "$10 credit top-up",  price_cents: 1000,  credits: 1000,  stripe_price_id: price_1TrxxeCR9yQBJEMWspYT5RxH}
+    - {id: topup_50,  name: "$50 credit top-up",  price_cents: 5000,  credits: 5000,  stripe_price_id: price_1TrxxfCR9yQBJEMWGOdXH4It}
+    - {id: topup_100, name: "$100 credit top-up", price_cents: 10000, credits: 10000, stripe_price_id: price_1TrxxfCR9yQBJEMWMHrRKcgR}
   # Payment providers read keys from the ENVIRONMENT only (never config/code):
   #   Stripe (TEST): STRIPE_SECRET_KEY (sk_test_…), STRIPE_WEBHOOK_SECRET (whsec_…)
   #   PayPal (SANDBOX): PAYPAL_CLIENT_ID, PAYPAL_SECRET, PAYPAL_WEBHOOK_ID, PAYPAL_ENV=sandbox

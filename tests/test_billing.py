@@ -204,6 +204,46 @@ class TestPaypalWebhooks:
         assert st.get_subscription().status == "canceled"
 
 
+class TestStripeGatewaySignature:
+    """Exercise the REAL Stripe signature verification path (no network, no real
+    key): sign a payload with a throwaway secret, confirm construct_event returns
+    a plain `.get()`-able dict, and that a tampered signature is rejected. Guards
+    the SDK-version normalisation (StripeObject -> plain dict)."""
+
+    def _sign(self, payload: bytes, secret: str) -> str:
+        import hashlib
+        import hmac
+        import time
+        ts = int(time.time())   # within Stripe's default 300s tolerance
+        sig = hmac.new(secret.encode(), f"{ts}.".encode() + payload,
+                       hashlib.sha256).hexdigest()
+        return f"t={ts},v1={sig}"
+
+    def test_construct_event_returns_plain_dict(self, monkeypatch):
+        pytest.importorskip("stripe")
+        from ascore.billing.gateways import stripe_gateway as sg
+        secret = "whsec_testsecret_000000000000000000000000"
+        monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", secret)
+        payload = json.dumps({"id": "evt_1", "object": "event",
+            "type": "checkout.session.completed",
+            "data": {"object": {"mode": "payment", "amount_total": 1000}}}).encode()
+        event = sg.construct_event(payload, self._sign(payload, secret))
+        assert isinstance(event, dict)
+        # the apply logic relies on .get() working (StripeObject would break it)
+        assert event.get("type") == "checkout.session.completed"
+        assert event.get("data", {}).get("object", {}).get("amount_total") == 1000
+
+    def test_bad_signature_rejected(self, monkeypatch):
+        pytest.importorskip("stripe")
+        import stripe
+        from ascore.billing.gateways import stripe_gateway as sg
+        monkeypatch.setenv("STRIPE_WEBHOOK_SECRET",
+                           "whsec_testsecret_000000000000000000000000")
+        payload = b'{"id":"evt_1","object":"event","type":"x","data":{"object":{}}}'
+        with pytest.raises(stripe.error.SignatureVerificationError):
+            sg.construct_event(payload, "t=1700000000,v1=deadbeef")
+
+
 # --------------------------------------------------------------------------- #
 # HTTP surface — tenant-scoped dashboard, public pricing, 402, webhook route.
 # --------------------------------------------------------------------------- #
