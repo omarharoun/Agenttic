@@ -142,6 +142,15 @@ def is_openai_agent(obj: Any) -> bool:
             and hasattr(obj, "handoffs") and hasattr(obj, "name"))
 
 
+def _missing_extra(framework: str, extra: str, type_name: str) -> ImportError:
+    """A recognized framework object with no adapter installed: an actionable
+    error (install the extra), never an opaque crash."""
+    return ImportError(
+        f"agenttic.trace: this looks like a {framework} object ({type_name}), "
+        f"but the {framework} adapter isn't installed. Install it with:  "
+        f"pip install 'agenttic[{extra}]'")
+
+
 def _load_adapter(module_name: str):
     """Import a framework adapter, or return None if it isn't installed
     (a missing SDK is "not available", never a crash)."""
@@ -182,6 +191,8 @@ def trace(agent: Any, *, target: str | None = None, enforce: Any = False,
                 agent_config_hash=agent_config_hash, endpoint=endpoint,
                 auth_header=auth_header, sink=sink, enforce=enforce,
                 reg=reg, cfg=cfg)
+        if not callable(agent):
+            raise _missing_extra("LangGraph", "langgraph", _type_name(agent))
         log.debug("agenttic.trace: %s looks like LangGraph but agenttic-langgraph "
                   "is not installed — using the generic wrapper", _type_name(agent))
     elif is_openai_agent(agent):
@@ -194,6 +205,8 @@ def trace(agent: Any, *, target: str | None = None, enforce: Any = False,
                 agent_config_hash=agent_config_hash, endpoint=endpoint,
                 auth_header=auth_header, sink=sink, enforce=enforce,
                 reg=reg, cfg=cfg)
+        if not callable(agent):
+            raise _missing_extra("OpenAI Agents", "openai", _type_name(agent))
         log.debug("agenttic.trace: %s looks like OpenAI Agents but "
                   "agenttic-openai-agents is not installed — using the generic "
                   "wrapper", _type_name(agent))
