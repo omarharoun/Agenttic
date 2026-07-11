@@ -69,6 +69,14 @@ observability:
   log_level: INFO     # ascore logger level
   log_json: true      # structured JSON request logs (false => plain text)
   otel_enabled: false # true + OTEL_EXPORTER_OTLP_ENDPOINT => export traces (needs the otel extra)
+
+# SPEC-8 distribution surface: defaults for the library API (agenttic.trace /
+# @instrument). No target set here (or via AGENTTIC_TARGET / the target= arg)
+# means wrapping is a no-op that logs where to configure one — it never phones
+# home (Hard Rule 38). enforce is opt-in and non-blocking by default.
+distribution:
+  target: ""          # e.g. https://your-agenttic/v1/traces (spans destination)
+  enforce_posture: shadow   # ramp posture when enforce=True: observe|shadow (non-blocking only)
 auth:
   required: false     # true => server refuses to start without a token (fail closed)
   token: ""           # the ADMIN token; prefer the ASCORE_API_TOKEN env var
