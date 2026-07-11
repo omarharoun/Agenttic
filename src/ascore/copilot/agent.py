@@ -27,15 +27,19 @@ the route formats them as SSE and persists the session when the generator ends.
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from collections.abc import Iterator
 from datetime import datetime, timezone
 
 from ascore.assistant.guard import guard_untrusted, redact_secrets
 from ascore.copilot.credits import check_credits, record_action
+from ascore.copilot.errors import classify
 from ascore.copilot.tools import (
     ToolContext, confirmation_for, get_tool, is_write, tool_schemas,
 )
+
+log = logging.getLogger("ascore.copilot.agent")
 
 STATUS_READY = "ready"
 STATUS_AWAITING_APPROVAL = "awaiting_approval"
@@ -116,12 +120,19 @@ class CopilotAgent:
         for _ in range(self.max_iters):
             try:
                 blocks, stop, usage = yield from self._stream_model_turn(session)
-            except Exception:  # noqa: BLE001 — upstream failure is data, not a 500
-                self._log(session, {"type": "error", "text": "upstream model error"})
+            except Exception as exc:  # noqa: BLE001 — upstream failure is data, not a 500
+                err, diag = classify(exc)
+                # Log the REAL underlying error (status + type + request_id + case)
+                # so an incident is diagnosable from `docker compose logs` alone.
+                # The secret-redaction log filter still scrubs any known key value;
+                # exc_info is a standard traceback (no locals) — no secret leak.
+                log.error("copilot_upstream_error",
+                          extra={"extra_fields": diag}, exc_info=True)
+                self._log(session, {"type": "error", "code": err.code})
                 session["status"] = STATUS_READY
                 session["updated_at"] = _now()
-                yield {"type": "error", "text": "The Copilot ran into a problem "
-                       "reaching the model. Please try again in a moment."}
+                yield {"type": "error", "code": err.code, "text": err.message,
+                       "action": err.action}
                 return
 
             session["messages"].append({"role": "assistant", "content": blocks})

@@ -724,13 +724,21 @@ export interface CopilotApproval {
   card: { title?: string; detail?: string; cost_note?: string; risk?: string };
 }
 
+/** A classified, safe-to-show error (matches the backend `error` SSE payload /
+ *  HTTP `detail`): a stable `code`, an honest `message`, and a suggested action. */
+export interface CopilotErrorInfo {
+  code: string;
+  message: string;
+  action?: "retry" | "upgrade" | "none";
+}
+
 export interface CopilotHandlers {
   onSession?: (info: { session_id: string; status: string }) => void;
   onToken: (text: string) => void;
   onTool?: (ev: CopilotToolEvent) => void;
   onApproval?: (a: CopilotApproval) => void;
   onDone?: (info: { session_id: string; status: string }) => void;
-  onError?: (message: string) => void;
+  onError?: (err: CopilotErrorInfo) => void;
 }
 
 function unescapeSse(s: string): string {
@@ -756,10 +764,18 @@ async function streamCopilot(
     signal,
   });
   if (!res.ok || !res.body) {
-    let detail = `${res.status}`;
-    try { detail = String((await res.json()).detail ?? detail); } catch { /* keep */ }
-    const err = new Error(detail) as Error & { status?: number };
+    // The server refuses pre-flight (429/402/503) with a structured `detail`
+    // ({code, message, action}) that mirrors the SSE `error` payload — carry it
+    // through so the panel renders the same styled card either way.
+    let raw: unknown = `${res.status}`;
+    try { raw = (await res.json()).detail ?? raw; } catch { /* keep */ }
+    const info: CopilotErrorInfo | undefined =
+      raw && typeof raw === "object" && "code" in (raw as object)
+        ? (raw as CopilotErrorInfo) : undefined;
+    const msg = info?.message ?? (typeof raw === "string" ? raw : `${res.status}`);
+    const err = new Error(msg) as Error & { status?: number; info?: CopilotErrorInfo };
     err.status = res.status;
+    err.info = info;
     throw err;
   }
   const reader = res.body.getReader();
@@ -785,7 +801,16 @@ async function streamCopilot(
       else if (ev === "approval_required") { try { handlers.onApproval?.(JSON.parse(payload)); } catch { /* ignore */ } }
       else if (ev === "session") { try { handlers.onSession?.(JSON.parse(payload)); } catch { /* ignore */ } }
       else if (ev === "done") { try { handlers.onDone?.(JSON.parse(payload)); } catch { /* ignore */ } }
-      else if (ev === "error") handlers.onError?.(payload);
+      else if (ev === "error") {
+        // structured {code,message,action}; tolerate a legacy bare-text payload
+        let info: CopilotErrorInfo;
+        try {
+          const p = JSON.parse(payload);
+          info = { code: p.code ?? "generic", message: p.message ?? payload,
+                   action: p.action ?? "retry" };
+        } catch { info = { code: "generic", message: payload, action: "retry" }; }
+        handlers.onError?.(info);
+      }
     }
   }
 }

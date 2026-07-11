@@ -34,6 +34,9 @@ from pydantic import BaseModel
 
 from ascore.copilot.agent import CopilotAgent, new_session
 from ascore.copilot.credits import check_credits, check_daily_cap, record_usage
+from ascore.copilot.errors import (
+    DAILY_LIMIT, NOT_CONFIGURED, OUT_OF_CREDITS, RATE_LIMITED, with_message,
+)
 from ascore.copilot.service import (
     CopilotConfig, CopilotNotConfigured, is_configured, resolve_client,
 )
@@ -102,25 +105,35 @@ def _sse(event: str, data: str) -> str:
     return f"event: {event}\ndata: {safe}\n\n"
 
 
+def _refuse(status: int, err) -> HTTPException:
+    """A pre-flight refusal whose ``detail`` mirrors the SSE ``error`` shape
+    (``code`` / ``message`` / ``action``) so the frontend renders ONE styled
+    error card whether the failure arrives as an HTTP 4xx or an in-stream SSE
+    event. FastAPI serializes the dict under ``detail``."""
+    return HTTPException(status, detail=err.payload())
+
+
 def _guards(request: Request):
     """Shared pre-flight for chat/approve: rate limit → credits → configured →
     (agent, ctx). Raises HTTPException on refusal; returns (agent, ctx, cfg)."""
     if not _RL.allow(_rl_key(request), _rl_limit(request), _RL_WINDOW):
-        raise HTTPException(
-            429, "You're sending messages a little fast — give it a few seconds.")
+        raise _refuse(429, with_message(
+            RATE_LIMITED,
+            "You're sending messages too fast — give it a moment and try again."))
     tenant = getattr(request.state, "tenant", "default")
     decision = check_credits(tenant)
     if not decision.allowed:
-        raise HTTPException(402, decision.reason or "Out of Copilot credits.")
+        raise _refuse(402, with_message(OUT_OF_CREDITS, decision.reason or None))
     injected = _injected(request)
     if not is_configured(injected):
-        raise HTTPException(
-            503, "The Copilot assistant isn't configured on this server yet.")
+        raise _refuse(503, with_message(
+            NOT_CONFIGURED,
+            "The Copilot assistant isn't configured on this server yet."))
     cfg = _copilot_cfg(request)
     try:
         client = resolve_client(injected)
     except CopilotNotConfigured as exc:
-        raise HTTPException(503, str(exc))
+        raise _refuse(503, with_message(NOT_CONFIGURED, str(exc)))
     agent = CopilotAgent(
         client, cfg.model, max_tokens=cfg.max_output_tokens,
         extra_secrets=known_secret_values(getattr(request.state, "cfg", None) or {}))
@@ -159,7 +172,10 @@ def _stream(request: Request, session: dict, events):
                     # the model turn; `final` is just the end-of-answer marker.
                     pass
                 elif kind == "error":
-                    yield _sse("error", ev.get("text", ""))
+                    yield _sse("error", json.dumps({
+                        "code": ev.get("code", "generic"),
+                        "message": ev.get("text", ""),
+                        "action": ev.get("action", "retry")}))
         finally:
             store.save(session)
             yield _sse("done", json.dumps(
@@ -182,7 +198,7 @@ def copilot_chat(body: ChatBody, request: Request):
     tenant = getattr(request.state, "tenant", "default")
     cap = check_daily_cap(tenant, cfg.daily_cap_per_user, cfg.daily_cap_global)
     if not cap.allowed:
-        raise HTTPException(402, cap.reason or "Daily Copilot limit reached.")
+        raise _refuse(402, with_message(DAILY_LIMIT, cap.reason or None))
     store = _store(request)
     if body.session_id:
         try:

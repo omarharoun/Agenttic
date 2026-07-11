@@ -22,12 +22,16 @@ runs it in a threadpool, so the blocking SDK call never stalls the event loop.
 
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Iterator
 from dataclasses import dataclass
 
 from ascore.assistant.guard import redact_secrets
+from ascore.copilot.errors import classify
 from ascore.copilot.skill import build_system_prompt
+
+log = logging.getLogger("ascore.copilot.service")
 
 DEFAULT_MODEL = "claude-sonnet-4-6"
 
@@ -199,6 +203,10 @@ class CopilotService:
             yield ("done", None)
         except CopilotNotConfigured:
             raise
-        except Exception:  # noqa: BLE001 — never leak upstream internals
-            yield ("error", "The Copilot ran into a problem reaching the model. "
-                            "Please try again in a moment.")
+        except Exception as exc:  # noqa: BLE001 — never leak upstream internals
+            # Classify the real failure into an honest, secret-free message and
+            # LOG the underlying cause (status/type/request_id/case) server-side.
+            err, diag = classify(exc)
+            log.error("copilot_upstream_error",
+                      extra={"extra_fields": diag}, exc_info=True)
+            yield ("error", err.message)

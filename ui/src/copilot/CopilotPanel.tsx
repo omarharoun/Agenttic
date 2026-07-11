@@ -16,7 +16,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   api, copilotApprove, copilotChat,
-  type CopilotApproval, type CopilotHandlers, type CopilotToolEvent,
+  type CopilotApproval, type CopilotErrorInfo, type CopilotHandlers,
+  type CopilotToolEvent,
 } from "../api";
 import { Markdown } from "./markdown";
 
@@ -27,10 +28,26 @@ interface Msg {
   role: "user" | "assistant";
   text: string;
   streaming?: boolean;
-  error?: boolean;
+  error?: CopilotErrorInfo | null;   // set → render the styled error card
+  retryText?: string;                // the user message to resend on "Try again"
   tools?: ToolAct[];
   approval?: CopilotApproval | null;
 }
+
+/** Where "Upgrade or add credits" sends the user. The pricing/billing surface
+ *  ships alongside real billing; until then this is a forward-compatible link. */
+const BILLING_URL = "/pricing";
+
+/** Per-code presentation for the error card (title + glyph + tone). The honest
+ *  body copy comes from the server so the two stay in sync. */
+const ERROR_UI: Record<string, { title: string; icon: string; tone: string }> = {
+  unavailable:    { title: "Copilot unavailable",    icon: "⚠", tone: "warn" },
+  rate_limited:   { title: "One moment",             icon: "◔", tone: "warn" },
+  out_of_credits: { title: "Out of credits",         icon: "⬡", tone: "credits" },
+  daily_limit:    { title: "Daily limit reached",    icon: "◷", tone: "warn" },
+  not_configured: { title: "Copilot not configured", icon: "⚙", tone: "warn" },
+  generic:        { title: "Something went wrong",   icon: "⚠", tone: "warn" },
+};
 
 let _seq = 0;
 const uid = (p: string) => `${p}_${Date.now().toString(36)}_${_seq++}`;
@@ -108,19 +125,24 @@ export default function CopilotPanel({ open, onClose }: {
     },
     onApproval: (a) => patch(aid, () => ({ approval: a })),
     onDone: () => patch(aid, () => ({ streaming: false })),
-    onError: (msg) => patch(aid, () => ({ text: msg, streaming: false, error: true })),
+    onError: (info) => patch(aid, () => ({ streaming: false, error: info })),
   }), [patch]);
 
-  const runError = useCallback((aid: string) => (e: Error & { status?: number }) => {
-    const msg = e?.status === 503
-      ? "The Copilot isn't configured on this server yet."
-      : e?.status === 429
-      ? "You're sending messages a little fast — give it a few seconds."
-      : e?.status === 402
-      ? "You're out of Copilot credits."
-      : "I couldn't reach the Copilot service. Please try again in a moment.";
-    patch(aid, () => ({ text: msg, streaming: false, error: true }));
-  }, [patch]);
+  // A refused/failed request (thrown before the stream): build the same
+  // classified error card. Prefer the server's structured detail; otherwise map
+  // the status code to an honest fallback.
+  const runError = useCallback(
+    (aid: string) => (e: Error & { status?: number; info?: CopilotErrorInfo }) => {
+      const info: CopilotErrorInfo = e?.info ?? (
+        e?.status === 503
+          ? { code: "not_configured", message: "The Copilot isn't configured on this server yet.", action: "none" }
+          : e?.status === 429
+          ? { code: "rate_limited", message: "You're sending messages too fast — give it a moment and try again.", action: "retry" }
+          : e?.status === 402
+          ? { code: "out_of_credits", message: "You're out of credits. Upgrade your plan or add credits to keep using the Copilot.", action: "upgrade" }
+          : { code: "generic", message: "I couldn't reach the Copilot service. Please try again in a moment.", action: "retry" });
+      patch(aid, () => ({ streaming: false, error: info }));
+    }, [patch]);
 
   const send = useCallback((raw: string) => {
     const text = raw.trim();
@@ -130,7 +152,7 @@ export default function CopilotPanel({ open, onClose }: {
     setMessages((ms) => [
       ...ms,
       { id: uid("u"), role: "user", text },
-      { id: aid, role: "assistant", text: "", streaming: true, tools: [] },
+      { id: aid, role: "assistant", text: "", streaming: true, tools: [], retryText: text },
     ]);
     setInput("");
     setBusy(true);
@@ -214,17 +236,23 @@ export default function CopilotPanel({ open, onClose }: {
                     </ul>
                   )}
                   {/* running indicator while streaming with no text yet */}
-                  {m.role === "assistant" && m.streaming && !m.text && !m.approval && (
+                  {m.role === "assistant" && m.streaming && !m.text && !m.approval && !m.error && (
                     <span className="cp-typing" aria-label="Copilot is working"><span /><span /><span /></span>
                   )}
                   {/* the message text */}
                   {m.text && (
-                    <div className={`cp-bubble ${m.role} ${m.error ? "error" : ""}`}>
+                    <div className={`cp-bubble ${m.role}`}>
                       {m.role === "assistant"
                         ? <Markdown text={m.text} onNavigate={onClose} />
                         : m.text}
                       {m.streaming && m.text && <span className="cp-caret" aria-hidden />}
                     </div>
+                  )}
+                  {/* styled inline error card — honest, per-case, with an affordance */}
+                  {m.role === "assistant" && m.error && (
+                    <ErrorCard info={m.error} busy={busy}
+                               onRetry={m.retryText ? () => send(m.retryText!) : undefined}
+                               onUpgrade={() => { onClose(); window.location.assign(BILLING_URL); }} />
                   )}
                   {/* inline approval card for a proposed write/cost action */}
                   {m.role === "assistant" && m.approval && (
@@ -260,6 +288,35 @@ export default function CopilotPanel({ open, onClose }: {
         </form>
       </aside>
     </>
+  );
+}
+
+/** A styled, honest error state for the drawer: an icon, a per-case title, the
+ *  server's safe message, and the right affordance (retry the turn, or upgrade).
+ *  Uses the Chronometer tokens so it reads as part of the panel, light + dark. */
+function ErrorCard({ info, busy, onRetry, onUpgrade }: {
+  info: CopilotErrorInfo; busy: boolean;
+  onRetry?: () => void; onUpgrade: () => void;
+}) {
+  const ui = ERROR_UI[info.code] ?? ERROR_UI.generic;
+  const action = info.action ?? "retry";
+  return (
+    <div className={`cp-error ${ui.tone}`} role="alert">
+      <span className="cp-error-ic" aria-hidden>{ui.icon}</span>
+      <div className="cp-error-body">
+        <p className="cp-error-title">{ui.title}</p>
+        <p className="cp-error-msg">{info.message}</p>
+        {action === "upgrade" ? (
+          <button type="button" className="cp-error-btn primary" onClick={onUpgrade}>
+            Upgrade or add credits
+          </button>
+        ) : action === "retry" && onRetry ? (
+          <button type="button" className="cp-error-btn" disabled={busy} onClick={onRetry}>
+            Try again
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
