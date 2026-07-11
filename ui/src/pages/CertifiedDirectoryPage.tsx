@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { HexMark } from "../components/Icons";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import { certIdOf, type DirectoryEntry, gradeColor, statusView } from "../cert";
+import { certIdOf, type DirectoryEntry, gradeColor, indexFromCert, statusView } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
 import { EmptyState, Skeleton } from "../components/ui";
 
@@ -24,7 +24,7 @@ function normalize(raw: any): DirectoryEntry[] {
     id: certIdOf(c),
     agent_name: c.agent_name ?? c.agent_id ?? "Unnamed agent",
     grade: c.grade ?? "—",
-    index: typeof c.index === "number" ? c.index : null,
+    index: indexFromCert(c),
     issued_at: c.issued_at ?? "",
     status: c.status ?? "valid",
   })).filter((c: DirectoryEntry) => c.id);
