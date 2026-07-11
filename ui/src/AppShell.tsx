@@ -6,6 +6,7 @@ import { useRunNotifications } from "./notify";
 import { useExecutionEvents } from "./sse";
 import { useFlowStore } from "./store";
 import { AgentsPage } from "./pages/AgentsPage";
+import { BillingPage } from "./pages/BillingPage";
 import { CertificationsPage } from "./pages/CertificationsPage";
 import { ComparePage } from "./pages/ComparePage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -101,6 +102,7 @@ const NAV_GROUPS: { title: string; items: { to: string; icon: string; label: str
   { title: "Manage", items: [
     { to: "/app/agents", icon: "🤖", label: "Agents" },
     { to: "/app/resources", icon: "▤", label: "Resources" },
+    { to: "/app/billing", icon: "💳", label: "Billing" },
     { to: "/app/settings", icon: "⚙", label: "Settings" },
   ]},
 ];
@@ -228,6 +230,7 @@ export function AppShell() {
             <Route path="optimize" element={<OptimizePage />} />
             <Route path="agents" element={<AgentsPage />} />
             <Route path="resources" element={<ResourcesPage />} />
+            <Route path="billing" element={<BillingPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Routes>
         </div>

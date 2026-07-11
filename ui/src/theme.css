@@ -2785,3 +2785,101 @@ a.btn-primary, button.btn-primary,
 .cp-btn-deny { font: inherit; font-size: 12.5px; cursor: pointer; color: var(--text);
   background: var(--panel); border: 1px solid var(--border); border-radius: 9px; padding: 7px 12px; }
 .cp-btn-confirm:disabled, .cp-btn-deny:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ============================================================================
+   BILLING & SUBSCRIPTION — in-app dashboard (/app/billing) + shared bits.
+   Chronometer tokens throughout; no hardcoded colours.
+   ========================================================================== */
+.bill-alert { background: var(--fail-soft); color: var(--fail); border: 1px solid var(--fail);
+  border-radius: var(--r); padding: 10px 14px; margin-bottom: 16px; font-size: var(--t-sm); }
+.bill-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px; margin-bottom: 12px; }
+.bill-eyebrow { font: 600 10px/1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--faint); margin-bottom: 10px; }
+.bill-balance-amt { font: 400 40px/1 var(--font-serif); color: var(--accent);
+  font-variant-numeric: tabular-nums; }
+.bill-balance-sub { color: var(--muted); font-size: var(--t-sm); margin-top: 6px; }
+.bill-note { color: var(--muted); font-size: 12.5px; margin-top: 8px; line-height: 1.5; }
+.bill-topups { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.btn-ghost.sm, .btn-primary.sm { padding: 6px 12px; font-size: 12px; }
+.bill-plan-name { font: 500 var(--t-h3)/1.1 var(--font-serif); }
+.bill-plan-meta { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: var(--t-sm); }
+.bill-usage-list { list-style: none; padding: 0; margin: 4px 0 0; display: flex; flex-direction: column; gap: 9px; }
+.bill-usage-list li { position: relative; display: flex; align-items: center; gap: 8px;
+  font-size: var(--t-sm); padding: 5px 0 7px; }
+.bill-usage-list .u-bar { position: absolute; left: 0; bottom: 0; height: 2px;
+  background: var(--accent); opacity: 0.55; border-radius: 2px; }
+.bill-usage-list .u-label { flex: 1; }
+.bill-usage-list .u-val { color: var(--muted); }
+.bill-h2 { font: 500 var(--t-h2)/1.15 var(--font-serif); margin: 28px 0 14px; letter-spacing: -0.01em; }
+
+.badge-status { display: inline-block; font: 600 10px/1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: 0.07em; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--border);
+  color: var(--muted); background: var(--field); }
+.badge-status.s-active, .badge-status.s-paid { color: var(--ok); background: var(--ok-soft); border-color: transparent; }
+.badge-status.s-trialing, .badge-status.s-open { color: var(--wait); background: var(--wait-soft); border-color: transparent; }
+.badge-status.s-canceled, .badge-status.s-void, .badge-status.s-past_due { color: var(--fail); background: var(--fail-soft); border-color: transparent; }
+
+/* plan cards inside the console billing page (reuse .plan tokens, own layout) */
+.bill-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px; margin-bottom: 20px; }
+.bill-plans .plan { display: flex; flex-direction: column; padding: 20px; gap: 10px; overflow: visible; }
+.bill-plans .plan-head { padding: 0; align-items: center; }
+.bill-plans .plan.hot { border-color: var(--accent-line); box-shadow: 0 0 0 1px var(--accent-line); }
+.bill-plans .plan.current { border-color: var(--accent); }
+.plan-tag { font: 600 10px/1 var(--font-ui); text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 4px 9px; }
+.plan-credits { color: var(--muted); font-size: var(--t-sm); }
+.plan-features { list-style: none; padding: 0; margin: 4px 0; display: flex; flex-direction: column;
+  gap: 6px; font-size: var(--t-sm); }
+.plan-features li { padding-left: 18px; position: relative; color: var(--text); }
+.plan-features li::before { content: "✓"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+.plan-cta { margin-top: auto; display: flex; gap: 8px; padding-top: 6px; }
+.plan-cta .btn-primary, .plan-cta .btn-ghost { flex: 1; text-align: center; }
+
+.bill-invoices .link, .bill-ledger .link { color: var(--accent); cursor: pointer; }
+.bill-invoices .link:hover { text-decoration: underline; }
+.bill-ledger .num.pos { color: var(--ok); }
+.bill-ledger .num.neg { color: var(--muted); }
+
+/* ============================================================================
+   PUBLIC PRICING PAGE (/pricing) — scoped under .agx like the landing page.
+   ========================================================================== */
+.agx .pricing-hero { padding: 64px 0 24px; text-align: center; }
+.agx .pricing-hero .wrap { display: block; max-width: 780px; text-align: center; }
+.agx .pricing-hero h1 { font: 400 46px/1.06 var(--font-serif); margin: 8px 0 20px; letter-spacing: -0.01em; }
+.agx .pricing-hero .lede { max-width: 60ch; margin: 0 auto 28px; }
+.pricing-freebadge { display: inline-flex; align-items: baseline; gap: 12px; padding: 12px 22px;
+  border: 1px solid var(--accent-line); background: var(--accent-soft); border-radius: var(--r-pill); }
+.pricing-freebadge .fb-amt { font: 400 26px/1 var(--font-serif); color: var(--accent); }
+.pricing-freebadge .fb-label { color: var(--text); font-size: var(--t-sm); text-transform: uppercase; letter-spacing: 0.08em; }
+
+.plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px; align-items: stretch; }
+.pcard { position: relative; display: flex; flex-direction: column; gap: 12px;
+  border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--panel);
+  padding: 26px 24px; box-shadow: var(--shadow-sm); }
+.pcard.hot { border-color: var(--accent-line); box-shadow: 0 0 0 1px var(--accent-line), var(--shadow-sm); }
+.pcard-flag { position: absolute; top: -11px; left: 24px; font: 600 10px/1 var(--font-ui);
+  text-transform: uppercase; letter-spacing: 0.09em; color: var(--accent-ink); background: var(--accent);
+  border-radius: 999px; padding: 5px 11px; }
+.pcard-name { font: 500 var(--t-h3)/1 var(--font-serif); }
+.pcard-price { display: flex; align-items: baseline; gap: 4px; }
+.pcard-price .amt { font: 400 38px/1 var(--font-serif); }
+.pcard-price .per { color: var(--muted); font-size: 14px; }
+.pcard-credits { color: var(--accent); font-size: var(--t-sm); font-weight: 600; }
+.pcard-features { list-style: none; padding: 0; margin: 4px 0; display: flex; flex-direction: column;
+  gap: 9px; font-size: var(--t-base); }
+.pcard-features li { padding-left: 20px; position: relative; color: var(--muted); }
+.pcard-features li::before { content: "✓"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+.pcard-cta { margin-top: auto; text-align: center; }
+
+.topup-row { display: flex; flex-wrap: wrap; gap: 16px; }
+.topup { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 4px; align-items: center;
+  border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--panel); padding: 22px; }
+.topup-amt { font: 400 30px/1 var(--font-serif); color: var(--accent); }
+.topup-credits { color: var(--muted); font-size: var(--t-sm); }
+
+.faq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px 40px; }
+.faq h3 { font: 500 var(--t-title)/1.2 var(--font-serif); margin: 0 0 8px; }
+.faq p { color: var(--muted); font-size: var(--t-base); line-height: 1.6; margin: 0; }

@@ -132,6 +132,56 @@ copilot:
   daily_message_cap_global: 300     # messages / server / day
 
 # ------------------------------------------------------------------------- #
+# BILLING — platform fee + FREE CREDITS to try the tests & chat, then paid
+# usage/subscription. Credits are integer units and 1 credit == 1 US cent, so
+# the ledger, balance, top-ups, and invoices are all integer-cents money math.
+# Free credits are granted once per tenant on first use/signup. Billable actions
+# (Copilot chat, certification/scan runs) DEBIT credits; out of credits => 402.
+# Stripe (TEST) + PayPal (SANDBOX) keys are read ONLY from the environment — see
+# docs/BILLING.md for which keys must be set to go live. (Hard Rule 7.)
+billing:
+  enabled: true               # false => permissive free-preview (no debits/gate)
+  currency: usd
+  credit_cent_value: 1        # cents per credit (1 => 1 credit == 1 cent)
+  free_trial_credits: 500     # one-time signup grant ($5.00 of free usage)
+  markup_multiplier: 1.5      # platform fee over metered model cost
+  min_action_credits: 1       # a metered action always costs at least 1 credit
+  plans:                      # id -> plan; the pricing page + in-app dashboard read these
+    free:
+      name: Free trial
+      price_cents: 0
+      interval: once
+      included_credits: 500
+      features: ["$5.00 in free credits", "Copilot chat + agent tools", "Scan & certify your agent", "Community support"]
+    starter:
+      name: Starter
+      price_cents: 2900
+      interval: month
+      included_credits: 5000
+      features: ["$50 in monthly credits", "Everything in Free", "Custom invoices", "Email support"]
+      stripe_price_id: price_1TrxxcCR9yQBJEMWWcaMNxjR   # Stripe TEST recurring price ($29/mo); not secret
+    pro:
+      name: Pro
+      price_cents: 9900
+      interval: month
+      included_credits: 20000
+      highlight: true
+      features: ["$200 in monthly credits", "Everything in Starter", "Priority scans & certification", "Priority support"]
+      stripe_price_id: price_1TrxxdCR9yQBJEMWQhIu0B2J   # Stripe TEST recurring price ($99/mo); not secret
+      # paypal_plan_id: "P-XXXXXXXX"   # set to offer this plan via PayPal subscriptions
+  # Stripe price IDs are NOT secret (they're referenced client-side in Checkout) —
+  # safe to commit. Created in Stripe TEST mode; recreate in live mode + swap these
+  # to go live. See scripts/stripe_provision.py.
+  topups:                     # one-off credit purchases (pay-as-you-go platform fee)
+    - {id: topup_10,  name: "$10 credit top-up",  price_cents: 1000,  credits: 1000,  stripe_price_id: price_1TrxxeCR9yQBJEMWspYT5RxH}
+    - {id: topup_50,  name: "$50 credit top-up",  price_cents: 5000,  credits: 5000,  stripe_price_id: price_1TrxxfCR9yQBJEMWGOdXH4It}
+    - {id: topup_100, name: "$100 credit top-up", price_cents: 10000, credits: 10000, stripe_price_id: price_1TrxxfCR9yQBJEMWMHrRKcgR}
+  # Payment providers read keys from the ENVIRONMENT only (never config/code):
+  #   Stripe (TEST): STRIPE_SECRET_KEY (sk_test_…), STRIPE_WEBHOOK_SECRET (whsec_…)
+  #   PayPal (SANDBOX): PAYPAL_CLIENT_ID, PAYPAL_SECRET, PAYPAL_WEBHOOK_ID, PAYPAL_ENV=sandbox
+  # When unset, checkout returns 503 but free credits + the ledger + invoices work.
+
+# ------------------------------------------------------------------------- #
 # Certification track (SPEC-2 → SPEC-6). All thresholds/taxonomy/SLA/posture
 # live here (Hard Rule 5: config over code).
 # ------------------------------------------------------------------------- #

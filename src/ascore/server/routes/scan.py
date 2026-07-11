@@ -219,6 +219,14 @@ async def start_scan(body: ScanBody, request: Request):
     at ``GET /api/scan/{scan_id}``."""
     cfg, reg = request.state.cfg, request.state.reg
     tenant = getattr(request.state, "tenant", "default")
+    # A demo scan spends the tenant's metered model budget, so gate it on credits
+    # (endpoint/connection scans run on the user's own infra → no gate).
+    if (body.target or "endpoint").lower() == "demo":
+        from ascore.billing import service as billing_service
+        try:
+            billing_service.ensure_credits(reg.engine, tenant, cfg)
+        except billing_service.OutOfCreditsError as exc:
+            raise HTTPException(402, str(exc))
     adapter, judge_client, agent_id = _build_scan_adapter(request, body)
     # Gentle traffic against a user's live agent: force sequential (1-in-flight)
     # requests. Per-request timeout + rate limit are set on the connection adapter.
@@ -286,6 +294,18 @@ async def start_scan(body: ScanBody, request: Request):
                 with _LOCK:
                     job.cert_note = "We graded your agent; certificate issuance " \
                         "is temporarily unavailable."
+            # Meter the tenant's model spend for this scan as a credit debit
+            # (best-effort). Black-box/endpoint scans report $0 (they run on the
+            # user's own infra) and so debit nothing.
+            scan_cost = float(result.get("cost_usd") or 0.0)
+            if scan_cost > 0:
+                try:
+                    from ascore.billing import service as billing_service
+                    billing_service.meter_cost(
+                        reg.engine, tenant, "scan", scan_cost, cfg=cfg,
+                        ref=scan_id)
+                except Exception:  # noqa: BLE001 — metering must not fail the scan
+                    pass
             with _LOCK:
                 job.progress = 1.0
                 job.phase = "Done"

@@ -164,6 +164,7 @@ export function LandingPage() {
             <a href="#measure">What we measure</a>
             <a href="#how">How it works</a>
             <a href="#deploy">Deploy</a>
+            <Link to="/pricing">Pricing</Link>
             <Link to="/methodology">Methodology</Link>
             <Link className="cta" to="/scan">Scan an agent</Link>
           </div>
@@ -321,6 +322,7 @@ export function LandingPage() {
                 <a href="#measure">What we measure</a>
                 <a href="#how">How it works</a>
                 <a href="#deploy">Deploy</a>
+                <Link to="/pricing">Pricing</Link>
                 <Link to="/scan">Scan an agent</Link>
               </div>
               <div className="fcol"><h4>Developers</h4>
