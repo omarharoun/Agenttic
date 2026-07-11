@@ -21,7 +21,7 @@ from pathlib import Path
 
 # Secrets that may be supplied via env or <NAME>_FILE.
 SECRET_ENV_NAMES = [
-    "ANTHROPIC_API_KEY", "ASCORE_API_TOKEN",
+    "ANTHROPIC_API_KEY", "COPILOT_ANTHROPIC_KEY", "ASCORE_API_TOKEN",
     "FI_API_KEY", "FI_SECRET_KEY",
     "ASCORE_DB", "ASCORE_REDIS_URL",
     "ASCORE_SESSION_SECRET", "ASCORE_ADMIN_PASSWORD",
@@ -54,7 +54,7 @@ def known_secret_values(cfg: dict) -> set[str]:
     """All secret strings worth redacting from logs (env + config tokens).
     Short values are excluded to avoid over-redacting incidental text."""
     values: set[str] = set()
-    for name in ("ANTHROPIC_API_KEY", "ASCORE_API_TOKEN",
+    for name in ("ANTHROPIC_API_KEY", "COPILOT_ANTHROPIC_KEY", "ASCORE_API_TOKEN",
                  "FI_API_KEY", "FI_SECRET_KEY"):
         v = get_secret(name)
         if v:
