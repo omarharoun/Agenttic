@@ -415,6 +415,11 @@ export const api = {
       body: JSON.stringify({ consent }),
     }).then((r) => json<ConnectionStatus>(r)),
 
+  // --- Copilot (in-app guide assistant; server-side key, SSE streaming) --
+  copilotStatus: () =>
+    afetch("/api/copilot/status").then((r) =>
+      json<{ available: boolean; model: string }>(r)),
+
   // --- Safe Assistant (flagship consumer chat) --------------------------
   // The sibling backend is implementing these; the UI normalizes responses
   // (see assistant.ts) and falls back to a labelled local preview if absent.
@@ -597,3 +602,114 @@ export const api = {
       (r) => json<{ filename: string; chars: number; text: string }>(r));
   },
 };
+
+/* ------------------------------------------------------------------------ *
+   Copilot streaming client.
+
+   The Copilot endpoint streams Server-Sent Events. EventSource can't POST, so
+   we POST via fetch and parse the SSE frames off the response body. Frames are
+   `event: <name>\ndata: <payload>\n\n`; the server escapes newlines/backslashes
+   in the payload (see routes/copilot.py `_sse`), which we reverse here.
+ * ------------------------------------------------------------------------ */
+
+/** A tool-activity event (the agent using the platform API on your behalf). */
+export interface CopilotToolEvent {
+  tool: string;
+  phase: "start" | "done";
+  kind?: "read" | "write";
+  ok?: boolean;
+  summary?: string;
+}
+
+/** A write/cost action the agent proposes; the user must confirm before it runs. */
+export interface CopilotApproval {
+  tool: string;
+  input: Record<string, any>;
+  card: { title?: string; detail?: string; cost_note?: string; risk?: string };
+}
+
+export interface CopilotHandlers {
+  onSession?: (info: { session_id: string; status: string }) => void;
+  onToken: (text: string) => void;
+  onTool?: (ev: CopilotToolEvent) => void;
+  onApproval?: (a: CopilotApproval) => void;
+  onDone?: (info: { session_id: string; status: string }) => void;
+  onError?: (message: string) => void;
+}
+
+function unescapeSse(s: string): string {
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "\\" && i + 1 < s.length) {
+      const n = s[++i];
+      out += n === "n" ? "\n" : n; // \\ -> \, \n -> newline
+    } else {
+      out += s[i];
+    }
+  }
+  return out;
+}
+
+async function streamCopilot(
+  path: string, body: unknown, handlers: CopilotHandlers, signal?: AbortSignal,
+): Promise<void> {
+  const res = await afetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!res.ok || !res.body) {
+    let detail = `${res.status}`;
+    try { detail = String((await res.json()).detail ?? detail); } catch { /* keep */ }
+    const err = new Error(detail) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buf.indexOf("\n\n")) >= 0) {
+      const frame = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      let ev = "message";
+      let data = "";
+      for (const line of frame.split("\n")) {
+        if (line.startsWith("event: ")) ev = line.slice(7);
+        else if (line.startsWith("data: ")) data = line.slice(6);
+      }
+      const payload = unescapeSse(data);
+      if (ev === "token") handlers.onToken(payload);
+      else if (ev === "tool") { try { handlers.onTool?.(JSON.parse(payload)); } catch { /* ignore */ } }
+      else if (ev === "approval_required") { try { handlers.onApproval?.(JSON.parse(payload)); } catch { /* ignore */ } }
+      else if (ev === "session") { try { handlers.onSession?.(JSON.parse(payload)); } catch { /* ignore */ } }
+      else if (ev === "done") { try { handlers.onDone?.(JSON.parse(payload)); } catch { /* ignore */ } }
+      else if (ev === "error") handlers.onError?.(payload);
+    }
+  }
+}
+
+/** Send a message to the agentic Copilot and stream its reasoning, tool activity,
+ *  and any approval request. Pass session_id to continue a session. */
+export function copilotChat(
+  message: string, sessionId: string | null, handlers: CopilotHandlers,
+  signal?: AbortSignal,
+): Promise<void> {
+  return streamCopilot("/api/copilot/chat",
+    { message, session_id: sessionId ?? undefined }, handlers, signal);
+}
+
+/** Confirm (approved=true) or decline (false) the agent's pending write action;
+ *  streams the resumed turn. */
+export function copilotApprove(
+  sessionId: string, approved: boolean, handlers: CopilotHandlers,
+  signal?: AbortSignal,
+): Promise<void> {
+  return streamCopilot("/api/copilot/approve",
+    { session_id: sessionId, approved }, handlers, signal);
+}

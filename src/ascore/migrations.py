@@ -244,6 +244,14 @@ def _passport_tables(conn) -> None:
         model.__table__.create(bind=conn, checkfirst=True)
 
 
+def _copilot_sessions_table(conn) -> None:
+    """v23 — in-app Copilot agent sessions (tenant-scoped transcript + step log +
+    any write-action awaiting the user's confirmation)."""
+    import ascore.registry.sqlite_store  # noqa: F401
+    from ascore.registry.sqlite_store import CopilotSessionRow
+    CopilotSessionRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -268,6 +276,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (20, "release_ladder_tables", _release_ladder_tables),
     (21, "canary_sets_table", _canary_sets_table),
     (22, "passport_tables", _passport_tables),
+    (23, "copilot_sessions_table", _copilot_sessions_table),
 ]
 
 

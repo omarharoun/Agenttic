@@ -262,6 +262,24 @@ class AssistantSessionRow(SQLModel, table=True):
     updated_at: datetime
 
 
+class CopilotSessionRow(SQLModel, table=True):
+    """One in-app Copilot AGENT conversation, tenant-scoped. Like
+    ``AssistantSessionRow`` but for the platform Copilot: ``payload`` is the full
+    JSON session state (Anthropic transcript with tool_use/tool_result blocks,
+    step log, any pending write-action awaiting the user's confirmation).
+    ``status`` (ready | awaiting_approval) is denormalized for listing. Upsert by
+    (tenant_id, session_id)."""
+    __tablename__ = "copilot_sessions"
+    __table_args__ = (UniqueConstraint("tenant_id", "session_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    session_id: str = Field(index=True)
+    status: str = "ready"                       # ready | awaiting_approval
+    payload: str = ""                           # full session-state JSON
+    created_at: datetime
+    updated_at: datetime
+
+
 class PersonalApiTokenRow(SQLModel, table=True):
     """A user's personal API token (PAT) for programmatic REST access. GLOBAL
     table (like users): the token is presented as ``Authorization: Bearer`` and
