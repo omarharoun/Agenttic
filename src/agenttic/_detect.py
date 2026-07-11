@@ -221,8 +221,8 @@ def trace(agent: Any, *, target: str | None = None, enforce: Any = False,
 
 # --- generic fallback: wrap an arbitrary callable --------------------------
 _GENERIC_PARTIAL_REASON = (
-    "generic wrapper: the callable's internal tool/LLM calls are not observable, "
-    "so the tool trajectory is recorded as partial (never fabricated)")
+    "the wrapped function's internal tool/LLM calls are not observable from "
+    "outside, so the tool trajectory is recorded as partial (never fabricated)")
 
 
 def _wrap_callable(fn: Any, *, agent_id: str, agent_config_hash: str = "",
