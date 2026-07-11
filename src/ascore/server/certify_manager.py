@@ -50,6 +50,16 @@ class CertifyManager:
                 status="succeeded", dossier_id=res.dossier.dossier_id,
                 tier=res.dossier.tier_decision.tier, cached=res.cached,
                 cost_usd=res.cost_usd)
+            # Meter the tenant's model spend as a credit debit (best-effort). A
+            # cached run spent nothing, so nothing is debited.
+            if not res.cached and (res.cost_usd or 0) > 0:
+                try:
+                    from ascore.billing import service as billing_service
+                    billing_service.meter_cost(
+                        self.reg.engine, tenant, "certification",
+                        res.cost_usd, cfg=self.cfg, ref=job_id)
+                except Exception:  # noqa: BLE001 — metering must not fail the job
+                    pass
         except Exception as exc:  # noqa: BLE001 — surface as a failed job, not a 500
             self._jobs[job_id].update(
                 status="failed", error=f"{type(exc).__name__}: {exc}")
