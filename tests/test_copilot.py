@@ -376,7 +376,11 @@ class TestAgentEndpoint:
                      for _ in range(3)]
             r = c.post("/api/copilot/chat", headers=_adm(), json=body)
         assert codes == [200, 200, 402]
-        assert "limit" in r.json()["detail"].lower()
+        # the refusal now carries a structured, classified detail (same shape as
+        # the SSE error card): code + honest message + action.
+        detail = r.json()["detail"]
+        assert detail["code"] == "daily_limit"
+        assert "limit" in detail["message"].lower()
 
     def test_global_daily_cap_trips_with_402(self, tmp_path):
         # the global/day cap bounds total spend across all tenants independently.
@@ -387,7 +391,9 @@ class TestAgentEndpoint:
             second = c.post("/api/copilot/chat", headers=_adm(), json=body)
         assert first == 200
         assert second.status_code == 402
-        assert "everyone" in second.json()["detail"].lower()
+        detail = second.json()["detail"]
+        assert detail["code"] == "daily_limit"
+        assert "everyone" in detail["message"].lower()
 
     def test_usage_recorded(self, tmp_path, monkeypatch):
         seen = []
