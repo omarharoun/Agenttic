@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { api, auth, type Me } from "./api";
 import { AccountMenu } from "./components/AccountMenu";
@@ -19,6 +19,35 @@ import { OptimizePage } from "./pages/OptimizePage";
 import { ResourcesPage } from "./pages/ResourcesPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { TrainingCampPage } from "./pages/TrainingCampPage";
+
+/* The Copilot panel is code-split: its chunk (chat + Markdown renderer) loads
+   only when the user first opens the drawer, so it never weighs on the public
+   landing bundle or the app-shell's initial chunk. */
+const CopilotPanel = lazy(() => import("./copilot/CopilotPanel"));
+
+/** Right-docked Copilot: a fixed launcher tab + the lazily-mounted drawer. The
+ *  panel's JS is fetched on first open (mounted flag), then kept mounted so the
+ *  session history survives re-opens. */
+function CopilotDock() {
+  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const toggle = () => { setMounted(true); setOpen((o) => !o); };
+  return (
+    <>
+      <button className={`cp-launch ${open ? "hidden" : ""}`} onClick={toggle}
+              aria-label="Open Agenttic Copilot" aria-expanded={open}
+              title="Ask the Copilot">
+        <span className="cp-launch-ic" aria-hidden>⬡</span>
+        <span className="cp-launch-label">Copilot</span>
+      </button>
+      {mounted && (
+        <Suspense fallback={null}>
+          <CopilotPanel open={open} onClose={() => setOpen(false)} />
+        </Suspense>
+      )}
+    </>
+  );
+}
 
 /** Token control: paste an API token (CI/power users). Login is the normal path;
  * a token, if set, takes precedence over the session for API calls. */
@@ -203,6 +232,7 @@ export function AppShell() {
           </Routes>
         </div>
       </div>
+      <CopilotDock />
     </div>
   );
 }
