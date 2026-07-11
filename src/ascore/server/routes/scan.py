@@ -39,6 +39,7 @@ from pydantic import BaseModel
 from ascore import certification as cert
 from ascore import ops, scan
 from ascore.metrics.safety_battery import BATTERY_DIMENSIONS
+from ascore.server.abuse import guard_cost_endpoint
 from ascore.server.auth import require_operator
 from ascore.server.certifications import issue_certificate
 from ascore.server.keys import NO_KEY_MSG, KeyStore
@@ -217,6 +218,9 @@ def scan_preview(request: Request):
 async def start_scan(body: ScanBody, request: Request):
     """Start a safety scan (runs in the background). Returns a ``scan_id`` to poll
     at ``GET /api/scan/{scan_id}``."""
+    # Abuse ceiling: bound how fast one IP / tenant / the whole server can start
+    # scans (a demo scan spends the tenant's key; every scan spins up a job).
+    guard_cost_endpoint(request, "scan")
     cfg, reg = request.state.cfg, request.state.reg
     tenant = getattr(request.state, "tenant", "default")
     # A demo scan spends the tenant's metered model budget, so gate it on credits

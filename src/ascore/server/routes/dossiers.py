@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from ascore.registry.sqlite_store import NotFoundError
+from ascore.server.abuse import guard_cost_endpoint
 from ascore.server.auth import require_operator
 from ascore.server.keys import tenant_run_clients
 
@@ -122,6 +123,9 @@ class CertifyRequest(BaseModel):
 async def start_certify(body: CertifyRequest, request: Request):
     """Launch a certification (async). 400 if the profile is undefined or the
     tenant has no Anthropic key (for a real reference/blackbox run)."""
+    # Abuse ceiling: bound how fast one IP / tenant / the whole server can kick
+    # off certifications (each starts a cost-bearing run pipeline).
+    guard_cost_endpoint(request, "certify")
     state = request.state
     defined = (state.cfg.get("certification", {}) or {}).get("profiles", {})
     if body.profile_id not in defined:
