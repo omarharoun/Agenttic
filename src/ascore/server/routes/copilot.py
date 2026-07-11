@@ -33,7 +33,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from ascore.copilot.agent import CopilotAgent, new_session
-from ascore.copilot.credits import check_credits, record_usage
+from ascore.copilot.credits import check_credits, check_daily_cap, record_usage
 from ascore.copilot.service import (
     CopilotConfig, CopilotNotConfigured, is_configured, resolve_client,
 )
@@ -174,7 +174,15 @@ def _stream(request: Request, session: dict, events):
 
 @router.post("/chat")
 def copilot_chat(body: ChatBody, request: Request):
-    agent, ctx, _cfg = _guards(request)
+    agent, ctx, cfg = _guards(request)
+    # Stopgap spend cap: count this user message against the per-tenant/day and
+    # global/day limits before running the model. Reuses the 402 credits path;
+    # remove when real billing replaces the credits seam. Only new chat messages
+    # are counted — an /approve resume is bounded by the chat that preceded it.
+    tenant = getattr(request.state, "tenant", "default")
+    cap = check_daily_cap(tenant, cfg.daily_cap_per_user, cfg.daily_cap_global)
+    if not cap.allowed:
+        raise HTTPException(402, cap.reason or "Daily Copilot limit reached.")
     store = _store(request)
     if body.session_id:
         try:

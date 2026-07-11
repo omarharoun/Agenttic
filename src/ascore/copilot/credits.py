@@ -17,8 +17,9 @@ tenant, timestamp, model, and token counts.
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 log = logging.getLogger("ascore.copilot.usage")
 
@@ -107,3 +108,83 @@ def record_action(tenant: str, model: str, action: str,
     get_provider().record(UsageRecord(
         tenant=tenant, model=model, input_tokens=0, output_tokens=0,
         at=datetime.now(timezone.utc), action=action, cost_usd=cost_usd))
+
+
+# --------------------------------------------------------------------------- #
+# STOPGAP daily message cap (delete when real billing lands).
+#
+# The CreditsProvider above is the permissive free-preview stub — it never
+# refuses. Until real free-credit accounting exists, that leaves a live Copilot
+# able to run up an unbounded Anthropic bill. This is a minimal, in-memory safety
+# net: a per-tenant/day and a global/day *message* counter, consulted BEFORE the
+# model runs. It is deliberately crude — counts reset at UTC midnight and on
+# process restart, and are not shared across worker processes (each worker gets
+# its own budget). That is acceptable for a coarse spend cap and keeps it free of
+# storage/coupling. When billing replaces CreditsProvider, delete this whole
+# block and the check_daily_cap() call in the chat route.
+# --------------------------------------------------------------------------- #
+
+
+class _DailyMessageCap:
+    """Process-wide, in-memory per-day message counter (thread-safe)."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._day: date | None = None
+        self._per_tenant: dict[str, int] = {}
+        self._global = 0
+
+    def _roll(self, today: date) -> None:
+        if self._day != today:
+            self._day, self._per_tenant, self._global = today, {}, 0
+
+    def check(self, tenant: str, per_tenant_daily: int | None,
+              global_daily: int | None, today: date | None = None) -> CreditDecision:
+        today = today or datetime.now(timezone.utc).date()
+        with self._lock:
+            self._roll(today)
+            if global_daily and self._global >= global_daily:
+                return CreditDecision(
+                    allowed=False,
+                    reason="The Copilot has hit its daily limit for everyone — "
+                           "please try again tomorrow.",
+                    remaining=0)
+            used = self._per_tenant.get(tenant, 0)
+            if per_tenant_daily and used >= per_tenant_daily:
+                return CreditDecision(
+                    allowed=False,
+                    reason="You've reached today's Copilot message limit — "
+                           "please try again tomorrow.",
+                    remaining=0)
+            # Under the cap: count this message and allow.
+            self._per_tenant[tenant] = used + 1
+            self._global += 1
+            remaining = (max(0, per_tenant_daily - self._per_tenant[tenant])
+                         if per_tenant_daily else None)
+            return CreditDecision(allowed=True, reason="free-preview",
+                                  remaining=remaining)
+
+    def reset(self) -> None:
+        with self._lock:
+            self._day, self._per_tenant, self._global = None, {}, 0
+
+
+_CAP = _DailyMessageCap()
+
+
+def check_daily_cap(tenant: str, per_tenant_daily: int | None = None,
+                    global_daily: int | None = None,
+                    today: date | None = None) -> CreditDecision:
+    """Consult (and, when allowed, increment) the stopgap daily message cap.
+
+    Returns a :class:`CreditDecision` so the endpoint reuses its existing 402
+    path. When both caps are falsy the cap is disabled and this always allows
+    (without counting)."""
+    if not per_tenant_daily and not global_daily:
+        return CreditDecision(allowed=True, reason="free-preview")
+    return _CAP.check(tenant, per_tenant_daily, global_daily, today)
+
+
+def reset_daily_cap() -> None:
+    """Clear the in-memory daily counters (used by tests)."""
+    _CAP.reset()
