@@ -125,10 +125,27 @@ ledger, and invoices keep working).
 
 **Env keys to go live (Stripe):**
 
-| var | purpose |
-|---|---|
-| `STRIPE_SECRET_KEY` | secret API key — use `sk_test_…` to stay in TEST mode |
-| `STRIPE_WEBHOOK_SECRET` | webhook signing secret (`whsec_…`), required to verify webhooks |
+| var | secret? | purpose |
+|---|---|---|
+| `STRIPE_SECRET_KEY` | **yes** — server only | secret API key — use `sk_test_…` to stay in TEST mode |
+| `STRIPE_WEBHOOK_SECRET` | **yes** — server only | webhook signing secret (`whsec_…`), required to verify webhooks |
+| `STRIPE_PUBLISHABLE_KEY` | no — exposed to the UI | publishable key (`pk_…`); surfaced via the public `/api/pricing` + `/api/billing/config` so the client can init Stripe.js. Can't move money. |
+
+**Products, prices & webhook (provisioning).** `scripts/stripe_provision.py`
+creates the products + recurring prices (Starter/Pro) and one-off top-up prices,
+and the webhook endpoint — idempotently, reading `STRIPE_SECRET_KEY` from the env
+and never printing it. The resulting **price IDs are NOT secret** and live in
+`config.yaml` under each plan/top-up as `stripe_price_id`; checkout uses them
+directly (`line_items: [{price: <id>, quantity: 1}]`), falling back to inline
+`price_data` when a price id isn't configured. Re-run in live mode and swap the
+IDs to go live. The webhook command writes the returned `whsec_…` to `.env`
+(gitignored) — never to stdout or git.
+
+```bash
+# provision (test mode); price IDs printed are safe to commit, whsec is not
+python scripts/stripe_provision.py prices
+python scripts/stripe_provision.py webhook https://agenttic.io/api/billing/webhooks/stripe
+```
 
 ### PayPal (SANDBOX mode)
 

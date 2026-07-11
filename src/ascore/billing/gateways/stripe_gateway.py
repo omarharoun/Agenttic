@@ -17,11 +17,19 @@ from __future__ import annotations
 import os
 
 STRIPE_SECRET_ENV = "STRIPE_SECRET_KEY"
+STRIPE_PUBLISHABLE_ENV = "STRIPE_PUBLISHABLE_KEY"   # NOT secret — exposed to the UI
 STRIPE_WEBHOOK_SECRET_ENV = "STRIPE_WEBHOOK_SECRET"
 
 
 def secret_key() -> str:
     return (os.environ.get(STRIPE_SECRET_ENV) or "").strip()
+
+
+def publishable_key() -> str:
+    """The Stripe publishable key (``pk_…``). NOT secret — safe to expose to the
+    frontend (it identifies the account for client-side Stripe.js, and can't move
+    money). Read only from the environment; never hardcoded."""
+    return (os.environ.get(STRIPE_PUBLISHABLE_ENV) or "").strip()
 
 
 def webhook_secret() -> str:
@@ -80,7 +88,12 @@ def construct_event(payload: bytes, sig_header: str) -> dict:
     secret = webhook_secret()
     if not secret:
         raise RuntimeError("Stripe webhook secret not set (STRIPE_WEBHOOK_SECRET).")
+    import json  # noqa: PLC0415
     import stripe  # noqa: PLC0415
-    event = stripe.Webhook.construct_event(payload, sig_header, secret)
-    # stripe returns a StripeObject; normalise to a plain dict
-    return dict(event)
+    # construct_event VERIFIES the signature (raising on a bad/missing one). Its
+    # return is a StripeObject whose `.get`/`dict()` are unreliable across SDK
+    # versions, so — signature now verified — we parse the raw payload ourselves
+    # into a plain nested dict the apply logic can use with `.get()`.
+    stripe.Webhook.construct_event(payload, sig_header, secret)
+    raw = payload.decode("utf-8") if isinstance(payload, (bytes, bytearray)) else payload
+    return json.loads(raw)

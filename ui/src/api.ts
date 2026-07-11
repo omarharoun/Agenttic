@@ -258,6 +258,7 @@ export interface PricingCatalog {
   credit_cent_value: number;
   plans: BillingPlan[];
   topups: BillingTopup[];
+  stripe_publishable_key?: string;   // NOT secret — safe client-side
 }
 export interface BillingOverview {
   billing_enabled: boolean;
@@ -296,7 +297,7 @@ export interface Invoice {
   issued_at: string;
 }
 export interface BillingProviderConfig {
-  stripe: { configured: boolean; test_mode: boolean };
+  stripe: { configured: boolean; test_mode: boolean; publishable_key?: string };
   paypal: { configured: boolean; sandbox: boolean };
 }
 
