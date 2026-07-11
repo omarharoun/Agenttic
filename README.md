@@ -1,11 +1,28 @@
 # Agenttic — Agentic Scoring & Benchmarking Platform
 
 A UVM-style verification testbench where the device under test is an **AI
-agent**. Agenttic (package/CLI name: `ascore`) turns business requirements into
-versioned benchmark suites, runs any agent against them, scores the runs with
-deterministic checks plus a calibrated LLM judge, and produces client-ready
-scorecards — with a live monitoring path that detects production drift and
-triggers re-evaluation.
+agent**. Agenttic (install `agenttic`; the `agenttic` CLI, with `ascore` kept as
+a back-compat alias) turns business requirements into versioned benchmark suites,
+runs any agent against them, scores the runs with deterministic checks plus a
+calibrated LLM judge, and produces client-ready scorecards — with a live
+monitoring path that detects production drift and triggers re-evaluation.
+
+## Quickstart
+
+**A developer who has never seen Agenttic can `pip install`, add one line, and
+get a signed safety grade in under a minute** — no API key:
+
+```bash
+pip install agenttic
+agenttic init
+agenttic certify --mock --out dossier.json   # → a signed Tier A/B/C dossier
+agenttic dossier verify dossier.json
+```
+
+Then wrap your own agent with one line — `from agenttic import trace; agent =
+trace(my_agent)` — or decorate a custom function with `@instrument`. Full
+walk-through: [docs/QUICKSTART.md](docs/QUICKSTART.md). Zero-touch OTel setup for
+existing exporters: [docs/integrations/](docs/integrations/).
 
 On top of that bespoke-suite engine it now ships a **standard benchmark track**:
 seven canonical agent-evaluation metrics rolled into a single **Agenttic Index**,
