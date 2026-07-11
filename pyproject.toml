@@ -1,7 +1,12 @@
 [project]
-name = "ascore"
+# The public umbrella distribution. It ships two importable packages:
+#   * agenttic — the supported, semver'd public surface (SPEC-8 Hard Rule 36)
+#   * ascore   — the internal implementation (not part of the public contract)
+# One distribution, one version; the umbrella tracks the core version exactly
+# (kept in lock-step with ascore.__version__, asserted by a test).
+name = "agenttic"
 version = "0.8.0"
-description = "Agenttic — agentic scoring & benchmarking platform (UVM-style testbench for AI agents)"
+description = "Agenttic — certify, trace and enforce AI agents. One install, one import, a signed safety grade."
 requires-python = ">=3.12"   # uses 3.12-only syntax (PEP 701 f-strings); CI runs 3.12
 dependencies = [
     "pydantic>=2.7",
@@ -40,8 +45,18 @@ otel = [                              # OpenTelemetry tracing (optional)
     "opentelemetry-sdk>=1.20",
     "opentelemetry-exporter-otlp>=1.20",
 ]
+# --- Framework support (SPEC-8 Step 40, Hard Rule 37) ----------------------
+# Optional and lazy: the base install pulls NO framework SDK. Each extra pulls
+# the matching adapter distribution, which in turn pins the framework SDK. The
+# auto-detecting trace() imports these only when it meets a matching object.
+langgraph = ["agenttic-langgraph"]        # → LangGraph / LangChain support
+openai = ["agenttic-openai-agents"]       # → OpenAI Agents SDK support
+all = ["agenttic[langgraph]", "agenttic[openai]", "agenttic[otel]"]
 
 [project.scripts]
+# `agenttic` is the public command; `ascore` stays as a back-compat alias. Both
+# drive the same Typer app (adds `agenttic init`, `agenttic doctor`, certify, …).
+agenttic = "ascore.cli:app"
 ascore = "ascore.cli:app"
 
 [build-system]
@@ -49,7 +64,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ascore"]
+# Ship both packages from the src layout: the public umbrella and the internal
+# implementation it re-exports.
+packages = ["src/agenttic", "src/ascore"]
 
 [tool.ruff]
 # Match the runtime (CI + Docker run Python 3.12). Keeps lint consistent with
