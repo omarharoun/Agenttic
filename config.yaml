@@ -123,6 +123,13 @@ copilot:
   max_user_chars: 6000              # per user message before truncation
   max_history_messages: 20          # trailing turns kept for context
   rate_limit_per_minute: 20         # per session/IP, independent of security.rate_limit
+  # STOPGAP spend caps — a safety net so the free-preview Copilot can't run up an
+  # unbounded Anthropic bill before real credits/billing lands. In-memory daily
+  # message counters (per UTC day), consulted before the model runs; when tripped
+  # the chat endpoint returns the existing 402 with an honest "daily limit
+  # reached" message. Same defaults apply in code if this block is absent. 0 = off.
+  daily_message_cap_per_user: 50    # messages / tenant / day
+  daily_message_cap_global: 300     # messages / server / day
 
 # ------------------------------------------------------------------------- #
 # Certification track (SPEC-2 → SPEC-6). All thresholds/taxonomy/SLA/posture
