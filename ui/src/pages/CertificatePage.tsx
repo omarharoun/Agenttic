@@ -3,8 +3,8 @@ import { HexMark } from "../components/Icons";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import {
-  bandForIndex, type Certification, type CertScore, dimensionLabel,
-  gradeColor, statusView,
+  bandForIndex, type Certification, type CertScore,
+  gradeColor, indexFromCert, normalizeScores, statusView,
 } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
 import { Gauge } from "../components/Gauge";
@@ -22,26 +22,6 @@ import { Skeleton } from "../components/ui";
    Degrades gracefully: a not-found / unreachable cert shows an honest empty
    state rather than a blank or a fake pass.
    ========================================================================== */
-
-function normalizeScores(raw: any): CertScore[] {
-  const s = raw?.scores;
-  if (Array.isArray(s)) {
-    return s.map((x: any) => ({
-      key: x.key ?? x.id ?? "",
-      label: x.label ?? dimensionLabel(x.key ?? x.id ?? ""),
-      value: typeof x.value === "number" ? x.value
-        : typeof x.score === "number" ? x.score : null,
-    }));
-  }
-  // object form: { injection_robustness: 0.9, ... }
-  if (s && typeof s === "object") {
-    return Object.entries(s).map(([key, value]) => ({
-      key, label: dimensionLabel(key),
-      value: typeof value === "number" ? (value as number) : null,
-    }));
-  }
-  return [];
-}
 
 function PublicNav() {
   return (
@@ -90,14 +70,12 @@ export function CertificatePage() {
     api.publicCertification(id)
       .then((c) => {
         if (!ok) return;
-        // The public API exposes the 0–100 figure as `composite_score`; the
-        // gauge + band read `index`. Map it here so the certificate shows the
-        // Agenttic Index dial whenever a numeric composite is present.
-        const index = typeof c?.index === "number" ? c.index
-          : typeof c?.composite_score === "number"
-            ? Math.round(c.composite_score <= 1 ? c.composite_score * 100 : c.composite_score)
-            : null;
-        setCert({ ...c, index, scores: normalizeScores(c) });
+        // The public API exposes the 0–100 figure as `composite_score` and the
+        // per-dimension breakdown as `dimensions`; the gauge + band read
+        // `index` and the breakdown reads `scores`. Map both here so the
+        // certificate shows the same headline number (one decimal, matching the
+        // scan's "Safety score X/100") and the same dimensions the scan scored.
+        setCert({ ...c, index: indexFromCert(c), scores: normalizeScores(c) });
       })
       .catch(() => { if (ok) setCert(null); });
     return () => { ok = false; };

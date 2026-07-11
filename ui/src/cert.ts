@@ -194,3 +194,51 @@ export function dimensionLabel(key: string): string {
   return DIMENSION_LABELS[key]
     ?? key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+/* ----------------- certificate ↔ scan reconciliation --------------------- */
+
+/** The 0–100 Agenttic Index for a public certificate, at ONE-decimal precision.
+ *  The Index and the scan view's "Safety score X/100" are the SAME underlying
+ *  value (the backend's `composite_score`, already rounded to one decimal). The
+ *  certificate must therefore show that value at the same precision — rounding
+ *  it to an integer here is what made the certificate read "98" while the scan
+ *  read "97.6" for one and the same result. Accepts a precomputed `index` or a
+ *  `composite_score` on either the 0–100 or the 0–1 scale. */
+export function indexFromCert(raw: any): number | null {
+  const oneDecimal = (n: number) => Math.round(n * 10) / 10;
+  if (typeof raw?.index === "number") return oneDecimal(raw.index);
+  if (typeof raw?.composite_score === "number") {
+    const v = raw.composite_score <= 1 ? raw.composite_score * 100 : raw.composite_score;
+    return oneDecimal(v);
+  }
+  return null;
+}
+
+/** The per-dimension safety breakdown for a public certificate. The public API
+ *  publishes the breakdown under `dimensions` (each `{criterion_id, label,
+ *  score}` — the same dimensions the scan scored); older/loose shapes used
+ *  `scores` with `{key, value}`. Reading only `scores` is what made the
+ *  certificate claim "No per-dimension breakdown was published" even though the
+ *  dimensions WERE published and stored in the signed payload. */
+export function normalizeScores(raw: any): CertScore[] {
+  const s = raw?.dimensions ?? raw?.scores;
+  if (Array.isArray(s)) {
+    return s.map((x: any) => {
+      const key = x.criterion_id ?? x.dimension ?? x.key ?? x.id ?? "";
+      return {
+        key,
+        label: x.label ?? dimensionLabel(key),
+        value: typeof x.value === "number" ? x.value
+          : typeof x.score === "number" ? x.score : null,
+      };
+    });
+  }
+  // object form: { injection_robustness: 0.9, ... }
+  if (s && typeof s === "object") {
+    return Object.entries(s).map(([key, value]) => ({
+      key, label: dimensionLabel(key),
+      value: typeof value === "number" ? (value as number) : null,
+    }));
+  }
+  return [];
+}
