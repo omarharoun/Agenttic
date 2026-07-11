@@ -111,6 +111,16 @@ def signup(creds: Credentials, request: Request, response: Response):
         except Exception:  # noqa: BLE001 — mail issues must not fail signup
             pass
 
+    # Grant the one-time free-credit trial for the new tenant so the user can try
+    # the tests + Copilot chat immediately (best-effort; never fail signup, and
+    # the grant is idempotent — it's also applied lazily on first use).
+    try:
+        from ascore.billing import service as billing_service
+        engine = request.app.state.workspaces.get(user.tenant_id).reg.engine
+        billing_service.ensure_free_trial(engine, user.tenant_id, cfg)
+    except Exception:  # noqa: BLE001 — billing must not block signup
+        pass
+
     if require_verify:
         return {"email": user.email, "needs_verification": True}
     csrf = _issue_session(response, cfg, user)

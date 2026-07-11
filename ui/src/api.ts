@@ -236,6 +236,71 @@ async function json<T>(res: Response): Promise<T> {
 
 export interface Me { role: string; tenant: string; email: string | null; auth_method: string; }
 
+// --- billing ---------------------------------------------------------------
+export interface BillingPlan {
+  id: string;
+  name: string;
+  price_cents: number;
+  interval: string;
+  included_credits: number;
+  features?: string[];
+  highlight?: boolean;
+}
+export interface BillingTopup {
+  id: string;
+  name: string;
+  price_cents: number;
+  credits: number;
+}
+export interface PricingCatalog {
+  currency: string;
+  free_trial_credits: number;
+  credit_cent_value: number;
+  plans: BillingPlan[];
+  topups: BillingTopup[];
+  stripe_publishable_key?: string;   // NOT secret — safe client-side
+}
+export interface BillingOverview {
+  billing_enabled: boolean;
+  currency: string;
+  credit_cent_value: number;
+  balance_credits: number;
+  balance_cents: number;
+  balance_display: string;
+  plan: { id: string; name: string; price_cents: number; interval: string; included_credits: number };
+  status: string;
+  provider: string;
+  current_period_end: string | null;
+  usage_by_reason: Record<string, number>;
+}
+export interface LedgerEntry {
+  entry_id: string;
+  kind: "grant" | "debit";
+  credits: number;
+  reason: string;
+  model: string;
+  meta: Record<string, any>;
+  created_at: string;
+}
+export interface Invoice {
+  invoice_id: string;
+  number: string;
+  provider: string;
+  status: string;
+  currency: string;
+  subtotal_cents: number;
+  tax_cents: number;
+  total_cents: number;
+  credits_granted: number;
+  line_items: { description: string; quantity: number; unit_cents: number; amount_cents: number }[];
+  description: string;
+  issued_at: string;
+}
+export interface BillingProviderConfig {
+  stripe: { configured: boolean; test_mode: boolean; publishable_key?: string };
+  paypal: { configured: boolean; sandbox: boolean };
+}
+
 /** Live service-status rollup (Agenttic's OWN uptime — GET /api/status). */
 export type HealthState = "operational" | "degraded" | "down" | "unknown";
 export interface ComponentHealth {
@@ -585,6 +650,34 @@ export const api = {
         if (!r.ok) throw new Error(`${r.status}`);
         return r.blob();
       }),
+
+  // --- billing / subscription ---
+  /** Public pricing catalog (no auth) — plans + free-credit offer + top-ups. */
+  pricing: () => afetch("/api/pricing").then((r) => json<PricingCatalog>(r)),
+  billingOverview: () => afetch("/api/billing").then((r) => json<BillingOverview>(r)),
+  billingPlans: () => afetch("/api/billing/plans").then((r) => json<PricingCatalog>(r)),
+  billingLedger: (limit = 50) =>
+    afetch(`/api/billing/ledger?limit=${limit}`).then((r) =>
+      json<{ entries: LedgerEntry[] }>(r)),
+  billingInvoices: () =>
+    afetch("/api/billing/invoices").then((r) => json<{ invoices: Invoice[] }>(r)),
+  billingProviderConfig: () =>
+    afetch("/api/billing/config").then((r) => json<BillingProviderConfig>(r)),
+  /** URL for the printable invoice HTML (opened/downloaded in a new tab). */
+  invoiceDownloadUrl: (invoiceId: string) =>
+    `/api/billing/invoices/${invoiceId}/download`,
+  /** Start a Stripe checkout (subscription or top-up); returns the redirect URL. */
+  checkoutStripe: (body: { kind: "subscription" | "topup"; plan_id?: string; topup_id?: string }) =>
+    afetch("/api/billing/checkout/stripe", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<{ url: string; id: string }>(r)),
+  /** Start a PayPal checkout (subscription or top-up); returns the approval URL. */
+  checkoutPaypal: (body: { kind: "subscription" | "topup"; plan_id?: string; topup_id?: string }) =>
+    afetch("/api/billing/checkout/paypal", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<{ url: string; id: string }>(r)),
 
   listTraces: () => afetch("/api/traces").then((r) => json<any[]>(r)),
   getTrace: (id: string) => afetch(`/api/traces/${id}`).then((r) => json<any>(r)),
