@@ -238,6 +238,63 @@ table.data th,
 .lp-nav a.navlink { color: var(--muted); text-decoration: none; font-size: var(--t-base); }
 .lp-nav a.navlink:hover { color: var(--text); }
 
+/* ===== unified public site nav (SiteNav.tsx) — ONE header on every public page.
+   Same brand, destinations and primary CTA everywhere; themes light/dark via
+   tokens; collapses behind an accessible hamburger on narrow viewports. ===== */
+/* color rules are scoped under `.site-nav` so they beat page-local rules such
+   as `.agx a { color: inherit }` on the landing/pricing surfaces. */
+.site-nav { position: relative; }
+.site-nav-in {
+  display: flex; align-items: center; gap: var(--sp-5); height: 70px;
+  max-width: 1080px; margin: 0 auto; padding: 0 var(--sp-6);
+}
+.site-nav .site-nav-brand {
+  font: 500 19px/1 var(--font-serif); letter-spacing: -0.01em;
+  display: inline-flex; align-items: center; gap: 9px; color: var(--text);
+  text-decoration: none; margin-right: auto;
+}
+.site-nav .site-nav-brand .hex { color: var(--accent); font-size: 16px; }
+.site-nav-menu { display: flex; align-items: center; gap: var(--sp-5); }
+.site-nav .site-nav-link {
+  color: var(--muted); text-decoration: none; white-space: nowrap;
+  font: 500 var(--t-base)/1 var(--font-ui);
+  transition: color var(--dur-fast) var(--ease-escape);
+}
+.site-nav .site-nav-link:hover { color: var(--text); }
+.site-nav .site-nav-cta {
+  background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent);
+  border-radius: var(--r-pill); padding: 10px 20px; white-space: nowrap;
+  font: 600 var(--t-base)/1 var(--font-ui); text-decoration: none;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--dur-fast) var(--ease-escape), transform 0.05s;
+}
+.site-nav .site-nav-cta:hover { background: var(--accent-hover); color: var(--accent-ink); }
+.site-nav .site-nav-cta:active { transform: translateY(1px); }
+.site-nav .site-nav-brand:focus-visible, .site-nav .site-nav-link:focus-visible,
+.site-nav .site-nav-cta:focus-visible, .site-nav-burger:focus-visible {
+  outline: none; box-shadow: var(--ring); border-radius: var(--r-sm);
+}
+/* hamburger — hidden on desktop, revealed under 760px */
+.site-nav-burger {
+  display: none; flex-direction: column; gap: 4px; cursor: pointer;
+  background: transparent; border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 9px 10px;
+}
+.site-nav-burger span { width: 18px; height: 2px; background: var(--text); border-radius: 2px; }
+@media (max-width: 760px) {
+  .site-nav-burger { display: inline-flex; }
+  .site-nav-menu {
+    display: none; position: absolute; top: 70px; left: 0; right: 0; z-index: 40;
+    flex-direction: column; align-items: stretch; gap: 0;
+    background: var(--panel); border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border); padding: var(--sp-3) var(--sp-6);
+    box-shadow: var(--shadow-sm);
+  }
+  .site-nav-menu.open { display: flex; }
+  .site-nav-link { padding: 13px 0; }
+  .site-nav-cta { margin-top: var(--sp-3); text-align: center; }
+}
+
 .btn-primary {
   background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent);
   border-radius: var(--r-pill); padding: 10px 20px; font: 600 var(--t-base) / 1 var(--font-ui);

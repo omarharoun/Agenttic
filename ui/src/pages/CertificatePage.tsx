@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HexMark } from "../components/Icons";
+import { SiteNav } from "../components/SiteNav";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import {
@@ -22,18 +22,6 @@ import { Skeleton } from "../components/ui";
    Degrades gracefully: a not-found / unreachable cert shows an honest empty
    state rather than a blank or a fake pass.
    ========================================================================== */
-
-function PublicNav() {
-  return (
-    <nav className="lp-nav">
-      <Link to="/" className="brand"><HexMark className="hex" /> Agenttic</Link>
-      <span className="spacer" />
-      <Link className="navlink" to="/certified">Certified agents</Link>
-      <Link className="navlink" to="/methodology">Methodology</Link>
-      <Link className="btn-primary" to="/signup">Get certified</Link>
-    </nav>
-  );
-}
 
 function pretty(d: string | null | undefined): string {
   if (!d) return "—";
@@ -83,7 +71,7 @@ export function CertificatePage() {
 
   return (
     <>
-      <PublicNav />
+      <SiteNav />
       <main className="cert-page">
         {cert === undefined ? (
           <div className="cert-loading-skel" aria-busy="true" aria-label="Loading certificate">
