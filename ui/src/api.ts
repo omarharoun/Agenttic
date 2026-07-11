@@ -534,7 +534,10 @@ export const api = {
   getScorecard: (id: string) =>
     afetch(`/api/scorecards/${id}`).then((r) => json<any>(r)),
   scorecardReport: (id: string) =>
-    afetch(`/api/scorecards/${id}/report`).then((r) => r.text()),
+    afetch(`/api/scorecards/${id}/report`).then(async (r) => {
+      if (!r.ok) throw new Error(`${r.status}`);
+      return r.text();
+    }),
   scorecardPdf: (id: string) =>
     afetch(`/api/scorecards/${id}/report.pdf`).then(async (r) => {
       if (!r.ok) throw new Error(`${r.status}`);

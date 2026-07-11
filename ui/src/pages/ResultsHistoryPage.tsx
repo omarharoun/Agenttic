@@ -34,7 +34,11 @@ export function ResultsHistoryPage() {
   }, []);
 
   const open = (id: string) =>
-    api.scorecardReport(id).then((text) => setReport({ id, text }));
+    api.scorecardReport(id)
+      .then((text) => setReport({ id, text }))
+      .catch(() => setReport({
+        id, text: "⚠ Could not load this report. Please try again.",
+      }));
 
   const total = (rows ?? []).reduce(
     (a, r) => a + (r.total_cost_usd ?? 0) + (r.total_scoring_cost_usd ?? 0), 0);

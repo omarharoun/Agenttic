@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, downloadBlob } from "../api";
 import { DataView, EmptyState, PageHeader, RawToggle, Skeleton } from "../components/ui";
 
@@ -18,10 +18,12 @@ export function ResourcesPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [doc, setDoc] = useState<string>("");
+  const [report, setReport] = useState<{ id: string; text: string } | null>(null);
   const [spans, setSpans] = useState<any[] | null>(null);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const refresh = (t: Tab) => {
-    setDoc(""); setSpans(null); setLoaded(false);
+    setDoc(""); setReport(null); setSpans(null); setLoaded(false);
     (t === "suites" ? api.listSuites()
       : t === "scorecards" ? api.listScorecards()
       : api.listTraces())
@@ -29,6 +31,21 @@ export function ResourcesPage() {
       .catch(() => { setRows([]); setLoaded(true); });
   };
   useEffect(() => refresh(tab), [tab]);
+
+  // Open a scorecard's report inline, in a titled panel consistent with the
+  // Results history page — then scroll it into view so the click has a visible
+  // effect even when the row sits above the fold of a long table.
+  const openReport = (id: string) => {
+    setReport({ id, text: "Loading report…" });
+    api.scorecardReport(id)
+      .then((text) => setReport({ id, text }))
+      .catch(() => setReport({
+        id, text: "⚠ Could not load this report. Please try again.",
+      }));
+  };
+  useEffect(() => {
+    if (report) reportRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [report]);
 
   return (
     <div className="page">
@@ -93,8 +110,7 @@ export function ResourcesPage() {
                       <td className="num">${(s.mean_cost_usd ?? 0).toFixed(4)}</td>
                       <td>{s.visibility_tier?.replace("_", "-")}</td>
                       <td>
-                        <button onClick={() =>
-                          api.scorecardReport(s.scorecard_id).then(setDoc)}>
+                        <button onClick={() => openReport(s.scorecard_id)}>
                           report
                         </button>
                         <button style={{ marginLeft: 6 }} title="Download as PDF"
@@ -137,6 +153,17 @@ export function ResourcesPage() {
         )}
 
         {doc && <pre className="doc" style={{ marginTop: 16 }}>{doc}</pre>}
+
+        {report && (
+          <div ref={reportRef} style={{ marginTop: 16 }}>
+            <div className="eyebrow" style={{ marginBottom: 6 }}>
+              Report · <span className="mono">{report.id}</span>
+              <button className="ghost-sm" style={{ marginLeft: 8 }}
+                      onClick={() => setReport(null)}>close</button>
+            </div>
+            <pre className="doc" style={{ marginTop: 0 }}>{report.text}</pre>
+          </div>
+        )}
 
         {spans && (
           <div className="span-view" style={{ marginTop: 16 }}>
