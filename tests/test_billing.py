@@ -320,7 +320,13 @@ class TestBillingHTTP:
         with TestClient(app) as c:
             r = c.post("/api/copilot/chat", headers=_adm(), json={"message": "hi"})
             assert r.status_code == 402
-            assert "credit" in r.json()["detail"].lower()
+            # The Copilot error refactor makes every refusal carry the structured
+            # {code, message, action} shape (one styled card whether 4xx or SSE),
+            # so the out-of-credits 402 now surfaces the stable machine code plus
+            # an honest, credit-mentioning message rather than a bare string.
+            detail = r.json()["detail"]
+            assert detail["code"] == "out_of_credits"
+            assert "credit" in detail["message"].lower()
 
     def test_real_provider_installed_when_enabled(self, tmp_path):
         app = _mk_app(tmp_path)

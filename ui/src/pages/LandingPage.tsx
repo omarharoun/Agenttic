@@ -1,7 +1,8 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { gradeColor } from "../cert";
-import { HexMark, IcoRail, IcoBus, IcoShield } from "../components/Icons";
+import { IcoRail, IcoBus, IcoShield } from "../components/Icons";
+import { SiteNav } from "../components/SiteNav";
 
 /* ============================================================================
    The public landing page — "the safety lab for AI agents".
@@ -157,19 +158,7 @@ function Instrument() {
 export function LandingPage() {
   return (
     <div className="agx">
-      <nav>
-        <div className="wrap">
-          <Link to="/" className="brand"><HexMark /> Agenttic</Link>
-          <div className="nl">
-            <a href="#measure">What we measure</a>
-            <a href="#how">How it works</a>
-            <a href="#deploy">Deploy</a>
-            <Link to="/pricing">Pricing</Link>
-            <Link to="/methodology">Methodology</Link>
-            <Link className="cta" to="/scan">Scan an agent</Link>
-          </div>
-        </div>
-      </nav>
+      <SiteNav />
 
       {/* ===================== HERO ===================== */}
       <header className="hero">

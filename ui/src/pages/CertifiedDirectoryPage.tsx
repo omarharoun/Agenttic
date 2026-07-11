@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HexMark } from "../components/Icons";
+import { SiteNav } from "../components/SiteNav";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { certIdOf, type DirectoryEntry, gradeColor, indexFromCert, statusView } from "../cert";
@@ -45,13 +45,7 @@ export function CertifiedDirectoryPage() {
 
   return (
     <>
-      <nav className="lp-nav">
-        <Link to="/" className="brand"><HexMark className="hex" /> Agenttic</Link>
-        <span className="spacer" />
-        <Link className="navlink" to="/methodology">Methodology</Link>
-        <a className="navlink" href="/api-docs">API docs</a>
-        <Link className="btn-primary" to="/signup">Get certified</Link>
-      </nav>
+      <SiteNav />
 
       <main className="lp">
         <header className="cert-dir-hero">

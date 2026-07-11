@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { HexMark } from "../components/Icons";
+import { SiteNav } from "../components/SiteNav";
 import { money } from "../billing";
 import type { PricingCatalog } from "../api";
 
@@ -52,17 +52,7 @@ export function PricingPage() {
 
   return (
     <div className="agx pricing">
-      <nav>
-        <div className="wrap">
-          <Link to="/" className="brand"><HexMark /> Agenttic</Link>
-          <div className="nl">
-            <Link to="/methodology">Methodology</Link>
-            <Link to="/pricing">Pricing</Link>
-            <Link to="/login">Log in</Link>
-            <Link className="cta" to="/signup">Start free</Link>
-          </div>
-        </div>
-      </nav>
+      <SiteNav />
 
       {/* ===================== HERO ===================== */}
       <header className="hero pricing-hero">

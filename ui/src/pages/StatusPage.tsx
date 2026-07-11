@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { HexMark } from "../components/Icons";
+import { SiteNav } from "../components/SiteNav";
 import { api, type HealthState, type ServiceStatus } from "../api";
 import "./StatusPage.css";
 
@@ -119,12 +118,7 @@ export function StatusPage({ initialStatus = null }: { initialStatus?: ServiceSt
 
   return (
     <>
-      <nav className="lp-nav">
-        <Link to="/" className="brand"><HexMark className="hex" /> Agenttic</Link>
-        <span className="spacer" />
-        <Link className="navlink" to="/methodology">Methodology</Link>
-        <Link className="navlink" to="/api-docs">API docs</Link>
-      </nav>
+      <SiteNav />
 
       <main className="status-page">
         <header className="status-head">

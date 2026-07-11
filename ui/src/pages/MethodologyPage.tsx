@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { HexMark } from "../components/Icons";
+import { SiteNav } from "../components/SiteNav";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { GRADE_BANDS, gradeColor } from "../cert";
@@ -128,14 +129,7 @@ export function MethodologyPage() {
 
   return (
     <>
-      <nav className="lp-nav">
-        <Link to="/" className="brand"><HexMark className="hex" /> Agenttic</Link>
-        <span className="spacer" />
-        <Link className="navlink" to="/certified">Certified agents</Link>
-        <Link className="navlink" to="/api-docs">API docs</Link>
-        <Link className="navlink" to="/app/leaderboard">Leaderboard</Link>
-        <Link className="btn-primary" to="/signup">Get certified</Link>
-      </nav>
+      <SiteNav />
 
       <main className="meth">
         {/* ---------- intro (plain language) ---------- */}
