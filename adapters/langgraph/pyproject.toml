@@ -2,6 +2,7 @@
 name = "agenttic-langgraph"
 version = "0.1.0"
 description = "Trace a LangGraph agent onto the Agenttic OTel-GenAI bus (public callbacks only)."
+readme = "README.md"
 requires-python = ">=3.12"
 # Thin adapter: the span builder + optional enforcement guard live in the
 # `agenttic` umbrella distribution (which ships the internal ascore package);
