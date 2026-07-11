@@ -227,3 +227,28 @@ FULL SPEC-7 COMPLETE: M18→M21, tags v0.7.0-integrate + v0.8.0-enforce-ramp.
 Baseline (post-patch) was 1505 passed / 4 skipped; final is 1565 / 5 (+60 tests;
 the +1 skip is the helm-lint conditional skip, not a weakened test). Every task
 one commit with the given message; every milestone Gate + full suite green.
+
+## SPEC-8 — Distribution & Plug-and-Play
+
+- T40.2 DEVIATION (distribution model — extras vs separate dists): SPEC-8 Step 40
+  lets us publish the framework adapters either as separate distributions
+  (agenttic-langgraph / agenttic-openai-agents) OR fold them into umbrella extras,
+  and asks for one choice with a justification. We chose **separate distributions
+  plus convenience extras**: each adapter keeps its own pyproject.toml (its own
+  version and release cadence, so a LangChain-callback bump ships without a core
+  release), and the umbrella exposes thin extras — `agenttic[langgraph]` →
+  `agenttic-langgraph`, `agenttic[openai]` → `agenttic-openai-agents`,
+  `agenttic[all]` → both + `[otel]` — that just pull the matching adapter. This is
+  the standard "core + provider packages, sugar extras" pattern (cf.
+  apache-airflow[postgres]); the auto-detecting `trace()` lazy-imports an adapter
+  only when it meets a matching object, so the base install stays framework-free
+  (Hard Rule 37). The adapters depend on `agenttic` (which ships the internal
+  `ascore` package the SpanEmitter/enforcement live in); this creates a benign
+  extras cycle (agenttic[langgraph] → agenttic-langgraph → agenttic) that pip
+  resolves without issue.
+- T40.2 DEVIATION (distribution rename): the single repo distribution was renamed
+  `ascore` → `agenttic` so `pip install .` yields the public `import agenttic`.
+  One wheel ships two importable packages — public `agenttic` + internal `ascore`
+  — one version for both. The `ascore` console-script and importable package are
+  retained for back-compat; `agenttic` is added as the primary command. Version
+  discovery (server health) now tries `agenttic` then `ascore`.
