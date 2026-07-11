@@ -42,6 +42,19 @@ jobs:
       - name: Dependency vulnerability scan
         run: pip install pip-audit && pip-audit || true   # advisory; doesn't fail the build yet
 
+  quickstart:
+    # SPEC-8 T43.2 — the finish-line promise, unattended: a fresh venv can
+    # pip install agenttic and get a signed grade (init → certify --mock →
+    # verify) in under a minute. No API key, no manual steps.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fresh-venv quickstart (install → init → certify → verify)
+        run: bash scripts/quickstart_check.sh
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
