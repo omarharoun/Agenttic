@@ -4,6 +4,7 @@ import { ApiDocsPage } from "./pages/ApiDocsPage";
 import { CertifiedDirectoryPage } from "./pages/CertifiedDirectoryPage";
 import { LandingPage } from "./pages/LandingPage";
 import { MethodologyPage } from "./pages/MethodologyPage";
+import { PricingPage } from "./pages/PricingPage";
 import { StatusPage } from "./pages/StatusPage";
 
 /* The public content routes below are imported eagerly because they are emitted
@@ -50,6 +51,8 @@ export const routes: RouteRecord[] = [
   { path: "/verify", element: suspense(<VerifyPage />) },
   { path: "/api-docs", element: <ApiDocsPage />, entry: "src/pages/ApiDocsPage.tsx" },
   { path: "/methodology", element: <MethodologyPage />, entry: "src/pages/MethodologyPage.tsx" },
+  // public pricing — plans + free-credits offer (prerendered, hydrates live)
+  { path: "/pricing", element: <PricingPage />, entry: "src/pages/PricingPage.tsx" },
   // public service-status board — Agenttic's own uptime (prerendered shell, live-polled)
   { path: "/status", element: <StatusPage />, entry: "src/pages/StatusPage.tsx" },
   // public certification brand surfaces
