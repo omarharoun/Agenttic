@@ -2704,7 +2704,23 @@ a.btn-primary, button.btn-primary,
   color: var(--text); border-top-left-radius: 4px; }
 .cp-bubble.user { background: var(--accent-soft); border: 1px solid var(--accent-line);
   color: var(--text); border-top-right-radius: 4px; white-space: pre-wrap; }
-.cp-bubble.error { color: var(--bad, var(--warn)); border-color: var(--bad-border, var(--border)); }
+/* styled inline error card — honest per-case error state (light + dark) */
+.cp-error { display: flex; gap: 9px; align-items: flex-start;
+  border: 1px solid var(--wait-border); background: var(--wait-soft);
+  border-radius: var(--r-lg); padding: 10px 12px; border-top-left-radius: 4px; }
+.cp-error.credits { border-color: var(--accent-line); background: var(--accent-soft); }
+.cp-error-ic { flex: none; font-size: 14px; line-height: 1.5; color: var(--wait); }
+.cp-error.credits .cp-error-ic { color: var(--accent); }
+.cp-error-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cp-error-title { margin: 0; font: 600 12.5px/1.3 var(--font-ui); color: var(--text); }
+.cp-error-msg { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); overflow-wrap: anywhere; }
+.cp-error-btn { align-self: flex-start; margin-top: 2px; font: 600 12px/1 var(--font-ui);
+  padding: 6px 12px; border-radius: var(--r-pill); border: 1px solid var(--border);
+  background: var(--field); color: var(--text); cursor: pointer; }
+.cp-error-btn:hover:not(:disabled) { border-color: var(--accent-line); color: var(--accent); }
+.cp-error-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.cp-error-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.cp-error-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-ink); }
 
 /* markdown inside assistant bubbles */
 .cp-bubble .cp-p { margin: 0 0 8px; }
