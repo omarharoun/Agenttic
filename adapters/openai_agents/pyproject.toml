@@ -3,10 +3,11 @@ name = "agenttic-openai-agents"
 version = "0.1.0"
 description = "Trace an OpenAI Agents SDK agent onto the Agenttic OTel-GenAI bus (public RunHooks only)."
 requires-python = ">=3.12"
-# Thin adapter: the span builder + optional enforcement guard live in `ascore`;
+# Thin adapter: the span builder + optional enforcement guard live in the
+# `agenttic` umbrella distribution (which ships the internal ascore package);
 # the OpenAI Agents SDK provides the public RunHooks lifecycle. The SDK is a peer
 # dependency of the user's app.
-dependencies = ["ascore", "openai-agents>=0.0.1"]
+dependencies = ["agenttic", "openai-agents>=0.0.1"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
