@@ -125,8 +125,20 @@ class TestExecutionLifecycle:
         assert sc["task_success_rate"] == pytest.approx(0.8)
         cards = client.get("/api/scorecards").json()
         assert cards[0]["scorecard_id"] == sc["scorecard_id"]
+        # The per-row "report" button on the Scorecards table opens this route
+        # in-app; it must return 200 text (a non-2xx would be swallowed client-side).
         report = client.get(f"/api/scorecards/{sc['scorecard_id']}/report")
+        assert report.status_code == 200
+        assert report.headers["content-type"].startswith("text/plain")
         assert "Executive summary" in report.text
+        assert report.text.strip()
+        # The sibling "PDF" button hits a distinct route; both must resolve so
+        # the two buttons never collide on the same path.
+        pdf = client.get(f"/api/scorecards/{sc['scorecard_id']}/report.pdf")
+        assert pdf.status_code == 200
+        assert pdf.headers["content-type"] == "application/pdf"
+        # A missing scorecard is a clean 404, not a 500.
+        assert client.get("/api/scorecards/nope/report").status_code == 404
         traces = client.get("/api/traces?agent_id=ref-agent").json()
         assert len(traces) == 10
         full = client.get(f"/api/traces/{traces[0]['trace_id']}").json()
