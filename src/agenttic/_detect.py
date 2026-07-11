@@ -40,13 +40,62 @@ _GUIDANCE_LOGGED = False
 
 
 # --- target resolution / no-phone-home guidance (Hard Rule 38) -------------
-def _resolve_target(target: str | None) -> str | None:
-    """Where spans go. Explicit arg wins, then the env; None => don't emit."""
+def _config_get(cfg: Any, *keys: str) -> Any:
+    """Read cfg['distribution'][key] from a passed dict, else from the config
+    file named by AGENTTIC_CONFIG, else None. Never raises."""
+    for key in keys:
+        if isinstance(cfg, dict):
+            val = (cfg.get("distribution") or {}).get(key)
+            if val:
+                return val
+    path = os.environ.get("AGENTTIC_CONFIG")
+    if path and os.path.exists(path):
+        try:
+            from ascore.config import load_config
+            dist = (load_config(path).get("distribution") or {})
+            for key in keys:
+                if dist.get(key):
+                    return dist[key]
+        except Exception:  # noqa: BLE001 — config is best-effort for the library
+            return None
+    return None
+
+
+def _resolve_target(target: str | None, cfg: Any = None) -> str | None:
+    """Where spans go, in priority order: explicit ``target`` arg → the
+    AGENTTIC_TARGET / OTEL_EXPORTER_OTLP_ENDPOINT env vars → the ``distribution.
+    target`` config key (dict or AGENTTIC_CONFIG file). None => don't emit."""
     if target:
         return target
-    return (os.environ.get("AGENTTIC_TARGET")
-            or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
-            or None)
+    env = (os.environ.get("AGENTTIC_TARGET")
+           or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"))
+    if env:
+        return env
+    return _config_get(cfg, "target")
+
+
+# Non-blocking postures only — blocking ones (enforce_reads/enforce_all) must be
+# ramped up deliberately server-side, never turned on by a library flag (Rules
+# 31, 35). build_enforce_guard rejects a blocking posture loudly; we surface the
+# same contract here so `trace(enforce=...)` fails fast with a clear message.
+_NON_BLOCKING_POSTURES = {"observe", "shadow"}
+
+
+def _resolve_enforce(enforce: Any, cfg: Any = None) -> Any:
+    """Resolve the opt-in enforce posture. ``False`` → off. ``True`` → the
+    configured ``distribution.enforce_posture`` (default ``shadow``). An explicit
+    string is validated as non-blocking. Returns the posture string, or False."""
+    if not enforce:
+        return False
+    posture = (_config_get(cfg, "enforce_posture") or "shadow") \
+        if enforce is True else str(enforce)
+    if posture not in _NON_BLOCKING_POSTURES:
+        raise ValueError(
+            f"agenttic.trace: enforce posture {posture!r} is blocking; the "
+            "library only permits non-blocking postures "
+            f"({', '.join(sorted(_NON_BLOCKING_POSTURES))}). Ramp up blocking "
+            "enforcement deliberately via the gateway, not a library flag.")
+    return posture
 
 
 def _guidance_once() -> None:
@@ -115,7 +164,11 @@ def trace(agent: Any, *, target: str | None = None, enforce: Any = False,
     logged no-op that never phones home. ``enforce=True`` routes tool calls
     through the SPEC-4 gateway at the ramp's non-blocking default posture (opt-in
     only). ``sink`` captures the OTLP payload in-process (tests / air-gapped)."""
-    endpoint = _resolve_target(target)
+    endpoint = _resolve_target(target, cfg)
+    enforce = _resolve_enforce(enforce, cfg)
+    if enforce:
+        log.debug("agenttic.trace: enforce posture = %s (non-blocking, opt-in)",
+                  enforce)
     if endpoint is None and sink is None:
         _guidance_once()
 
