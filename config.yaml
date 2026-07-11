@@ -131,6 +131,24 @@ copilot:
   daily_message_cap_per_user: 50    # messages / tenant / day
   daily_message_cap_global: 300     # messages / server / day
 
+# Abuse ceilings on the OTHER cost-bearing endpoints (demo scans, certification
+# starts) + a signup throttle. Same shape as the copilot caps: a per-IP and a
+# per-tenant per-minute limiter plus a server-wide daily ceiling, so no single
+# actor — and not the whole traffic — can run up spend or farm accounts. Every
+# knob is 0 = OFF here (dev); config.prod.yaml turns them on. Fails closed with
+# an honest 429. State is per-process/in-memory (use a shared store multi-worker).
+abuse:
+  scan:                             # POST /api/scan (demo scan spends the tenant key)
+    per_ip_per_minute: 0            # 0 = off
+    per_tenant_per_minute: 0
+    global_per_day: 0               # server-wide ceiling across all tenants
+  certify:                          # POST /api/certify (starts a cost-bearing run)
+    per_ip_per_minute: 0
+    per_tenant_per_minute: 0
+    global_per_day: 0
+  signup:                           # POST /auth/signup (account/tenant farming)
+    per_ip_per_hour: 0              # cap new accounts per IP per hour
+
 # ------------------------------------------------------------------------- #
 # BILLING — platform fee + FREE CREDITS to try the tests & chat, then paid
 # usage/subscription. Credits are integer units and 1 credit == 1 US cent, so

@@ -15,6 +15,7 @@ import time
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel
 
+from ascore.server.abuse import guard_signup
 from ascore.server.auth import CSRF_COOKIE, SESSION_COOKIE
 from ascore.server.users import DuplicateUserError, UserStore
 from ascore.server.verification import VerificationStore, send_verification
@@ -91,6 +92,9 @@ def signup(creds: Credentials, request: Request, response: Response):
     cfg = _cfg(request)
     if not (cfg.get("auth", {}) or {}).get("allow_signup", False):
         raise HTTPException(403, "signup is disabled")
+    # Abuse throttle: bound new-account creation per IP so tenants (and their
+    # fresh per-tenant budgets / verification emails) can't be farmed.
+    guard_signup(request)
     role = str((cfg.get("auth", {}) or {}).get("signup_role", "admin"))
     tenant = _new_tenant_slug(creds.email)  # each signup gets its own workspace
     require_verify = _require_verification(cfg)
