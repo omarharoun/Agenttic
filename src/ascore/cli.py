@@ -1166,6 +1166,36 @@ def incidents_export(
 
 
 @app.command()
+def init(
+    directory: str = typer.Argument(".", help="target directory (default: current)"),
+    target: str = typer.Option("", "--target",
+                               help="where traces go (e.g. https://your-agenttic/v1/traces); "
+                                    "blank => offline quickstart"),
+    force: bool = typer.Option(False, "--force", help="overwrite existing files"),
+):
+    """Scaffold a runnable quickstart (config + reference KB + sample + steps).
+
+    In an empty directory this yields a working setup that certifies the built-in
+    reference agent with no further edits and no API key:
+
+        agenttic init
+        agenttic certify --mock
+    """
+    from ascore.release.scaffold import scaffold
+    res = scaffold(directory, target=target, force=force)
+    for name in res["written"]:
+        console.print(f"[green]created[/] {name}")
+    for name in res["skipped"]:
+        console.print(f"[yellow]exists, skipped[/] {name} [dim](use --force to overwrite)[/]")
+    console.print(f"\n[bold]Scaffolded[/] {res['dest']}")
+    console.print("Next — get a signed grade in under a minute (no API key):")
+    console.print("  [cyan]agenttic certify --mock --out dossier.json[/]")
+    console.print("  [cyan]agenttic dossier verify dossier.json[/]")
+    console.print("Then trace your own agent — see [bold]agent_sample.py[/] and "
+                  "[bold]QUICKSTART.md[/].")
+
+
+@app.command()
 def certify(
     agent: str = typer.Option("ref-agent", "--agent", "-a", help="agent id (label)"),
     profile: str = typer.Option("cert-agent-safety-v1", "--profile", "-p",
