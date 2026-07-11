@@ -13,6 +13,7 @@ I use what." This index annotates every doc and how they relate.
 | [../CAPABILITIES.md](../CAPABILITIES.md) | Capability summary + decision guide ("which workflow do I run") + changelog of major capabilities | You know the product and need to pick the right tool |
 | [../SPEC.md](../SPEC.md) | The 10-step build spec the repo implements, with acceptance criteria | You want to know what "done" means per step |
 | [CONNECT.md](CONNECT.md) | The "Connect your agent" model: the safe HTTP/webhook contract, request/response mapping + presets (OpenAI-compatible / generic / custom), the safety guards (SSRF, consent, encrypted secret, gentle traffic), and the API | You're wiring a live agent up to be safety-scanned |
+| [integrations/](integrations/README.md) | Zero-touch OTel: point an existing exporter (CrewAI, LangGraph, LlamaIndex, OpenAI Agents, generic OTLP) at Agenttic's `/v1/traces` — copy-paste config + honest captured-vs-not per framework, verified by `agenttic doctor` | You already emit OpenTelemetry and want traces in Agenttic with no code change |
 
 ## Evaluation methodology
 
