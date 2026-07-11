@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { SiteNav } from "../components/SiteNav";
 import { AssistantChat } from "../components/AssistantChat";
 import { Seal, SealMark } from "../components/Seal";
 import { useAssistantCert } from "../useAssistantCert";
@@ -17,16 +18,7 @@ export function AssistantPage() {
   const asstCert = useAssistantCert();
   return (
     <>
-      <header>
-        <nav className="lp-nav">
-          <Link to="/" className="brand"><span className="hex">⬡</span> Agenttic</Link>
-          <span className="spacer" />
-          <Link className="navlink" to="/scan">Scan my agent</Link>
-          <Link className="navlink" to="/certified">Certified agents</Link>
-          <Link className="navlink" to="/methodology">Methodology</Link>
-          <Link className="navlink" to="/login">Log in</Link>
-        </nav>
-      </header>
+      <SiteNav />
 
       <main className="lp asst-page">
         <section className="asst-intro">
