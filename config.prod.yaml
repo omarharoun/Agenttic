@@ -52,6 +52,12 @@ observability:
   log_level: INFO
   log_json: true
   otel_enabled: false                     # set true + OTEL_EXPORTER_OTLP_ENDPOINT to export traces
+
+# SPEC-8 distribution surface: defaults for agenttic.trace / @instrument.
+# No target => wrapping is a logged no-op, never a silent phone-home (Rule 38).
+distribution:
+  target: ""                              # https://your-agenttic/v1/traces
+  enforce_posture: shadow                 # observe|shadow (non-blocking only) when enforce=True
 anthropic:
   retry: {max_attempts: 5, base_delay: 0.5, max_delay: 30.0, jitter: true}
 database:
