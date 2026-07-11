@@ -33,9 +33,10 @@ Public surface (exactly ``__all__``; a test fails if anything else leaks):
 * :func:`verify`     — recompute a dossier's hashes offline (signed-grade check)
 * :class:`Trace`, :class:`Span` — the canonical run type the pipeline consumes
 """
-from __future__ import annotations
-
-from typing import Any
+# NB: no ``from __future__ import annotations`` — it would bind the name
+# ``annotations`` into this namespace and leak it past the public-surface test.
+# Aliased private so it never leaks into the public surface (Hard Rule 36).
+from typing import Any as _Any
 
 # Version: the umbrella tracks the core version exactly (SPEC-8 Step 40).
 from ascore import __version__ as __version__
@@ -66,7 +67,7 @@ __all__ = [
 # (Hard Rule 37) and so the umbrella imports cleanly regardless of which extras
 # are present. The lazy import is per-call and cheap.
 # ---------------------------------------------------------------------------
-def trace(agent: Any, *args: Any, **kwargs: Any) -> Any:
+def trace(agent: _Any, *args: _Any, **kwargs: _Any) -> _Any:
     """Wrap any agent so its runs emit a canonical Agenttic run.
 
     Auto-detects the framework from the object's public shape and dispatches to
@@ -89,7 +90,7 @@ def trace(agent: Any, *args: Any, **kwargs: Any) -> Any:
     return _impl(agent, *args, **kwargs)
 
 
-def instrument(*args: Any, **kwargs: Any) -> Any:
+def instrument(*args: _Any, **kwargs: _Any) -> _Any:
     """Decorate a custom ``query -> response`` function to emit a canonical run.
 
         from agenttic import instrument
@@ -108,7 +109,7 @@ def instrument(*args: Any, **kwargs: Any) -> Any:
     return _impl(*args, **kwargs)
 
 
-def session(*args: Any, **kwargs: Any) -> Any:
+def session(*args: _Any, **kwargs: _Any) -> _Any:
     """Context-manager form of :func:`instrument` for code that isn't a single
     function::
 
