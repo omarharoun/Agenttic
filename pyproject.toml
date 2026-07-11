@@ -7,6 +7,7 @@
 name = "agenttic"
 version = "0.8.0"
 description = "Agenttic — certify, trace and enforce AI agents. One install, one import, a signed safety grade."
+readme = "README.md"                    # rendered as the PyPI long description
 requires-python = ">=3.12"   # uses 3.12-only syntax (PEP 701 f-strings); CI runs 3.12
 dependencies = [
     "pydantic>=2.7",
