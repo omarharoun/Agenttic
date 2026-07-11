@@ -35,6 +35,11 @@ DEFAULT_MODEL = "claude-sonnet-4-6"
 MAX_USER_CHARS = 6000          # per user message; longer is truncated
 MAX_HISTORY_MESSAGES = 20      # trailing turns kept (user+assistant)
 MAX_OUTPUT_TOKENS = 1024       # hard cap on a single answer
+# STOPGAP spend caps (in-memory daily message counters; see credits.py). These
+# defaults apply even when the deployed config omits a ``copilot`` block, so the
+# free-preview Copilot is bounded out of the box. 0/absent disables a cap.
+DAILY_CAP_PER_USER = 50        # messages / tenant / UTC day
+DAILY_CAP_GLOBAL = 300         # messages / server / UTC day
 
 
 class CopilotNotConfigured(RuntimeError):
@@ -47,6 +52,8 @@ class CopilotConfig:
     max_user_chars: int = MAX_USER_CHARS
     max_history_messages: int = MAX_HISTORY_MESSAGES
     max_output_tokens: int = MAX_OUTPUT_TOKENS
+    daily_cap_per_user: int = DAILY_CAP_PER_USER
+    daily_cap_global: int = DAILY_CAP_GLOBAL
 
     @classmethod
     def from_cfg(cls, cfg: dict | None) -> "CopilotConfig":
@@ -57,6 +64,8 @@ class CopilotConfig:
             max_user_chars=int(c.get("max_user_chars", MAX_USER_CHARS)),
             max_history_messages=int(c.get("max_history_messages", MAX_HISTORY_MESSAGES)),
             max_output_tokens=int(c.get("max_output_tokens", MAX_OUTPUT_TOKENS)),
+            daily_cap_per_user=int(c.get("daily_message_cap_per_user", DAILY_CAP_PER_USER)),
+            daily_cap_global=int(c.get("daily_message_cap_global", DAILY_CAP_GLOBAL)),
         )
 
 

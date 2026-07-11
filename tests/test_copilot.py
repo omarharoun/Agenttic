@@ -183,7 +183,7 @@ harness: {timeout_seconds: 10, max_parallel: 5, transport_retries: 1, max_steps:
 scoring: {calibration_threshold: 0.8}
 paths: {registry_db: %(db)s, review_dir: %(r)s, calibration_dir: %(c)s}
 auth: {token: "adm", required: true, allow_signup: false, session_secret: testsecret}
-copilot: {model: claude-sonnet-4-6, rate_limit_per_minute: %(rl)s}
+copilot: {model: claude-sonnet-4-6, rate_limit_per_minute: %(rl)s, daily_message_cap_per_user: %(cap)s, daily_message_cap_global: %(gcap)s}
 certification: {profiles: {cert-agent-safety-v1: {required_domains: [harm_refusal], thresholds: {}}}}
 """
 
@@ -192,14 +192,16 @@ def _adm():
     return {"Authorization": "Bearer adm"}
 
 
-def _mk_app(tmp_path, turns, rl=50):
+def _mk_app(tmp_path, turns, rl=50, cap=1000, gcap=1000):
     cfg = tmp_path / "config.yaml"
     cfg.write_text(CONFIG_YAML % {"db": tmp_path / "c.db", "r": tmp_path / "r",
-                                  "c": tmp_path / "cal", "rl": rl})
+                                  "c": tmp_path / "cal", "rl": rl, "cap": cap,
+                                  "gcap": gcap})
     reg = Registry(tmp_path / "c.db")
     fake = FakeClient(turns)
     app = create_app(str(cfg), registry=reg, clients={"copilot": fake})
     copilot_route._RL._hits.clear()
+    credits.reset_daily_cap()
     return app, fake
 
 
@@ -363,6 +365,30 @@ class TestAgentEndpoint:
             r = c.post("/api/copilot/chat", headers=_adm(), json={"message": "hi"})
         assert r.status_code == 402
 
+    def test_daily_cap_trips_with_402(self, tmp_path):
+        # stopgap spend cap: a per-tenant/day message cap of 2 — the 3rd chat is
+        # refused with the credits 402 path (an honest "daily limit" message) and
+        # never reaches the model (only 2 scripted turns exist).
+        app, _ = _mk_app(tmp_path, [turn_text("hi"), turn_text("hi")], cap=2)
+        with TestClient(app) as c:
+            body = {"message": "hi"}
+            codes = [c.post("/api/copilot/chat", headers=_adm(), json=body).status_code
+                     for _ in range(3)]
+            r = c.post("/api/copilot/chat", headers=_adm(), json=body)
+        assert codes == [200, 200, 402]
+        assert "limit" in r.json()["detail"].lower()
+
+    def test_global_daily_cap_trips_with_402(self, tmp_path):
+        # the global/day cap bounds total spend across all tenants independently.
+        app, _ = _mk_app(tmp_path, [turn_text("hi")], gcap=1)
+        with TestClient(app) as c:
+            body = {"message": "hi"}
+            first = c.post("/api/copilot/chat", headers=_adm(), json=body).status_code
+            second = c.post("/api/copilot/chat", headers=_adm(), json=body)
+        assert first == 200
+        assert second.status_code == 402
+        assert "everyone" in second.json()["detail"].lower()
+
     def test_usage_recorded(self, tmp_path, monkeypatch):
         seen = []
         class Cap(credits.CreditsProvider):
@@ -378,7 +404,8 @@ class TestAgentEndpoint:
         monkeypatch.delenv("COPILOT_ANTHROPIC_KEY", raising=False)
         cfg = tmp_path / "config.yaml"
         cfg.write_text(CONFIG_YAML % {"db": tmp_path / "n.db", "r": tmp_path / "r",
-                                      "c": tmp_path / "cal", "rl": 50})
+                                      "c": tmp_path / "cal", "rl": 50,
+                                      "cap": 1000, "gcap": 1000})
         reg = Registry(tmp_path / "n.db")
         app = create_app(str(cfg), registry=reg)   # NO injected client
         copilot_route._RL._hits.clear()
