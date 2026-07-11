@@ -565,12 +565,43 @@ button.approve { background: var(--wait); border-color: var(--wait); color: var(
   text-transform: uppercase; letter-spacing: 0.06em;
 }
 .cfg label small, .side-panel label small { text-transform: none; letter-spacing: 0; color: var(--muted); }
-input, select, textarea {
-  font-family: var(--font-ui); font-size: 13.5px; color: var(--text);
-  background: var(--field); border: 1px solid var(--border); border-radius: var(--r-sm);
-  padding: var(--sp-2) 10px;
+/* ============================================================================
+   Form controls — one rounded, integrated look for every text input, select
+   and textarea, app-wide. Restyled at the base element so pages inherit it
+   without per-page overrides. Shares the buttons' border/focus/gilt language;
+   uses the card radius so fields sit cleanly inside panels. Both themes covered
+   by the tokens (surface = --field, border = --border, ink = --text). Excludes
+   checkboxes/radios/ranges, which keep their native affordances.
+   ========================================================================== */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select, textarea {
+  font-family: var(--font-ui); font-size: 14px; line-height: 1.5; color: var(--text);
+  background: var(--field); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 9px 12px; min-height: 38px;
+  transition: border-color var(--dur-fast) var(--ease-escape),
+              box-shadow var(--dur-fast) var(--ease-escape),
+              background var(--dur-fast) var(--ease-escape);
 }
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
+input::placeholder, textarea::placeholder { color: var(--faint); opacity: 1; }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):hover,
+select:hover, textarea:hover { border-color: var(--border-strong); }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+select:focus, textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: var(--ring); background: var(--field);
+}
+input:disabled, select:disabled, textarea:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* selects — custom gilt-neutral chevron, rounded + padded to match inputs */
+select {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  padding-right: 34px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%2399A0A7' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+}
+html[data-theme="light"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23565B60' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
+}
+
 .cfg input, .cfg select, .cfg textarea,
 .side-panel input, .side-panel select, .side-panel textarea { width: 100%; }
 .cfg textarea, .side-panel textarea { min-height: 110px; resize: vertical; line-height: 1.5; }
@@ -1734,7 +1765,7 @@ table.data tbody tr { transition: background 0.1s; }
 .scan-input-row { display: flex; gap: var(--sp-3); }
 .scan-input-row input {
   flex: 1; min-width: 0; font-size: var(--t-lg); padding: 13px 15px;
-  border-radius: var(--r-md); background: var(--field);
+  border-radius: var(--r-lg); background: var(--field);
 }
 .scan-go { white-space: nowrap; padding: 13px 22px; font-size: var(--t-base); }
 
@@ -1772,7 +1803,7 @@ table.data tbody tr { transition: background 0.1s; }
 }
 .connect-input {
   width: 100%; margin-bottom: var(--sp-2); padding: 11px 13px;
-  border-radius: var(--r-md); background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--r-lg); background: var(--panel); border: 1px solid var(--border);
   font-size: var(--t-base);
 }
 .connect-actions { margin-top: var(--sp-4); display: flex; gap: var(--sp-3); }
