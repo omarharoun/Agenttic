@@ -1,12 +1,16 @@
 /* ============================================================================
    The intake interview — the seamless front door to certification.
 
-   One surface, two halves that are really one machine: a conversation on the
-   left (Agenttic asks one question at a time; you answer with a chip or free
-   text) and the certification profile on the right. Every answer writes onto
-   the profile — dimensions gain FOCUS marks, the profile sentence composes —
-   and when the last answer (your endpoint) lands, the SAME panel becomes the
-   live scan readout: rows flip from FOCUS to pending to pass/fail and the
+   Shaped like a coding-agent session: the transcript scrolls on top, and every
+   answer happens in ONE fixed prompt box at the bottom — a numbered option
+   list you can drive with ↑/↓, enter, or the number keys (space toggles in
+   multi-select), plus a `›` free-text prompt line. The answer UI never moves;
+   only the question above it changes.
+
+   Beside the chat, the certification profile panel: every answer writes onto
+   it (FOCUS marks accrue on the five quick-scan dimensions, the profile
+   sentence composes), and when the endpoint lands the SAME panel becomes the
+   live scan readout — rows flip from FOCUS to pending to pass/fail and the
    grade stamps in place. No wizard chrome, no page switch.
 
    Honesty note, by construction: the quick scan always runs every dimension
@@ -20,7 +24,7 @@
    ========================================================================== */
 
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, type ScanCheck, type ScanJob, type ScanPreview } from "../api";
 import { badgeUrl, certUrl, gradeColor } from "../cert";
 import { Seal } from "./Seal";
@@ -183,26 +187,57 @@ function ProfilePanel({ dims, answers, job, phase }: {
   );
 }
 
+/* ---- the prompt box (the session's one fixed answer surface) -------------- */
+
+interface PromptOption { key: string; label: string; on?: boolean }
+
+/** A numbered, keyboard-driven option list — the coding-session select menu.
+ *  `sel` is the highlighted row; clicking or Enter picks; in multi mode the
+ *  parent toggles on pick and confirms separately. */
+function OptionList({ opts, sel, multi, onHover, onPick }: {
+  opts: PromptOption[]; sel: number; multi?: boolean;
+  onHover: (i: number) => void; onPick: (i: number) => void;
+}) {
+  return (
+    <div className="cvp-opts" role="listbox" aria-multiselectable={multi || undefined}>
+      {opts.map((o, i) => (
+        <button key={o.key} type="button" role="option" aria-selected={i === sel}
+                className={`cvp-opt ${i === sel ? "sel" : ""} ${o.on ? "on" : ""}`}
+                onMouseEnter={() => onHover(i)} onClick={() => onPick(i)}>
+          <span className="cvp-caret">{i === sel ? "❯" : " "}</span>
+          <span className="cvp-num">{i + 1}.</span>
+          {multi && <span className="cvp-check">{o.on ? "◉" : "○"}</span>}
+          <span className="cvp-lab">{o.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /* ---- the conversation ----------------------------------------------------- */
 
 export function CertConversation() {
   const [params] = useSearchParams();
+  const nav = useNavigate();
   const [step, setStep] = useState<StepId>("does");
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [thinking, setThinking] = useState(false);
   const [answers, setAnswers] = useState<Answers>({ touch: [] });
-  const [doesText, setDoesText] = useState("");
-  const [url, setUrl] = useState("");
-  const [agentName, setAgentName] = useState("");
+  const [text, setText] = useState("");           // the prompt line (free text / URL)
+  const [sel, setSel] = useState(0);              // highlighted option row
+  const [agentName] = useState("");
   const [showAuth, setShowAuth] = useState(false);
   const [headerName, setHeaderName] = useState("Authorization");
   const [headerValue, setHeaderValue] = useState("");
   const [dims, setDims] = useState(FALLBACK_DIMS);
   const [job, setJob] = useState<ScanJob | null>(null);
   const [needAuth, setNeedAuth] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [err, setErr] = useState("");
   const timer = useRef<number | undefined>(undefined);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const promptRef = useRef<HTMLDivElement | null>(null);
   const booted = useRef(false);
 
   /** Append an Agenttic turn with a brief "typing" beat (skipped for reduced motion). */
@@ -229,7 +264,7 @@ export function CertConversation() {
     if (saved) {
       sessionStorage.removeItem(STORE_KEY);
       setAnswers(saved.answers);
-      setUrl(saved.url); setAgentName(saved.agentName);
+      setText(saved.url);
       setHeaderName(saved.headerName); setHeaderValue(saved.headerValue);
       setMsgs([
         { from: "a", text: "Welcome back — I kept your answers. Picking up right where we left off." },
@@ -258,25 +293,32 @@ export function CertConversation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // keep the newest turn in view
+  // keep the newest turn in view; reset highlight + refocus the prompt per step
   useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [msgs, thinking, step]);
+  useEffect(() => { setSel(0); setText((t) => (step === "target" ? t : "")); }, [step]);
+  // Focus the answer surface whenever the prompt box is on screen. The box only
+  // renders once the typing beat ends, and the no-input steps (touch/fear/done)
+  // have no <input> — so focus the prompt box itself (tabIndex -1) to keep the
+  // keyboard driving (↑↓/space/number/enter). Without this, focus falls to
+  // <body> after a step change and the key handler never fires.
+  useEffect(() => {
+    if (thinking || step === "run") return;
+    (inputRef.current ?? promptRef.current)?.focus();
+  }, [step, thinking, needAuth]);
   useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
 
   /* ---- answer handlers ---- */
 
-  const pickDoes = (o: DoesOpt) => {
-    setAnswers((a) => ({ ...a, does: o.id })); you(o.said); setStep("touch");
-    say("Got it. What can it actually touch? Pick everything that applies.");
-  };
-  const submitDoesText = () => {
-    const t = doesText.trim(); if (!t) return;
-    setAnswers((a) => ({ ...a, doesText: t })); you(t); setStep("touch");
+  const advanceDoes = (o?: DoesOpt, free?: string) => {
+    if (o) { setAnswers((a) => ({ ...a, does: o.id })); you(o.said); }
+    else   { setAnswers((a) => ({ ...a, doesText: free })); you(free!); }
+    setStep("touch");
     say("Got it. What can it actually touch? Pick everything that applies.");
   };
 
   const toggleTouch = (id: string) =>
     setAnswers((a) => ({ ...a, touch: a.touch.includes(id) ? a.touch.filter((x) => x !== id) : [...a.touch, id] }));
-  const submitTouch = () => {
+  const confirmTouch = () => {
     const picked = TOUCH.filter((o) => answers.touch.includes(o.id));
     you(picked.length ? picked.map((o) => o.chip).join(", ") : "Nothing beyond chat.");
     setStep("fear");
@@ -290,7 +332,7 @@ export function CertConversation() {
       : "";
     say(f.note ? f.note : `Understood. ${focus}`, () => {
       setStep("target");
-      say("Last thing: where does your agent live? Paste its API endpoint, or run the demo agent.");
+      say("Last thing: where does your agent live? Paste its API endpoint — or pick the demo agent below.");
     });
   };
 
@@ -315,7 +357,7 @@ export function CertConversation() {
   };
 
   const startScan = (target: "endpoint" | "demo", restored?: SavedIntake) => {
-    const theUrl = (restored?.url ?? url).trim();
+    const theUrl = (restored?.url ?? text).trim();
     if (target === "endpoint" && !theUrl) { setErr("Paste your agent's endpoint URL first."); return; }
     setErr(""); setNeedAuth(false); setJob(null);
     you(target === "demo" ? "Run it on the demo agent." : theUrl);
@@ -351,128 +393,157 @@ export function CertConversation() {
   };
 
   const reset = () => {
-    setStep("does"); setJob(null); setErr(""); setNeedAuth(false);
-    setAnswers({ touch: [] }); setDoesText(""); setUrl("");
+    setStep("does"); setJob(null); setErr(""); setNeedAuth(false); setCopied(false);
+    setAnswers({ touch: [] }); setText("");
     setMsgs([{ from: "a", text: "Fresh interview. What does this agent do?" }]);
   };
 
-  /* ---- render ---- */
+  /* ---- the prompt box model: options + actions for the current step ------ */
 
   const crt = job?.certificate;
+  let opts: PromptOption[] = [];
+  let multi = false;
+  let placeholder = "";
+  let hint = "↑↓ select · enter answer · or just type";
+  if (step === "does") {
+    opts = DOES.map((o) => ({ key: o.id, label: o.chip }));
+    placeholder = "describe your agent in your own words…";
+  } else if (step === "touch") {
+    multi = true;
+    opts = TOUCH.map((o) => ({ key: o.id, label: o.chip, on: answers.touch.includes(o.id) }));
+    hint = "↑↓ select · space toggle · enter continue";
+  } else if (step === "fear") {
+    opts = FEARS.map((f) => ({ key: f.id, label: f.chip }));
+    hint = "↑↓ select · enter answer";
+  } else if (step === "target" && !needAuth) {
+    opts = [
+      { key: "demo", label: "Use the demo agent" },
+      { key: "auth", label: showAuth ? "Hide the auth header" : "Add an auth header", on: showAuth },
+    ];
+    placeholder = "https://your-agent.com/chat";
+    hint = "paste your endpoint and press enter · ↑↓ for options";
+  } else if (step === "target" && needAuth) {
+    opts = [
+      { key: "signup", label: "Create a free account" },
+      { key: "login",  label: "Log in" },
+    ];
+    hint = "↑↓ select · enter go — your answers are saved";
+  } else if (step === "done") {
+    opts = [
+      ...(crt ? [
+        { key: "cert",  label: "Open the certificate" },
+        { key: "badge", label: copied ? "Copied ✓ — README badge" : "Copy the README badge" },
+      ] : []),
+      { key: "again", label: "Scan another agent" },
+    ];
+    hint = "↑↓ select · enter run";
+  }
+
+  const pick = (i: number) => {
+    const o = opts[i]; if (!o) return;
+    if (step === "does") advanceDoes(DOES[i]);
+    else if (step === "touch") { toggleTouch(o.key); setSel(i); }
+    else if (step === "fear") pickFear(FEARS[i]);
+    else if (step === "target" && !needAuth) {
+      if (o.key === "demo") startScan("demo");
+      else setShowAuth((s) => !s);
+    }
+    else if (step === "target" && needAuth) nav(o.key === "signup" ? "/signup?next=/scan" : "/login?next=/scan");
+    else if (step === "done") {
+      if (o.key === "cert" && crt) nav(`/certified/${crt.cert_id}`);
+      else if (o.key === "badge" && crt) {
+        navigator.clipboard?.writeText(
+          `[![Tested with Agenttic](${badgeUrl(crt.cert_id)})](${certUrl(crt.cert_id)})`);
+        setCopied(true); window.setTimeout(() => setCopied(false), 1600);
+      }
+      else if (o.key === "again") reset();
+    }
+  };
+
+  const submitLine = () => {
+    const t = text.trim();
+    if (step === "does") { if (t) { advanceDoes(undefined, t); setText(""); } else pick(sel); }
+    else if (step === "touch") confirmTouch();
+    else if (step === "fear") pick(sel);
+    else if (step === "target" && !needAuth) { if (t) startScan("endpoint"); else pick(sel); }
+    else pick(sel);
+  };
+
+  const onKey = (e: React.KeyboardEvent) => {
+    if (thinking || step === "run") return;
+    const inInput = (e.target as HTMLElement).tagName === "INPUT";
+    const typing = inInput && text.length > 0;
+    if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(s + 1, opts.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
+    else if (e.key === "Enter") { e.preventDefault(); submitLine(); }
+    else if (e.key === " " && multi && !typing) { e.preventDefault(); pick(sel); }
+    else if (!typing && /^[1-9]$/.test(e.key)) {
+      const i = Number(e.key) - 1;
+      if (i < opts.length) { e.preventDefault(); setSel(i); pick(i); }
+    }
+  };
+
+  const hasLine = step === "does" || (step === "target" && !needAuth);
+
+  /* ---- render ---- */
+
   return (
     <div className={`convo step-${step}`}>
-      <div className="cv-chat" aria-live="polite">
-        <div className="cv-scroll">
+      <div className="cv-chat">
+        <div className="cv-scroll" aria-live="polite">
           {msgs.map((m, i) => (
             <div key={i} className={`cv-msg ${m.from === "a" ? "from-a" : "from-u"}`}>{m.text}</div>
           ))}
           {thinking && <div className="cv-msg from-a cv-typing" aria-label="Agenttic is typing"><i /><i /><i /></div>}
-
-          {/* the answer area renders as the next thing in the thread */}
-          {!thinking && step === "does" && (
-            <div className="cv-answer">
-              <div className="cv-chips">
-                {DOES.map((o) => (
-                  <button key={o.id} type="button" className="cv-chip" onClick={() => pickDoes(o)}>{o.chip}</button>
-                ))}
-              </div>
-              <form className="cv-freetext" onSubmit={(e) => { e.preventDefault(); submitDoesText(); }}>
-                <input value={doesText} onChange={(e) => setDoesText(e.target.value)}
-                       placeholder="or say it in your own words…" aria-label="Describe your agent" />
-                <button type="submit" className="cv-chip" disabled={!doesText.trim()}>Answer</button>
-              </form>
-            </div>
-          )}
-
-          {!thinking && step === "touch" && (
-            <div className="cv-answer">
-              <div className="cv-chips">
-                {TOUCH.map((o) => (
-                  <button key={o.id} type="button"
-                          className={`cv-chip multi ${answers.touch.includes(o.id) ? "on" : ""}`}
-                          aria-pressed={answers.touch.includes(o.id)}
-                          onClick={() => toggleTouch(o.id)}>{o.chip}</button>
-                ))}
-              </div>
-              <button type="button" className="cv-chip go" onClick={submitTouch}>
-                {answers.touch.length ? "That's everything →" : "Nothing beyond chat →"}
-              </button>
-            </div>
-          )}
-
-          {!thinking && step === "fear" && (
-            <div className="cv-chips cv-answer">
-              {FEARS.map((f) => (
-                <button key={f.id} type="button" className="cv-chip" onClick={() => pickFear(f)}>{f.chip}</button>
-              ))}
-            </div>
-          )}
-
-          {!thinking && step === "target" && !needAuth && (
-            <div className="cv-answer">
-              <form className="cv-freetext" onSubmit={(e) => { e.preventDefault(); startScan("endpoint"); }}>
-                <input type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value)}
-                       placeholder="https://your-agent.com/chat" aria-label="Your agent's API endpoint" />
-                <button type="submit" className="cv-chip go" disabled={!url.trim()}>Scan it</button>
-              </form>
-              <div className="cv-chips">
-                <button type="button" className="cv-chip" onClick={() => startScan("demo")}>Use the demo agent</button>
-                <button type="button" className="cv-chip quiet" onClick={() => setShowAuth((s) => !s)}
-                        aria-expanded={showAuth}>{showAuth ? "− auth header" : "+ auth header"}</button>
-              </div>
-              {showAuth && (
-                <div className="cv-authrow">
-                  <input value={headerName} onChange={(e) => setHeaderName(e.target.value)}
-                         placeholder="Authorization" aria-label="Header name" />
-                  <input type="password" value={headerValue} onChange={(e) => setHeaderValue(e.target.value)}
-                         placeholder="Bearer sk-…" aria-label="Header value" />
-                </div>
-              )}
-              {err && <p className="cv-err">{err}</p>}
-              <p className="cv-fine">
-                ~14 short safety probes, sent one at a time and graded. <b>No Anthropic key needed</b> —
-                your agent runs on your own infrastructure.
-              </p>
-            </div>
-          )}
-
-          {!thinking && step === "target" && needAuth && (
-            <div className="cv-answer cv-chips">
-              <Link className="cv-chip go" to="/signup?next=/scan">Create a free account</Link>
-              <Link className="cv-chip" to="/login?next=/scan">Log in</Link>
-            </div>
-          )}
-
-          {!thinking && step === "done" && job && (
-            <div className="cv-answer cv-wrap">
-              {crt ? (
-                <>
-                  <p className="cv-fine">
-                    Signed certificate minted — pinned to the exact agent version tested.
-                    This grade is a <b>quick scan</b> (a fast screen, not a full audit).
-                  </p>
-                  <div className="cv-chips">
-                    <Link className="cv-chip go" to={`/certified/${crt.cert_id}`}>Open the certificate</Link>
-                    <button type="button" className="cv-chip"
-                            onClick={() => navigator.clipboard?.writeText(
-                              `[![Tested with Agenttic](${badgeUrl(crt.cert_id)})](${certUrl(crt.cert_id)})`)}>
-                      Copy README badge
-                    </button>
-                    <button type="button" className="cv-chip quiet" onClick={reset}>Scan another agent</button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {job.cert_note && <p className="cv-fine">{job.cert_note}</p>}
-                  <div className="cv-chips">
-                    <button type="button" className="cv-chip quiet" onClick={reset}>Scan another agent</button>
-                  </div>
-                </>
-              )}
+          {step === "run" && !thinking && (
+            <div className="cv-msg from-a cv-runline">
+              <span className="cv-spin" /> {job?.phase || "Starting the scan…"}
             </div>
           )}
           <div ref={endRef} />
         </div>
+
+        {/* the ONE prompt box — every answer happens here, coding-session style */}
+        {step !== "run" && !thinking && (
+          <div className="cv-prompt" onKeyDown={onKey} ref={promptRef} tabIndex={-1}>
+            {opts.length > 0 && (
+              <OptionList opts={opts} sel={sel} multi={multi}
+                          onHover={setSel} onPick={pick} />
+            )}
+            {multi && (
+              <button type="button" className="cvp-continue" onClick={confirmTouch}>
+                {answers.touch.length ? "That's everything →" : "Nothing beyond chat →"}
+              </button>
+            )}
+            {hasLine && (
+              <div className="cvp-line">
+                <span className="cvp-mark">›</span>
+                <input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)}
+                       type={step === "target" ? "url" : "text"}
+                       inputMode={step === "target" ? "url" : "text"}
+                       placeholder={placeholder} aria-label={placeholder} autoComplete="off" />
+              </div>
+            )}
+            {step === "target" && !needAuth && showAuth && (
+              <div className="cv-authrow">
+                <input value={headerName} onChange={(e) => setHeaderName(e.target.value)}
+                       placeholder="Authorization" aria-label="Header name" />
+                <input type="password" value={headerValue} onChange={(e) => setHeaderValue(e.target.value)}
+                       placeholder="Bearer sk-…" aria-label="Header value" />
+              </div>
+            )}
+            {err && <p className="cv-err">{err}</p>}
+            <div className="cvp-hint">
+              <span>{hint}</span>
+              {step === "target" && !needAuth && (
+                <span className="cvp-fine">~14 probes · no Anthropic key needed</span>
+              )}
+              {step === "done" && crt && (
+                <span className="cvp-fine">quick scan — a fast screen, not a full audit</span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <ProfilePanel dims={dims} answers={answers} job={job} phase={step} />

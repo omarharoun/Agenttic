@@ -2998,24 +2998,26 @@ a.btn-primary, button.btn-primary,
 .faq p { color: var(--muted); font-size: var(--t-base); line-height: 1.6; margin: 0; }
 
 /* ============================================================================
-   The intake interview (/scan) — a conversation and the certification profile
-   it composes, side by side. The panel starts as the profile (FOCUS marks
-   accrue as answers land) and becomes the live scan readout without moving.
+   The intake interview (/scan) — a coding-agent session: transcript on top,
+   ONE fixed prompt box at the bottom (numbered options + a `›` prompt line,
+   keyboard-driven), and beside it the certification profile the answers
+   compose — which becomes the live scan readout without moving.
    ========================================================================== */
 .convo {
   display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--sp-5);
   width: 100%; max-width: 960px; margin: var(--sp-6) auto 0; text-align: left;
 }
 
-/* --- the chat --- */
+/* --- the session (transcript + prompt box) --- */
 .cv-chat {
   background: var(--card-bg); border: var(--card-border);
   border-radius: var(--r-xl); box-shadow: var(--card-shadow);
-  padding: var(--sp-5); min-height: 380px; display: flex;
+  padding: var(--sp-4); min-height: 420px;
+  display: flex; flex-direction: column; gap: var(--sp-3);
 }
 .cv-scroll {
   display: flex; flex-direction: column; gap: var(--sp-3);
-  width: 100%; max-height: 540px; overflow-y: auto; scrollbar-width: thin;
+  flex: 1; min-height: 200px; max-height: 380px; overflow-y: auto; scrollbar-width: thin;
 }
 .cv-msg {
   max-width: 88%; padding: 10px 14px; border-radius: var(--r-lg);
@@ -3036,35 +3038,65 @@ a.btn-primary, button.btn-primary,
 }
 .cv-typing i:nth-child(2) { animation-delay: 0.18s; }
 .cv-typing i:nth-child(3) { animation-delay: 0.36s; }
+.cv-runline { display: flex; align-items: center; gap: var(--sp-2); font-family: var(--font-mono); font-size: var(--t-sm); }
 
-/* --- the answer area (chips, free text) --- */
-.cv-answer { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-1); }
-.cv-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-.cv-chip {
-  appearance: none; display: inline-flex; align-items: center;
-  border: 1px solid var(--border-strong); background: var(--panel-2);
-  color: var(--text); border-radius: var(--r-pill); padding: 8px 14px;
-  font: 500 var(--t-sm)/1 var(--font-ui); cursor: pointer; text-decoration: none;
-  transition: border-color var(--dur-fast), background var(--dur-fast);
+/* --- the prompt box --- */
+.cv-prompt {
+  border: 1px solid var(--border-strong); border-radius: var(--r-lg);
+  background: var(--field); padding: var(--sp-2);
+  display: flex; flex-direction: column; gap: var(--sp-1);
+  font-family: var(--font-mono);
 }
-.cv-chip:hover { border-color: var(--accent-line); }
-.cv-chip:focus-visible { outline: none; box-shadow: var(--ring); }
-.cv-chip.on { background: var(--accent-soft); border-color: var(--accent-line); }
-.cv-chip.go { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
-.cv-chip.go:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-.cv-chip.quiet { background: transparent; border-color: var(--border); color: var(--muted); }
-.cv-chip:disabled { opacity: 0.45; cursor: default; }
-.cv-freetext, .cv-authrow { display: flex; gap: var(--sp-2); }
-.cv-freetext input, .cv-authrow input {
-  flex: 1; min-width: 0; background: var(--field);
-  border: 1px solid var(--border); border-radius: var(--r-md);
-  color: var(--text); padding: 9px 12px; font: 400 var(--t-base)/1.3 var(--font-ui);
+.cv-prompt:focus-within { border-color: var(--accent-line); }
+.cv-prompt:focus { outline: none; }   /* focused for keyboard nav (tabIndex -1); box highlights via :focus-within */
+.cvp-opts { display: flex; flex-direction: column; }
+.cvp-opt {
+  appearance: none; background: none; border: 0; cursor: pointer;
+  display: flex; align-items: center; gap: 8px; text-align: left;
+  padding: 6px 8px; border-radius: var(--r-sm);
+  font: 400 var(--t-sm)/1.3 var(--font-mono); color: var(--muted);
 }
-.cv-freetext input:focus-visible, .cv-authrow input:focus-visible {
-  outline: none; border-color: var(--accent-line); box-shadow: var(--ring);
+.cvp-opt.sel { background: var(--accent-soft); color: var(--text); }
+.cvp-opt:focus-visible { outline: none; box-shadow: var(--ring); }
+.cvp-caret { width: 1ch; color: var(--accent); flex: none; }
+.cvp-num { color: var(--faint); flex: none; }
+.cvp-opt.sel .cvp-num { color: var(--accent); }
+.cvp-check { color: var(--faint); flex: none; }
+.cvp-opt.on .cvp-check { color: var(--accent); }
+.cvp-lab { min-width: 0; }
+.cvp-continue {
+  appearance: none; align-self: flex-start; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink);
+  border: 1px solid var(--accent); border-radius: var(--r-sm);
+  padding: 6px 12px; margin: 2px 8px;
+  font: 600 var(--t-sm)/1 var(--font-mono);
 }
-.cv-err { color: var(--fail); font-size: var(--t-sm); margin: 0; }
-.cv-fine { color: var(--muted); font-size: var(--t-xs); line-height: 1.55; margin: 0; }
+.cvp-continue:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.cvp-line {
+  display: flex; align-items: center; gap: 8px;
+  border-top: 1px solid var(--border-soft); padding: 8px 8px 4px;
+}
+.cvp-mark { color: var(--accent); font-weight: 600; }
+.cvp-line input {
+  flex: 1; min-width: 0; background: transparent; border: 0; outline: none;
+  color: var(--text); font: 400 var(--t-base)/1.4 var(--font-mono);
+  caret-color: var(--accent);
+}
+.cvp-line input::placeholder { color: var(--faint); }
+.cvp-hint {
+  display: flex; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap;
+  padding: 4px 8px 2px; border-top: 1px solid var(--border-soft);
+  font: 400 10px/1.6 var(--font-mono); color: var(--faint); letter-spacing: 0.03em;
+}
+.cvp-fine { color: var(--faint); }
+.cv-authrow { display: flex; gap: var(--sp-2); padding: 4px 8px; }
+.cv-authrow input {
+  flex: 1; min-width: 0; background: var(--panel);
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  color: var(--text); padding: 7px 10px; font: 400 var(--t-sm)/1.3 var(--font-mono);
+}
+.cv-authrow input:focus-visible { outline: none; border-color: var(--accent-line); }
+.cv-err { color: var(--fail); font-size: var(--t-sm); margin: 0; padding: 2px 8px; font-family: var(--font-mono); }
 
 /* --- the profile panel / readout --- */
 .cv-panel {
@@ -3107,7 +3139,7 @@ a.btn-primary, button.btn-primary,
 .cv-warn { color: var(--wait); font-weight: 500; }
 .cv-fail { color: var(--fail); font-weight: 500; }
 .cv-spin {
-  width: 12px; height: 12px; border-radius: 50%; display: inline-block;
+  width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex: none;
   border: 2px solid var(--border-strong); border-top-color: var(--accent);
   animation: cv-rot 0.8s linear infinite;
 }
@@ -3139,7 +3171,7 @@ a.btn-primary, button.btn-primary,
 @media (max-width: 860px) {
   .convo { grid-template-columns: 1fr; }
   .cv-panel { position: static; }
-  .cv-scroll { max-height: 420px; }
+  .cv-scroll { max-height: 320px; }
 }
 
 /* --- landing hero: the interview's first question, answered in place --- */
