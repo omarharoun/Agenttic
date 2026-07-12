@@ -1,0 +1,148 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "llamaindex-agent"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "openinference.instrumentation.llama_index",
+            "version": "1"
+          },
+          "spans": [
+            {
+              "traceId": "000000000000000018c16cfa1ac0e4b3",
+              "spanId": "0000000000000001",
+              "parentSpanId": "",
+              "name": "chat openai",
+              "kind": 3,
+              "startTimeUnixNano": "1783826748861918190",
+              "endTimeUnixNano": "1783826748861918190",
+              "attributes": [
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "openai-model"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "42"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "12"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "name": "gen_ai.user.message",
+                  "timeUnixNano": "1783826748861909793",
+                  "attributes": [
+                    {
+                      "key": "content",
+                      "value": {
+                        "stringValue": "What is the refund policy?"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "gen_ai.assistant.message",
+                  "timeUnixNano": "1783826748861914539",
+                  "attributes": [
+                    {
+                      "key": "content",
+                      "value": {
+                        "stringValue": "Full refund within 30 days."
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "000000000000000018c16cfa1ac0e4b3",
+              "spanId": "0000000000000002",
+              "parentSpanId": "0000000000000001",
+              "name": "execute_tool knowledge_base",
+              "kind": 1,
+              "startTimeUnixNano": "1783826748861948815",
+              "endTimeUnixNano": "1783826748861948815",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "execute_tool"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.name",
+                  "value": {
+                    "stringValue": "knowledge_base"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "name": "gen_ai.tool.call",
+                  "timeUnixNano": "1783826748861943416",
+                  "attributes": [
+                    {
+                      "key": "arguments",
+                      "value": {
+                        "stringValue": "{\"query\": \"refund policy\"}"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "gen_ai.tool.message",
+                  "timeUnixNano": "1783826748861946072",
+                  "attributes": [
+                    {
+                      "key": "gen_ai.tool.message.content",
+                      "value": {
+                        "stringValue": "Full refund within 30 days."
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
