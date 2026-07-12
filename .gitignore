@@ -3,6 +3,10 @@ __pycache__/
 .venv/
 ascore.db
 report.md
+# build artifacts (scripts/release/pypi.sh writes here)
+dist/
+build/
+*.egg-info/
 # secrets & host-generated deploy artifacts — never commit
 .env
 docker-compose.override.yml
