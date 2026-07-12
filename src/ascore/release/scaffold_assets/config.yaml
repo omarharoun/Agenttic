@@ -22,7 +22,7 @@ live:
   drift_threshold: 0.15
   drift_window_runs: 50
 paths:
-  registry_db: ascore.db
+  registry_db: agenttic.db
   review_dir: review/
   calibration_dir: calibration/
 ui:
