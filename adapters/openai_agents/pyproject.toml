@@ -1,6 +1,6 @@
 [project]
 name = "agenttic-openai-agents"
-version = "0.1.0"
+version = "1.0.0"
 description = "Trace an OpenAI Agents SDK agent onto the Agenttic OTel-GenAI bus (public RunHooks only)."
 readme = "README.md"
 requires-python = ">=3.12"

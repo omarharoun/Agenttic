@@ -5,7 +5,7 @@
 # One distribution, one version; the umbrella tracks the core version exactly
 # (kept in lock-step with ascore.__version__, asserted by a test).
 name = "agenttic"
-version = "0.8.0"
+version = "1.0.0"
 description = "Agenttic — certify, trace and enforce AI agents. One install, one import, a signed safety grade."
 readme = "README.md"                    # rendered as the PyPI long description
 requires-python = ">=3.12"   # uses 3.12-only syntax (PEP 701 f-strings); CI runs 3.12
