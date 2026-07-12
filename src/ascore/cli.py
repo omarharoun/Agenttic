@@ -1196,6 +1196,58 @@ def init(
 
 
 @app.command()
+def doctor(
+    target: str = typer.Option("", "--target",
+                               help="ingest URL to probe (e.g. https://your-agenttic/v1/traces)"),
+    spans: str = typer.Option("", "--spans",
+                              help="a captured OTLP JSON file to validate offline"),
+    auth_header: str = typer.Option("", "--auth-header", help="Authorization header for the probe"),
+):
+    """Verify zero-touch OTel setup: confirm spans arrive at a target and/or that
+    a captured span stream parses into a canonical run."""
+    import json as _json
+
+    from ascore.ingest.doctor import diagnose_payload, probe_target
+    if not target and not spans:
+        raise typer.BadParameter("provide --target URL and/or --spans FILE")
+
+    failed = False
+
+    if spans:
+        try:
+            payload = _json.loads(Path(spans).read_text())
+        except Exception as e:  # noqa: BLE001
+            console.print(f"[red]FAIL[/] could not read {spans}: {e}")
+            raise typer.Exit(1)
+        rep = diagnose_payload(payload)
+        if rep["ok"]:
+            console.print(
+                f"[green]OK[/] parsed {rep['spans']} span(s) → {rep['traces']} "
+                f"trace(s): {rep['llm_calls']} llm_call, {rep['tool_calls']} "
+                f"tool_call, {rep['incomplete']} incomplete "
+                f"[dim](agents: {', '.join(rep['agents']) or '—'})[/]")
+        else:
+            console.print(f"[red]FAIL[/] span stream {spans}")
+        for p in rep["problems"]:
+            console.print(f"  • {p}")
+        failed |= not rep["ok"]
+
+    if target:
+        rep = probe_target(target, auth_header=auth_header or None)
+        if rep["ok"]:
+            console.print(f"[green]OK[/] {target} is reachable and parses OTLP "
+                          "spans — zero-touch setup is live.")
+        else:
+            console.print(f"[red]FAIL[/] probing {target}")
+        for p in rep["problems"]:
+            console.print(f"  • {p}")
+        failed |= not rep["ok"]
+
+    if failed:
+        raise typer.Exit(1)
+
+
+@app.command()
 def certify(
     agent: str = typer.Option("ref-agent", "--agent", "-a", help="agent id (label)"),
     profile: str = typer.Option("cert-agent-safety-v1", "--profile", "-p",
