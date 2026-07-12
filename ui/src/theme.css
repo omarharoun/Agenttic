@@ -644,19 +644,28 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):hover,
 select:hover, textarea:hover { border-color: var(--border-strong); }
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
 select:focus, textarea:focus {
-  outline: none; border-color: var(--accent); box-shadow: var(--ring); background: var(--field);
+  outline: none; border-color: var(--accent); box-shadow: var(--ring); background-color: var(--field);
 }
 input:disabled, select:disabled, textarea:disabled { opacity: 0.55; cursor: not-allowed; }
 
-/* selects — custom gilt-neutral chevron, rounded + padded to match inputs */
+/* selects — custom gilt-neutral chevron, rounded + padded to match inputs.
+   background-size is pinned to 12px so a single caret sits on the right on
+   every engine: browsers that don't honour the inline SVG's intrinsic 12×12
+   would otherwise resolve background-size:auto ambiguously and tile the
+   chevron across the whole control. The chevron longhands (image/repeat/
+   position/size) are re-declared per theme so no shorthand override path can
+   strip no-repeat and bring the tiling back. */
 select {
   appearance: none; -webkit-appearance: none; -moz-appearance: none;
   padding-right: 34px; cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%2399A0A7' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 12px center;
+  background-size: 12px 12px;
 }
 html[data-theme="light"] select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23565B60' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+  background-size: 12px 12px;
 }
 
 .cfg input, .cfg select, .cfg textarea,
