@@ -22,6 +22,7 @@ export function ResourcesPage() {
   const [report, setReport] = useState<{ id: string; text: string } | null>(null);
   const [spans, setSpans] = useState<any[] | null>(null);
   const reportRef = useRef<HTMLDivElement>(null);
+  const spansRef = useRef<HTMLDivElement>(null);
 
   const refresh = (t: Tab) => {
     setDoc(""); setReport(null); setSpans(null); setLoaded(false);
@@ -47,6 +48,19 @@ export function ResourcesPage() {
   useEffect(() => {
     if (report) reportRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [report]);
+
+  // Open a trace's spans inline, then scroll the panel into view — same as the
+  // report drill-down. Without this the panel renders below a long traces table
+  // and the click looks dead; a failed fetch must surface, not fail silently.
+  const openSpans = (id: string) => {
+    setDoc("");
+    api.getTrace(id)
+      .then((full) => setSpans(full.spans ?? []))
+      .catch(() => setSpans([]));
+  };
+  useEffect(() => {
+    if (spans) spansRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [spans]);
 
   return (
     <div className="page">
@@ -141,10 +155,7 @@ export function ResourcesPage() {
                       <td>{t.test_case_id ?? "live"}</td>
                       <td className="num">{t.n_spans}</td>
                       <td>{t.final_output}</td>
-                      <td><button disabled={!id} onClick={() =>
-                        api.getTrace(id).then((full) => {
-                          setDoc(""); setSpans(full.spans ?? []);
-                        })}>
+                      <td><button disabled={!id} onClick={() => openSpans(id)}>
                         spans
                       </button></td>
                     </tr>
@@ -170,7 +181,7 @@ export function ResourcesPage() {
         )}
 
         {spans && (
-          <div className="span-view" style={{ marginTop: 16 }}>
+          <div ref={spansRef} className="span-view" style={{ marginTop: 16 }}>
             <div className="eyebrow" style={{ marginBottom: 6 }}>
               Trace spans ({spans.length})
               <button className="ghost-sm" style={{ marginLeft: 8 }}
