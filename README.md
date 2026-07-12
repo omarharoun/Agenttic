@@ -111,6 +111,28 @@ A complete hand-written example lives in `examples/pilot_support_triage/`
 `tests/test_e2e_pipeline.py` runs the entire pipeline on it with mocked
 model calls.
 
+## The web front door — the intake interview (`/scan`)
+
+The public site's entry funnel is a single continuous surface. On the landing
+page, one line of chips answers the first question before `/scan` even loads
+("my agent… handles support / writes code / does research / runs internal
+ops"). On `/scan`, Agenttic interviews you — what the agent does, what it can
+touch, which failure scares you, where it lives — and each answer writes onto
+the **certification profile** panel beside the chat: FOCUS marks land on the
+five quick-scan safety dimensions and the profile sentence composes as you
+answer. The endpoint is the last answer, and the same panel becomes the live
+readout: rows flip from FOCUS to pending to pass/fail and the graded seal
+stamps in place, with a signed shareable certificate at the end.
+
+Honest by construction: the quick scan always runs all five dimensions — your
+focus shapes the report's emphasis, never what gets tested, and the chat says
+so. Starting a scan signed-out saves the whole conversation and resumes it
+(including auto-starting the scan) after sign-up. A classic paste-a-URL form
+stays one click away. Implementation: `ui/src/components/CertConversation.tsx`
+(the interview + panel), `ui/src/components/ScanExperience.tsx` (the classic
+form and connection manager), backed by `POST /api/scan` in
+`src/ascore/server/routes/scan.py`.
+
 ## Standard benchmarks & the Agenttic Index
 
 Bespoke suites answer "is this agent good enough for *this* job." The **standard
@@ -520,7 +542,8 @@ src/ascore/
 ├── ops.py         # shared pipeline ops (CLI and UI both call these)
 ├── server/        # workflow engine + FastAPI/SSE API for the UI (+ keys, auth, tenancy)
 └── cli.py         # ascore command surface (incl. `ascore ui`, `standard`, `ab`, `optimize`)
-ui/                # React + React Flow canvas (Vite, dark n8n-style theme)
+ui/                # React front end (Vite): public site + intake interview (/scan),
+                   # certification surfaces, and the React Flow workflow canvas (/app)
 ```
 
 ## Status & roadmap

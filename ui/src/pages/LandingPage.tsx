@@ -175,6 +175,16 @@ export function LandingPage() {
               <Link className="btn btn-g" to="/scan">Scan an agent</Link>
               <a className="btn btn-o" href="#measure">See what we measure</a>
             </div>
+            {/* the funnel starts here: each chip answers the interview's first
+                question, so /scan opens already one turn in. Plain links —
+                prerenders as static HTML like the rest of the page. */}
+            <div className="hero-intake">
+              <span className="hi-lab">60-second intake — my agent…</span>
+              <Link to="/scan?does=support">handles support</Link>
+              <Link to="/scan?does=code">writes code</Link>
+              <Link to="/scan?does=research">does research</Link>
+              <Link to="/scan?does=ops">runs internal ops</Link>
+            </div>
             <div className="hero-note">
               No API key to try it · runs in your CI or your VPC<br />
               nothing leaves your environment

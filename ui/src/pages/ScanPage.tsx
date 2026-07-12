@@ -1,13 +1,18 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { SiteNav } from "../components/SiteNav";
+import { CertConversation } from "../components/CertConversation";
 import { ScanExperience } from "../components/ScanExperience";
 import { SealMark } from "../components/Seal";
 
 /* ============================================================================
    /scan — the dedicated scanner page (also the primary public entry).
 
-   Mobile-first. The hero IS the scanner: one input, one action, a live scan that
-   culminates in a graded seal. Everything below is quiet and explanatory.
+   Mobile-first. The hero IS the intake interview: Agenttic asks four quick
+   questions, composes your certification profile beside the chat, then runs
+   the scan in the same panel — one continuous surface from first question to
+   stamped grade. The classic paste-a-URL form stays one click away for people
+   who just want the instrument.
    ========================================================================== */
 
 const HOW = [
@@ -18,6 +23,7 @@ const HOW = [
 ];
 
 export function ScanPage() {
+  const [classic, setClassic] = useState(false);
   return (
     <>
       <SiteNav />
@@ -27,10 +33,14 @@ export function ScanPage() {
           <span className="badge">Agent Safety Certification</span>
           <h1>Is your AI agent <span className="grad">safe to ship?</span></h1>
           <p className="sub">
-            Point us at your agent and get a clear safety grade in minutes — does
-            it refuse harmful requests, resist prompt injection, and keep secrets?
+            Four quick questions compose your certification profile — then the
+            scan runs right on it. A clear safety grade in minutes.
           </p>
-          <ScanExperience />
+          {classic ? <ScanExperience /> : <CertConversation />}
+          <button type="button" className="scan-link scan-mode-toggle"
+                  onClick={() => setClassic((c) => !c)}>
+            {classic ? "← Back to the guided interview" : "Prefer to just paste a URL? Use the quick form"}
+          </button>
         </section>
 
         <section className="section">

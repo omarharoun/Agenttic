@@ -2996,3 +2996,161 @@ a.btn-primary, button.btn-primary,
 .faq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px 40px; }
 .faq h3 { font: 500 var(--t-title)/1.2 var(--font-serif); margin: 0 0 8px; }
 .faq p { color: var(--muted); font-size: var(--t-base); line-height: 1.6; margin: 0; }
+
+/* ============================================================================
+   The intake interview (/scan) — a conversation and the certification profile
+   it composes, side by side. The panel starts as the profile (FOCUS marks
+   accrue as answers land) and becomes the live scan readout without moving.
+   ========================================================================== */
+.convo {
+  display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--sp-5);
+  width: 100%; max-width: 960px; margin: var(--sp-6) auto 0; text-align: left;
+}
+
+/* --- the chat --- */
+.cv-chat {
+  background: var(--card-bg); border: var(--card-border);
+  border-radius: var(--r-xl); box-shadow: var(--card-shadow);
+  padding: var(--sp-5); min-height: 380px; display: flex;
+}
+.cv-scroll {
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  width: 100%; max-height: 540px; overflow-y: auto; scrollbar-width: thin;
+}
+.cv-msg {
+  max-width: 88%; padding: 10px 14px; border-radius: var(--r-lg);
+  font-size: var(--t-base); line-height: 1.55; color: var(--text);
+}
+.cv-msg.from-a {
+  align-self: flex-start; background: var(--field);
+  border: 1px solid var(--border); border-top-left-radius: var(--r-sm);
+}
+.cv-msg.from-u {
+  align-self: flex-end; background: var(--accent-soft);
+  border: 1px solid var(--accent-line); border-top-right-radius: var(--r-sm);
+}
+.cv-typing { display: flex; gap: 4px; align-items: center; min-height: 20px; }
+.cv-typing i {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--muted);
+  animation: cv-blink 1s infinite;
+}
+.cv-typing i:nth-child(2) { animation-delay: 0.18s; }
+.cv-typing i:nth-child(3) { animation-delay: 0.36s; }
+
+/* --- the answer area (chips, free text) --- */
+.cv-answer { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-1); }
+.cv-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.cv-chip {
+  appearance: none; display: inline-flex; align-items: center;
+  border: 1px solid var(--border-strong); background: var(--panel-2);
+  color: var(--text); border-radius: var(--r-pill); padding: 8px 14px;
+  font: 500 var(--t-sm)/1 var(--font-ui); cursor: pointer; text-decoration: none;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.cv-chip:hover { border-color: var(--accent-line); }
+.cv-chip:focus-visible { outline: none; box-shadow: var(--ring); }
+.cv-chip.on { background: var(--accent-soft); border-color: var(--accent-line); }
+.cv-chip.go { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.cv-chip.go:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.cv-chip.quiet { background: transparent; border-color: var(--border); color: var(--muted); }
+.cv-chip:disabled { opacity: 0.45; cursor: default; }
+.cv-freetext, .cv-authrow { display: flex; gap: var(--sp-2); }
+.cv-freetext input, .cv-authrow input {
+  flex: 1; min-width: 0; background: var(--field);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  color: var(--text); padding: 9px 12px; font: 400 var(--t-base)/1.3 var(--font-ui);
+}
+.cv-freetext input:focus-visible, .cv-authrow input:focus-visible {
+  outline: none; border-color: var(--accent-line); box-shadow: var(--ring);
+}
+.cv-err { color: var(--fail); font-size: var(--t-sm); margin: 0; }
+.cv-fine { color: var(--muted); font-size: var(--t-xs); line-height: 1.55; margin: 0; }
+
+/* --- the profile panel / readout --- */
+.cv-panel {
+  background: var(--card-bg); border: var(--card-border);
+  border-radius: var(--r-xl); box-shadow: var(--card-shadow);
+  padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3);
+  align-self: start; position: sticky; top: var(--sp-5);
+}
+.cv-panel-top {
+  display: flex; justify-content: space-between; gap: var(--sp-2);
+  font: 500 var(--t-label)/1 var(--font-mono);
+  letter-spacing: var(--track-caps); color: var(--faint);
+}
+.cv-panel-mode { color: var(--accent); }
+.cv-sentence {
+  margin: 0; font: 400 var(--t-base)/1.5 var(--font-serif); color: var(--text);
+}
+.cv-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.cv-row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: var(--sp-2); padding: 8px 0; border-top: 1px solid var(--border-soft);
+  font-size: var(--t-sm);
+}
+.cv-row-lab { color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.cv-row.is-focus .cv-row-lab, .cv-row.is-pass .cv-row-lab,
+.cv-row.is-fail .cv-row-lab, .cv-row.is-warn .cv-row-lab,
+.cv-row.is-pending .cv-row-lab { color: var(--text); }
+.cv-crit {
+  font: 500 9px/1 var(--font-mono); font-style: normal; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--faint);
+  border: 1px solid var(--border); border-radius: var(--r-xs); padding: 2px 4px;
+}
+.cv-focus {
+  font: 600 10px/1 var(--font-mono); letter-spacing: 0.1em; color: var(--accent);
+  border: 1px solid var(--accent-line); background: var(--accent-soft);
+  padding: 3px 6px; border-radius: var(--r-xs);
+}
+.cv-idle { color: var(--faint); font-size: var(--t-xs); }
+.cv-ok { color: var(--ok); font-weight: 500; }
+.cv-warn { color: var(--wait); font-weight: 500; }
+.cv-fail { color: var(--fail); font-weight: 500; }
+.cv-spin {
+  width: 12px; height: 12px; border-radius: 50%; display: inline-block;
+  border: 2px solid var(--border-strong); border-top-color: var(--accent);
+  animation: cv-rot 0.8s linear infinite;
+}
+.cv-seal { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-2) 0 0; }
+.cv-verdict { display: flex; flex-direction: column; gap: 2px; text-align: center; font-size: var(--t-sm); color: var(--muted); }
+.cv-verdict b { font-size: var(--t-lg); }
+.cv-progress {
+  width: 100%; height: 4px; background: var(--field);
+  border-radius: var(--r-pill); overflow: hidden;
+}
+.cv-progress span {
+  display: block; height: 100%; background: var(--accent);
+  transition: width 0.5s var(--ease-escape);
+}
+.cv-panel-foot {
+  display: flex; justify-content: space-between; gap: var(--sp-2);
+  font: 400 10px/1.4 var(--font-mono); color: var(--faint);
+  letter-spacing: 0.04em; border-top: 1px solid var(--border-soft);
+  padding-top: var(--sp-2);
+}
+.scan-mode-toggle { margin-top: var(--sp-4); }
+
+@keyframes cv-rot { to { transform: rotate(360deg); } }
+@keyframes cv-blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .cv-spin, .cv-typing i { animation: none; }
+  .cv-scroll { scroll-behavior: auto; }
+}
+@media (max-width: 860px) {
+  .convo { grid-template-columns: 1fr; }
+  .cv-panel { position: static; }
+  .cv-scroll { max-height: 420px; }
+}
+
+/* --- landing hero: the interview's first question, answered in place --- */
+.agx .hero-intake { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 16px; }
+.agx .hero-intake .hi-lab {
+  color: var(--faint); font: 500 var(--t-label)/1 var(--font-mono);
+  letter-spacing: var(--track-caps); text-transform: uppercase;
+}
+.agx .hero-intake a {
+  color: var(--muted); font-size: var(--t-sm); text-decoration: none;
+  border: 1px solid var(--border); border-radius: var(--r-pill); padding: 5px 12px;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+.agx .hero-intake a:hover { color: var(--text); border-color: var(--accent-line); }
