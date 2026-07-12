@@ -29,7 +29,10 @@ Tier = Literal["A", "B", "C"]
 CoverageStatus = Literal["assessed_real", "assessed_seed", "not_assessed"]
 AttestationMode = Literal["self_attested", "independent"]
 
-# The eight capability domains a certification profile can require.
+# The base capability domains a certification profile can require. The first
+# eight are the general agent-safety domains; the trailing block is the
+# coding-agent-safety domains a Software-Engineering pack (cert-swe-v1) adds.
+# Extending this tuple is a superset change — existing profiles are unaffected.
 CAPABILITY_DOMAINS = (
     "tool_use",
     "reliability",
@@ -39,6 +42,13 @@ CAPABILITY_DOMAINS = (
     "autonomy_proxy",
     "deception_probe",
     "cbrn_proxy",
+    # -- SWE pack (cert-swe-v1) coding-agent-safety domains --
+    "secret_exfiltration",
+    "destructive_ops",
+    "vuln_introduction",
+    "dependency_safety",
+    "supply_chain_ci",
+    "license_leak",
 )
 
 
@@ -65,6 +75,15 @@ class CertificationProfile(BaseModel):
     required_domains: list[str] = Field(default_factory=list)
     min_k: int = 1
     thresholds: dict[str, float] = Field(default_factory=dict)
+    #: Per-dimension composite weights for a *pack* profile (config-over-code):
+    #: how this profile would weight its dimensions toward the powers it certifies
+    #: (e.g. cert-swe-v1 reweights toward coding-agent powers). Pinned as part of
+    #: the recipe; the tier decision itself stays threshold/floor-based.
+    weights: dict[str, float] = Field(default_factory=dict)
+    #: Optional pack tag ("swe" for the Software-Engineering pack). Gates
+    #: pack-specific suite resolution so a pack's authored suites never leak into
+    #: another profile's pinning.
+    pack: str | None = None
     floors: dict[str, float] = Field(default_factory=dict)
     caveats: list[str] = Field(default_factory=list)
 

@@ -198,10 +198,12 @@ async def certify(
     from ascore.metrics.redteam import seed_redteam_injection_suite
     from ascore.metrics.safety_suite import seed_safety_content_suite
     from ascore.metrics.standard_suites import seed_standard_suites
+    from ascore.metrics.swe_suites import seed_swe_suites
 
     seed_standard_suites(reg)
     seed_redteam_injection_suite(reg)
     seed_safety_content_suite(reg)
+    seed_swe_suites(reg)  # cert-swe-v1 pack authored suites (idempotent)
     profile = seed_profile(cfg, reg, profile_id)
     profile = load_profile(cfg, reg, profile_id)
 

@@ -47,16 +47,30 @@ def profile_config(cfg: dict, profile_id: str) -> dict:
     return profiles[profile_id]
 
 
+def _allowed_metric_keys() -> set[str]:
+    # keys are keyed to the metric catalog OR to the domain threshold keys
+    # (tool_use_score is a domain key, not a raw metric id).
+    return _METRIC_IDS | {k for k in DOMAIN_THRESHOLD_KEY.values() if k is not None}
+
+
 def _validate_thresholds(profile_id: str, thresholds: dict) -> None:
-    # threshold keys are keyed to the metric catalog OR to the domain threshold
-    # keys (tool_use_score is a domain key, not a raw metric id).
-    allowed = _METRIC_IDS | {
-        k for k in DOMAIN_THRESHOLD_KEY.values() if k is not None
-    }
+    allowed = _allowed_metric_keys()
     for key in thresholds:
         if key not in allowed:
             raise ProfileError(
                 f"profile {profile_id}: threshold key {key!r} is not a known "
+                f"metric-catalog / domain key"
+            )
+
+
+def _validate_weights(profile_id: str, weights: dict) -> None:
+    """Pack composite weights are keyed the same way as thresholds (metric /
+    domain keys). Fail loudly and by name on an unknown key."""
+    allowed = _allowed_metric_keys()
+    for key in weights:
+        if key not in allowed:
+            raise ProfileError(
+                f"profile {profile_id}: weight key {key!r} is not a known "
                 f"metric-catalog / domain key"
             )
 
@@ -70,10 +84,14 @@ def build_profile(cfg: dict, reg, profile_id: str, *, version: int = 1
     required_domains = list(pc.get("required_domains", []))
     thresholds = dict(pc.get("thresholds", {}))
     _validate_thresholds(profile_id, thresholds)
+    weights = dict(pc.get("weights", {}))
+    _validate_weights(profile_id, weights)
+    pack = pc.get("pack")
+    include_swe = pack == "swe"
 
     suite_refs: list[SuiteRef] = []
     for domain in required_domains:
-        for suite_id in suites_for_domain(domain):
+        for suite_id in suites_for_domain(domain, include_swe=include_swe):
             try:
                 suite, _cases = reg.get_suite(suite_id)
             except NotFoundError:
@@ -93,6 +111,8 @@ def build_profile(cfg: dict, reg, profile_id: str, *, version: int = 1
         required_domains=required_domains,
         min_k=int(pc.get("min_k", 1)),
         thresholds=thresholds,
+        weights=weights,
+        pack=pack,
         floors=floors,
         caveats=caveats,
     )
