@@ -1,5 +1,54 @@
 # Changelog
 
+## v1.0.0 — Distribution & plug-and-play (SPEC-8)
+
+The first version a stranger can adopt: `pip install agenttic`, add one line, and
+get a signed safety grade in under a minute. This is the distribution layer over
+SPECs 1–7 — packaging, ergonomics, auto-detection, and docs. Scoring,
+certification, and enforcement are unchanged.
+
+### Added
+- **Public umbrella package `agenttic`** (`src/agenttic/`): the supported,
+  semver'd surface re-exporting the stable API from internal `ascore.*` —
+  `trace`, `instrument`, `session`, `certify`, `verify`, and the canonical
+  `Trace`/`Span` run type. `__all__` is enforced by a test; nothing else leaks
+  (Hard Rule 36). Ships `py.typed`.
+- **Packaging + extras**: the distribution is `agenttic` (one wheel, two
+  packages — public `agenttic` + internal `ascore`); base install pulls **no
+  framework SDK** and imports none (Hard Rule 37). Optional extras
+  `agenttic[langgraph]`, `agenttic[openai]`, `agenttic[otel]`, `agenttic[all]`
+  pull the matching adapter distributions (`agenttic-langgraph`,
+  `agenttic-openai-agents`), which keep their own pyproject. `agenttic` console
+  command added alongside back-compat `ascore`.
+- **Auto-detecting `trace()`** (`agenttic._detect`): inspects an object's public
+  shape and dispatches — LangGraph graph → langgraph adapter, OpenAI Agents agent
+  → that adapter, any other callable → a generic OTel wrapper — without the caller
+  naming the framework. Duck-typed detection (no framework import to detect);
+  adapters loaded behind `try/except ImportError`. Behavior-identical (Hard Rule
+  38); target from `target=`/env/`distribution.target` config; opt-in non-blocking
+  `enforce` posture (Rules 31/35). No target ⇒ a logged no-op, never a phone-home.
+- **`@instrument` + `session()`** (`agenttic._decorator`): wrap any custom
+  `query -> response` function (or code block) into a canonical run. Unobservable
+  tool calls yield a **partial** trajectory with a logged reason — never a
+  fabricated one (Hard Rule 39).
+- **`agenttic init`**: scaffold a runnable quickstart (config + reference `kb.json`
+  + sample + steps) that certifies the reference agent with no edits and no API
+  key. **`agenttic doctor`**: verify zero-touch setup — validate a captured span
+  stream and/or probe a target `/v1/traces` endpoint, with actionable failures.
+- **Docs**: `docs/QUICKSTART.md` (finish-line promise, every command
+  test-executed), `docs/integrations/` (zero-touch OTel config per framework:
+  CrewAI, LangGraph, LlamaIndex, OpenAI Agents, generic OTLP, each honest about
+  captured-vs-not / NOT ASSESSED).
+- **Release tooling**: `scripts/release/pypi.sh` builds all distributions, runs
+  `twine check --strict`, and dry-runs to TestPyPI (the credentialed upload is a
+  guarded human step). `scripts/quickstart_check.sh` + a CI job prove the
+  fresh-venv install → certify → verify path runs unattended under a minute.
+
+### Notes
+- No scoring/certification/enforcement behavior changed. `import agenttic` pulls
+  no framework SDK. See `docs/SPEC2_DEVIATIONS.md` for the distribution-model and
+  rename deviation notes.
+
 ## v0.8.0-enforce-ramp — Progressive enforcement ramp (SPEC-7 M21)
 
 The trust ladder from unknown-vendor to inline-trusted: a per-agent enforcement

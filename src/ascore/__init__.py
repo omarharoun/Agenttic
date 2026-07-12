@@ -10,4 +10,4 @@ from __future__ import annotations
 #: Single source of truth for the core version. The ``agenttic`` umbrella
 #: tracks this exactly (asserted by tests) and the distribution ``version`` in
 #: pyproject.toml is kept in lock-step with it.
-__version__ = "0.8.0"
+__version__ = "1.0.0"
