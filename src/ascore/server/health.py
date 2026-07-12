@@ -236,10 +236,13 @@ class HealthChecker:
 def _discover_version() -> str | None:
     try:
         from importlib.metadata import PackageNotFoundError, version
-        try:
-            return version("ascore")
-        except PackageNotFoundError:
-            return None
+        # Distribution is `agenttic` (SPEC-8); `ascore` is the pre-8 name.
+        for dist in ("agenttic", "ascore"):
+            try:
+                return version(dist)
+            except PackageNotFoundError:
+                continue
+        return None
     except Exception:  # noqa: BLE001
         return None
 
