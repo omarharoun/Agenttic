@@ -9,9 +9,10 @@
    live scan readout: rows flip from FOCUS to pending to pass/fail and the
    grade stamps in place. No wizard chrome, no page switch.
 
-   Honesty note, by construction: the quick scan always runs all five safety
-   dimensions. Your answers shape emphasis and the report's framing — they
-   never silently narrow what is tested. The chat says so out loud.
+   Honesty note, by construction: the quick scan always runs every dimension
+   of the safety battery. Your answers shape emphasis and the report's framing
+   — they never silently narrow what is tested. The chat says so out loud, and
+   the count it quotes is the live dimension count, not a hard-coded number.
 
    The auth seam: starting a scan signed-out saves the WHOLE conversation
    (answers + endpoint) to sessionStorage and offers sign-up inline as a chat
@@ -44,13 +45,13 @@ const TOUCH: TouchOpt[] = [
   { id: "chat",  chip: "It just chats",            emph: ["injection_robust", "harmful_action_refused"] },
   { id: "tools", chip: "Calls tools or APIs",      emph: ["tool_misuse_safety"] },
   { id: "data",  chip: "Reads private data",       emph: ["no_secret_leak"] },
-  { id: "send",  chip: "Sends emails or messages", emph: ["no_exfiltration"] },
+  { id: "send",  chip: "Sends emails or messages", emph: ["no_secret_leak"] },
   { id: "code",  chip: "Executes code",            emph: ["tool_misuse_safety"] },
 ];
 
 interface FearOpt { id: string; chip: string; emph: string[]; note?: string }
 const FEARS: FearOpt[] = [
-  { id: "leak",   chip: "It leaks something private",     emph: ["no_secret_leak", "no_exfiltration"] },
+  { id: "leak",   chip: "It leaks something private",     emph: ["no_secret_leak"] },
   { id: "inject", chip: "Someone manipulates it",         emph: ["injection_robust"] },
   { id: "harm",   chip: "It does something harmful",      emph: ["harmful_action_refused"] },
   { id: "tools",  chip: "It misuses its tools",           emph: ["tool_misuse_safety"] },
@@ -63,9 +64,8 @@ const FEARS: FearOpt[] = [
 const FALLBACK_DIMS: ScanPreview["dimensions"] = [
   { criterion_id: "harmful_action_refused", label: "Refuses harmful requests", critical: true },
   { criterion_id: "injection_robust",       label: "Resists prompt injection", critical: true },
-  { criterion_id: "no_secret_leak",         label: "Keeps secrets",            critical: false },
-  { criterion_id: "no_exfiltration",        label: "No data exfiltration",     critical: false },
-  { criterion_id: "tool_misuse_safety",     label: "Safe tool use",            critical: false },
+  { criterion_id: "no_secret_leak",         label: "Keeps secrets safe",       critical: false },
+  { criterion_id: "tool_misuse_safety",     label: "Uses tools safely",        critical: false },
 ];
 
 interface Answers { does?: string; doesText?: string; touch: string[]; fear?: string }
@@ -286,7 +286,7 @@ export function CertConversation() {
   const pickFear = (f: FearOpt) => {
     setAnswers((a) => ({ ...a, fear: f.id })); you(f.chip);
     const focus = f.emph.length
-      ? "I've marked that FOCUS on your profile. To be clear: the quick scan always runs all five checks — your focus shapes the emphasis of the report, never what gets tested."
+      ? `I've marked that FOCUS on your profile. To be clear: the quick scan always runs all ${dims.length} checks — your focus shapes the emphasis of the report, never what gets tested.`
       : "";
     say(f.note ? f.note : `Understood. ${focus}`, () => {
       setStep("target");

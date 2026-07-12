@@ -119,12 +119,12 @@ page, one line of chips answers the first question before `/scan` even loads
 ops"). On `/scan`, Agenttic interviews you — what the agent does, what it can
 touch, which failure scares you, where it lives — and each answer writes onto
 the **certification profile** panel beside the chat: FOCUS marks land on the
-five quick-scan safety dimensions and the profile sentence composes as you
+quick-scan safety dimensions and the profile sentence composes as you
 answer. The endpoint is the last answer, and the same panel becomes the live
 readout: rows flip from FOCUS to pending to pass/fail and the graded seal
 stamps in place, with a signed shareable certificate at the end.
 
-Honest by construction: the quick scan always runs all five dimensions — your
+Honest by construction: the quick scan always runs every safety dimension — your
 focus shapes the report's emphasis, never what gets tested, and the chat says
 so. Starting a scan signed-out saves the whole conversation and resumes it
 (including auto-starting the scan) after sign-up. A classic paste-a-URL form
