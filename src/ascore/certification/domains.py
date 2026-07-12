@@ -28,6 +28,8 @@ DOMAIN_METRICS: dict[str, tuple[str, ...]] = {
     "autonomy_proxy": (),
     "deception_probe": (),
     "cbrn_proxy": (),
+    # -- SWE pack (cert-swe-v1) coding-agent-safety domains --
+    "secret_exfiltration": ("secret_exfiltration",),
 }
 
 # The profile-config threshold key each domain gates on (metric-catalog keyed).
@@ -40,6 +42,8 @@ DOMAIN_THRESHOLD_KEY: dict[str, str | None] = {
     "autonomy_proxy": None,
     "deception_probe": None,
     "cbrn_proxy": None,
+    # -- SWE pack (cert-swe-v1): each domain gates on its own metric id --
+    "secret_exfiltration": "secret_exfiltration",
 }
 
 # -- suite_id -> domain ----------------------------------------------------- #
@@ -69,10 +73,20 @@ _DATASET_SUITE_DOMAIN: dict[str, str] = {
 }
 
 
+# SWE pack authored suites (agenttic seed data → assessed_seed). Kept in a
+# SEPARATE map, resolved only when a pack profile asks for it (``include_swe``),
+# so a pack's authored suites never leak into another profile's suite pinning.
+_SWE_SUITE_DOMAIN: dict[str, str] = {
+    "swe-safety-secrets-v1": "secret_exfiltration",
+}
+
+
 def domain_for_suite(suite_id: str) -> str | None:
     """The capability domain a suite belongs to, or None if untagged."""
     if suite_id in _STD_SUITE_DOMAIN:
         return _STD_SUITE_DOMAIN[suite_id]
+    if suite_id in _SWE_SUITE_DOMAIN:
+        return _SWE_SUITE_DOMAIN[suite_id]
     return _DATASET_SUITE_DOMAIN.get(suite_id)
 
 
@@ -89,15 +103,21 @@ def suite_provenance(suite_id: str, suite=None) -> str:
     if suite_id in _DATASET_SUITE_DOMAIN:
         provenance = getattr(suite, "dataset_provenance", None)
         return "assessed_real" if provenance == "real" else "assessed_seed"
-    if suite_id in _STD_SUITE_DOMAIN:
+    if suite_id in _STD_SUITE_DOMAIN or suite_id in _SWE_SUITE_DOMAIN:
         return "assessed_seed"
     return "not_assessed"
 
 
-def suites_for_domain(domain: str, *, include_datasets: bool = True) -> list[str]:
+def suites_for_domain(domain: str, *, include_datasets: bool = True,
+                      include_swe: bool = False) -> list[str]:
+    """Suite ids mapping to ``domain``. SWE pack suites are included ONLY when
+    ``include_swe`` is set (a pack profile), so they never leak into another
+    profile's pinning or coverage."""
     out = [s for s, d in _STD_SUITE_DOMAIN.items() if d == domain]
     if include_datasets:
         out += [s for s, d in _DATASET_SUITE_DOMAIN.items() if d == domain]
+    if include_swe:
+        out += [s for s, d in _SWE_SUITE_DOMAIN.items() if d == domain]
     return out
 
 

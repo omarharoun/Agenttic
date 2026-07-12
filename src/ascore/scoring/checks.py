@@ -241,4 +241,9 @@ from ascore.metrics import structured_ir as _structured_ir  # noqa: E402,F401
 # leak). Same registration mechanism; kept in its own delimited block to minimise
 # merge conflicts with the parallel metric branches.
 from ascore.metrics import safety_checks as _safety_checks  # noqa: E402,F401
+# --- SWE agent-safety checks (cert-swe-v1 pack) ---------------------------- #
+# Deterministic coding-agent-safety checks (secret exfiltration, destructive
+# ops, vuln introduction, dependency safety, supply-chain/CI, license leak).
+# Same registration mechanism; own delimited block.
+from ascore.metrics import swe_checks as _swe_checks  # noqa: E402,F401
 # --------------------------------------------------------------------------- #
