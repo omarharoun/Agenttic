@@ -354,6 +354,15 @@ from ascore.metrics.safety_catalog import SAFETY_METRICS as _SAFETY_METRICS  # n
 METRICS = METRICS + _SAFETY_METRICS
 # --------------------------------------------------------------------------- #
 
+# --- SWE agent-safety metric family (cert-swe-v1 pack) --------------------- #
+# Coding-agent-safety dimensions (secret_exfiltration, destructive_ops, …).
+# UNWEIGHTED in the global Index (weight 0); the pack profile carries its own
+# reweighting. Composed in through one delimited line, like the safety family.
+from ascore.metrics.swe_catalog import SWE_METRICS as _SWE_METRICS  # noqa: E402
+
+METRICS = METRICS + _SWE_METRICS
+# --------------------------------------------------------------------------- #
+
 BY_ID = {m.id: m for m in METRICS}
 # check_ref -> metric id, so a scorecard's per-criterion means roll up by metric
 CHECK_TO_METRIC = {ref: m.id for m in METRICS for ref in m.check_refs}

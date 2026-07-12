@@ -22,11 +22,11 @@ from ascore.schema.certification import DomainCoverage
 _RANK = {"not_assessed": 0, "assessed_seed": 1, "assessed_real": 2}
 
 
-def domain_coverage(reg, domain: str) -> DomainCoverage:
+def domain_coverage(reg, domain: str, *, include_swe: bool = False) -> DomainCoverage:
     """Coverage for one domain, computed from suites present in ``reg``."""
     best_status = "not_assessed"
     evidence: list[str] = []
-    for suite_id in suites_for_domain(domain):
+    for suite_id in suites_for_domain(domain, include_swe=include_swe):
         try:
             suite, _cases = reg.get_suite(suite_id)
         except NotFoundError:
@@ -57,4 +57,6 @@ def domain_coverage(reg, domain: str) -> DomainCoverage:
 
 def coverage(reg, profile) -> list[DomainCoverage]:
     """Coverage across all of a profile's required domains, in profile order."""
-    return [domain_coverage(reg, d) for d in profile.required_domains]
+    include_swe = getattr(profile, "pack", None) == "swe"
+    return [domain_coverage(reg, d, include_swe=include_swe)
+            for d in profile.required_domains]
