@@ -1,14 +1,16 @@
 [project]
 name = "agenttic-langgraph"
-version = "1.0.0"
+version = "1.0.1"
 description = "Trace a LangGraph agent onto the Agenttic OTel-GenAI bus (public callbacks only)."
 readme = "README.md"
 requires-python = ">=3.12"
 # Thin adapter: the span builder + optional enforcement guard live in the
-# `agenttic` umbrella distribution (which ships the internal ascore package);
-# LangChain provides the public callback base. langgraph itself is a peer
-# dependency of the user's app, not of this package.
-dependencies = ["agenttic", "langchain-core>=0.2"]
+# `agenttic` umbrella distribution (the published, installable engine — its
+# internal package was formerly named `ascore`, which is NOT on PyPI, so we
+# depend on `agenttic`, pinned in lock-step with this release). LangChain
+# provides the public callback base; langgraph itself is a peer dependency of
+# the user's app, not of this package.
+dependencies = ["agenttic==1.0.1", "langchain-core>=0.2"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
