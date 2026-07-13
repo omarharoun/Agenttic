@@ -60,7 +60,7 @@ class WedgeReproduction:
 _BFCL_FULL_VALIDATION = {
     "split": "simple", "n": 400, "accuracy": 1.0,
     "wilson_low": 0.9905, "wilson_high": 1.0, "ci_level": 0.95,
-    "reproduce_cmd": "uv run ascore reproduce-bfcl --split simple --full",
+    "reproduce_cmd": "uv run agenttic reproduce-bfcl --split simple --full",
     "note": "oracle (ground-truth) predictions over the full real BFCL simple "
             "category; a correct AST grader must score 100%.",
 }
@@ -95,7 +95,7 @@ _BFCL_REPRODUCTION_ATTEMPT = {
     "gap": 0.0025,
     "homegrown_grader_accuracy": 0.9375,
     "run_date": "2026-07-03",
-    "reproduce_cmd": "uv run ascore reproduce-bfcl --live --model "
+    "reproduce_cmd": "uv run agenttic reproduce-bfcl --live --model "
                      "claude-sonnet-4-5-20250929 --published 0.9775",
     "note": "RECORDED reproduction (run 2026-07-03, commit 2aa8a68; an attested "
             "historical figure, not re-measured live here): 97.50% (390/400, "
@@ -133,7 +133,7 @@ def _tool_calling_wedge() -> WedgeReproduction:
                   "(metrics.bfcl_ast_official; oracle scores 100% LIVE here, wrong "
                   "answers rejected). The published-number reproduction is a "
                   "recorded run, not re-measured live.",
-        requires="a live re-run to re-measure: `ascore reproduce-bfcl --live` with "
+        requires="a live re-run to re-measure: `agenttic reproduce-bfcl --live` with "
                  "a model API key",
         reason=("RECORDED (2026-07-03, commit 2aa8a68; an attested historical "
                 "figure, not re-measured live here): Claude Sonnet 4.5 (native "
@@ -142,7 +142,7 @@ def _tool_calling_wedge() -> WedgeReproduction:
                 "checker: 97.50% (390/400, Wilson95 [0.9546,0.9864]) — the "
                 "published 97.75% falls INSIDE that interval (gap 0.25 pts). The "
                 "grader is re-validated LIVE here (oracle 100%); re-run "
-                "`ascore reproduce-bfcl --live` to reproduce the model number."),
+                "`agenttic reproduce-bfcl --live` to reproduce the model number."),
         extra={
             "scorer_validation_sample": sample,
             "scorer_validation_full_split": _BFCL_FULL_VALIDATION,

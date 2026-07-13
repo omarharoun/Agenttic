@@ -8,7 +8,7 @@ evaluator, then DISCRETIZE its 0..1 score into the criterion's binary/
 three-point scale so Hard Rule 3 holds, keeping the raw score + reason in the
 rationale.
 
-``ai-evaluation`` is an OPTIONAL dependency (``pip install ascore[fi]``),
+``ai-evaluation`` is an OPTIONAL dependency (``pip install agenttic[fi]``),
 lazy-imported only when a real evaluation runs. Tests inject a fake
 ``evaluate_fn`` and never import it. The default metric set targets FI's
 LOCAL/offline metrics (no FI_API_KEY needed); cloud LLM-judge metrics are
@@ -129,11 +129,11 @@ class FiEvaluator:
     def evaluate_fn(self) -> Callable:
         if self._evaluate_fn is None:
             try:
-                from fi.evals import evaluate  # optional dep: ascore[fi]
+                from fi.evals import evaluate  # optional dep: agenttic[fi]
             except ImportError as exc:  # pragma: no cover - exercised via message
                 raise FiError(
                     "Future AGI scorer requires the optional dependency; "
-                    "install with `uv pip install ascore[fi]` (ai-evaluation)"
+                    "install with `uv pip install agenttic[fi]` (ai-evaluation)"
                 ) from exc
             self._evaluate_fn = evaluate
         return self._evaluate_fn

@@ -49,7 +49,7 @@ class JudgeCalibrationBlocked(RuntimeError):
 #: criterion out of PROVISIONAL (promotion requires a real qualifying study, which
 #: this is not). It is surfaced as an attested HISTORICAL RECORD only — never as
 #: live-calibrated, never as promotion evidence. Reproduce/extend with
-#: `uv run ascore calibrate-judge` (needs ANTHROPIC_API_KEY).
+#: `uv run agenttic calibrate-judge` (needs ANTHROPIC_API_KEY).
 _RECORDED_JUDGE_RUN = {
     "recorded": True,
     "demonstrated": False,               # not sufficient to demonstrate calibration
@@ -237,7 +237,7 @@ def judge_blocker(cfg: dict | None = None, path: str | Path | None = None) -> di
                     "PROVISIONAL (Hard Rule 6)"),
         "criteria": sorted(corpus_criteria(path)),
         "minimal_cost": estimate_cost(cfg, path),
-        "one_command": "uv run ascore calibrate-judge   # with ANTHROPIC_API_KEY set",
+        "one_command": "uv run agenttic calibrate-judge   # with ANTHROPIC_API_KEY set",
     }
 
 
@@ -253,7 +253,7 @@ def judge_calibration_status(cfg: dict | None = None,
         # run, absent here, so this is empty and all judge criteria are provisional.
         "promoted_criteria": sorted(demonstrated_calibrated_judge()),
         "reproduce": {
-            "one_command": "uv run ascore calibrate-judge",
+            "one_command": "uv run agenttic calibrate-judge",
             "requires": "ANTHROPIC_API_KEY",
             "minimal_cost": estimate_cost(cfg, path),
         },

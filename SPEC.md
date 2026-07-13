@@ -40,7 +40,7 @@ lightweight judge, drift detection).
 agentic-scoring/
 ├── pyproject.toml
 ├── config.yaml              # model names, sampling rates, paths
-├── src/ascore/
+├── src/agenttic/
 │   ├── schema/              # Pydantic models (Step 1)
 │   │   ├── trace.py
 │   │   ├── testcase.py
@@ -72,7 +72,7 @@ agentic-scoring/
 
 ## Step 1 — Trace schema (the keystone contract)
 
-Create Pydantic models in `src/ascore/schema/`. Align field naming with
+Create Pydantic models in `src/agenttic/schema/`. Align field naming with
 OpenTelemetry GenAI semantic conventions where one exists.
 
 **trace.py**
@@ -173,7 +173,7 @@ MVP checks: `final_output_matches_expected`, `valid_json_output`,
   human_score`)
 - Compute agreement (exact match for binary, Krippendorff's alpha for
   three-point) per criterion
-- `ascore calibrate` prints a table; criteria below threshold (config, default
+- `agenttic calibrate` prints a table; criteria below threshold (config, default
   0.8 agreement) are flagged `UNCALIBRATED` and their scores marked provisional
   in scorecards
 
@@ -190,7 +190,7 @@ never mutates. Scorecards record exact suite+rubric versions used.
 
 **Acceptance criteria**
 - [ ] Re-running an old suite version reproduces identical test inputs
-- [ ] `ascore regress --agent X` re-runs the latest version of every suite the agent was previously scored on and diffs against the prior scorecard
+- [ ] `agenttic regress --agent X` re-runs the latest version of every suite the agent was previously scored on and diffs against the prior scorecard
 
 ## Step 7 — Black-box adapter
 
@@ -210,7 +210,7 @@ structured output:
 2. `define_criteria(task) -> draft Rubric` (forces binary/three-point, forces anchors)
 3. `generate_cases(task, n, tags)` — happy-path, edge, adversarial mix per config
 4. **Human gate**: writes a review file (`review/{suite_id}.md`) listing tasks,
-   criteria, sample cases; `ascore approve {suite_id}` is required before the
+   criteria, sample cases; `agenttic approve {suite_id}` is required before the
    suite becomes runnable. Never skip this gate.
 
 **Acceptance criteria**
@@ -241,18 +241,18 @@ status, regression diff vs previous scorecard if one exists, recommendations
 section (top 3 failing criteria with example traces).
 
 **Acceptance criteria**
-- [ ] `ascore report {scorecard_id} -o report.md` produces a client-presentable document with no placeholders
+- [ ] `agenttic report {scorecard_id} -o report.md` produces a client-presentable document with no placeholders
 
 ## CLI surface (final)
 
 ```
-ascore generate <business_doc>      # draft a suite (Step 8)
-ascore approve <suite_id>           # human gate
-ascore run --agent <id> --suite <id>   # harness + scoring (Steps 3-5)
-ascore calibrate --suite <id>       # judge vs human labels
-ascore regress --agent <id>         # regression re-runs
-ascore monitor ingest|status        # live path
-ascore report <scorecard_id>
+agenttic generate <business_doc>      # draft a suite (Step 8)
+agenttic approve <suite_id>           # human gate
+agenttic run --agent <id> --suite <id>   # harness + scoring (Steps 3-5)
+agenttic calibrate --suite <id>       # judge vs human labels
+agenttic regress --agent <id>         # regression re-runs
+agenttic monitor ingest|status        # live path
+agenttic report <scorecard_id>
 ```
 
 ## Build order & milestones

@@ -3,7 +3,7 @@
 Unattended, no API key: `agenttic init` in an empty dir yields a working config
 + sample that certifies the reference agent with no further edits, and the
 init → certify --mock → verify path finishes under a minute. This exercises the
-installed CLI (`python -m ascore`) in a temp dir; the full fresh-venv install
+installed CLI (`python -m agenttic`) in a temp dir; the full fresh-venv install
 path lives in scripts/quickstart_check.sh (run in CI).
 """
 from __future__ import annotations

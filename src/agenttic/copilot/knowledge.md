@@ -5,18 +5,18 @@
   turn. It is the SINGLE SOURCE the Copilot may treat as authoritative about the
   platform. Everything here is grounded in the real repo (README.md, the
   Methodology page, docs/CERTIFICATION.md, docs/CONNECT.md, the metric catalog,
-  and the ascore CLI). Keep it ACCURATE — do not add features or numbers that the
+  and the agenttic CLI). Keep it ACCURATE — do not add features or numbers that the
   platform does not actually have. When the platform changes, update this file.
 
   FUTURE (v2): replace this static file with RAG over docs/ + the live metric
-  catalog (src/ascore/metrics/catalog.py) so answers cite current, versioned
+  catalog (src/agenttic/metrics/catalog.py) so answers cite current, versioned
   sources. The injection point is CopilotService.build_system_prompt().
 -->
 
 # Agenttic — platform knowledge (for the in-app Copilot)
 
 ## What Agenttic is
-Agenttic (package/CLI name: `ascore`) is an agent-safety evaluation and
+Agenttic (package/CLI name: `agenttic`) is an agent-safety evaluation and
 certification platform. It works like a UVM-style verification testbench where
 the device under test is an AI agent: it turns requirements into versioned
 benchmark suites, runs any agent against them, scores the runs with deterministic
@@ -155,7 +155,7 @@ A **dossier** is the hash-chained, offline-verifiable evidence bundle — a reco
 of what an agent was tested on, how it scored, what was NOT ASSESSED, and the
 resulting Tier. Every number in a dossier resolves to a persisted id; unassessed
 domains carry no fabricated numbers. Dossiers chain to prior dossiers so renewals
-are auditable. Verify a dossier offline with `ascore dossier verify` or the
+are auditable. Verify a dossier offline with `agenttic dossier verify` or the
 public route `GET /certification/{dossier_id}`; revocation is **append-only**
 (there is no un-revoke or manual-promotion path).
 
@@ -183,10 +183,10 @@ Lanes: Lane 1 = deterministic allow/deny (action classes, egress/SSRF, rate
 ceilings); Lane 2 = injection quarantine (original preserved) + secret/PII
 redaction; append-only log; Lane 3 = async judge (never inline). Write-class
 actions **fail closed**; every fail-open is logged. Endpoints live under
-`/api/enforce/*` (`ascore enforce mode` / `shadow-report` on the CLI).
+`/api/enforce/*` (`agenttic enforce mode` / `shadow-report` on the CLI).
 
-## The `ascore` CLI (highlights)
-`ascore` is the command-line interface (global `--tenant` selects the workspace):
+## The `agenttic` CLI (highlights)
+`agenttic` is the command-line interface (global `--tenant` selects the workspace):
 - `generate` — draft a suite from a business document (requires human approval).
 - `approve` — human gate: mark a reviewed suite as runnable.
 - `run` — run a suite against an agent.

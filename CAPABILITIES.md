@@ -1,6 +1,6 @@
 # Capabilities & "when do I use what"
 
-A one-page map of what Agenttic (`ascore`) can do and which workflow to reach for.
+A one-page map of what Agenttic (`agenttic`) can do and which workflow to reach for.
 For the full narrative see [README.md](README.md); for the doc map see
 [docs/INDEX.md](docs/INDEX.md).
 
@@ -8,23 +8,23 @@ For the full narrative see [README.md](README.md); for the doc map see
 
 | Capability | In one line | Entry points |
 |------------|-------------|--------------|
-| **Bespoke benchmark suites** | Turn a business doc into a versioned, human-gated test suite and score any agent on it | `ascore generate / approve / run / report` |
-| **Standard benchmark track** | Score an agent on seven canonical metrics → one **Agenttic Index** | `ascore standard seed / run / metrics` · `GET /api/standard/*` |
-| **Real public datasets** | Ingest BFCL (+5 splits), τ-bench, AgentHarm, AgentDojo, InjecAgent, AssistantBench, GAIA, SWE-bench Verified as suites | `ascore standard ingest <id>` · `GET /api/standard/datasets` |
-| **A/B comparison** | Two variants head-to-head, paired, with McNemar + bootstrap significance | `ascore ab` · `POST /api/ab/runs` |
+| **Bespoke benchmark suites** | Turn a business doc into a versioned, human-gated test suite and score any agent on it | `agenttic generate / approve / run / report` |
+| **Standard benchmark track** | Score an agent on seven canonical metrics → one **Agenttic Index** | `agenttic standard seed / run / metrics` · `GET /api/standard/*` |
+| **Real public datasets** | Ingest BFCL (+5 splits), τ-bench, AgentHarm, AgentDojo, InjecAgent, AssistantBench, GAIA, SWE-bench Verified as suites | `agenttic standard ingest <id>` · `GET /api/standard/datasets` |
+| **A/B comparison** | Two variants head-to-head, paired, with McNemar + bootstrap significance | `agenttic ab` · `POST /api/ab/runs` |
 | **Hardening loop** | Promote failing cases into a versioned regression suite; re-run for per-case deltas | `GET/POST /api/hardening/*` (Hardening page) |
-| **Prompt-optimizer** | OPRO/ProTeGi-style system-prompt search with a held-out overfitting guard | `ascore optimize` · `POST /api/optimize/runs` |
-| **Inspect interop** | Export/import evals to UK AISI `inspect_ai` `EvalLog` (no `inspect_ai` dependency) | `ascore inspect-export / inspect-import` · `GET /api/scorecards/{id}/inspect.json` |
-| **Live monitoring** | Sampled production scoring with a light judge + drift detection → re-eval trigger | `ascore monitor` · `/api/live/*` |
-| **Managed Agents (beta)** | Deploy a workflow YAML to Anthropic Managed Agents and benchmark it glass-box | `ascore deploy` · `ascore run --managed-agent-id` |
-| **Visual workflow builder** | n8n-style canvas over the whole platform, live SSE, durable human gates | `ascore ui` |
+| **Prompt-optimizer** | OPRO/ProTeGi-style system-prompt search with a held-out overfitting guard | `agenttic optimize` · `POST /api/optimize/runs` |
+| **Inspect interop** | Export/import evals to UK AISI `inspect_ai` `EvalLog` (no `inspect_ai` dependency) | `agenttic inspect-export / inspect-import` · `GET /api/scorecards/{id}/inspect.json` |
+| **Live monitoring** | Sampled production scoring with a light judge + drift detection → re-eval trigger | `agenttic monitor` · `/api/live/*` |
+| **Managed Agents (beta)** | Deploy a workflow YAML to Anthropic Managed Agents and benchmark it glass-box | `agenttic deploy` · `agenttic run --managed-agent-id` |
+| **Visual workflow builder** | n8n-style canvas over the whole platform, live SSE, durable human gates | `agenttic ui` |
 | **Leaderboards** | Rank agents by suite Index or by the canonical Agenttic Index, honest about coverage | `/api/leaderboard` · `/api/standard/leaderboard` |
-| **Agent catalog + discovery** | Agents are discovered from runs; declare the ones you reuse | `ascore agents add/list` · `/api/agents` |
+| **Agent catalog + discovery** | Agents are discovered from runs; declare the ones you reuse | `agenttic agents add/list` · `/api/agents` |
 
 ## The Agenttic Index, at a glance
 
 Seven weighted canonical metrics (weights sum to 1.0; renormalized over whichever
-components a run produces). Source of truth: `src/ascore/metrics/catalog.py`.
+components a run produces). Source of truth: `src/agenttic/metrics/catalog.py`.
 
 | Metric | Weight | Methodology |
 |--------|:-----:|-------------|
@@ -69,8 +69,8 @@ grader scored the *same* predictions 93.75%; the ~4-point difference was entirel
 BFCL's documented normalisation, not the model — reported alongside for
 transparency.) Reproduce with:
 
-    uv run ascore reproduce-bfcl --split simple --full            # validate grader (oracle 100%)
-    uv run ascore reproduce-bfcl --live --model claude-sonnet-4-5-20250929 \
+    uv run agenttic reproduce-bfcl --split simple --full            # validate grader (oracle 100%)
+    uv run agenttic reproduce-bfcl --live --model claude-sonnet-4-5-20250929 \
         --published 0.9775                                        # real run (needs key)
 
 **Red-team injection (real probe set, honest self-test):** the
@@ -96,7 +96,7 @@ key) — wired but not required, and never faked.
 `GET /api/public/calibration` (or the CLIs) to reproduce.
 
 - *Deterministic heuristic checks* — calibrated **offline, no key** against an
-  expanded **51-record** human-label corpus (`uv run ascore calibrate-corpus`);
+  expanded **51-record** human-label corpus (`uv run agenttic calibrate-corpus`);
   overall agreement **~0.84**. Demonstrated-calibrated: `harmful_action_refused`
   (0.82), `no_secret_leak` (1.0), `faithfulness_grounded` (0.80), and
   **`tool_misuse_safety` (0.875, newly covered)**. `injection_robust` honestly
@@ -111,7 +111,7 @@ key) — wired but not required, and never faked.
   clear-cut seed cases** — genuine agreement but a small, easy sample; a
   larger/harder corpus is future work. Every *other* judge criterion stays
   **PROVISIONAL** until it, too, is demonstrated. Reproduce:
-  `uv run ascore calibrate-judge` (needs `ANTHROPIC_API_KEY`; est. **~$0.07**).
+  `uv run agenttic calibrate-judge` (needs `ANTHROPIC_API_KEY`; est. **~$0.07**).
 
 Both corpora are *small seed sets*, not large inter-annotator studies — labelled
 as such.
@@ -122,15 +122,15 @@ as such.
   `generate → approve → run → report`.
 - **"How does this agent stack up on community metrics?"** → standard track:
   `standard seed → standard run`, or `standard ingest` a real dataset first.
-- **"Did my prompt/model change actually help?"** → `ascore ab` (paired,
+- **"Did my prompt/model change actually help?"** → `agenttic ab` (paired,
   significance-tested) — don't eyeball two scorecards.
 - **"This agent failed these cases — make sure they stay fixed."** → hardening:
   promote failures → regression suite → `rerun` for deltas.
-- **"Find me a better system prompt."** → `ascore optimize` (with a held-out
+- **"Find me a better system prompt."** → `agenttic optimize` (with a held-out
   split so you don't fool yourself).
 - **"Let another team re-run my evals in their harness."** → `inspect-export`.
-- **"Catch production drift."** → `ascore monitor` (live, sampled).
-- **"Benchmark a workflow before any production code exists."** → `ascore deploy`
+- **"Catch production drift."** → `agenttic monitor` (live, sampled).
+- **"Benchmark a workflow before any production code exists."** → `agenttic deploy`
   a Managed Agent YAML, then `run`.
 
 ## Capability changelog (major additions over the 10-step spec)

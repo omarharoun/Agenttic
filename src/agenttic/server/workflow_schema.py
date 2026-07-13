@@ -1,6 +1,6 @@
 """Workflow document: the canvas graph the UI edits and the executor runs.
 
-Deliberately NOT in ascore/schema/ — that package is the spec'd trace
+Deliberately NOT in agenttic/schema/ — that package is the spec'd trace
 contract. Workflows are UI-layer state: mutable drafts whose reproducibility
 comes from the immutable ``workflow_snapshot`` frozen into every execution
 (mirroring how scorecards pin suite/rubric versions).

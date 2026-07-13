@@ -1,7 +1,7 @@
 """SPEC-8 T43.3 — every command in the quickstart doc is copy-paste runnable.
 
 Parses docs/QUICKSTART.md, executes its shell commands against the offline mock
-provider (translating the `agenttic` command to `python -m ascore`), and checks
+provider (translating the `agenttic` command to `python -m agenttic`), and checks
 its Python snippets compile. This is the doctest-style guarantee that the doc
 never drifts from a working reality.
 """

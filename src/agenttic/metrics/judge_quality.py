@@ -20,7 +20,7 @@ judge-vs-human calibration run demonstrates agreement. We do NOT add any of
 these ids to ``judge_calibration.demonstrated_calibrated_judge()``, so
 ``scoring.corpus.uncalibrated_criteria`` flags all of them uncalibrated — the UI
 never shows one of these scores as trusted. Calibrating them is future work
-(extend ``judge_calibration_corpus.jsonl`` and re-run ``ascore calibrate-judge``).
+(extend ``judge_calibration_corpus.jsonl`` and re-run ``agenttic calibrate-judge``).
 
 Licensing / provenance
 ----------------------

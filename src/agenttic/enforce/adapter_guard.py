@@ -40,7 +40,7 @@ def _resolve_mode(enforce) -> str:
     if mode in _BLOCKING:
         raise EnforceConfigError(
             f"enforce='{mode}' is an inline blocking posture reached only via the "
-            "Step 39 enforcement ramp (`ascore enforce mode`), not the tracing "
+            "Step 39 enforcement ramp (`agenttic enforce mode`), not the tracing "
             "adapter. Enable it deliberately on the ramp after observability is "
             "proven; the adapter only supports the non-blocking observe/shadow "
             "default.")

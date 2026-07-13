@@ -12,9 +12,9 @@
 8. Hard Rules 1–8 (repo SPEC.md) + 9–30 below.
 
 ## PHASE 0
-- T0.1 Survey repo (README, SPEC.md, full src/ascore/ tree); write docs/SPEC2_BASELINE.md locating: schema module + schema_version, registry append-only pattern, harness entry + agent_config_hash, scoring/judge/calibration, stats.py bootstrap, result-cache keying, live monitor + ReEvalRequest, server auth/tenancy/PAT/SSRF/budgets, report+PDF renderers, Inspect interop, CLI wiring. Commit: `docs: spec-2 baseline survey of SPEC-1 surfaces`
+- T0.1 Survey repo (README, SPEC.md, full src/agenttic/ tree); write docs/SPEC2_BASELINE.md locating: schema module + schema_version, registry append-only pattern, harness entry + agent_config_hash, scoring/judge/calibration, stats.py bootstrap, result-cache keying, live monitor + ReEvalRequest, server auth/tenancy/PAT/SSRF/budgets, report+PDF renderers, Inspect interop, CLI wiring. Commit: `docs: spec-2 baseline survey of SPEC-1 surfaces`
 - T0.2 Run full suite; record count+runtime in baseline doc; STOP IF RED. Commit: `docs: record green baseline (N tests)`
-- T0.3 Branch spec2-certification-track; create src/ascore/certification/__init__.py; add empty docs/SPEC2_DEVIATIONS.md. Commit: `chore: open certification track workspace`
+- T0.3 Branch spec2-certification-track; create src/agenttic/certification/__init__.py; add empty docs/SPEC2_DEVIATIONS.md. Commit: `chore: open certification track workspace`
 - T0.4 Add merged certification:/incidents: config (appendix) + loader validation (missing incidents.sla_hours.S1 raises). Commit: `feat(config): certification + incidents configuration surface`
 - Gate P0: suite green · baseline committed · config loads.
 
@@ -28,9 +28,9 @@
 - T12.2 certification/profiles.py: load_profile resolves pinned versions; unknown/unapproved ref fails loudly named. Commit: `feat(cert): profile loader with fail-loud resolution`
 - T12.3 Seed cert-agent-safety-v1 (safety suites + tool-use context; min_k=3; thresholds from config; all eight required domains). Commit: `feat(cert): seed cert-agent-safety-v1 profile`
 - T12.4 coverage(profile) from dataset provenance: placeholders⇒assessed_seed never assessed_real; unmapped⇒not_assessed. Commit: `feat(cert): domain coverage computation from dataset provenance`
-- T12.5 CLI ascore profiles list|show (composition, pinned versions, coverage table, caveats verbatim). Commit: `feat(cli): ascore profiles list/show`
+- T12.5 CLI agenttic profiles list|show (composition, pinned versions, coverage table, caveats verbatim). Commit: `feat(cli): agenttic profiles list/show`
 - T12.6 Tests: byte-identical re-resolution; cbrn_proxy=not_assessed on defaults; ingest-record flip promotes; CLI snapshot. Commit: `test(cert): profile resolution + coverage honesty`
-- Gate M4: suite green · ascore profiles show cert-agent-safety-v1 renders NOT ASSESSED on cbrn_proxy.
+- Gate M4: suite green · agenttic profiles show cert-agent-safety-v1 renders NOT ASSESSED on cbrn_proxy.
 
 ## M5 — elicitation + certify
 - T13.1 Elicitation configs (neutral, strong) ⇒ distinct agent_config_hash per config. Commit: `feat(cert): elicitation config application to agent definitions`
@@ -42,10 +42,10 @@
 - T14.2 certification/dossier.py assemble(): scorecards, calibration, elicitation, coverage, caveats verbatim, Inspect EvalLog ref, attestation, hash+chain; persist created event. Commit: `feat(cert): dossier assembly with hash chain`
 - T14.3 verify(path|id) recomputes hashes offline; names offending ref on mismatch. Commit: `feat(cert): offline dossier verification`
 - T14.4 Renderers md/pdf/json/inspect; NOT ASSESSED visually distinct; zero placeholder-derived numbers. Commit: `feat(report): certification dossier renderers (md/pdf/json/inspect)`
-- T14.5 ascore certify --agent --profile [-o] + ascore dossier verify; cache-aware (identical⇒$0). Commit: `feat(cli): ascore certify + ascore dossier verify`
+- T14.5 agenttic certify --agent --profile [-o] + agenttic dossier verify; cache-aware (identical⇒$0). Commit: `feat(cli): agenttic certify + agenttic dossier verify`
 - T14.6 POST /api/certify (async job), GET /api/dossiers[/{id}][/report.pdf]; tenancy+budgets. Commit: `feat(server): certify + dossier endpoints`
 - T14.7 E2E mocked: certify ref-agent⇒Tier B (provisional_judge)⇒verify green⇒byte-flip fails naming ref⇒every number resolves to id. Commit: `test(e2e): certification vertical slice`
-- Gate M5: ascore certify --agent ref-agent --profile cert-agent-safety-v1 -o /tmp/dossier then ascore dossier verify /tmp/dossier — dossier emitted, caps listed, offline verify green.
+- Gate M5: agenttic certify --agent ref-agent --profile cert-agent-safety-v1 -o /tmp/dossier then agenttic dossier verify /tmp/dossier — dossier emitted, caps listed, offline verify green.
 
 ## M6 — attestation + incidents
 - T15.1 Tenant role evaluator (auth + PAT scopes, migration-safe). Commit: `feat(auth): evaluator tenant role`
@@ -58,14 +58,14 @@
 - T16.3 POST /api/live/ingest (auth, SSRF, rate limits); live never mixes into batch scorecards — regression test. Commit: `feat(server): live trace ingest endpoint`
 - T16.4 SLA clocks (S1/S2 default 72h) + overdue flag; tz/DST tests. Commit: `feat(live): incident SLA clocks with overdue flag`
 - T16.5 Incident.export() JSON + docs/INCIDENT_CROSSWALK.md (SB 53 / NY RAISE / EU CoP fields); golden-file test. Commit: `feat(live): incident export + regulatory field crosswalk`
-- T16.6 ascore incidents list|open|report|close + SSE + incidents page. Commit: `feat(ui): incidents surface with due clocks`
+- T16.6 agenttic incidents list|open|report|close + SSE + incidents page. Commit: `feat(ui): incidents surface with due clocks`
 - Gate M6: drift fixture opens S3 · overdue S2 flagged · export matches golden schema.
 
 ## M7 — staleness + public verification
 - T17.1 certification/staleness.py computed status (current|stale|revoked) from config-hash change, drift request, newer profile, open S1/S2, revoked event. Pure over registry reads. Commit: `feat(cert): computed certification status (staleness engine)`
 - T17.2 Status surfaced on dossiers, catalog, leaderboards, verify page. Commit: `feat(ui): certification status surfaced everywhere dossiers appear`
 - T17.3 --renew cache-aware; unchanged agent⇒$0 + identical tier + chained dossier; case-level diff reuses regression machinery. Commit: `feat(cert): --renew with chained dossier and case-level diff`
-- T17.4 ascore dossier revoke --reason: append-only, banner+reason, readable forever; test proves no manual-promotion code path. Commit: `feat(cert): append-only revocation; no manual promotion path`
+- T17.4 agenttic dossier revoke --reason: append-only, banner+reason, readable forever; test proves no manual-promotion code path. Commit: `feat(cert): append-only revocation; no manual promotion path`
 - T18.1 Public GET /certification/{dossier_id} from dossier JSON alone; snapshot test with empty registry. Commit: `feat(server): public dossier verification page`
 - T18.2 docs/REGULATORY_CROSSWALK.md (artifact⇒clause family; EU CoP, SB 53, RAISE); linked from report footer; disclaimer: evidence not compliance determination. Commit: `docs: regulatory crosswalk mapping dossier artifacts to clause families`
 - T18.3 Leaderboard certified filter + tier/attestation badges; uncertified rows show nothing. Commit: `feat(ui): leaderboard certification badges + filter`
@@ -87,7 +87,7 @@
 - T20.1 cards/autofill.py measured fields from Agenttic data: models from config, action space from traces, benchmarks from scorecards, incidents from registry, monitoring from live path, certification from dossier. Commit: `feat(cards): autofill from traces/scorecards/incidents/dossiers`
 - T20.2 cards/autonomy.py L1–L5 classifier (conservative; evidence refs; unclassifiable⇒None never guess). Commit: `feat(cards): autonomy classifier`
 - T20.3 Covered-agent detector (≥3 autonomous tool calls + write action + tool choice⇒True with refs; contradicted⇒False; sparse⇒None). Commit: `feat(cards): agency (covered-agent) detector`
-- T20.4 ascore cards show|autofill|annotate (annotate rejects documented values without citations). Commit: `feat(cli): ascore cards`
+- T20.4 agenttic cards show|autofill|annotate (annotate rejects documented values without citations). Commit: `feat(cli): agenttic cards`
 - T20.5 Fixture tests: ≥6 autofilled fields with resolvable refs; approval-gated≤L3, unattended≥L4, empty⇒None; covered/None/False. Commit: `test(cards): autofill + autonomy + agency fixtures`
 - Gate M9: ref-agent card autofills with refs · fixtures classify correctly · citation enforcement holds.
 

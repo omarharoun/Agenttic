@@ -1,6 +1,6 @@
 """Glass-box adapter for Anthropic Managed Agents (beta managed-agents-2026-04-01).
 
-Deploy a business-workflow agent once (``ascore deploy``), then run benchmark
+Deploy a business-workflow agent once (``agenttic deploy``), then run benchmark
 suites against it: each test case becomes a session, and the session's event
 stream is converted into a standard :class:`~agenttic.schema.trace.Trace` —
 LLM calls, tool calls, thinking, and errors all become spans, so the full
@@ -113,7 +113,7 @@ class ManagedAgentAdapter(AgentAdapter):
             agent={"type": "agent", "id": self.managed_agent_id,
                    **({"version": self.agent_version} if self.agent_version else {})},
             environment_id=self.environment_id,
-            title=f"ascore {test_case_id or 'adhoc'}",
+            title=f"agenttic {test_case_id or 'adhoc'}",
         ), self.retry_policy, op="managed-session")
 
         pending_llm: dict[str, datetime] = {}   # model_request_start id -> t0

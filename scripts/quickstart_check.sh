@@ -49,9 +49,9 @@ echo "    installed in ${INSTALL_ELAPSED}s"
 echo "==> [3-5/5] init → certify --mock → verify (budget ${BUDGET}s)"
 cd "$PROJ"
 START="$(date +%s)"
-"$PY" -m ascore init
-"$PY" -m ascore certify --mock --out dossier.json
-"$PY" -m ascore dossier verify dossier.json
+"$PY" -m agenttic init
+"$PY" -m agenttic certify --mock --out dossier.json
+"$PY" -m agenttic dossier verify dossier.json
 ELAPSED=$(( $(date +%s) - START ))
 
 echo "==> init→certify→verify completed in ${ELAPSED}s (budget ${BUDGET}s)"
