@@ -23,14 +23,14 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from ascore.assistant.agent import SafeAssistant, new_session
-from ascore.assistant.posture import safety_posture
-from ascore.assistant.store import AssistantStore
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.secrets import known_secret_values
-from ascore.server.auth import require_operator
-from ascore.server.keys import NO_KEY_MSG
-from ascore.server.keys import tenant_run_clients as _run_clients
+from agenttic.assistant.agent import SafeAssistant, new_session
+from agenttic.assistant.posture import safety_posture
+from agenttic.assistant.store import AssistantStore
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.secrets import known_secret_values
+from agenttic.server.auth import require_operator
+from agenttic.server.keys import NO_KEY_MSG
+from agenttic.server.keys import tenant_run_clients as _run_clients
 
 router = APIRouter(tags=["assistant"], prefix="/assistant")
 
@@ -78,7 +78,7 @@ def _public(session: dict) -> dict:
 
 
 def _is_sensitive(name: str) -> bool:
-    from ascore.assistant.tools import is_sensitive
+    from agenttic.assistant.tools import is_sensitive
     return is_sensitive(name)
 
 

@@ -54,17 +54,17 @@ import re
 from dataclasses import dataclass, field
 from typing import Callable
 
-from ascore.schema.rubric import Criterion
-from ascore.schema.trace import Trace
-from ascore.schema.testcase import TestCase
-from ascore.scoring.checks import check
+from agenttic.schema.rubric import Criterion
+from agenttic.schema.trace import Trace
+from agenttic.schema.testcase import TestCase
+from agenttic.scoring.checks import check
 
 # --------------------------------------------------------------------------- #
 # Shared refusal awareness — a robust agent that REFUSES a request and never
 # emits the unsafe content should not be scored as unsafe. Reuse the single
 # source of truth from the injection detector.
 # --------------------------------------------------------------------------- #
-from ascore.metrics.injection_detect import resisted as _resisted
+from agenttic.metrics.injection_detect import resisted as _resisted
 
 
 # =========================================================================== #

@@ -3,14 +3,14 @@
 
 State is never stored mutably: it is *computed* by folding the event stream
 (opened → triaged → reported → closed). The FSM rejects any transition not in
-:data:`ascore.schema.incident.LEGAL_TRANSITIONS`, raising
+:data:`agenttic.schema.incident.LEGAL_TRANSITIONS`, raising
 :class:`IllegalTransitionError`.
 """
 
 from __future__ import annotations
 
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.schema.incident import LEGAL_TRANSITIONS, Incident
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.schema.incident import LEGAL_TRANSITIONS, Incident
 
 # event_type → resulting state (the lifecycle events; "note" is not a transition)
 _EVENT_STATE = {
@@ -40,7 +40,7 @@ class IncidentManager:
         # webhook on S1/S2 (best-effort; only if configured)
         if incident.severity in ("S1", "S2"):
             try:
-                from ascore.feeds.webhooks import INCIDENT_S1_S2, enqueue_webhook
+                from agenttic.feeds.webhooks import INCIDENT_S1_S2, enqueue_webhook
                 enqueue_webhook(self.reg, self._cfg, INCIDENT_S1_S2,
                                 incident.agent_id,
                                 {"severity": incident.severity,
@@ -183,7 +183,7 @@ def open_from_live_criterion(reg, *, agent_id: str, tag: str,
 
 
 def escalate_drift(reg, cfg: dict, status) -> Incident | None:
-    """Given a :class:`~ascore.live.monitor.DriftStatus`, auto-open an S3
+    """Given a :class:`~agenttic.live.monitor.DriftStatus`, auto-open an S3
     incident if drift was detected. Returns the incident or None. Trace refs are
     the drifted criteria (the evidence pointer for the on-call reviewer)."""
     if not getattr(status, "drift_detected", False):

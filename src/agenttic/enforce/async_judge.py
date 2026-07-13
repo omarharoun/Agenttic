@@ -17,7 +17,7 @@ from __future__ import annotations
 import random
 import uuid
 
-from ascore.schema.enforcement import EnforcementEvent
+from agenttic.schema.enforcement import EnforcementEvent
 
 
 def _evt_id() -> str:
@@ -119,7 +119,7 @@ class AsyncJudge:
                 "actions": actions}
 
     def _open_incident(self, session, decision, verdict, verdict_ref) -> str:
-        from ascore.live.incidents import open_manual
+        from agenttic.live.incidents import open_manual
         sev = verdict.get("severity") or "S3"
         inc = open_manual(
             self.reg, agent_id=session.agent_id, severity=sev,

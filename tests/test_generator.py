@@ -10,9 +10,9 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from ascore.generator.pipeline import BenchmarkGenerator, GeneratorError
-from ascore.harness.runner import SuiteNotApprovedError, run_suite
-from ascore.registry.sqlite_store import Registry
+from agenttic.generator.pipeline import BenchmarkGenerator, GeneratorError
+from agenttic.harness.runner import SuiteNotApprovedError, run_suite
+from agenttic.registry.sqlite_store import Registry
 
 JOB_DOC = """Support Operations Associate. Responsibilities: triage inbound
 tickets to the right queue (billing, technical, general) and answer policy
@@ -119,7 +119,7 @@ class TestGeneration:
     def test_generator_decides_count_capped_to_bound(self):
         # the model returns 12 cases; the pipeline honours the upper bound (8)
         # rather than a fixed per-task count.
-        from ascore.generator.pipeline import MAX_CASES
+        from agenttic.generator.pipeline import MAX_CASES
         rubric = make_generator([reply(criteria_payload("triage"))]) \
             .define_criteria(TASKS["tasks"][0], rubric_id="r")
         gen = make_generator([reply(cases_payload("triage", n=12))])
@@ -219,8 +219,8 @@ class TestToolSafetyExpectedConfig:
         # tool-safety case scores cleanly (clean trace → passes the check).
         import uuid
         from datetime import datetime, timezone
-        from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-        from ascore.scoring.engine import score_run
+        from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+        from agenttic.scoring.engine import score_run
         rubric, cases = self._rubric_and_cases({"cases": [
             {"task_description": "d", "input": {"ticket": "x"},
              "expected": {}, "tags": ["adversarial"]}]})

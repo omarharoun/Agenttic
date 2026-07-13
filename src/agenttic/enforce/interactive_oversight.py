@@ -27,7 +27,7 @@ import random
 import uuid
 from dataclasses import dataclass, field
 
-from ascore.schema.enforcement import EnforcementEvent
+from agenttic.schema.enforcement import EnforcementEvent
 
 # the closed set of human responses the human may give at a review
 HUMAN_RESPONSES = (
@@ -246,7 +246,7 @@ class InteractiveOversightLoop:
         override path). Loosening is emitted ONLY as a proposal requiring an
         explicit human confirmation — never auto-applied (Rule 20/26). Every
         adaptation names the feedback event ids that produced it."""
-        from ascore.registry.sqlite_store import NotFoundError
+        from agenttic.registry.sqlite_store import NotFoundError
         try:
             policy = self.reg.latest_policy(agent_id)
         except NotFoundError:
@@ -267,7 +267,7 @@ class InteractiveOversightLoop:
         return proposals
 
     def _tighten_rule(self, pattern: str, feedback_ids: list[str]):
-        from ascore.schema.enforcement import Rule
+        from agenttic.schema.enforcement import Rule
         tool, _, action_class = pattern.partition(":")
         explicit_block = self._directives.get(pattern) == "always_block_pattern"
         action = "deny" if explicit_block else "require_approval"
@@ -280,8 +280,8 @@ class InteractiveOversightLoop:
     def _auto_tighten(self, policy, agent_id, pattern, feedback_ids) -> dict | None:
         """Add a pattern-specific restriction (a tightening — safe to auto-apply).
         No-op if the rule is already present."""
-        from ascore.enforce.gateway import compute_policy_hash
-        from ascore.schema.enforcement import EnforcementPolicy
+        from agenttic.enforce.gateway import compute_policy_hash
+        from agenttic.schema.enforcement import EnforcementPolicy
         rule = self._tighten_rule(pattern, feedback_ids)
         if any(r.rule_id == rule.rule_id for r in policy.rules):
             return None  # already tightened for this pattern
@@ -317,9 +317,9 @@ class InteractiveOversightLoop:
         """Apply a loosening ONLY after an explicit human confirmation. The
         confirmation is itself a logged event; without it, no loosening ever
         happens."""
-        from ascore.enforce.gateway import compute_policy_hash
-        from ascore.registry.sqlite_store import NotFoundError
-        from ascore.schema.enforcement import EnforcementPolicy
+        from agenttic.enforce.gateway import compute_policy_hash
+        from agenttic.registry.sqlite_store import NotFoundError
+        from agenttic.schema.enforcement import EnforcementPolicy
 
         proposal = self._find_proposal(agent_id, proposal_id)
         if proposal is None:

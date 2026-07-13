@@ -192,7 +192,7 @@ def make_llm_claim_checker(client, model: str, *, max_tokens: int = 20,
             model=model, max_tokens=max_tokens, system=_CHECK_SYSTEM,
             messages=[{"role": "user", "content": prompt}])
         if retry_policy is not None:
-            from ascore.retry import with_retry
+            from agenttic.retry import with_retry
             return with_retry(call, retry_policy, op="faithfulness-claim")
         return call()
 
@@ -225,7 +225,7 @@ def make_llm_claim_extractor(client, model: str, *, max_tokens: int = 512,
             model=model, max_tokens=max_tokens, system=_EXTRACT_SYSTEM,
             messages=[{"role": "user", "content": f"TEXT:\n{output}"}])
         if retry_policy is not None:
-            from ascore.retry import with_retry
+            from agenttic.retry import with_retry
             resp = with_retry(call, retry_policy, op="faithfulness-extract")
         else:
             resp = call()

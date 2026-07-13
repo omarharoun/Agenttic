@@ -6,19 +6,19 @@ import tempfile
 
 import pytest
 
-from ascore.certification.dossier import assemble
-from ascore.config import load_config
-from ascore.enforce.gateway import EnforcementGateway, compute_policy_hash
-from ascore.passport.issuer import PassportIssuer
-from ascore.passport.keys import PassportKeyManager, generate_key
-from ascore.passport.receipts import ReceiptError, ReceiptIssuer, verify_chain
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.certification import (
+from agenttic.certification.dossier import assemble
+from agenttic.config import load_config
+from agenttic.enforce.gateway import EnforcementGateway, compute_policy_hash
+from agenttic.passport.issuer import PassportIssuer
+from agenttic.passport.keys import PassportKeyManager, generate_key
+from agenttic.passport.receipts import ReceiptError, ReceiptIssuer, verify_chain
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.certification import (
     Attestation,
     CertificationProfile,
     TierDecision,
 )
-from ascore.schema.enforcement import Decision, EnforcementPolicy, Rule
+from agenttic.schema.enforcement import Decision, EnforcementPolicy, Rule
 
 CFG = load_config("config.yaml")
 

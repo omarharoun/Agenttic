@@ -16,9 +16,9 @@ from typing import Any, Awaitable, Callable, Literal
 
 from pydantic import BaseModel, Field
 
-from ascore import ops
-from ascore.registry.sqlite_store import NotFoundError, Registry
-from ascore.schema.scorecard import RunScore
+from agenttic import ops
+from agenttic.registry.sqlite_store import NotFoundError, Registry
+from agenttic.schema.scorecard import RunScore
 
 
 @dataclass
@@ -97,7 +97,7 @@ class FiEvalConfig(BaseModel):
 
 
 def _default_fi_metrics() -> list[str]:
-    from ascore.scoring.fi_eval import LOCAL_FI_METRICS
+    from agenttic.scoring.fi_eval import LOCAL_FI_METRICS
     return LOCAL_FI_METRICS
 
 
@@ -123,7 +123,7 @@ async def _run_business_doc(ctx: NodeContext, cfg: BusinessDocConfig,
     elif cfg.file_path:
         # Support pdf/docx/txt/md uploads via the shared extractor (a bare
         # read_text would corrupt/crash on a binary pdf or docx).
-        from ascore.documents import extract_text
+        from agenttic.documents import extract_text
         p = Path(cfg.file_path)
         doc = extract_text(p.name, p.read_bytes())
     else:
@@ -223,7 +223,7 @@ async def _run_run_suite(ctx: NodeContext, cfg: RunSuiteConfig,
     # or judge calls. The key is computed before any LLM work happens.
     cache_key = None
     try:
-        from ascore.result_cache import scorecard_cache_key
+        from agenttic.result_cache import scorecard_cache_key
         suite_pre, cases_pre = ctx.reg.get_suite(suite_id, version)
         rubric_pre = ctx.reg.get_rubric(cases_pre[0].rubric_id)
         cache_key = scorecard_cache_key(
@@ -255,7 +255,7 @@ async def _run_run_suite(ctx: NodeContext, cfg: RunSuiteConfig,
                                 "agent_model": ops.agent_model_of(adapter),
                                 "trace_ids": [], "visibility": adapter.visibility}}
 
-    from ascore.harness.runner import SuiteNotApprovedError
+    from agenttic.harness.runner import SuiteNotApprovedError
     try:
         suite, cases, traces = await ops.run_suite_op(
             ctx.cfg, ctx.reg, adapter, suite_id, version,
@@ -297,9 +297,9 @@ async def _run_fi_eval(ctx: NodeContext, cfg: "FiEvalConfig", inputs: dict) -> d
     """Score a run with a chosen set of Future AGI metrics (offline-friendly),
     via a synthetic one-criterion-per-metric rubric. Output matches the score
     node's `scored` shape so it wires straight into scorecard → report."""
-    from ascore.registry.sqlite_store import DuplicateVersionError
-    from ascore.scoring.fi_eval import FI_METRICS
-    from ascore.schema.rubric import Criterion, Rubric
+    from agenttic.registry.sqlite_store import DuplicateVersionError
+    from agenttic.scoring.fi_eval import FI_METRICS
+    from agenttic.schema.rubric import Criterion, Rubric
 
     run_ref = inputs["run"]
     metrics = [m.strip() for m in cfg.metrics if m.strip()]

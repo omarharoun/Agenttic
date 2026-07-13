@@ -155,7 +155,7 @@ def redact_secrets(text: str, *, extra: set[str] | None = None) -> str:
     """Mask anything that looks like an API key/secret in ``text``.
 
     ``extra`` is a set of exact known secret values (e.g. the platform/tenant
-    keys from :func:`ascore.secrets.known_secret_values`) that are masked
+    keys from :func:`agenttic.secrets.known_secret_values`) that are masked
     verbatim — belt-and-suspenders over the pattern match."""
     if not text:
         return text

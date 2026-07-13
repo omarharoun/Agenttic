@@ -12,8 +12,8 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from ascore.adapters.anthropic_simple import AnthropicSimpleAgent, _safe_eval
-from ascore.schema.trace import Trace
+from agenttic.adapters.anthropic_simple import AnthropicSimpleAgent, _safe_eval
+from agenttic.schema.trace import Trace
 
 
 def usage(i=120, o=45):

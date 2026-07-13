@@ -16,8 +16,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ascore.adapters.base import AgentAdapter
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.adapters.base import AgentAdapter
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 SYSTEM_PROMPT = (
     "You are a precise assistant. Use the calculator tool for any arithmetic "
@@ -96,7 +96,7 @@ class AnthropicSimpleAgent(AgentAdapter):
             import anthropic
             client = anthropic.Anthropic()
         self.client = client
-        from ascore.retry import RetryPolicy
+        from agenttic.retry import RetryPolicy
         self.retry_policy = retry_policy or RetryPolicy()
         self.model = model
         self.kb_path = Path(kb_path)
@@ -125,7 +125,7 @@ class AnthropicSimpleAgent(AgentAdapter):
         t_wall = time.monotonic()
         final_text = ""
 
-        from ascore.retry import with_retry
+        from agenttic.retry import with_retry
         for _ in range(self.max_steps):
             t0 = _now()
             try:
@@ -147,7 +147,7 @@ class AnthropicSimpleAgent(AgentAdapter):
             tokens_in = getattr(resp.usage, "input_tokens", None)
             tokens_out = getattr(resp.usage, "output_tokens", None)
             try:  # observability counters (best-effort; never break a run)
-                from ascore.server.metrics import record_tokens
+                from agenttic.server.metrics import record_tokens
                 record_tokens("agent", tokens_in, tokens_out)
             except Exception:  # noqa: BLE001
                 pass

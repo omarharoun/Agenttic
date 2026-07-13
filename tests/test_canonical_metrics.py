@@ -6,15 +6,15 @@ from datetime import datetime, timezone
 
 import pytest
 
-from ascore.metrics import canonical_checks as cc
-from ascore.metrics.calibration import ece
-from ascore.metrics.index import compute_index, rollup_metrics_from_means
-from ascore.metrics.reliability import pass_at_1, pass_hat_k
-from ascore.metrics.standard_suites import seed_standard_suites, standard_suite_ids
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.scoring.checks import CHECKS
+from agenttic.metrics import canonical_checks as cc
+from agenttic.metrics.calibration import ece
+from agenttic.metrics.index import compute_index, rollup_metrics_from_means
+from agenttic.metrics.reliability import pass_at_1, pass_hat_k
+from agenttic.metrics.standard_suites import seed_standard_suites, standard_suite_ids
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.scoring.checks import CHECKS
 
 NOW = datetime(2026, 6, 21, tzinfo=timezone.utc)
 
@@ -172,7 +172,7 @@ class TestStandardSuites:
         assert suite.approved is True and len(cases) == 5
 
     def test_standard_case_scores_through_engine(self, tmp_path):
-        from ascore.scoring.engine import score_run
+        from agenttic.scoring.engine import score_run
         reg = Registry(tmp_path / "s.db")
         seed_standard_suites(reg)
         suite, cases = reg.get_suite("std-tool-use-v1")

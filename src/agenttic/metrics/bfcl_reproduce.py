@@ -33,10 +33,10 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import Span, Trace
-from ascore.scoring.checks import run_check
-from ascore.stats import wilson_interval
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import Span, Trace
+from agenttic.scoring.checks import run_check
+from agenttic.stats import wilson_interval
 
 # BFCL split -> the adapter that parses its real vendored records.
 _SPLIT_ADAPTERS = {
@@ -58,7 +58,7 @@ class ReproductionBlocked(RuntimeError):
 
 
 def _load_cases(split: str, *, full: bool = False) -> list[TestCase]:
-    from ascore.metrics.datasets import bfcl as _bfcl
+    from agenttic.metrics.datasets import bfcl as _bfcl
     name = _SPLIT_ADAPTERS.get(split)
     if name is None:
         raise ValueError(f"unknown BFCL split {split!r}; "
@@ -408,7 +408,7 @@ def score_cases_official(cases: list[TestCase], predictions: dict[str, list[dict
     published Python Simple AST number is computed with (string normalisation,
     int→float, optional/unexpected-param handling). Simple category: one call per
     case; a wrong count is a miss."""
-    from ascore.metrics.bfcl_ast_official import simple_function_correct
+    from agenttic.metrics.bfcl_ast_official import simple_function_correct
     n = passes = 0
     for c in cases:
         bid = (c.expected or {}).get("bfcl_id", c.test_id)
@@ -485,7 +485,7 @@ def validate_official_scorer(cases: list[TestCase]) -> BFCLScore:
 
 def model_predictions_available() -> bool:
     """Whether we can generate model predictions here (needs a model API key)."""
-    from ascore.secrets import get_secret
+    from agenttic.secrets import get_secret
     return bool(get_secret("ANTHROPIC_API_KEY")
                 or os.environ.get("ANTHROPIC_API_KEY"))
 

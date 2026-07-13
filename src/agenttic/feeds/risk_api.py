@@ -9,17 +9,17 @@ the feed must agree with what an independent verifier SDK would conclude.
 
 from __future__ import annotations
 
-from ascore.registry.sqlite_store import NotFoundError
+from agenttic.registry.sqlite_store import NotFoundError
 
 FEED_VERSION = "agenttic-risk-feed/v1"
 
 
 def risk_feed(reg, cfg: dict, agent_id: str) -> dict:
-    from ascore.certification.staleness import status as cert_status
-    from ascore.enforce.compiler import posture_summary
-    from ascore.enforce.dashboard import dashboard_metrics
-    from ascore.live.incidents import IncidentManager
-    from ascore.oversight.analytics import approval_analytics
+    from agenttic.certification.staleness import status as cert_status
+    from agenttic.enforce.compiler import posture_summary
+    from agenttic.enforce.dashboard import dashboard_metrics
+    from agenttic.live.incidents import IncidentManager
+    from agenttic.oversight.analytics import approval_analytics
 
     feed: dict = {"feed_version": FEED_VERSION, "agent_id": agent_id}
 
@@ -47,7 +47,7 @@ def risk_feed(reg, cfg: dict, agent_id: str) -> dict:
 
     # release stage
     try:
-        from ascore.release.ladder import agent_stage
+        from agenttic.release.ladder import agent_stage
         feed["stage"] = agent_stage(reg, agent_id)
     except Exception:  # noqa: BLE001
         feed["stage"] = None

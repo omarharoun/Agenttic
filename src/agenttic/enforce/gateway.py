@@ -22,8 +22,8 @@ import time
 import uuid
 from dataclasses import dataclass, field
 
-from ascore.certification.hashing import sha256_hex
-from ascore.schema.enforcement import (
+from agenttic.certification.hashing import sha256_hex
+from agenttic.schema.enforcement import (
     Decision,
     EnforcementEvent,
     EnforcementPolicy,
@@ -133,7 +133,7 @@ class EnforcementGateway:
         # stage gate (T28.2): a caller above the agent's promoted stage is denied.
         if caller_cohort is not None:
             try:
-                from ascore.release.ladder import STAGE_GATE_ORIGIN, stage_gate
+                from agenttic.release.ladder import STAGE_GATE_ORIGIN, stage_gate
                 gate = stage_gate(self.reg, session.agent_id, caller_cohort)
                 if not gate.allowed:
                     return self._gated_deny(session, phase, tool_name, t0, [
@@ -142,7 +142,7 @@ class EnforcementGateway:
             except Exception:  # noqa: BLE001 — release ladder optional
                 pass
 
-        from ascore.enforce.lanes import (
+        from agenttic.enforce.lanes import (
             action_class_of, lane1_evaluate, lane2_evaluate,
         )
         action_class = action_class_of(tool_name, self.cfg)
@@ -150,7 +150,7 @@ class EnforcementGateway:
         # honeypot canaries (T29.1): a trip is a confirmed positive → deny +
         # incident at severity_on_trip, detected in Lane 1.
         try:
-            from ascore.enforce.canaries import CanaryManager
+            from agenttic.enforce.canaries import CanaryManager
             cm = CanaryManager(self.reg, self.cfg)
             trip = cm.check(session.agent_id, phase, tool_name, data)
             if trip is not None:
@@ -256,7 +256,7 @@ class EnforcementGateway:
     def _fail_policy(self, action_class: str):
         """Per-action-class fail policy: write ⇒ closed (deny); read ⇒ open
         (allow) with fail_open logged. Unknown class defaults to closed (safe)."""
-        from ascore.enforce.lanes import LaneResult
+        from agenttic.enforce.lanes import LaneResult
         policy = (self.cfg.get("enforcement", {}) or {}).get("fail_policy", {})
         mode = policy.get(action_class, "closed")
         if mode == "open":

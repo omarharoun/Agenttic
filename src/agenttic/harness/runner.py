@@ -19,9 +19,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Protocol
 
-from ascore.adapters.base import AgentAdapter
-from ascore.schema.testcase import TestCase, TestSuite
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.adapters.base import AgentAdapter
+from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 
 class SuiteNotApprovedError(RuntimeError):
@@ -71,7 +71,7 @@ async def run_suite(
     config: HarnessConfig = HarnessConfig(),
     transport_errors: tuple[type[Exception], ...] = (ConnectionError, OSError),
     on_event: Callable[[str, dict], None] | None = None,
-    budget=None,  # optional ascore.budget.RunBudget — abort remaining cases on cap
+    budget=None,  # optional agenttic.budget.RunBudget — abort remaining cases on cap
     resume: bool = True,  # reuse successful persisted traces (don't re-spend)
 ) -> list[Trace]:
     """Run every test case; return traces in test-case order.

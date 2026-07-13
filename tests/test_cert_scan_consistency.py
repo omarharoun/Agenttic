@@ -13,8 +13,8 @@ composite to 98 and reading ``scores`` instead of ``dimensions``) is covered in
 """
 from datetime import datetime, timedelta, timezone
 
-from ascore.certification import safety_cert as cert
-from ascore.scan import _plain_dimensions
+from agenttic.certification import safety_cert as cert
+from agenttic.scan import _plain_dimensions
 
 
 # A run that grades to a NON-integer composite — the exact shape that made the

@@ -7,7 +7,7 @@ feed to a fine-tuning / distillation job to specialize a smaller model for one
 job.
 
 In the standalone MVP this was a JSONL file. Folded into Agenttic, episodes are
-persisted per-tenant in the database (see :mod:`ascore.camp.store`), so this
+persisted per-tenant in the database (see :mod:`agenttic.camp.store`), so this
 module keeps two things:
 
 - ``Episode`` + the append-only ``TraceStore`` (JSONL), unchanged, so the

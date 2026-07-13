@@ -27,8 +27,8 @@ from cryptography.hazmat.primitives.serialization import (
     PublicFormat,
 )
 
-from ascore.certification.hashing import canonical_json
-from ascore.schema.passport import KeyRef
+from agenttic.certification.hashing import canonical_json
+from agenttic.schema.passport import KeyRef
 
 _ENV_KEY = "ASCORE_PASSPORT_SIGNING_KEY"
 
@@ -122,7 +122,7 @@ class PassportKeyManager:
             if configured is not None:
                 self._priv = configured
             else:
-                from ascore.certification import is_production
+                from agenttic.certification import is_production
                 if is_production(self.cfg):
                     raise RuntimeError(
                         f"no passport signing key configured ({_ENV_KEY}) — "

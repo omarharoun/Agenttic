@@ -16,8 +16,8 @@ self-improving loop keeps a frozen held-out anchor so a self-training loop can't
 quietly collapse.
 
 Inside Agenttic this engine is wired to: the tenant's BYO-Anthropic-key agent as
-the thing under camp (see :mod:`ascore.camp.adapter_agent`), per-tenant DB
-persistence of runs/episodes/gate decisions (see :mod:`ascore.camp.store`), and
+the thing under camp (see :mod:`agenttic.camp.adapter_agent`), per-tenant DB
+persistence of runs/episodes/gate decisions (see :mod:`agenttic.camp.store`), and
 the promotion gate / Wilson bound as the training-side evidence behind the
 certification & credibility story.
 """

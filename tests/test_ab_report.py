@@ -4,8 +4,8 @@ valid bytes."""
 
 import re
 
-from ascore.reporting.ab_report import render_ab_markdown, render_ab_pdf
-from ascore.schema.ab import (
+from agenttic.reporting.ab_report import render_ab_markdown, render_ab_pdf
+from agenttic.schema.ab import (
     ABComparison,
     ABVariant,
     CriterionComparison,

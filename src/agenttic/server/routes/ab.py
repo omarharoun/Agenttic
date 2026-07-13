@@ -9,11 +9,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
-from ascore import ops
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.schema.ab import ABVariant
-from ascore.server.auth import require_operator
-from ascore.server.keys import tenant_run_clients
+from agenttic import ops
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.schema.ab import ABVariant
+from agenttic.server.auth import require_operator
+from agenttic.server.keys import tenant_run_clients
 
 router = APIRouter(tags=["ab"])
 

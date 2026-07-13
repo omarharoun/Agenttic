@@ -29,9 +29,9 @@ import re
 from datetime import date
 from typing import Any
 
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import Trace
-from ascore.scoring.checks import _need, check
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import Trace
+from agenttic.scoring.checks import _need, check
 
 # ---------------------------------------------------------------------------
 # Helpers (Part 1)

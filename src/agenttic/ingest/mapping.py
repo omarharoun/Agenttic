@@ -1,14 +1,14 @@
 """Map OTel-GenAI spans → Agenttic Trace/Decision (SPEC-7 Step 35, T35.2).
 
-Consumes the normalized :class:`~ascore.ingest.otel.OtelSpan` records from
-:mod:`ascore.ingest.otel` and produces:
+Consumes the normalized :class:`~agenttic.ingest.otel.OtelSpan` records from
+:mod:`agenttic.ingest.otel` and produces:
 
-* a :class:`~ascore.schema.trace.Trace` per OTLP trace id, with tools and I/O
+* a :class:`~agenttic.schema.trace.Trace` per OTLP trace id, with tools and I/O
   **hashes** populated from the GenAI span/event attributes, ``source=
   "otel_ingest"`` provenance, and ``agent_config_hash`` preserved when the
   producer set it (never fabricated);
-* a :class:`~ascore.schema.enforcement.Decision` for any span that describes a
-  gateway decision (the inverse of :mod:`ascore.enforce.export`).
+* a :class:`~agenttic.schema.enforcement.Decision` for any span that describes a
+  gateway decision (the inverse of :mod:`agenttic.enforce.export`).
 
 Invariants:
 
@@ -25,9 +25,9 @@ import hashlib
 import json
 from typing import Any
 
-from ascore.ingest.otel import OtelSpan, parse_otlp
-from ascore.schema.enforcement import Decision
-from ascore.schema.trace import Span, SpanKind, Trace
+from agenttic.ingest.otel import OtelSpan, parse_otlp
+from agenttic.schema.enforcement import Decision
+from agenttic.schema.trace import Span, SpanKind, Trace
 
 # --- GenAI semantic-convention attribute keys we read ----------------------
 A_SYSTEM = "gen_ai.system"
@@ -44,7 +44,7 @@ A_AGENT_ID = "agenttic.agent_id"
 A_AGENT_CFG = "agenttic.agent_config_hash"
 A_GENAI_AGENT_ID = "gen_ai.agent.id"
 
-# Enforcement export namespace (inverse of ascore.enforce.export.export_otel).
+# Enforcement export namespace (inverse of agenttic.enforce.export.export_otel).
 E_ACTION = "enforcement.action"
 E_LANE = "enforcement.lane"
 E_CLASS = "enforcement.action_class"

@@ -7,10 +7,10 @@ import tempfile
 
 import pytest
 
-from ascore.cards import fields as fields_mod
-from ascore.cards.fields import generate_field_registry, registry_digest
-from ascore.registry.sqlite_store import AgentCardRow, Registry
-from ascore.schema.agent_card import AgentCard, FieldValue
+from agenttic.cards import fields as fields_mod
+from agenttic.cards.fields import generate_field_registry, registry_digest
+from agenttic.registry.sqlite_store import AgentCardRow, Registry
+from agenttic.schema.agent_card import AgentCard, FieldValue
 
 
 def test_unprovenanced_value_is_impossible():

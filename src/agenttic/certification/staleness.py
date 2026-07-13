@@ -15,7 +15,7 @@ This module is pure over registry reads (plus optional inputs); it never mutates
 
 from __future__ import annotations
 
-from ascore.registry.sqlite_store import NotFoundError
+from agenttic.registry.sqlite_store import NotFoundError
 
 _OPEN_STATES = {"open", "triaged", "reported"}  # not closed
 
@@ -61,7 +61,7 @@ def _newer_profile(reg, dossier) -> bool:
 
 
 def _open_s1_s2(reg, dossier) -> bool:
-    from ascore.live.incidents import IncidentManager
+    from agenttic.live.incidents import IncidentManager
     mgr = IncidentManager(reg)
     for row in reg.list_incidents(dossier.agent_id):
         if row["severity"] not in ("S1", "S2"):

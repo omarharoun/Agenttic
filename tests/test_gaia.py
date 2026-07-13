@@ -8,13 +8,13 @@ schema — no real GAIA question/answer lives in the repo (see gaia_data/)."""
 import uuid
 from datetime import datetime, timezone
 
-from ascore.metrics.canonical_checks import gaia_answer_match, gaia_question_scorer
-from ascore.metrics.datasets import dataset_infos, get_adapter
-from ascore.metrics.datasets.gaia import GAIAAdapter
-from ascore.metrics.standard_suites import DATASET_SUITE_IDS, canonical_suite_ids
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.scoring.engine import score_run
+from agenttic.metrics.canonical_checks import gaia_answer_match, gaia_question_scorer
+from agenttic.metrics.datasets import dataset_infos, get_adapter
+from agenttic.metrics.datasets.gaia import GAIAAdapter
+from agenttic.metrics.standard_suites import DATASET_SUITE_IDS, canonical_suite_ids
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.scoring.engine import score_run
 
 NOW = datetime(2026, 6, 22, tzinfo=timezone.utc)
 

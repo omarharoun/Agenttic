@@ -2,9 +2,9 @@
 
 from fastapi.testclient import TestClient
 
-from ascore.registry.sqlite_store import Registry
-from ascore.server import metrics
-from ascore.server.app import create_app
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server import metrics
+from agenttic.server.app import create_app
 
 CONFIG = """\
 models: {agent_default: a, judge_strong: j, judge_light: l}
@@ -51,7 +51,7 @@ def test_metrics_endpoint_counts_requests(tmp_path):
 
 def test_unhandled_error_returns_clean_envelope(tmp_path):
     # force an internal error in a real endpoint; assert no traceback leaks
-    from ascore.server.app import create_app
+    from agenttic.server.app import create_app
     cfg = tmp_path / "config.yaml"
     cfg.write_text(CONFIG % {"db": tmp_path / "a.db", "r": tmp_path / "r",
                              "c": tmp_path / "c"})

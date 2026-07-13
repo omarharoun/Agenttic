@@ -9,14 +9,14 @@ from pathlib import Path
 
 import pytest
 
-from ascore import ops
-from ascore.adapters.anthropic_simple import AnthropicSimpleAgent
-from ascore.adapters.blackbox_http import BlackBoxHTTPAgent
-from ascore.harness.runner import HarnessConfig, run_suite
-from ascore.registry.sqlite_store import Registry
-from ascore.registry.store import InMemoryTraceStore
-from ascore.schema.rubric import Rubric
-from ascore.schema.testcase import TestCase, TestSuite
+from agenttic import ops
+from agenttic.adapters.anthropic_simple import AnthropicSimpleAgent
+from agenttic.adapters.blackbox_http import BlackBoxHTTPAgent
+from agenttic.harness.runner import HarnessConfig, run_suite
+from agenttic.registry.sqlite_store import Registry
+from agenttic.registry.store import InMemoryTraceStore
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.testcase import TestCase, TestSuite
 from tests.test_e2e_pipeline import ProfessionalToneJudgeClient, RoutingFakeClient
 from tests.test_harness import StubAdapter, make_cases, make_suite
 
@@ -218,7 +218,7 @@ class TestPartialBatchScoring:
 
 class TestAggregatePartial:
     def _run(self, test_id, passed, error=None):
-        from ascore.schema.scorecard import CriterionScore, RunScore
+        from agenttic.schema.scorecard import CriterionScore, RunScore
         crits = [] if error else [CriterionScore(
             criterion_id="x", score=1.0 if passed else 0.0, scorer="code")]
         return RunScore(trace_id=f"t-{test_id}", test_id=test_id,
@@ -226,7 +226,7 @@ class TestAggregatePartial:
                         cost_usd=0.01, latency_ms=100.0, scoring_error=error)
 
     def test_rates_exclude_errored_cost_includes_all(self):
-        from ascore.schema.scorecard import Scorecard
+        from agenttic.schema.scorecard import Scorecard
         runs = [self._run("a", True), self._run("b", False),
                 self._run("c", False, error="JudgeError: boom")]
         sc = Scorecard.aggregate(
@@ -240,7 +240,7 @@ class TestAggregatePartial:
         assert len(sc.run_scores) == 3              # errored kept
 
     def test_all_errored_does_not_crash(self):
-        from ascore.schema.scorecard import Scorecard
+        from agenttic.schema.scorecard import Scorecard
         runs = [self._run("a", False, error="x"), self._run("b", False, error="y")]
         sc = Scorecard.aggregate(
             scorecard_id="s", agent_id="ag", suite_id="su", suite_version=1,

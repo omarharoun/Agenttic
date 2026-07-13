@@ -6,9 +6,9 @@ from __future__ import annotations
 import tempfile
 from datetime import datetime, timezone
 
-from ascore.live.incidents import escalate_drift, IncidentManager
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.live.incidents import escalate_drift, IncidentManager
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 NOW = datetime(2026, 6, 21, tzinfo=timezone.utc)
 

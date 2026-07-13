@@ -7,17 +7,17 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from ascore.certification.dossier import assemble
-from ascore.config import load_config
-from ascore.passport.issuer import PassportIssuer, verify_passport_object
-from ascore.passport.keys import (
+from agenttic.certification.dossier import assemble
+from agenttic.config import load_config
+from agenttic.passport.issuer import PassportIssuer, verify_passport_object
+from agenttic.passport.keys import (
     PassportKeyManager,
     generate_key,
     private_seed_b64,
     verify_payload,
 )
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.certification import (
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.certification import (
     Attestation,
     CertificationProfile,
     TierDecision,
@@ -132,8 +132,8 @@ def test_passport_signing_ephemeral_in_dev_and_reports_degraded(monkeypatch):
     assert km.is_ephemeral() is True
     assert km.jwks()["keys"]  # still publishes a JWKS
 
-    from ascore.server.health import DEGRADED, run_probe
-    from ascore.server.health import _probe_passport
+    from agenttic.server.health import DEGRADED, run_probe
+    from agenttic.server.health import _probe_passport
 
     class _App:
         class state:

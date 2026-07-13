@@ -1,19 +1,19 @@
 """Tests for the self-improvement loop: the frozen holdout anchor, the
 challenger/champion ratchet, and the collapse guard. Ported from AgentCamp's
-test_loop.py against ``ascore.camp``."""
+test_loop.py against ``agenttic.camp``."""
 
 import os
 
-from ascore.camp.holdout import FrozenHoldout
-from ascore.camp.improve import (
+from agenttic.camp.holdout import FrozenHoldout
+from agenttic.camp.improve import (
     ImprovementLoop,
     LoopConfig,
     RuleSupportAgent,
     degenerate_factory,
     honest_factory,
 )
-from ascore.camp.tasks import SupportTriageTask
-from ascore.camp.trace import MemoryTraceStore, TraceStore
+from agenttic.camp.tasks import SupportTriageTask
+from agenttic.camp.trace import MemoryTraceStore, TraceStore
 
 
 def _holdout(n=600, seed=123):
@@ -75,9 +75,9 @@ def test_trace_store_roundtrips_and_exports(tmp_path):
     path = os.path.join(tmp_path, "memory.jsonl")
     store = TraceStore(path)
     task = SupportTriageTask()
-    from ascore.camp.agent import HeuristicSupportAgent
-    from ascore.camp.environment import MockSupportEnv
-    from ascore.camp.trainer import CampConfig, TrainingCamp
+    from agenttic.camp.agent import HeuristicSupportAgent
+    from agenttic.camp.environment import MockSupportEnv
+    from agenttic.camp.trainer import CampConfig, TrainingCamp
     import random
     camp = TrainingCamp(task, MockSupportEnv(task, random.Random(0)),
                         HeuristicSupportAgent(), store)

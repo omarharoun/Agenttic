@@ -16,8 +16,8 @@ import csv
 import io
 import json
 
-from ascore.cards.fields import CATEGORIES, field_key
-from ascore.schema.agent_card import AgentCard, FieldValue
+from agenttic.cards.fields import CATEGORIES, field_key
+from agenttic.schema.agent_card import AgentCard, FieldValue
 
 DATASET_DOI = "10.5281/zenodo.19592546"
 DATASET_URL = "https://zenodo.org/records/19592546"
@@ -65,7 +65,7 @@ def _card_from_agent(agent: dict) -> AgentCard:
 
 def load_index_cards(path=None) -> list[AgentCard]:
     """Build (but don't persist) one card per dataset agent."""
-    from ascore.cards.fields import _vendor_path
+    from agenttic.cards.fields import _vendor_path
     p = path or _vendor_path()
     data = json.loads(open(p).read()) if path else json.loads(p.read_text())
     return [_card_from_agent(a) for a in data]
@@ -86,7 +86,7 @@ def import_index_cards(reg, path=None) -> int:
 
 def export_field_keys() -> set[str]:
     """The set of valid card field keys, from the generated registry."""
-    from ascore.cards.fields import all_field_keys
+    from agenttic.cards.fields import all_field_keys
     return set(all_field_keys())
 
 

@@ -12,22 +12,22 @@ import tempfile
 
 import pytest
 
-from ascore.certification.dossier import assemble
-from ascore.config import load_config
-from ascore.enforce.compiler import recompile_for_agent
-from ascore.enforce.gateway import Session
-from ascore.enforce.interactive_oversight import (
+from agenttic.certification.dossier import assemble
+from agenttic.config import load_config
+from agenttic.enforce.compiler import recompile_for_agent
+from agenttic.enforce.gateway import Session
+from agenttic.enforce.interactive_oversight import (
     ContextualBandit,
     InteractiveOversightLoop,
     pending_loosen_proposals,
 )
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.certification import (
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.certification import (
     Attestation,
     CertificationProfile,
     TierDecision,
 )
-from ascore.schema.enforcement import Decision
+from agenttic.schema.enforcement import Decision
 
 
 def _cfg(enabled=True):

@@ -18,13 +18,13 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from ascore import ops
-from ascore.certification.coverage import coverage as compute_coverage
-from ascore.certification.dossier import assemble
-from ascore.certification.elicitation import analyze_elicitation, run_matrix
-from ascore.certification.profiles import load_profile, seed_profile
-from ascore.certification.tiers import decide
-from ascore.schema.certification import Attestation
+from agenttic import ops
+from agenttic.certification.coverage import coverage as compute_coverage
+from agenttic.certification.dossier import assemble
+from agenttic.certification.elicitation import analyze_elicitation, run_matrix
+from agenttic.certification.profiles import load_profile, seed_profile
+from agenttic.certification.tiers import decide
+from agenttic.schema.certification import Attestation
 
 
 @dataclass
@@ -53,9 +53,9 @@ async def renew(cfg: dict, reg, *, agent_id: str, profile_id: str,
     * **Changed agent** ⇒ re-certify (chained), and attach a **case-level diff**
       vs the previous run (reusing the regression stats machinery).
     """
-    from ascore.certification.dossier import assemble
-    from ascore.certification.profiles import load_profile, seed_profile
-    from ascore.schema.certification import Attestation
+    from agenttic.certification.dossier import assemble
+    from agenttic.certification.profiles import load_profile, seed_profile
+    from agenttic.schema.certification import Attestation
 
     seed_profile(cfg, reg, profile_id)
     profile = load_profile(cfg, reg, profile_id)
@@ -93,7 +93,7 @@ async def renew(cfg: dict, reg, *, agent_id: str, profile_id: str,
 def case_level_diff(prev_run: dict, new_run: dict) -> dict:
     """Case-level pass-rate diff between two canonical runs, reusing the paired
     regression machinery (McNemar over per-case pass vectors when available)."""
-    from ascore.stats import mcnemar
+    from agenttic.stats import mcnemar
     p, n = prev_run.get("per_case", {}), new_run.get("per_case", {})
     common = sorted(set(p) & set(n))
     a = [1.0 if p[t] and all(p[t]) else 0.0 for t in common]
@@ -112,7 +112,7 @@ def attestation_mode_for(caller_role: str | None) -> str:
     """Attestation is COMPUTED from the caller's principal, never selected
     (Hard Rule 13): an independent evaluator principal ⇒ ``independent``; the
     agent's own owner ⇒ ``self_attested``."""
-    from ascore.server.auth import is_evaluator
+    from agenttic.server.auth import is_evaluator
     return "independent" if is_evaluator(caller_role) else "self_attested"
 
 
@@ -130,8 +130,8 @@ def _enforce_certification_ceiling(cfg: dict, reg, *, n_configs: int,
                                    n_suites: int, k: int) -> None:
     """Gate the run against the tenant spend cap using the cost estimator. No-op
     when caps are 0 (unlimited) or no suites/estimator context exists."""
-    from ascore.budget import BudgetExceededError, check_pre_run
-    from ascore.cost import estimate_for_run
+    from agenttic.budget import BudgetExceededError, check_pre_run
+    from agenttic.cost import estimate_for_run
 
     # hard ceiling: if the tenant is already at/over its daily cap, refuse before
     # spending anything more (BYO-key evaluators can't exceed their own cap).
@@ -156,7 +156,7 @@ def _enforce_certification_ceiling(cfg: dict, reg, *, n_configs: int,
 
 def _suite_ids_from_cfg(cfg, reg):
     try:
-        from ascore.metrics.standard_suites import canonical_suite_ids
+        from agenttic.metrics.standard_suites import canonical_suite_ids
         return canonical_suite_ids(reg)
     except Exception:  # noqa: BLE001
         return []
@@ -195,10 +195,10 @@ async def certify(
     force: bool = False,
     abort_check=None,
 ) -> CertifyResult:
-    from ascore.metrics.redteam import seed_redteam_injection_suite
-    from ascore.metrics.safety_suite import seed_safety_content_suite
-    from ascore.metrics.standard_suites import seed_standard_suites
-    from ascore.metrics.swe_suites import seed_swe_suites
+    from agenttic.metrics.redteam import seed_redteam_injection_suite
+    from agenttic.metrics.safety_suite import seed_safety_content_suite
+    from agenttic.metrics.standard_suites import seed_standard_suites
+    from agenttic.metrics.swe_suites import seed_swe_suites
 
     seed_standard_suites(reg)
     seed_redteam_injection_suite(reg)
@@ -270,8 +270,8 @@ async def certify(
 
     # documentation prerequisite (T21.2): a covered agent must be documented
     # (autonomy classified + a card present), else the tier is capped at B.
-    from ascore.cards.agency import detect_covered_agent
-    from ascore.cards.autonomy import classify_autonomy
+    from agenttic.cards.agency import detect_covered_agent
+    from agenttic.cards.autonomy import classify_autonomy
     autonomy = classify_autonomy(reg, agent_id, cfg)
     covered = detect_covered_agent(reg, agent_id, cfg).covered
     try:
@@ -306,7 +306,7 @@ async def certify(
 
     # evidence changed → recompile the enforcement policy from the new dossier
     try:
-        from ascore.enforce.compiler import recompile_for_agent
+        from agenttic.enforce.compiler import recompile_for_agent
         recompile_for_agent(reg, cfg, agent_id)
     except Exception:  # noqa: BLE001 — enforcement is optional for a bare certify
         pass
@@ -318,7 +318,7 @@ async def certify(
         prev_tier = reg.get_dossier(prior[-1]["dossier_id"]).tier_decision.tier \
             if prior else None
         if prev_tier is not None and prev_tier != tier_decision.tier:
-            from ascore.feeds.webhooks import TIER_CHANGE, enqueue_webhook
+            from agenttic.feeds.webhooks import TIER_CHANGE, enqueue_webhook
             enqueue_webhook(reg, cfg, TIER_CHANGE, agent_id,
                             {"from_tier": prev_tier, "to_tier": tier_decision.tier})
     except Exception:  # noqa: BLE001 — feeds optional

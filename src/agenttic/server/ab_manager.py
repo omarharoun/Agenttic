@@ -3,7 +3,7 @@
 An A/B run executes two full agent evaluations, so it can take a while — the
 HTTP request can't block on it. ``ABManager`` mirrors the spirit of
 ``ExecutionManager`` but lighter: ``start`` records a 'running' row and launches
-an asyncio task; the task runs both variants via :func:`ascore.ab.run_ab_op`
+an asyncio task; the task runs both variants via :func:`agenttic.ab.run_ab_op`
 (which persists the finished comparison or marks the row failed), and the UI
 polls ``GET /ab/runs/{id}`` for status + the artifact. Live per-variant progress
 is kept in memory and surfaced on the same poll.
@@ -18,9 +18,9 @@ from __future__ import annotations
 import asyncio
 import uuid
 
-from ascore.ab import run_ab_op
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.ab import ABVariant
+from agenttic.ab import run_ab_op
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.ab import ABVariant
 
 
 class ABManager:

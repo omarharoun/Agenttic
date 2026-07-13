@@ -52,7 +52,7 @@ def dashboard_metrics(reg, agent_id: str | None = None,
     # blocks. Agent-scoped; the ramp mode is per-agent so it's meaningful only
     # when an agent_id is given.
     if agent_id is not None:
-        from ascore.enforce.ramp import current_mode
+        from agenttic.enforce.ramp import current_mode
         shadow = [e for e in events if e.get("kind") == "shadow"]
         metrics["ramp"] = {
             "mode": current_mode(reg, agent_id),

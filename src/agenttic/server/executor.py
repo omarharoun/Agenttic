@@ -14,11 +14,11 @@ import asyncio
 import uuid
 from dataclasses import dataclass, field
 
-from ascore.registry.sqlite_store import Registry
-from ascore.server.events import EventBus
-from ascore.server.nodes import NODE_TYPES, NodeContext
-from ascore.server.store import UIStore
-from ascore.server.workflow_schema import Workflow, topo_levels, validate_workflow
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.events import EventBus
+from agenttic.server.nodes import NODE_TYPES, NodeContext
+from agenttic.server.store import UIStore
+from agenttic.server.workflow_schema import Workflow, topo_levels, validate_workflow
 
 
 class WorkflowValidationError(ValueError):

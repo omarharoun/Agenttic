@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import json
 
-from ascore.certification.hashing import canonical_json
-from ascore.schema.certification import Dossier
+from agenttic.certification.hashing import canonical_json
+from agenttic.schema.certification import Dossier
 
 _STATUS_MD = {
     "assessed_real": "assessed (real)",
@@ -100,7 +100,7 @@ def render_pdf(dossier: Dossier) -> bytes:
     ASSESSED domains are printed in the fail color, never as a number."""
     from fpdf import FPDF
 
-    from ascore.reporting.pdf_report import CLAY, FAIL, INK, LINE, MUTED, OK, _san
+    from agenttic.reporting.pdf_report import CLAY, FAIL, INK, LINE, MUTED, OK, _san
 
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)

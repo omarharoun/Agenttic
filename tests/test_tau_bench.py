@@ -5,13 +5,13 @@ and labels the suite as the real dataset (distinct from the std-* seeds)."""
 import uuid
 from datetime import datetime, timezone
 
-from ascore.metrics.canonical_checks import tool_param_accuracy
-from ascore.metrics.datasets.tau_bench import TauBenchAdapter, _parse_task_module
-from ascore.metrics.standard_suites import DATASET_SUITE_IDS, canonical_suite_ids
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.scoring.engine import score_run
+from agenttic.metrics.canonical_checks import tool_param_accuracy
+from agenttic.metrics.datasets.tau_bench import TauBenchAdapter, _parse_task_module
+from agenttic.metrics.standard_suites import DATASET_SUITE_IDS, canonical_suite_ids
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.scoring.engine import score_run
 
 NOW = datetime(2026, 6, 21, tzinfo=timezone.utc)
 

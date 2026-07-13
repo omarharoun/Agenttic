@@ -77,10 +77,10 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
-from ascore.schema.rubric import Rubric
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import Span, Trace
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import Span, Trace
 
 # Bump when the metadata layout below changes incompatibly.
 INTEROP_VERSION = 1

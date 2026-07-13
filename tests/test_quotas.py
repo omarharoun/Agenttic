@@ -2,8 +2,8 @@
 
 import pytest
 
-from ascore.budget import BudgetExceededError, budget_context, check_pre_run, tenant_quota
-from ascore.registry.sqlite_store import Registry
+from agenttic.budget import BudgetExceededError, budget_context, check_pre_run, tenant_quota
+from agenttic.registry.sqlite_store import Registry
 
 CFG = {
     "budget": {"max_run_cost_usd": 0.0, "max_daily_cost_usd": 0.0},

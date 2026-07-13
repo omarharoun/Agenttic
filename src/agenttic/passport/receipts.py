@@ -13,8 +13,8 @@ import json
 import uuid
 from datetime import datetime
 
-from ascore.schema.enforcement import EnforcementEvent
-from ascore.schema.passport import Receipt
+from agenttic.schema.enforcement import EnforcementEvent
+from agenttic.schema.passport import Receipt
 
 
 def _sha256(data) -> str:
@@ -80,7 +80,7 @@ class ReceiptIssuer:
                   "key_id": receipt.key_id, "signature": receipt.signature,
                   "created_at": receipt.created_at.isoformat()}
         if include_content:
-            from ascore.enforce.self_security import redact_obj
+            from agenttic.enforce.self_security import redact_obj
             detail["content"] = {"input": redact_obj(input_data),
                                  "output": redact_obj(output_data)}
         self.reg.append_enforcement_event(EnforcementEvent(
@@ -93,7 +93,7 @@ class ReceiptIssuer:
     def verify_receipt(self, receipt: Receipt, session_id: str | None = None
                        ) -> dict:
         """Verify a receipt's signature and that a backing allow-decision exists."""
-        from ascore.passport.keys import verify_payload
+        from agenttic.passport.keys import verify_payload
         kr = self.keys.keyref_for(receipt.key_id)
         sig_valid = kr is not None and verify_payload(
             kr.public_key_b64, receipt.signing_input(), receipt.signature)
@@ -133,7 +133,7 @@ def verify_chain(reg, receipt_id: str, key_manager, *, max_hops: int = 32) -> di
             break
         receipt, session_id = found
         sig = key_manager.keyref_for(receipt.key_id)
-        from ascore.passport.keys import verify_payload
+        from agenttic.passport.keys import verify_payload
         sig_valid = sig is not None and verify_payload(
             sig.public_key_b64, receipt.signing_input(), receipt.signature)
         if not sig_valid:

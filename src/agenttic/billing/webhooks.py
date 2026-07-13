@@ -18,10 +18,10 @@ from __future__ import annotations
 
 import logging
 
-from ascore.billing import plans
-from ascore.billing.store import BillingStore, GlobalBillingStore
+from agenttic.billing import plans
+from agenttic.billing.store import BillingStore, GlobalBillingStore
 
-log = logging.getLogger("ascore.billing")
+log = logging.getLogger("agenttic.billing")
 
 
 def _grant_and_invoice(store: BillingStore, cfg: dict, *, tenant: str,

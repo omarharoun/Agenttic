@@ -13,11 +13,11 @@ from datetime import datetime, timezone
 
 import pytest
 
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.scoring.checks import CheckConfigError, repair_expected
-from ascore.scoring.engine import applicable_to_case, case_warrants_refusal, score_run
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.scoring.checks import CheckConfigError, repair_expected
+from agenttic.scoring.engine import applicable_to_case, case_warrants_refusal, score_run
 
 NOW = datetime(2026, 6, 21, tzinfo=timezone.utc)
 

@@ -3,7 +3,7 @@
 A token is a random url-safe string stored in ``email_tokens``. Issuing a new
 token invalidates any prior unused ones for that email (so a resend supersedes
 the old link). Consuming checks existence, expiry and reuse, then flips
-``users.verified``. The mailer is config-driven (see :mod:`ascore.server.mailer`).
+``users.verified``. The mailer is config-driven (see :mod:`agenttic.server.mailer`).
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ from datetime import datetime, timedelta, timezone
 
 from sqlmodel import Session, select
 
-from ascore.registry.sqlite_store import EmailTokenRow, UserRow
-from ascore.server.mailer import Mailer
+from agenttic.registry.sqlite_store import EmailTokenRow, UserRow
+from agenttic.server.mailer import Mailer
 
 
 def _now() -> datetime:

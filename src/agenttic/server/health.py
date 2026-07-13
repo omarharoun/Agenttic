@@ -145,7 +145,7 @@ def _probe_worker(app) -> str:
 
 def _probe_certification(app) -> str:
     cfg = getattr(app.state, "cfg", None)
-    from ascore import certification as cert
+    from agenttic import certification as cert
     keys = cert.published_public_keys(cfg)
     if not keys:
         raise ProbeError(DEGRADED, "no certificate signing keys published")
@@ -156,7 +156,7 @@ def _probe_otel_ingest(app) -> str:
     # SPEC-7 OTLP/HTTP receiver. In-process — verify the mapping module that
     # backs POST /v1/traces is loadable (the capability is wired).
     import importlib
-    importlib.import_module("ascore.ingest.mapping")
+    importlib.import_module("agenttic.ingest.mapping")
     return "receiver wired"
 
 
@@ -175,7 +175,7 @@ def _probe_passport(app) -> str:
 
 
 def _probe_scanner(app) -> str:
-    from ascore.scan import battery_dimensions_public
+    from agenttic.scan import battery_dimensions_public
     dims = battery_dimensions_public()
     if not dims:
         raise ProbeError(DEGRADED, "scan battery empty")

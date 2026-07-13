@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, Session, SQLModel, select
 
-from ascore.registry.sqlite_store import (
+from agenttic.registry.sqlite_store import (
     DEFAULT_TENANT,
     NotFoundError,
     RubricRow,
@@ -22,7 +22,7 @@ from ascore.registry.sqlite_store import (
     SuiteRow,
     TraceRow,
 )
-from ascore.server.workflow_schema import Workflow
+from agenttic.server.workflow_schema import Workflow
 
 
 def _now() -> datetime:
@@ -408,7 +408,7 @@ class UIStore:
                 q = q.where(ScorecardRow.agent_id == agent_id)
             if suite_id:
                 q = q.where(ScorecardRow.suite_id == suite_id)
-            from ascore.stats import wilson_interval
+            from agenttic.stats import wilson_interval
             out = []
             for r in s.exec(q).all():
                 p = json.loads(r.payload)

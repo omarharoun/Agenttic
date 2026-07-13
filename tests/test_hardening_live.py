@@ -10,16 +10,16 @@ are not promotable. Covers the pure ops and the HTTP surface.
 import uuid
 from datetime import datetime, timezone
 
-from ascore import hardening
-from ascore.hardening import (
+from agenttic import hardening
+from agenttic.hardening import (
     DEFAULT_LIVE_CATCH_THRESHOLD,
     LIVE_SOURCE_SUITE,
     live_test_id,
     promote_live_failures_op,
     regression_suite_id,
 )
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 from tests.test_api import client  # noqa: F401 — reuse the app+fakes fixture
 

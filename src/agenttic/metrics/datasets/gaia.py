@@ -26,15 +26,15 @@ import os
 import urllib.request
 from importlib import resources
 
-from ascore.metrics.datasets.base import DatasetAdapter, DatasetInfo
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.testcase import TestCase
+from agenttic.metrics.datasets.base import DatasetAdapter, DatasetInfo
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.testcase import TestCase
 
 # GAIA validation metadata (one JSON object per line). Gated: needs an HF token
 # whose account has accepted the dataset terms.
 _HF = ("https://huggingface.co/datasets/gaia-benchmark/GAIA/resolve/main/"
        "2023/validation/metadata.jsonl")
-_DATA = resources.files("ascore.metrics.datasets") / "gaia_data"
+_DATA = resources.files("agenttic.metrics.datasets") / "gaia_data"
 
 INFO = DatasetInfo(
     dataset_id="gaia",

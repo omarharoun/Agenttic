@@ -11,11 +11,11 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from ascore import hardening
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.server.auth import require_operator
-from ascore.server.keys import build_tenant_clients
-from ascore.server.keys import KeyStore
+from agenttic import hardening
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.server.auth import require_operator
+from agenttic.server.keys import build_tenant_clients
+from agenttic.server.keys import KeyStore
 
 router = APIRouter(tags=["hardening"])
 logger = logging.getLogger(__name__)

@@ -8,13 +8,13 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from ascore.certification.hashing import (
+from agenttic.certification.hashing import (
     canonical_json,
     compute_dossier_hash,
     sha256_hex,
 )
-from ascore.registry.sqlite_store import DuplicateVersionError, Registry
-from ascore.schema.certification import (
+from agenttic.registry.sqlite_store import DuplicateVersionError, Registry
+from agenttic.schema.certification import (
     Attestation,
     CertificationProfile,
     Dossier,
@@ -22,7 +22,7 @@ from ascore.schema.certification import (
     SuiteRef,
     TierDecision,
 )
-from ascore.schema.incident import Incident
+from agenttic.schema.incident import Incident
 
 
 def _dossier(**kw) -> Dossier:

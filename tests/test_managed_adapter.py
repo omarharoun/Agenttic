@@ -9,7 +9,7 @@ and Hard Rule 5 (errors are data, never raised).
 import json
 from types import SimpleNamespace as NS
 
-from ascore.adapters.managed_agent import ManagedAgentAdapter
+from agenttic.adapters.managed_agent import ManagedAgentAdapter
 
 AGENT = NS(id="agent_01", name="support-triage-workflow",
            model="claude-haiku-4-5-20251001", version=7)

@@ -16,22 +16,22 @@ import asyncio
 import tempfile
 from datetime import datetime, timezone
 
-from ascore.certification.certify import certify
-from ascore.certification.dossier import verify_dossier
-from ascore.certification.mock_provider import MockAnthropicClient
-from ascore.certification.profiles import build_profile
-from ascore.metrics.catalog import BY_ID, CHECK_TO_METRIC
-from ascore.metrics.swe_checks import (
+from agenttic.certification.certify import certify
+from agenttic.certification.dossier import verify_dossier
+from agenttic.certification.mock_provider import MockAnthropicClient
+from agenttic.certification.profiles import build_profile
+from agenttic.metrics.catalog import BY_ID, CHECK_TO_METRIC
+from agenttic.metrics.swe_checks import (
     no_destructive_ops, no_license_leak, no_secret_exfiltration,
     no_vuln_introduction, safe_dependency, safe_supply_chain_ci,
 )
-from ascore.metrics.swe_suites import (
+from agenttic.metrics.swe_suites import (
     SWE_SUITE_PROVENANCE, seed_swe_suites, swe_specs,
 )
-from ascore.registry.sqlite_store import Registry
-from ascore.scoring.checks import CHECKS, validate_rubric_checks
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.registry.sqlite_store import Registry
+from agenttic.scoring.checks import CHECKS, validate_rubric_checks
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 NOW = datetime(2026, 7, 12, tzinfo=timezone.utc)
 
@@ -235,7 +235,7 @@ class TestShippedProfileEndToEnd:
     def test_full_pack_components_and_coverage(self):
         import json
 
-        from ascore.config import load_config
+        from agenttic.config import load_config
         cfg = load_config("config.yaml")
         with tempfile.TemporaryDirectory() as tmp:
             reg = Registry(db_path=f"{tmp}/t.db")
@@ -270,9 +270,9 @@ class TestShippedProfileEndToEnd:
 # --------------------------------------------------------------------------- #
 
 def test_pack_manifest_is_honest_and_complete():
-    from ascore.certification.swe_pack import pack_manifest, render_markdown
-    from ascore.config import load_config
-    from ascore.metrics.standard_suites import seed_standard_suites
+    from agenttic.certification.swe_pack import pack_manifest, render_markdown
+    from agenttic.config import load_config
+    from agenttic.metrics.standard_suites import seed_standard_suites
     cfg = load_config("config.yaml")
     with tempfile.TemporaryDirectory() as tmp:
         reg = Registry(db_path=f"{tmp}/t.db")
@@ -313,7 +313,7 @@ def test_swe_suites_isolated_from_agent_safety_profile():
     with tempfile.TemporaryDirectory() as tmp:
         reg = Registry(db_path=f"{tmp}/t.db")
         seed_swe_suites(reg)
-        from ascore.metrics.standard_suites import seed_standard_suites
+        from agenttic.metrics.standard_suites import seed_standard_suites
         seed_standard_suites(reg)
         agent_safety = build_profile(full_cfg, reg, "cert-agent-safety-v1")
         swe = build_profile(full_cfg, reg, "cert-swe-v1")

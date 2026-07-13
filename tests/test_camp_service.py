@@ -5,11 +5,11 @@ reply is graded as a miss rather than excused."""
 
 import json
 
-from ascore.adapters.base import AgentAdapter
-from ascore.camp import service
-from ascore.camp.adapter_agent import AdapterAgent, parse_action
-from ascore.camp.agent import HeuristicSupportAgent
-from ascore.schema.trace import Trace
+from agenttic.adapters.base import AgentAdapter
+from agenttic.camp import service
+from agenttic.camp.adapter_agent import AdapterAgent, parse_action
+from agenttic.camp.agent import HeuristicSupportAgent
+from agenttic.schema.trace import Trace
 
 
 def _trace(final_output: str) -> Trace:

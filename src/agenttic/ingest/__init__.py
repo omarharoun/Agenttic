@@ -12,14 +12,14 @@ so they can never mix into batch certification scorecards (SPEC-1 Step 9
 invariant).
 """
 
-from ascore.ingest.mapping import (
+from agenttic.ingest.mapping import (
     ingest_otlp_payload,
     ingest_spans,
     map_decision,
     map_span,
     spans_to_traces,
 )
-from ascore.ingest.otel import (
+from agenttic.ingest.otel import (
     OtelSpan,
     load_span_dump,
     otlp_success_response,

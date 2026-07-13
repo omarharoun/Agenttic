@@ -1,6 +1,6 @@
 """Path-traversal containment for the SPA static fallback."""
 
-from ascore.server.app import safe_static_path
+from agenttic.server.app import safe_static_path
 
 
 def test_serves_real_file_inside_dist(tmp_path):

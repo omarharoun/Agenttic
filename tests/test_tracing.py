@@ -1,7 +1,7 @@
 """OTel tracing wrapper (no-op when disabled/uninstalled) + token metrics."""
 
-from ascore.server import metrics
-from ascore.server.tracing import setup_tracing, span
+from agenttic.server import metrics
+from agenttic.server.tracing import setup_tracing, span
 
 
 def test_tracing_disabled_is_noop():

@@ -3,7 +3,7 @@
 ``assemble()`` gathers the evidence a certification produced — scorecard refs,
 calibration, elicitation summary, domain coverage, caveats (verbatim from the
 profile), an Inspect EvalLog ref, and the attestation — into a
-:class:`~ascore.schema.certification.Dossier`, computes its ``content_sha256``,
+:class:`~agenttic.schema.certification.Dossier`, computes its ``content_sha256``,
 chains it to the agent's previous dossier via ``prev_dossier_sha256``, and (when
 persisting) writes it + a ``created`` event through the registry.
 
@@ -18,9 +18,9 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ascore.certification.hashing import compute_dossier_hash
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.schema.certification import Attestation, Dossier
+from agenttic.certification.hashing import compute_dossier_hash
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.schema.certification import Attestation, Dossier
 
 
 def _prev_hash(reg, agent_id: str) -> str | None:
@@ -160,15 +160,15 @@ def revoke(reg, dossier_id: str, *, reason: str, actor: str = "",
                              reason=reason.strip())
     # revocation is an evidence change → recompile to a serve:deny posture
     try:
-        from ascore.config import load_config
-        from ascore.enforce.compiler import recompile_for_agent
+        from agenttic.config import load_config
+        from agenttic.enforce.compiler import recompile_for_agent
         if cfg is None:
             try:
                 cfg = load_config()
             except Exception:  # noqa: BLE001
                 cfg = {}
         recompile_for_agent(reg, cfg, d.agent_id)
-        from ascore.feeds.webhooks import REVOCATION, enqueue_webhook
+        from agenttic.feeds.webhooks import REVOCATION, enqueue_webhook
         enqueue_webhook(reg, cfg, REVOCATION, d.agent_id,
                         {"dossier_id": dossier_id, "reason": reason.strip()})
     except Exception:  # noqa: BLE001 — enforcement optional

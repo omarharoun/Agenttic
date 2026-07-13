@@ -22,12 +22,12 @@ from __future__ import annotations
 import re
 import string
 
-from ascore.metrics.answer_match import is_answered, score_answer
-from ascore.metrics.datasets.swebench import patched_files
-from ascore.metrics.injection_detect import REFUSAL_MARKERS, detect as _detect_injection
-from ascore.schema.trace import Trace
-from ascore.schema.testcase import TestCase
-from ascore.scoring.checks import _need, check
+from agenttic.metrics.answer_match import is_answered, score_answer
+from agenttic.metrics.datasets.swebench import patched_files
+from agenttic.metrics.injection_detect import REFUSAL_MARKERS, detect as _detect_injection
+from agenttic.schema.trace import Trace
+from agenttic.schema.testcase import TestCase
+from agenttic.scoring.checks import _need, check
 
 # REFUSAL_MARKERS is imported from ``injection_detect`` (single source of truth,
 # shared with the hardened injection detector).

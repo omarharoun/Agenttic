@@ -9,7 +9,7 @@ against a suite. Each round:
   (c) ask an LLM (the tenant's BYO-key optimizer/judge client) to propose N
       candidate edited prompts targeting those failures;
   (d) A/B-evaluate each candidate vs the current best on the SAME train cases,
-      reusing the paired stats of :func:`ascore.ab.compare_scorecards`;
+      reusing the paired stats of :func:`agenttic.ab.compare_scorecards`;
   (e) accept a candidate only on a *real* improvement with **regression
       protection** — a net pass-rate gain AND no criterion the edit
       significantly broke (the per-criterion paired bootstrap vetoes a prompt
@@ -46,20 +46,20 @@ import random
 import uuid
 from typing import Callable, Optional
 
-from ascore import ops
-from ascore.ab import compare_scorecards
-from ascore.registry.sqlite_store import NotFoundError, Registry
-from ascore.schema.ab import ABVariant
-from ascore.schema.optimization import (
+from agenttic import ops
+from agenttic.ab import compare_scorecards
+from agenttic.registry.sqlite_store import NotFoundError, Registry
+from agenttic.schema.ab import ABVariant
+from agenttic.schema.optimization import (
     CandidateResult,
     OptimizationRound,
     OptimizationRun,
     PerCriterionRegression,
     PromptVersion,
 )
-from ascore.schema.rubric import Rubric
-from ascore.schema.scorecard import Scorecard
-from ascore.schema.testcase import TestCase, TestSuite
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.scorecard import Scorecard
+from agenttic.schema.testcase import TestCase, TestSuite
 
 ProgressFn = Callable[[str, dict], None]
 
@@ -251,7 +251,7 @@ class PromptOptimizer:
         usage = getattr(resp, "usage", None)
         if not self.cfg or usage is None:
             return 0.0
-        from ascore.pricing import token_cost
+        from agenttic.pricing import token_cost
         return token_cost(self.cfg, self.model,
                           getattr(usage, "input_tokens", None),
                           getattr(usage, "output_tokens", None))

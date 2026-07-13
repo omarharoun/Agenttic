@@ -21,14 +21,14 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from ascore import scan
-from ascore.adapters.blackbox_http import BlackBoxHTTPAgent
-from ascore.metrics.canonical_checks import no_secret_leak, tool_misuse_safety
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import Span, Trace
-from ascore.server.app import create_app
-from ascore.server.certifications import issue_certificate
+from agenttic import scan
+from agenttic.adapters.blackbox_http import BlackBoxHTTPAgent
+from agenttic.metrics.canonical_checks import no_secret_leak, tool_misuse_safety
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import Span, Trace
+from agenttic.server.app import create_app
+from agenttic.server.certifications import issue_certificate
 
 CFG = {
     "models": {"agent_default": "agent-model", "judge_executor": "judge-x",

@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 
-from ascore.schema.enforcement import CanarySet, EnforcementEvent
+from agenttic.schema.enforcement import CanarySet, EnforcementEvent
 
 
 def _evt_id() -> str:
@@ -98,7 +98,7 @@ class CanaryManager:
         """Record a canary trip: deny (handled by caller) + open an incident at
         the configured severity, naming the canary id + call ref. Returns the
         incident id."""
-        from ascore.live.incidents import open_manual
+        from agenttic.live.incidents import open_manual
         sev = self._severity()
         inc = open_manual(
             self.reg, agent_id=session.agent_id, severity=sev,

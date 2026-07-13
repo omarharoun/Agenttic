@@ -17,10 +17,10 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from ascore.server.auth import require_operator
-from ascore.server.executor import WorkflowValidationError
-from ascore.server.keys import tenant_run_clients as _run_clients
-from ascore.server.workflow_schema import (
+from agenttic.server.auth import require_operator
+from agenttic.server.executor import WorkflowValidationError
+from agenttic.server.keys import tenant_run_clients as _run_clients
+from agenttic.server.workflow_schema import (
     Workflow, WorkflowEdge, WorkflowNode, validate_workflow,
 )
 

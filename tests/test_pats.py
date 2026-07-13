@@ -7,10 +7,10 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
-from ascore.server.pats import PatStore
-from ascore.server.users import UserStore
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
+from agenttic.server.pats import PatStore
+from agenttic.server.users import UserStore
 
 CONFIG = """\
 models: {agent_default: a, judge_strong: j, judge_light: l}

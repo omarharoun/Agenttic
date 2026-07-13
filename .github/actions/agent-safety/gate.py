@@ -153,7 +153,7 @@ def _delta_table(deltas: dict) -> list[str]:
 # ---------------------------------------------------------------------------
 
 def run_certify() -> dict:
-    cmd = [sys.executable, "-m", "ascore.cli", "certify",
+    cmd = [sys.executable, "-m", "agenttic.cli", "certify",
            "--profile", os.environ.get("PROFILE", "cert-agent-safety-v1"),
            "-o", str(DOSSIER)]
     url = os.environ.get("AGENT_URL", "").strip()

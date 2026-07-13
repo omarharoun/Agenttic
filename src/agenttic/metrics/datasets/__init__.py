@@ -3,15 +3,15 @@ InjecAgent + AgentDojo via the same DatasetAdapter pattern)."""
 
 from __future__ import annotations
 
-from ascore.metrics.datasets.agentdojo import AgentDojoAdapter
-from ascore.metrics.datasets.agentharm import AgentHarmAdapter
-from ascore.metrics.datasets.assistantbench import AssistantBenchAdapter
-from ascore.metrics.datasets.base import DatasetAdapter, DatasetInfo
-from ascore.metrics.datasets.bfcl import BFCL_SPLIT_ADAPTERS, BFCLAdapter
-from ascore.metrics.datasets.gaia import GAIAAdapter
-from ascore.metrics.datasets.injecagent import InjecAgentAdapter
-from ascore.metrics.datasets.swebench import SWEBenchAdapter
-from ascore.metrics.datasets.tau_bench import TauBenchAdapter
+from agenttic.metrics.datasets.agentdojo import AgentDojoAdapter
+from agenttic.metrics.datasets.agentharm import AgentHarmAdapter
+from agenttic.metrics.datasets.assistantbench import AssistantBenchAdapter
+from agenttic.metrics.datasets.base import DatasetAdapter, DatasetInfo
+from agenttic.metrics.datasets.bfcl import BFCL_SPLIT_ADAPTERS, BFCLAdapter
+from agenttic.metrics.datasets.gaia import GAIAAdapter
+from agenttic.metrics.datasets.injecagent import InjecAgentAdapter
+from agenttic.metrics.datasets.swebench import SWEBenchAdapter
+from agenttic.metrics.datasets.tau_bench import TauBenchAdapter
 
 # dataset_id -> adapter factory (union of all sibling branches)
 ADAPTERS = {"bfcl": BFCLAdapter, "tau-bench": TauBenchAdapter,

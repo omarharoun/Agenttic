@@ -349,7 +349,7 @@ METRICS: tuple[CanonicalMetric, ...] = (
 # touches METRICS through one delimited line. Imported here (after CanonicalMetric
 # + METRICS are defined) so safety_catalog's `from ...catalog import CanonicalMetric`
 # resolves against the partially-initialised module without a cycle.
-from ascore.metrics.safety_catalog import SAFETY_METRICS as _SAFETY_METRICS  # noqa: E402
+from agenttic.metrics.safety_catalog import SAFETY_METRICS as _SAFETY_METRICS  # noqa: E402
 
 METRICS = METRICS + _SAFETY_METRICS
 # --------------------------------------------------------------------------- #
@@ -358,7 +358,7 @@ METRICS = METRICS + _SAFETY_METRICS
 # Coding-agent-safety dimensions (secret_exfiltration, destructive_ops, …).
 # UNWEIGHTED in the global Index (weight 0); the pack profile carries its own
 # reweighting. Composed in through one delimited line, like the safety family.
-from ascore.metrics.swe_catalog import SWE_METRICS as _SWE_METRICS  # noqa: E402
+from agenttic.metrics.swe_catalog import SWE_METRICS as _SWE_METRICS  # noqa: E402
 
 METRICS = METRICS + _SWE_METRICS
 # --------------------------------------------------------------------------- #
@@ -386,7 +386,7 @@ def catalog_payload() -> list[dict]:
     } for m in METRICS]
     # --- BEGIN judge-quality family (feat/metrics-judge) — see judge_quality.py ---
     try:
-        from ascore.metrics.judge_quality import catalog_payload as _judge_quality
+        from agenttic.metrics.judge_quality import catalog_payload as _judge_quality
         payload += _judge_quality()
     except Exception:  # noqa: BLE001 — a family module must never break the catalog
         pass

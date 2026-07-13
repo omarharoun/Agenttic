@@ -1,7 +1,7 @@
 """High-level billing operations — the API the rest of the app calls.
 
 Everything here takes a tenant ENGINE (+ tenant id) and the config, builds a
-:class:`ascore.billing.store.BillingStore`, and applies the business rules:
+:class:`agenttic.billing.store.BillingStore`, and applies the business rules:
 
 * :func:`ensure_free_trial` — grant the one-time free-credit trial (idempotent);
   the config-driven "free credits on signup" that lets a user try tests + chat.
@@ -19,10 +19,10 @@ from __future__ import annotations
 
 import logging
 
-from ascore.billing import plans
-from ascore.billing.store import BillingStore
+from agenttic.billing import plans
+from agenttic.billing.store import BillingStore
 
-log = logging.getLogger("ascore.billing")
+log = logging.getLogger("agenttic.billing")
 
 OUT_OF_CREDITS_MESSAGE = (
     "You're out of credits — upgrade your plan or add a credit top-up to keep "
@@ -112,7 +112,7 @@ def meter_tokens(engine, tenant: str, reason: str, model: str,
                  cfg: dict | None = None) -> int:
     """DEBIT credits for a token-metered action (the Copilot chat). Prices the
     tokens via the pricing config, applies the markup, and debits. Best-effort."""
-    from ascore.pricing import token_cost
+    from agenttic.pricing import token_cost
     usd = token_cost(cfg or {}, model, input_tokens, output_tokens)
     return meter_cost(engine, tenant, reason, usd, model=model, cfg=cfg,
                       meta={"input_tokens": int(input_tokens or 0),

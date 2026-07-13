@@ -3,7 +3,7 @@
 The *emit* side of the OTel bus, shared by the framework adapters. A
 :class:`SpanEmitter` builds spans following the GenAI semantic conventions and
 flushes them as an OTLP/HTTP ``ExportTraceServiceRequest`` — the exact wire
-format :mod:`ascore.ingest.otel` parses, so ``trace(agent) → spans → ingested
+format :mod:`agenttic.ingest.otel` parses, so ``trace(agent) → spans → ingested
 Traces`` round-trips through Agenttic's own front door.
 
 No OpenTelemetry SDK dependency: we emit OTLP/JSON directly (stdlib only), which

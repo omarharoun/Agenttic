@@ -1,6 +1,6 @@
 """Workflow document validation: structure, ports, cycles, configs."""
 
-from ascore.server.workflow_schema import (
+from agenttic.server.workflow_schema import (
     Workflow,
     WorkflowEdge,
     WorkflowNode,

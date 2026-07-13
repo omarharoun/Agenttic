@@ -14,12 +14,12 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from ascore import certification as cert
-from ascore.registry.sqlite_store import CertificationRow, Registry
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
-from ascore.schema.trace import Trace
-from ascore.server.app import create_app
-from ascore.server.certifications import CertStore, issue_certificate
+from agenttic import certification as cert
+from agenttic.registry.sqlite_store import CertificationRow, Registry
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.schema.trace import Trace
+from agenttic.server.app import create_app
+from agenttic.server.certifications import CertStore, issue_certificate
 
 CONFIG = """\
 models: {agent_default: a, judge_strong: j, judge_light: l}

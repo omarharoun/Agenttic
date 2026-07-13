@@ -4,7 +4,7 @@ An optimization runs the suite many times (baseline + N candidates per round on
 the train split, plus held-out scoring), so it is far too long for an HTTP
 request to block on. ``OptimizerManager`` mirrors ``ABManager``: ``start``
 records a 'running' row and launches an asyncio task; the task runs
-:func:`ascore.optimizer.optimize` (which persists the finished run or marks the
+:func:`agenttic.optimizer.optimize` (which persists the finished run or marks the
 row failed), and the UI polls ``GET /optimize/runs/{id}`` for status + the
 artifact. Live progress (current round / candidate / cost projection) is kept in
 memory and surfaced on the same poll.
@@ -18,8 +18,8 @@ from __future__ import annotations
 import asyncio
 import uuid
 
-from ascore.optimizer import optimize
-from ascore.registry.sqlite_store import Registry
+from agenttic.optimizer import optimize
+from agenttic.registry.sqlite_store import Registry
 
 
 class OptimizerManager:

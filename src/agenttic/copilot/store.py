@@ -1,6 +1,6 @@
 """Tenant-scoped persistence for Copilot AGENT sessions.
 
-Thin wrapper over :class:`ascore.registry.sqlite_store.CopilotSessionRow`. The
+Thin wrapper over :class:`agenttic.registry.sqlite_store.CopilotSessionRow`. The
 full agent state (Anthropic transcript with tool_use/tool_result blocks, step
 log, any write-action awaiting confirmation) lives in the ``payload`` JSON;
 ``status`` is mirrored to a column so a resumed request can tell "is this session
@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
-from ascore.registry.sqlite_store import CopilotSessionRow, NotFoundError
+from agenttic.registry.sqlite_store import CopilotSessionRow, NotFoundError
 
 
 def _now() -> datetime:

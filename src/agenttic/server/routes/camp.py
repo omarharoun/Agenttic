@@ -33,10 +33,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from ascore.camp import service
-from ascore.camp.trace import distillation_records
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.server.auth import require_operator
+from agenttic.camp import service
+from agenttic.camp.trace import distillation_records
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.server.auth import require_operator
 
 router = APIRouter(tags=["camp"])
 
@@ -182,8 +182,8 @@ async def start_camp(body: StartCampBody, request: Request):
 def _build_byo_adapter(request: Request, body: StartCampBody):
     """Build a reference adapter driven by the tenant's own Anthropic key, with
     the task's system prompt so the agent emits the graded action schema."""
-    from ascore.ops import build_adapter
-    from ascore.server.keys import tenant_run_clients
+    from agenttic.ops import build_adapter
+    from agenttic.server.keys import tenant_run_clients
 
     clients = tenant_run_clients(request)  # raises 400 if no key; None in tests
     client = (clients or {}).get("agent") if clients else \
@@ -270,7 +270,7 @@ def approve_camp(run_id: str, request: Request):
     if row.status != "succeeded":
         raise HTTPException(422, f"run is {row.status}, cannot approve")
 
-    from ascore.camp.trainer import CampReport
+    from agenttic.camp.trainer import CampReport
     report = CampReport(
         task_id=row.task_id, agent_id=row.agent_label or "agent",
         episodes=row.episodes, passes=row.passes, threshold=row.threshold,

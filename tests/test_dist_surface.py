@@ -2,7 +2,7 @@
 it must not drag in a framework SDK.
 
 These tests enforce Hard Rules 36 (the top-level ``agenttic`` surface is exactly
-the documented set; internal ``ascore.*`` stays internal) and 37 (base install
+the documented set; internal ``agenttic.*`` stays internal) and 37 (base install
 imports no framework SDK).
 """
 from __future__ import annotations
@@ -14,7 +14,7 @@ import types
 from pathlib import Path
 
 import agenttic
-import ascore
+import agenttic
 
 # The exact, documented public surface. Adding a name here is a deliberate,
 # semver-visible act; a name leaking in without being added fails the test.
@@ -52,7 +52,7 @@ def test_every_exported_name_resolves():
 
 def test_version_matches_core():
     # The umbrella tracks the core version exactly (SPEC-8 Step 40).
-    assert agenttic.__version__ == ascore.__version__
+    assert agenttic.__version__ == agenttic.__version__
 
 
 def test_version_matches_distribution_metadata():
@@ -67,14 +67,14 @@ def test_version_matches_distribution_metadata():
 def test_pyproject_version_is_in_lockstep():
     data = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())
     assert data["project"]["name"] == "agenttic"
-    assert data["project"]["version"] == ascore.__version__
+    assert data["project"]["version"] == agenttic.__version__
 
 
 def test_reexports_are_the_core_implementations():
-    from ascore.certification.certify import certify as core_certify
-    from ascore.certification.dossier import verify as core_verify
-    from ascore.schema.trace import Span as CoreSpan
-    from ascore.schema.trace import Trace as CoreTrace
+    from agenttic.certification.certify import certify as core_certify
+    from agenttic.certification.dossier import verify as core_verify
+    from agenttic.schema.trace import Span as CoreSpan
+    from agenttic.schema.trace import Trace as CoreTrace
 
     assert agenttic.certify is core_certify
     assert agenttic.verify is core_verify

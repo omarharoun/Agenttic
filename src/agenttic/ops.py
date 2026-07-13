@@ -16,20 +16,20 @@ import asyncio
 import uuid
 from typing import Callable, Literal
 
-from ascore.adapters.anthropic_simple import AnthropicSimpleAgent
-from ascore.adapters.base import AgentAdapter
-from ascore.adapters.blackbox_http import BlackBoxHTTPAgent
-from ascore.adapters.managed_agent import ManagedAgentAdapter
-from ascore.generator.pipeline import BenchmarkGenerator
-from ascore.harness.runner import HarnessConfig, run_suite
-from ascore.registry.sqlite_store import Registry
-from ascore.reporting.scorecard_report import render_markdown
-from ascore.schema.rubric import Rubric
-from ascore.schema.scorecard import RunScore, Scorecard
-from ascore.schema.testcase import TestCase, TestSuite
-from ascore.schema.trace import Trace
-from ascore.scoring.engine import score_run
-from ascore.scoring.judge import make_judge
+from agenttic.adapters.anthropic_simple import AnthropicSimpleAgent
+from agenttic.adapters.base import AgentAdapter
+from agenttic.adapters.blackbox_http import BlackBoxHTTPAgent
+from agenttic.adapters.managed_agent import ManagedAgentAdapter
+from agenttic.generator.pipeline import BenchmarkGenerator
+from agenttic.harness.runner import HarnessConfig, run_suite
+from agenttic.registry.sqlite_store import Registry
+from agenttic.reporting.scorecard_report import render_markdown
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.scorecard import RunScore, Scorecard
+from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.schema.trace import Trace
+from agenttic.scoring.engine import score_run
+from agenttic.scoring.judge import make_judge
 
 ProgressFn = Callable[[str, dict], None]
 
@@ -72,7 +72,7 @@ def build_adapter(
     Black-box agents expose no token usage, so their cost is whatever is
     declared: ``cost_per_call_usd`` (flat) or ``expected_*_tokens`` priced at
     ``model`` (or the default rate). Unset => cost stays 0 (unknown)."""
-    from ascore.retry import RetryPolicy
+    from agenttic.retry import RetryPolicy
     retry_policy = RetryPolicy.from_cfg(cfg)
     if variant == "managed":
         if not environment_id:
@@ -96,7 +96,7 @@ def build_adapter(
                 expected_output_tokens=expected_output_tokens))
     kw = {"client": client} if client is not None else {}
     resolved_model = model or cfg["models"]["agent_default"]
-    from ascore.pricing import model_price
+    from agenttic.pricing import model_price
     return AnthropicSimpleAgent(model=resolved_model,
                                 kb_path="kb.json", agent_id=agent_id,
                                 max_steps=cfg["harness"]["max_steps"],
@@ -114,7 +114,7 @@ def blackbox_call_cost(cfg: dict, *, cost_per_call_usd: float = 0.0,
     if cost_per_call_usd:
         return float(cost_per_call_usd)
     if expected_input_tokens or expected_output_tokens:
-        from ascore.pricing import token_cost
+        from agenttic.pricing import token_cost
         return token_cost(cfg, model or None,
                           expected_input_tokens, expected_output_tokens)
     return 0.0
@@ -140,8 +140,8 @@ async def run_suite_op(
     BudgetExceededError before any spend if projected cost breaches a cap,
     unless budget.warn_only) and a RunBudget that aborts remaining cases once
     actual execution cost crosses the per-run cap."""
-    from ascore.budget import RunBudget, check_pre_run
-    from ascore.cost import estimate_for_run
+    from agenttic.budget import RunBudget, check_pre_run
+    from agenttic.cost import estimate_for_run
 
     suite, cases = reg.get_suite(suite_id, version)
     variant = "blackbox" if adapter.visibility == "black_box" else "reference"
@@ -187,11 +187,11 @@ async def score_op(
     aborting the whole batch — mirroring the harness's per-case resilience."""
     judge = make_judge(cfg, agent_model, client=judge_client)
     if fi_evaluator is None:
-        from ascore.scoring.fi_eval import FiEvaluator
+        from agenttic.scoring.fi_eval import FiEvaluator
         fi_evaluator = FiEvaluator(
             threshold=cfg.get("scoring", {}).get("fi_threshold", 0.5),
             evaluate_fn=fi_evaluate_fn)
-    from ascore.scoring.corpus import uncalibrated_criteria
+    from agenttic.scoring.corpus import uncalibrated_criteria
     runs: list[RunScore] = []
     total = len(cases)
     _uncal_cache: dict[str, set[str]] = {}
@@ -252,7 +252,7 @@ def aggregate_op(
     total_spend = sc.total_cost_usd + sc.total_scoring_cost_usd
     reg.record_spend(agent_id, total_spend)
     try:  # observability counters (best-effort; never block a scorecard)
-        from ascore.server import metrics
+        from agenttic.server import metrics
         metrics.record_run("errored" if sc.errored_test_ids else "completed")
         metrics.record_cost(total_spend)
     except Exception:  # noqa: BLE001
@@ -270,7 +270,7 @@ async def run_and_score_op(
     judge_client=None,
 ) -> Scorecard:
     """The full run → score → aggregate chain (CLI `run`/`regress` behavior)."""
-    from ascore.server.tracing import span
+    from agenttic.server.tracing import span
     with span("run.suite", suite_id=suite_id, agent_id=adapter.agent_id):
         suite, cases, traces = await run_suite_op(
             cfg, reg, adapter, suite_id, version, on_progress)
@@ -288,8 +288,8 @@ def generate_op(cfg: dict, reg: Registry, business_doc: str, suite_id: str,
     ``cases_per_task`` is an upper bound; the generator decides the actual
     count per task within the pipeline's MIN_CASES..bound range."""
     kw = {"client": client} if client is not None else {}
-    from ascore.pricing import model_price
-    from ascore.retry import RetryPolicy
+    from agenttic.pricing import model_price
+    from agenttic.retry import RetryPolicy
     gen = BenchmarkGenerator(model=cfg["models"]["generator"],
                              retry_policy=RetryPolicy.from_cfg(cfg),
                              pricing_per_mtok=model_price(cfg, cfg["models"]["generator"]),
@@ -354,7 +354,7 @@ def report_op(reg: Registry, scorecard_id: str) -> str:
 
 def report_pdf_op(reg: Registry, scorecard_id: str) -> bytes:
     """Render a scorecard to a polished, on-brand PDF (same content as Markdown)."""
-    from ascore.reporting.pdf_report import render_pdf
+    from agenttic.reporting.pdf_report import render_pdf
     return render_pdf(*_scorecard_with_context(reg, scorecard_id))
 
 
@@ -362,12 +362,12 @@ def inspect_log_op(reg: Registry, scorecard_id: str) -> dict:
     """Export a scorecard as an Inspect (``inspect_ai``) ``EvalLog`` JSON dict.
 
     Pulls the scorecard, its rubric, and every referenced trace from the
-    registry and renders them via :func:`ascore.interop.to_inspect_log`. Missing
+    registry and renders them via :func:`agenttic.interop.to_inspect_log`. Missing
     traces are simply omitted (the scores still export). Returns a plain dict
     that validates against ``inspect_ai.log.EvalLog`` — no runtime dependency on
     ``inspect_ai``."""
-    from ascore.interop import to_inspect_log
-    from ascore.registry.sqlite_store import NotFoundError
+    from agenttic.interop import to_inspect_log
+    from agenttic.registry.sqlite_store import NotFoundError
 
     sc = reg.get_scorecard(scorecard_id)
     try:
@@ -395,14 +395,14 @@ async def run_standard_op(cfg: dict, reg: Registry, *, agent_id: str, k: int = 3
     cache so an identical re-run is served for free."""
     import json
 
-    from ascore.metrics.redteam import seed_redteam_injection_suite
-    from ascore.metrics.runner import run_standard
-    from ascore.metrics.standard_suites import seed_standard_suites
+    from agenttic.metrics.redteam import seed_redteam_injection_suite
+    from agenttic.metrics.runner import run_standard
+    from agenttic.metrics.standard_suites import seed_standard_suites
     seed_standard_suites(reg)  # ensure the std suites exist (idempotent)
     seed_redteam_injection_suite(reg)  # + the red-team injection probe set
     # + the content-safety suite (PII/secret/profanity/system-prompt + provisional
     # toxicity/bias/unsafe-content judges) — feat/metrics-safety.
-    from ascore.metrics.safety_suite import seed_safety_content_suite
+    from agenttic.metrics.safety_suite import seed_safety_content_suite
     seed_safety_content_suite(reg)
     adapter = build_adapter(cfg, variant=variant, agent_id=agent_id, url=url,
                             system_prompt=system_prompt, model=model, client=client)
@@ -429,8 +429,8 @@ def standard_index_op(reg: Registry) -> list[dict]:
     if canonical:
         return canonical
 
-    from ascore.metrics.index import compute_index, rollup_metrics_from_means
-    from ascore.metrics.standard_suites import standard_suite_ids
+    from agenttic.metrics.index import compute_index, rollup_metrics_from_means
+    from agenttic.metrics.standard_suites import standard_suite_ids
 
     latest: dict[tuple[str, str], object] = {}
     for sc in reg.scorecards_in(standard_suite_ids()):  # oldest-first => last wins
@@ -456,11 +456,11 @@ def standard_index_op(reg: Registry) -> list[dict]:
 
 def ab_report_op(reg: Registry, comparison_id: str) -> str:
     """Render an A/B comparison to client-ready Markdown."""
-    from ascore.reporting.ab_report import render_ab_markdown
+    from agenttic.reporting.ab_report import render_ab_markdown
     return render_ab_markdown(reg.get_ab_comparison(comparison_id))
 
 
 def ab_report_pdf_op(reg: Registry, comparison_id: str) -> bytes:
     """Render an A/B comparison to a polished, on-brand PDF."""
-    from ascore.reporting.ab_report import render_ab_pdf
+    from agenttic.reporting.ab_report import render_ab_pdf
     return render_ab_pdf(reg.get_ab_comparison(comparison_id))

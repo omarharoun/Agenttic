@@ -23,14 +23,14 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import pytest
 from fastapi.testclient import TestClient
 
-from ascore import connect
-from ascore.connect import (
+from agenttic import connect
+from agenttic.connect import (
     Mapping, build_request_body, extract_reply, render_prompt,
 )
-from ascore.registry.sqlite_store import Registry
-from ascore.security import UnsafeURLError
-from ascore.server.app import create_app
-from ascore.server.connections import ConnectionStore
+from agenttic.registry.sqlite_store import Registry
+from agenttic.security import UnsafeURLError
+from agenttic.server.app import create_app
+from agenttic.server.connections import ConnectionStore
 
 CFG = {"security": {"blackbox_block_private": False},
        "connect": {"rate_limit_s": 0, "timeout_s": 5}}
@@ -103,7 +103,7 @@ class TestConnectionStore:
         assert SECRET not in json.dumps(status)
         # the raw secret is not stored in the clear; ciphertext decrypts back
         from sqlmodel import Session, select
-        from ascore.registry.sqlite_store import AgentConnectionRow
+        from agenttic.registry.sqlite_store import AgentConnectionRow
         with Session(reg.engine) as s:
             row = s.exec(select(AgentConnectionRow)).first()
         assert SECRET not in row.auth_ciphertext
