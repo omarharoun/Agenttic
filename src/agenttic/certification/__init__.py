@@ -3,8 +3,8 @@
 SPEC-1 shipped a single ``certification.py`` module (safety-cert grading + Ed25519
 signing). SPEC-2 → SPEC-6 grow this into a package (profiles, tiers, dossiers,
 elicitation, hashing, staleness, …). To keep every existing importer working, the
-original module lives on as :mod:`ascore.certification.safety_cert` and all of its
-public *and* private names are re-exported here, so ``from ascore import
+original module lives on as :mod:`agenttic.certification.safety_cert` and all of its
+public *and* private names are re-exported here, so ``from agenttic import
 certification as cert; cert.<anything>`` continues to resolve exactly as before.
 """
 

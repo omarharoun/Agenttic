@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from ascore.schema.incident import Incident
+from agenttic.schema.incident import Incident
 
 CFG = {"incidents": {"sla_hours": {"S1": 72, "S2": 72, "S3": 168, "S4": 336}}}
 

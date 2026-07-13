@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
 
-from ascore.budget import budget_context, tenant_quota
-from ascore.cost import estimate_for_suite, estimate_for_workflow
-from ascore.registry.sqlite_store import NotFoundError
+from agenttic.budget import budget_context, tenant_quota
+from agenttic.cost import estimate_for_suite, estimate_for_workflow
+from agenttic.registry.sqlite_store import NotFoundError
 
 router = APIRouter(tags=["cost"])
 

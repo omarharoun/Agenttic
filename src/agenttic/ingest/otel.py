@@ -5,7 +5,7 @@ ServiceRequest` (the payload an OTel collector POSTs to ``/v1/traces``, or a
 `ascore ... export`-style span dump) into a flat list of normalized
 :class:`OtelSpan` records. It invents nothing — the shapes here are the maintained
 OTLP/JSON encoding (proto3 JSON mapping). Turning those spans into Agenttic
-``Trace``/``Decision`` objects is :mod:`ascore.ingest.mapping`.
+``Trace``/``Decision`` objects is :mod:`agenttic.ingest.mapping`.
 
 We deliberately do not depend on the OpenTelemetry SDK to *parse* an incoming
 payload (the SDK is an exporter, not a JSON schema): the OTLP/JSON encoding is a

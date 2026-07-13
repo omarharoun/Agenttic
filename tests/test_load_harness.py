@@ -7,11 +7,11 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-from ascore.adapters.base import AgentAdapter
-from ascore.harness.runner import HarnessConfig, run_suite
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.testcase import TestCase, TestSuite
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.adapters.base import AgentAdapter
+from agenttic.harness.runner import HarnessConfig, run_suite
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 
 class _ConcurrencyProbe(AgentAdapter):

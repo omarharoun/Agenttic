@@ -48,14 +48,14 @@ import re
 import urllib.request
 from importlib import resources
 
-from ascore.metrics.datasets.base import DatasetAdapter, DatasetInfo
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.testcase import TestCase
+from agenttic.metrics.datasets.base import DatasetAdapter, DatasetInfo
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.testcase import TestCase
 
 # HuggingFace datasets-server rows API (returns JSON rows; no parquet lib needed).
 _HF_ROWS = ("https://datasets-server.huggingface.co/rows?dataset="
             "princeton-nlp%2FSWE-bench_Verified&config=default&split=test")
-_DATA = resources.files("ascore.metrics.datasets") / "swebench_data"
+_DATA = resources.files("agenttic.metrics.datasets") / "swebench_data"
 _SAMPLE = "swebench_verified.sample.jsonl"
 
 INFO = DatasetInfo(

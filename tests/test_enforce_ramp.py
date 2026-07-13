@@ -11,12 +11,12 @@ import tempfile
 import pytest
 from fastapi.testclient import TestClient
 
-from ascore.enforce import ramp
-from ascore.enforce.feedback import checker_eval_cases, hardening_candidates
-from ascore.enforce.gateway import EnforcementGateway, compute_policy_hash
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.enforcement import EnforcementPolicy, Rule
-from ascore.server.app import create_app
+from agenttic.enforce import ramp
+from agenttic.enforce.feedback import checker_eval_cases, hardening_candidates
+from agenttic.enforce.gateway import EnforcementGateway, compute_policy_hash
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.enforcement import EnforcementPolicy, Rule
+from agenttic.server.app import create_app
 
 # read-class "fetch" and write-class "shell.exec", both denied by policy.
 CFG = {"enforcement": {"action_classes": {"read": ["fetch"], "write": ["shell.exec"]}}}

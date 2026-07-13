@@ -22,9 +22,9 @@ sys.path.insert(0, str(ROOT / "adapters/openai_agents"))
 
 import agenttic_langgraph as al          # noqa: E402
 import agenttic_openai_agents as ao      # noqa: E402
-from ascore.enforce.adapter_guard import EnforceConfigError  # noqa: E402
-from ascore.ingest import ingest_otlp_payload  # noqa: E402
-from ascore.registry.sqlite_store import Registry  # noqa: E402
+from agenttic.enforce.adapter_guard import EnforceConfigError  # noqa: E402
+from agenttic.ingest import ingest_otlp_payload  # noqa: E402
+from agenttic.registry.sqlite_store import Registry  # noqa: E402
 
 
 # --- fakes that mimic each framework's PUBLIC contract ---------------------

@@ -15,10 +15,10 @@ import time
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel
 
-from ascore.server.abuse import guard_signup
-from ascore.server.auth import CSRF_COOKIE, SESSION_COOKIE
-from ascore.server.users import DuplicateUserError, UserStore
-from ascore.server.verification import VerificationStore, send_verification
+from agenttic.server.abuse import guard_signup
+from agenttic.server.auth import CSRF_COOKIE, SESSION_COOKIE
+from agenttic.server.users import DuplicateUserError, UserStore
+from agenttic.server.verification import VerificationStore, send_verification
 
 router = APIRouter(tags=["auth"])
 
@@ -69,7 +69,7 @@ def _record_fail(email: str, cfg: dict) -> None:
 def _issue_session(response: Response, cfg: dict, user) -> str:
     """Set the session + CSRF cookies; return the CSRF token (also echoed in the
     body so the SPA can use it immediately)."""
-    from ascore.server.sessions import session_secret, sign_session
+    from agenttic.server.sessions import session_secret, sign_session
     ttl = int((cfg.get("auth", {}) or {}).get("session_ttl_hours", 168)) * 3600
     token = sign_session(
         {"uid": user.id, "email": user.email, "role": user.role,
@@ -119,7 +119,7 @@ def signup(creds: Credentials, request: Request, response: Response):
     # the tests + Copilot chat immediately (best-effort; never fail signup, and
     # the grant is idempotent — it's also applied lazily on first use).
     try:
-        from ascore.billing import service as billing_service
+        from agenttic.billing import service as billing_service
         engine = request.app.state.workspaces.get(user.tenant_id).reg.engine
         billing_service.ensure_free_trial(engine, user.tenant_id, cfg)
     except Exception:  # noqa: BLE001 — billing must not block signup

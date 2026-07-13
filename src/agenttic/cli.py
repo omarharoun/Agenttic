@@ -14,11 +14,11 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from ascore import ops
-from ascore.config import load_config
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.scorecard import Scorecard
-from ascore.scoring.calibration import calibration_report, load_labels
+from agenttic import ops
+from agenttic.config import load_config
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.scorecard import Scorecard
+from agenttic.scoring.calibration import calibration_report, load_labels
 
 app = typer.Typer(help="Agentic scoring & benchmarking platform")
 console = Console()
@@ -37,13 +37,13 @@ def _main(tenant: str = typer.Option(
 
 
 def _ctx(config_path: str = "config.yaml"):
-    from ascore.secrets import hydrate_env_secrets
+    from agenttic.secrets import hydrate_env_secrets
     hydrate_env_secrets()  # pull *_FILE secrets into the environment
     cfg = load_config(config_path)
     tenant = _STATE.get("tenant") or os.environ.get("ASCORE_TENANT") or "default"
     db_url = os.environ.get("ASCORE_DB") or (cfg.get("database", {}) or {}).get("url") or ""
     if db_url and not db_url.startswith("sqlite"):
-        from ascore.registry.sqlite_store import make_engine
+        from agenttic.registry.sqlite_store import make_engine
         return cfg, Registry(engine=make_engine(db_url), tenant=tenant)
     # SQLite: file-per-tenant (mirrors server Workspaces)
     base = Path(cfg["paths"]["registry_db"])
@@ -85,7 +85,7 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
     (--system-prompt/--model), --url for black-box HTTP, or
     --managed-agent-id/--environment-id for a deployed Managed Agent. Explicit
     flags always override the catalog."""
-    from ascore.registry.sqlite_store import NotFoundError
+    from agenttic.registry.sqlite_store import NotFoundError
 
     cfg, reg = _ctx(config)
     variant = "managed" if managed_agent_id else ("blackbox" if url else "reference")
@@ -113,7 +113,7 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
                                     system_prompt=system_prompt, model=model, **bb)
     except ValueError as exc:
         raise typer.BadParameter(str(exc))
-    from ascore.budget import BudgetExceededError
+    from agenttic.budget import BudgetExceededError
     try:
         sc = asyncio.run(ops.run_and_score_op(cfg, reg, adapter, suite))
     except BudgetExceededError as exc:
@@ -151,7 +151,7 @@ def deploy(workflow: Path, env_name: str = "ascore-workflows",
 def calibrate(suite_id: str, config: str = "config.yaml"):
     """Compare judge scores against human labels (calibration/{suite_id}.csv)."""
     from sqlmodel import Session, select
-    from ascore.registry.sqlite_store import ScorecardRow
+    from agenttic.registry.sqlite_store import ScorecardRow
 
     cfg, reg = _ctx(config)
     labels = load_labels(Path(cfg["paths"]["calibration_dir"]) / f"{suite_id}.csv")
@@ -189,7 +189,7 @@ def calibrate(suite_id: str, config: str = "config.yaml"):
 def calibrate_corpus():
     """Demonstrate deterministic-check calibration against the shipped human-label
     corpus (offline, reproducible; no API key). Prints per-criterion agreement."""
-    from ascore.scoring.corpus import run_corpus_calibration
+    from agenttic.scoring.corpus import run_corpus_calibration
 
     result = run_corpus_calibration()
     console.print(f"[bold]{result.version}[/] — {result.n_records} labeled "
@@ -213,7 +213,7 @@ def calibrate_judge(config: str = "config.yaml"):
     is an LLM). With no key it prints the honest blocker + minimal cost and spends
     nothing; judge criteria stay PROVISIONAL until a real run demonstrates
     agreement."""
-    from ascore.scoring import judge_calibration as JC
+    from agenttic.scoring import judge_calibration as JC
 
     cfg, _ = _ctx(config)
     if not JC.judge_calibration_available():
@@ -258,7 +258,7 @@ def reproduce_bfcl(
     Always runs the offline grader validation (oracle → must be 100%)."""
     import json
 
-    from ascore.metrics import bfcl_reproduce as R
+    from agenttic.metrics import bfcl_reproduce as R
 
     val = R.validate_scorer(split, full=full)
     ok = "[green]VALID[/]" if val.accuracy >= 1.0 else "[red]SCORER BUG[/]"
@@ -271,7 +271,7 @@ def reproduce_bfcl(
         if not R.model_predictions_available():
             console.print(f"\n[yellow]Blocked:[/] {R.bfcl_blocker()['blocker']}")
             raise typer.Exit(0)
-        from ascore.stats import wilson_interval
+        from agenttic.stats import wilson_interval
         cases = R.load_simple_python_v4()
         console.print(f"Running [bold]{model}[/] over {len(cases)} V4 "
                       "simple_python cases (native FC, temp 0)...")
@@ -370,7 +370,7 @@ def inspect_import(path: Path = typer.Argument(..., help="an Inspect EvalLog .js
     snap to {0,0.5,1}, aggregates recomputed). With --save, the recovered
     records are written to the registry."""
     import json
-    from ascore.interop import from_inspect_log
+    from agenttic.interop import from_inspect_log
     _, reg = _ctx(config)
     result = from_inspect_log(json.loads(path.read_text()))
     sc = result["scorecard"]
@@ -391,8 +391,8 @@ def _ab_variant(reg, label: str, agent: str, model: str, prompt: str):
     """Build an ABVariant from a base agent id, resolving a declared catalog
     entry when present; --model/--prompt override it (the model/prompt A/B
     cases)."""
-    from ascore.registry.sqlite_store import NotFoundError
-    from ascore.schema.ab import ABVariant
+    from agenttic.registry.sqlite_store import NotFoundError
+    from agenttic.schema.ab import ABVariant
     fields = {"label": label, "agent_id": agent, "model": model,
               "system_prompt": prompt}
     try:
@@ -426,7 +426,7 @@ def ab(suite: str = typer.Option(..., "--suite", "-s", help="suite id to run"),
     prompt, so the same agent can be compared across models or prompts. Both runs
     use the same suite, rubric and judge — a paired comparison with a McNemar
     significance test."""
-    from ascore.ab import run_ab_op
+    from agenttic.ab import run_ab_op
     cfg, reg = _ctx(config)
     va = _ab_variant(reg, a_label, a, a_model, a_prompt)
     vb = _ab_variant(reg, b_label, b, b_model, b_prompt)
@@ -468,7 +468,7 @@ def optimize(
     pass-rate improvement with NO significantly-regressed criterion. The loop
     runs the suite many times — your own key pays for each (bounded by
     --rounds/--candidates/--max-runs)."""
-    from ascore import optimizer as optmod
+    from agenttic import optimizer as optmod
     cfg, reg = _ctx(config)
     baseline = prompt_file.read_text() if prompt_file else prompt
 
@@ -529,9 +529,9 @@ def pilot(config: str = "config.yaml",
     10 cases + rubric) so the UI's starter workflow runs out of the box."""
     import json
 
-    from ascore.registry.sqlite_store import DuplicateVersionError
-    from ascore.schema.rubric import Rubric
-    from ascore.schema.testcase import TestCase, TestSuite
+    from agenttic.registry.sqlite_store import DuplicateVersionError
+    from agenttic.schema.rubric import Rubric
+    from agenttic.schema.testcase import TestCase, TestSuite
 
     pilot_dir = Path(__file__).resolve().parents[2] / "examples" / "pilot_support_triage"
     _, reg = _ctx(config)
@@ -582,7 +582,7 @@ def migrate(status: bool = typer.Option(False, "--status",
             config: str = "config.yaml"):
     """Apply schema migrations to the registry DB (idempotent). Building the
     Registry already migrates to head; this reports or re-runs explicitly."""
-    from ascore.migrations import migration_status, run_migrations
+    from agenttic.migrations import migration_status, run_migrations
 
     _, reg = _ctx(config)  # constructing the Registry runs migrations
     if status:
@@ -623,7 +623,7 @@ def ui(host: str = "", port: int = 0,
        config: str = "config.yaml"):
     """Launch the visual workflow builder (FastAPI + the React canvas)."""
     import uvicorn
-    from ascore.server.app import UI_DIST, create_app
+    from agenttic.server.app import UI_DIST, create_app
 
     cfg = load_config(config)
     host, port = _resolve_ui_binding(cfg, host, port, lan)
@@ -636,7 +636,7 @@ def ui(host: str = "", port: int = 0,
             f"to http://{host}:{port}).")
     console.print(f"Agenttic UI on [bold]http://{host}:{port}[/]")
     if host != "127.0.0.1":
-        from ascore.server.auth import configured_token
+        from agenttic.server.auth import configured_token
 
         ip = _lan_ip()
         if ip:
@@ -673,8 +673,8 @@ def agents_add(
     """Register an agent (or store the next version of an existing one)."""
     from pydantic import ValidationError
 
-    from ascore.schema.agent import DeclaredAgent
-    from ascore.security import UnsafeURLError, validate_blackbox_url
+    from agenttic.schema.agent import DeclaredAgent
+    from agenttic.security import UnsafeURLError, validate_blackbox_url
 
     cfg, reg = _ctx(config)
     try:
@@ -717,7 +717,7 @@ def agents_list(all_: bool = typer.Option(False, "--all",
 @agents_app.command("show")
 def agents_show(agent_id: str, config: str = "config.yaml"):
     """Show one declared agent's full details."""
-    from ascore.registry.sqlite_store import NotFoundError
+    from agenttic.registry.sqlite_store import NotFoundError
 
     _, reg = _ctx(config)
     try:
@@ -731,7 +731,7 @@ def agents_show(agent_id: str, config: str = "config.yaml"):
 @agents_app.command("retire")
 def agents_retire(agent_id: str, config: str = "config.yaml"):
     """Retire an agent (soft-delete; history kept, re-add to revive)."""
-    from ascore.registry.sqlite_store import NotFoundError
+    from agenttic.registry.sqlite_store import NotFoundError
 
     _, reg = _ctx(config)
     try:
@@ -757,7 +757,7 @@ def users_create(
     config: str = "config.yaml",
 ):
     """Create a login account (use this to bootstrap the first admin)."""
-    from ascore.server.users import DuplicateUserError, UserStore
+    from agenttic.server.users import DuplicateUserError, UserStore
 
     _, reg = _ctx(config)
     try:
@@ -780,7 +780,7 @@ def users_set_password(
     config: str = "config.yaml",
 ):
     """Reset an existing account's password."""
-    from ascore.server.users import UserStore
+    from agenttic.server.users import UserStore
 
     _, reg = _ctx(config)
     try:
@@ -797,7 +797,7 @@ def users_list(config: str = "config.yaml"):
     """List login accounts (emails + roles; no password material)."""
     from sqlmodel import Session, select
 
-    from ascore.registry.sqlite_store import UserRow
+    from agenttic.registry.sqlite_store import UserRow
     _, reg = _ctx(config)
     with Session(reg.engine) as s:
         rows = s.exec(select(UserRow).order_by(UserRow.email)).all()
@@ -817,7 +817,7 @@ app.add_typer(standard_app, name="standard")
 @standard_app.command("seed")
 def standard_seed(config: str = "config.yaml"):
     """Install the canonical standard suites (tool-use + safety) — idempotent."""
-    from ascore.metrics.standard_suites import seed_standard_suites
+    from agenttic.metrics.standard_suites import seed_standard_suites
     _, reg = _ctx(config)
     added = seed_standard_suites(reg)
     console.print(f"[green]Seeded[/] {len(added)} standard suite(s): "
@@ -849,7 +849,7 @@ def standard_ingest(dataset: str = typer.Argument("bfcl", help="dataset id (e.g.
                         help="fetch the full split from the source (else vendored sample)"),
                     config: str = "config.yaml"):
     """Ingest a real public dataset into a labeled standard suite (e.g. BFCL)."""
-    from ascore.metrics.datasets import get_adapter
+    from agenttic.metrics.datasets import get_adapter
     _, reg = _ctx(config)
     try:
         res = get_adapter(dataset).ingest(reg, full=full)
@@ -865,7 +865,7 @@ def standard_ingest(dataset: str = typer.Argument("bfcl", help="dataset id (e.g.
 @standard_app.command("metrics")
 def standard_metrics():
     """List the canonical metrics, the methodology each implements, and weights."""
-    from ascore.metrics.catalog import METRICS
+    from agenttic.metrics.catalog import METRICS
     table = Table("metric", "category", "weight", "methodology")
     for m in METRICS:
         w = f"{m.weight:.3f}" + ("" if m.status == "implemented" else " (deferred)")
@@ -902,9 +902,9 @@ def profiles_show(
 ):
     """Show a profile's composition, pinned suite versions, coverage table, and
     caveats (verbatim). Seeds the standard suites first so coverage is populated."""
-    from ascore.certification.coverage import coverage
-    from ascore.certification.profiles import ProfileError, build_profile
-    from ascore.metrics.standard_suites import seed_standard_suites
+    from agenttic.certification.coverage import coverage
+    from agenttic.certification.profiles import ProfileError, build_profile
+    from agenttic.metrics.standard_suites import seed_standard_suites
     cfg, reg = _ctx(config)
     seed_standard_suites(reg)
     try:
@@ -948,7 +948,7 @@ def oversight_watch(
 ):
     """Watch pending oversight reviews + loosening proposals (from the append-only
     enforcement log). The loop is opt-in (oversight.interactive_loop.enabled)."""
-    from ascore.enforce.interactive_oversight import (
+    from agenttic.enforce.interactive_oversight import (
         pending_loosen_proposals,
         pending_reviews,
     )
@@ -984,7 +984,7 @@ def oversight_confirm(
 ):
     """Explicitly confirm a loosening proposal (the only way loosening is ever
     applied). Records the confirmation and applies it."""
-    from ascore.enforce.interactive_oversight import InteractiveOversightLoop
+    from agenttic.enforce.interactive_oversight import InteractiveOversightLoop
     cfg, reg = _ctx(config)
     loop = InteractiveOversightLoop(reg, cfg)
     try:
@@ -1008,9 +1008,9 @@ def cards_autofill(
     config: str = "config.yaml",
 ):
     """Autofill a card from Agenttic's own measured evidence and persist it."""
-    from ascore.cards.agency import detect_covered_agent
-    from ascore.cards.autofill import autofill_card
-    from ascore.cards.autonomy import classify_autonomy
+    from agenttic.cards.agency import detect_covered_agent
+    from agenttic.cards.autofill import autofill_card
+    from agenttic.cards.autonomy import classify_autonomy
     cfg, reg = _ctx(config)
     card = autofill_card(cfg, reg, agent)
     aut = classify_autonomy(reg, agent, cfg)
@@ -1031,7 +1031,7 @@ def cards_show(
     config: str = "config.yaml",
 ):
     """Show the latest card for an agent (field key → status/provenance)."""
-    from ascore.registry.sqlite_store import NotFoundError
+    from agenttic.registry.sqlite_store import NotFoundError
     _cfg, reg = _ctx(config)
     try:
         card = reg.get_card(agent)
@@ -1055,8 +1055,8 @@ def cards_annotate(
     config: str = "config.yaml",
 ):
     """Add a DOCUMENTED field value. Rejects documented values without citations."""
-    from ascore.registry.sqlite_store import NotFoundError
-    from ascore.schema.agent_card import AgentCard, FieldValue
+    from agenttic.registry.sqlite_store import NotFoundError
+    from agenttic.schema.agent_card import AgentCard, FieldValue
     _cfg, reg = _ctx(config)
     if not citation:
         raise typer.BadParameter(
@@ -1085,7 +1085,7 @@ def incidents_list(
     config: str = "config.yaml",
 ):
     """List incidents with computed state + SLA due clock + overdue flag."""
-    from ascore.live.incidents import IncidentManager
+    from agenttic.live.incidents import IncidentManager
     cfg, reg = _ctx(config)
     rows = IncidentManager(reg).list_with_sla(cfg, agent_id=agent or None)
     if not rows:
@@ -1108,7 +1108,7 @@ def incidents_open(
     config: str = "config.yaml",
 ):
     """Manually open an incident."""
-    from ascore.live.incidents import open_manual
+    from agenttic.live.incidents import open_manual
     _cfg, reg = _ctx(config)
     inc = open_manual(reg, agent_id=agent, severity=severity, title=title,
                       summary=summary)
@@ -1122,7 +1122,7 @@ def incidents_report(
     config: str = "config.yaml",
 ):
     """Move an incident to the 'reported' state (must be triaged first)."""
-    from ascore.live.incidents import IllegalTransitionError, IncidentManager
+    from agenttic.live.incidents import IllegalTransitionError, IncidentManager
     _cfg, reg = _ctx(config)
     m = IncidentManager(reg)
     try:
@@ -1141,7 +1141,7 @@ def incidents_close(
     config: str = "config.yaml",
 ):
     """Close an incident."""
-    from ascore.live.incidents import IllegalTransitionError, IncidentManager
+    from agenttic.live.incidents import IllegalTransitionError, IncidentManager
     _cfg, reg = _ctx(config)
     try:
         inc = IncidentManager(reg).transition(incident_id, "closed",
@@ -1159,7 +1159,7 @@ def incidents_export(
     """Print the regulator-facing JSON export for an incident."""
     import json as _json
 
-    from ascore.live.incidents import IncidentManager
+    from agenttic.live.incidents import IncidentManager
     cfg, reg = _ctx(config)
     inc = IncidentManager(reg).get(incident_id)
     console.print_json(_json.dumps(inc.export(cfg)))
@@ -1181,7 +1181,7 @@ def init(
         agenttic init
         agenttic certify --mock
     """
-    from ascore.release.scaffold import scaffold
+    from agenttic.release.scaffold import scaffold
     res = scaffold(directory, target=target, force=force)
     for name in res["written"]:
         console.print(f"[green]created[/] {name}")
@@ -1207,7 +1207,7 @@ def doctor(
     a captured span stream parses into a canonical run."""
     import json as _json
 
-    from ascore.ingest.doctor import diagnose_payload, probe_target
+    from agenttic.ingest.doctor import diagnose_payload, probe_target
     if not target and not spans:
         raise typer.BadParameter("provide --target URL and/or --spans FILE")
 
@@ -1266,14 +1266,14 @@ def certify(
     --mock for an offline, no-key run."""
     import asyncio
 
-    from ascore.certification.certify import certify as _certify
-    from ascore.certification.certify import renew as _renew
-    from ascore.reporting.dossier_report import render_json
+    from agenttic.certification.certify import certify as _certify
+    from agenttic.certification.certify import renew as _renew
+    from agenttic.reporting.dossier_report import render_json
     cfg, reg = _ctx(config)
     variant = "blackbox" if url else "reference"
     client = None
     if mock:
-        from ascore.certification.mock_provider import MockAnthropicClient
+        from agenttic.certification.mock_provider import MockAnthropicClient
         client = MockAnthropicClient()
     op = _renew if renew else _certify
     res = asyncio.run(op(cfg, reg, agent_id=agent, profile_id=profile,
@@ -1303,7 +1303,7 @@ def dossier_verify(
     config: str = "config.yaml",
 ):
     """Recompute the dossier's hashes offline; names the offending ref on mismatch."""
-    from ascore.certification.dossier import verify
+    from agenttic.certification.dossier import verify
     reg = None
     try:
         _cfg, reg = _ctx(config)
@@ -1327,8 +1327,8 @@ def dossier_revoke(
 ):
     """Revoke a dossier (append-only). The dossier stays readable; its status
     flips to 'revoked'. There is no un-revoke / manual-promotion path."""
-    from ascore.certification.dossier import revoke
-    from ascore.registry.sqlite_store import NotFoundError
+    from agenttic.certification.dossier import revoke
+    from agenttic.registry.sqlite_store import NotFoundError
     _cfg, reg = _ctx(config)
     try:
         revoke(reg, dossier_id, reason=reason)
@@ -1344,8 +1344,8 @@ def dossier_show(
     config: str = "config.yaml",
 ):
     """Render a persisted dossier (md/json/inspect) with its computed status."""
-    from ascore.certification.staleness import status, status_reasons
-    from ascore.reporting.dossier_report import render
+    from agenttic.certification.staleness import status, status_reasons
+    from agenttic.reporting.dossier_report import render
     _cfg, reg = _ctx(config)
     d = reg.get_dossier(dossier_id)
     st = status(reg, d)
@@ -1369,7 +1369,7 @@ def airgap_check(config: str = "config.yaml"):
     the same gate the server runs at startup."""
     import sys as _sys
 
-    from ascore.airgap import egress_self_check
+    from agenttic.airgap import egress_self_check
     cfg = load_config(config)
     rep = egress_self_check(cfg)
     console.print(f"air-gap mode: [{'green' if rep['enabled'] else 'yellow'}]"
@@ -1406,7 +1406,7 @@ def enforce_mode(
 
     Advancing is deliberate; stepping down to observe is always allowed (safety
     valve). A mode change never loosens the compiled policy."""
-    from ascore.enforce import ramp
+    from agenttic.enforce import ramp
     _cfg, reg = _ctx(config)
     if mode.lower() in ("show", "current", ""):
         console.print(f"{agent}: [cyan]{ramp.current_mode(reg, agent)}[/]")
@@ -1427,7 +1427,7 @@ def enforce_shadow_report(
 ):
     """Show the would-be-block report: what shadow mode *would* have blocked, the
     projected impact of enforcing, and false-positive candidates."""
-    from ascore.enforce import ramp
+    from agenttic.enforce import ramp
     _cfg, reg = _ctx(config)
     rep = ramp.shadow_report(reg, agent)
     console.print(f"[bold]{agent}[/] — mode [cyan]{rep['mode']}[/]")
@@ -1453,8 +1453,8 @@ def ingest_otel(
 
     Ingested traces are stored as mode='live' and are structurally excluded from
     batch certification scorecards (SPEC-1 Step 9 invariant)."""
-    from ascore.ingest.mapping import ingest_spans
-    from ascore.ingest.otel import load_span_dump
+    from agenttic.ingest.mapping import ingest_spans
+    from agenttic.ingest.otel import load_span_dump
     _cfg, reg = _ctx(config)
     spans = load_span_dump(file)
     rep = ingest_spans(reg, spans)

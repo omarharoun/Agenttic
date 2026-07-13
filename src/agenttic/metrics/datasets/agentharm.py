@@ -21,13 +21,13 @@ import json
 import urllib.request
 from importlib import resources
 
-from ascore.metrics.datasets.base import DatasetAdapter, DatasetInfo
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.testcase import TestCase
+from agenttic.metrics.datasets.base import DatasetAdapter, DatasetInfo
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.testcase import TestCase
 
 _HF = ("https://huggingface.co/datasets/ai-safety-institute/"
        "AgentHarm/resolve/main/benchmark/")
-_DATA = resources.files("ascore.metrics.datasets") / "agentharm_data"
+_DATA = resources.files("agenttic.metrics.datasets") / "agentharm_data"
 
 INFO = DatasetInfo(
     dataset_id="agentharm",

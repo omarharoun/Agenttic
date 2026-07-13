@@ -56,7 +56,7 @@ _SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 def configured_token(cfg: dict) -> str:
     """The admin token (env / *_FILE wins over config), or "" if unset."""
-    from ascore.secrets import get_secret
+    from agenttic.secrets import get_secret
     env = get_secret("ASCORE_API_TOKEN")
     if env:
         return env
@@ -83,7 +83,7 @@ def check_startup(cfg: dict) -> None:
     if not auth_required(cfg):
         return
     has_token = bool(configured_token(cfg) or _role_tokens(cfg))
-    from ascore.secrets import get_secret
+    from agenttic.secrets import get_secret
     has_admin_bootstrap = bool(os.environ.get("ASCORE_ADMIN_EMAIL")
                                and get_secret("ASCORE_ADMIN_PASSWORD"))
     allow_signup = bool((cfg.get("auth", {}) or {}).get("allow_signup", False))
@@ -134,7 +134,7 @@ def _provided_token(request: Request) -> str | None:
 def _resolve_pat(request: Request, provided: str) -> tuple[str, str, str] | None:
     """(role, tenant, email) for a personal API token, or None. Looks the token
     up (hashed) in the GLOBAL engine where users/PATs live."""
-    from ascore.server.pats import PatStore, looks_like_pat
+    from agenttic.server.pats import PatStore, looks_like_pat
     if not looks_like_pat(provided):
         return None
     try:
@@ -190,7 +190,7 @@ def require_auth(request: Request) -> None:
 
     token = request.cookies.get(SESSION_COOKIE)
     if token:
-        from ascore.server.sessions import session_secret, verify_session
+        from agenttic.server.sessions import session_secret, verify_session
         body = verify_session(token, session_secret(cfg))
         if body:
             if request.method not in _SAFE_METHODS:

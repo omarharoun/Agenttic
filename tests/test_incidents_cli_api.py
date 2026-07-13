@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
 from pathlib import Path
 
 CONFIG = """\
@@ -57,7 +57,7 @@ def test_incident_lifecycle_over_api(tmp_path):
 def test_incidents_cli(tmp_path, monkeypatch):
     from typer.testing import CliRunner
 
-    from ascore.cli import app
+    from agenttic.cli import app
     monkeypatch.setenv("ASCORE_TENANT", "inccli")
     monkeypatch.chdir(Path(__file__).resolve().parents[1])
     runner = CliRunner()
@@ -69,5 +69,5 @@ def test_incidents_cli(tmp_path, monkeypatch):
         assert "ref-agent" in lst.stdout
     finally:
         import os
-        if os.path.exists("ascore.inccli.db"):
-            os.remove("ascore.inccli.db")
+        if os.path.exists("agenttic.inccli.db"):
+            os.remove("agenttic.inccli.db")

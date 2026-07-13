@@ -5,16 +5,16 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from ascore.certification.dossier import assemble
-from ascore.config import load_config
-from ascore.enforce.compiler import recompile_for_agent
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.certification import (
+from agenttic.certification.dossier import assemble
+from agenttic.config import load_config
+from agenttic.enforce.compiler import recompile_for_agent
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.certification import (
     Attestation,
     CertificationProfile,
     TierDecision,
 )
-from ascore.server.app import create_app
+from agenttic.server.app import create_app
 
 CONFIG = """\
 models: {agent_default: a, judge_strong: j, judge_light: l}

@@ -8,7 +8,7 @@ When a key IS present, the runner drives the real judge over the labeled corpus.
 
 from __future__ import annotations
 
-from ascore.scoring.judge_calibration import (
+from agenttic.scoring.judge_calibration import (
     JudgeCalibrationBlocked,
     _build,
     corpus_criteria,
@@ -61,7 +61,7 @@ class TestRunsWithFakeJudgeClient:
         # Prove the runner actually drives the judge end-to-end (no real key):
         # inject a fake Anthropic client that scores each record perfectly, so
         # agreement is demonstrably computed from judge output vs human labels.
-        from ascore.scoring.judge_calibration import load_judge_corpus
+        from agenttic.scoring.judge_calibration import load_judge_corpus
 
         by_id = {r["record_id"]: r for r in load_judge_corpus()}
 
@@ -109,8 +109,8 @@ class TestPublicSurface:
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         from fastapi.testclient import TestClient
 
-        from ascore.registry.sqlite_store import Registry
-        from ascore.server.app import create_app
+        from agenttic.registry.sqlite_store import Registry
+        from agenttic.server.app import create_app
 
         cfg_path = tmp_path / "config.yaml"
         cfg_path.write_text(

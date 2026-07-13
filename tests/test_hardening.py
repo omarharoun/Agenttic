@@ -17,11 +17,11 @@ from pathlib import Path
 
 import pytest
 
-from ascore import hardening, ops
-from ascore.registry.sqlite_store import NotFoundError, Registry
-from ascore.schema.rubric import Rubric
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
-from ascore.schema.testcase import TestCase, TestSuite
+from agenttic import hardening, ops
+from agenttic.registry.sqlite_store import NotFoundError, Registry
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.schema.testcase import TestCase, TestSuite
 
 PILOT = Path(__file__).parent.parent / "examples" / "pilot_support_triage"
 

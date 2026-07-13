@@ -1,6 +1,6 @@
 """Shared test fixtures.
 
-Test isolation for the login-lockout counter: :mod:`ascore.server.routes.auth`
+Test isolation for the login-lockout counter: :mod:`agenttic.server.routes.auth`
 keeps a module-global ``_attempts`` dict (failed-login counts per email) that is
 only cleared on a successful login. Several test files reuse the same email
 (e.g. ``a@b.com``), so failed logins in one test can accumulate and spuriously
@@ -18,7 +18,7 @@ import pytest
 @pytest.fixture(autouse=True)
 def _reset_login_lockout():
     try:
-        from ascore.server.routes import auth
+        from agenttic.server.routes import auth
         auth._attempts.clear()
     except Exception:  # noqa: BLE001 — never let hygiene break collection
         pass

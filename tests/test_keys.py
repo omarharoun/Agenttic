@@ -1,8 +1,8 @@
 """Per-tenant Anthropic key: encryption at rest, masking, no-leak, client wiring."""
 
-from ascore.registry.sqlite_store import ApiKeyRow, Registry
-from ascore.server.crypto import decrypt, encrypt
-from ascore.server.keys import KeyStore, build_tenant_clients, mask
+from agenttic.registry.sqlite_store import ApiKeyRow, Registry
+from agenttic.server.crypto import decrypt, encrypt
+from agenttic.server.keys import KeyStore, build_tenant_clients, mask
 from sqlmodel import Session, select
 
 CFG = {"auth": {"session_secret": "test-secret"}}

@@ -7,7 +7,7 @@ import os
 
 import pytest
 
-from ascore.server.events import (
+from agenttic.server.events import (
     InMemoryTransport, RedisTransport, make_transport)
 
 

@@ -6,7 +6,7 @@ Why this exists (the threat model):
 
 * The Copilot chat runs on **Agenttic's own** Anthropic key. It already has a
   per-session/IP per-minute limiter and per-tenant + global daily message caps
-  (see :mod:`ascore.copilot.credits`). This module adds the SAME shape of
+  (see :mod:`agenttic.copilot.credits`). This module adds the SAME shape of
   protection to the other cost/expense-bearing surfaces — **demo scans** and
   **certification starts** — plus a **signup throttle** so accounts (and thus
   fresh per-tenant budgets) can't be farmed by hammering ``/auth/signup``.
@@ -38,9 +38,9 @@ from datetime import date, datetime, timezone
 
 from fastapi import HTTPException, Request
 
-from ascore.server.ratelimit import InMemoryRateLimiter
+from agenttic.server.ratelimit import InMemoryRateLimiter
 
-log = logging.getLogger("ascore.server.abuse")
+log = logging.getLogger("agenttic.server.abuse")
 
 _MINUTE = 60.0
 _HOUR = 3600.0

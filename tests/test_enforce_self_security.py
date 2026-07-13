@@ -5,22 +5,22 @@ from __future__ import annotations
 import json
 import tempfile
 
-from ascore.certification.dossier import assemble
-from ascore.config import load_config
-from ascore.enforce.compiler import recompile_for_agent
-from ascore.enforce.export import export_json
-from ascore.enforce.gateway import EnforcementGateway, compute_policy_hash
-from ascore.enforce.self_security import (
+from agenttic.certification.dossier import assemble
+from agenttic.config import load_config
+from agenttic.enforce.compiler import recompile_for_agent
+from agenttic.enforce.export import export_json
+from agenttic.enforce.gateway import EnforcementGateway, compute_policy_hash
+from agenttic.enforce.self_security import (
     assert_no_self_exemption,
     verify_policy_provenance,
 )
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.certification import (
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.certification import (
     Attestation,
     CertificationProfile,
     TierDecision,
 )
-from ascore.schema.enforcement import EnforcementPolicy, Rule
+from agenttic.schema.enforcement import EnforcementPolicy, Rule
 
 CFG = load_config("config.yaml")
 

@@ -16,10 +16,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.server.abuse import guard_cost_endpoint
-from ascore.server.auth import require_operator
-from ascore.server.keys import tenant_run_clients
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.server.abuse import guard_cost_endpoint
+from agenttic.server.auth import require_operator
+from agenttic.server.keys import tenant_run_clients
 
 router = APIRouter(tags=["certification"])
 
@@ -32,8 +32,8 @@ def public_dossier_view(reg, dossier_id: str) -> dict:
     """Build the public verification view from the dossier JSON alone: the
     dossier, its offline hash-verification result, and its computed status.
     Pure enough to snapshot with an otherwise-empty registry."""
-    from ascore.certification.dossier import verify_dossier
-    from ascore.certification.staleness import status, status_reasons
+    from agenttic.certification.dossier import verify_dossier
+    from agenttic.certification.staleness import status, status_reasons
     d = reg.get_dossier(dossier_id)
     v = verify_dossier(d, reg)
     return {
@@ -50,7 +50,7 @@ def public_dossier_view(reg, dossier_id: str) -> dict:
 
 def _enforcement_view(reg, agent_id: str) -> dict | None:
     """"Enforced under policy <hash>" + posture, from the compiled policy alone."""
-    from ascore.enforce.compiler import posture_summary
+    from agenttic.enforce.compiler import posture_summary
     try:
         policy = reg.latest_policy(agent_id)
     except Exception:  # noqa: BLE001 — no policy yet
@@ -73,7 +73,7 @@ def public_card_view(reg, agent_id: str) -> dict:
     provenance class (measured/documented/attested/none) + per-category
     completeness. Provenance classes are surfaced so the UI can style them
     distinctly."""
-    from ascore.cards.fields import card_completeness
+    from agenttic.cards.fields import card_completeness
     card = reg.get_card(agent_id)
     by_provenance = {"measured": [], "documented": [], "attested": [],
                      "none_found": [], "confirmed_none": [], "not_applicable": []}
@@ -151,7 +151,7 @@ def certify_job(job_id: str, request: Request):
 
 @router.get("/dossiers")
 def list_dossiers(request: Request, agent_id: str | None = None):
-    from ascore.certification.staleness import status
+    from agenttic.certification.staleness import status
     reg = request.state.reg
     rows = reg.list_dossiers(agent_id)
     for row in rows:
@@ -164,7 +164,7 @@ def list_dossiers(request: Request, agent_id: str | None = None):
 
 @router.get("/dossiers/{dossier_id}")
 def get_dossier(dossier_id: str, request: Request):
-    from ascore.certification.staleness import status, status_reasons
+    from agenttic.certification.staleness import status, status_reasons
     try:
         d = request.state.reg.get_dossier(dossier_id)
     except NotFoundError:
@@ -177,7 +177,7 @@ def get_dossier(dossier_id: str, request: Request):
 
 @router.get("/dossiers/{dossier_id}/report.pdf")
 def dossier_report_pdf(dossier_id: str, request: Request):
-    from ascore.reporting.dossier_report import render_pdf
+    from agenttic.reporting.dossier_report import render_pdf
     try:
         d = request.state.reg.get_dossier(dossier_id)
     except NotFoundError:

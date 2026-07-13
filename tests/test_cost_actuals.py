@@ -2,11 +2,11 @@
 
 from types import SimpleNamespace as NS
 
-from ascore.schema.rubric import Criterion
-from ascore.schema.scorecard import RunScore, Scorecard
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.scoring.judge import LLMJudge
+from agenttic.schema.rubric import Criterion
+from agenttic.schema.scorecard import RunScore, Scorecard
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.scoring.judge import LLMJudge
 
 CFG = {"pricing": {"judge-model": {"input": 10.0, "output": 30.0},
                    "default": {"input": 3.0, "output": 15.0}}}
@@ -56,7 +56,7 @@ def test_judge_cost_zero_without_cfg():
 
 
 def test_scorecard_totals_execution_and_scoring_cost():
-    from ascore.schema.scorecard import CriterionScore
+    from agenttic.schema.scorecard import CriterionScore
     runs = [
         RunScore(trace_id="t1", test_id="c1", passed=True, cost_usd=0.02,
                  scoring_cost_usd=0.013, criterion_scores=[

@@ -5,11 +5,11 @@ from __future__ import annotations
 import tempfile
 import time
 
-from ascore.config import load_config
-from ascore.enforce import lanes as lanes_mod
-from ascore.enforce.gateway import EnforcementGateway, compute_policy_hash
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.enforcement import EnforcementPolicy, Rule
+from agenttic.config import load_config
+from agenttic.enforce import lanes as lanes_mod
+from agenttic.enforce.gateway import EnforcementGateway, compute_policy_hash
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.enforcement import EnforcementPolicy, Rule
 
 
 def _cfg():

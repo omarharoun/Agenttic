@@ -21,7 +21,7 @@ Because a provisional (uncalibrated) judge always contributes the
 
 from __future__ import annotations
 
-from ascore.schema.certification import TierDecision
+from agenttic.schema.certification import TierDecision
 
 # threshold-config key -> metric-component id
 THRESHOLD_TO_COMPONENT = {

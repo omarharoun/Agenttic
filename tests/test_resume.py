@@ -9,14 +9,14 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from ascore.adapters.anthropic_simple import AnthropicSimpleAgent
-from ascore.adapters.base import AgentAdapter
-from ascore.generator.pipeline import BenchmarkGenerator
-from ascore.harness.runner import HarnessConfig, run_suite
-from ascore.registry.sqlite_store import Registry
-from ascore.retry import RetryPolicy
-from ascore.schema.testcase import TestCase, TestSuite
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.adapters.anthropic_simple import AnthropicSimpleAgent
+from agenttic.adapters.base import AgentAdapter
+from agenttic.generator.pipeline import BenchmarkGenerator
+from agenttic.harness.runner import HarnessConfig, run_suite
+from agenttic.registry.sqlite_store import Registry
+from agenttic.retry import RetryPolicy
+from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 JOB = "Triage tickets and answer policy questions."
 TASKS = {"tasks": [

@@ -11,7 +11,7 @@ Tools are split by ``kind``:
 * ``read``  — safe, side-effect-free lookups. The agent runs them freely.
 * ``write`` — spend budget or mutate state. These carry a ``confirm`` builder and
   are NEVER executed until the user explicitly confirms in the UI (the agent
-  proposes; :mod:`ascore.copilot.agent` gates on the human decision) AND the
+  proposes; :mod:`agenttic.copilot.agent` gates on the human decision) AND the
   credits gate allows the spend.
 
 Each tool's ``run`` returns a small JSON-able dict (or ``{"error": ...}``); the
@@ -24,7 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from ascore.server.auth import ROLES
+from agenttic.server.auth import ROLES
 
 
 # --------------------------------------------------------------------------- #
@@ -205,7 +205,7 @@ _register(Tool(
 
 
 def _run_list_dossiers(ctx: ToolContext, args: dict) -> dict:
-    from ascore.server.routes.dossiers import list_dossiers
+    from agenttic.server.routes.dossiers import list_dossiers
     agent_id = args.get("agent_id") or None
     rows = list_dossiers(ctx.request, agent_id=agent_id)
     slim = [{"dossier_id": r.get("dossier_id"), "agent_id": r.get("agent_id"),
@@ -225,7 +225,7 @@ _register(Tool(
 
 
 def _run_get_dossier(ctx: ToolContext, args: dict) -> dict:
-    from ascore.registry.sqlite_store import NotFoundError
+    from agenttic.registry.sqlite_store import NotFoundError
     did = str(args.get("dossier_id", "")).strip()
     try:
         d = ctx.reg.get_dossier(did)
@@ -254,8 +254,8 @@ _register(Tool(
 
 
 def _run_verify_dossier(ctx: ToolContext, args: dict) -> dict:
-    from ascore.certification.dossier import verify_dossier
-    from ascore.registry.sqlite_store import NotFoundError
+    from agenttic.certification.dossier import verify_dossier
+    from agenttic.registry.sqlite_store import NotFoundError
     did = str(args.get("dossier_id", "")).strip()
     try:
         d = ctx.reg.get_dossier(did)
@@ -296,7 +296,7 @@ _register(Tool(
 
 
 def _run_key_status(ctx: ToolContext, args: dict) -> dict:
-    from ascore.server.keys import KeyStore
+    from agenttic.server.keys import KeyStore
     st = KeyStore(ctx.reg.engine, ctx.cfg).status(ctx.tenant)
     return {"anthropic_key_set": bool(st.get("set")), "masked": st.get("masked")}
 
@@ -328,7 +328,7 @@ def _run_start_certification(ctx: ToolContext, args: dict) -> dict:
     if profile_id not in defined:
         return {"error": f"profile {profile_id!r} is not defined",
                 "available": list(defined.keys())}
-    from ascore.server.keys import tenant_run_clients
+    from agenttic.server.keys import tenant_run_clients
     try:
         clients = tenant_run_clients(ctx.request)  # None when injected (tests/dev)
     except Exception as exc:  # noqa: BLE001 — surface the BYO-key gate as data
@@ -379,7 +379,7 @@ _register(Tool(
 def _run_revoke_certification(ctx: ToolContext, args: dict) -> dict:
     if not ctx.is_operator():
         return {"error": "this action requires the 'operator' role"}
-    from ascore.server.certifications import CertStore
+    from agenttic.server.certifications import CertStore
     cert_id = str(args.get("cert_id", "")).strip()
     store = CertStore(ctx.request.app.state.reg.engine)
     if not store.revoke(tenant=ctx.tenant, cert_id=cert_id):

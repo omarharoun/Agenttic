@@ -12,16 +12,16 @@ import json
 
 import pytest
 
-from ascore import ops
-from ascore.certification.elicitation import (
+from agenttic import ops
+from agenttic.certification.elicitation import (
     analyze_elicitation,
     apply_elicitation,
     load_elicitation_configs,
     run_matrix,
 )
-from ascore.config import load_config
-from ascore.schema.scorecard import CriterionScore, RunScore
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.config import load_config
+from agenttic.schema.scorecard import CriterionScore, RunScore
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 NOW = datetime(2026, 6, 21, tzinfo=timezone.utc)
 N_CASES = 8

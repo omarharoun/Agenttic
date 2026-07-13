@@ -6,9 +6,9 @@
 
 import re
 
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
-from ascore.reporting.scorecard_report import render_markdown
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.reporting.scorecard_report import render_markdown
 
 RUBRIC = Rubric(rubric_id="r-1", criteria=[
     Criterion(criterion_id="routing", description="Routes to correct queue",

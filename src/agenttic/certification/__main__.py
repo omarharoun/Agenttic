@@ -1,4 +1,4 @@
-"""``python -m ascore.certification gen-key`` — unchanged from the flat module."""
+"""``python -m agenttic.certification gen-key`` — unchanged from the flat module."""
 
 import json
 import sys
@@ -13,4 +13,4 @@ if __name__ == "__main__":  # pragma: no cover
         print("\n# Public key (published; safe to share):")
         print(json.dumps(entry, indent=2))
     else:
-        print("usage: python -m ascore.certification gen-key")
+        print("usage: python -m agenttic.certification gen-key")

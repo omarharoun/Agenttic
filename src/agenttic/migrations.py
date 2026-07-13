@@ -24,8 +24,8 @@ from sqlmodel import SQLModel
 def _baseline(conn) -> None:
     """v1 — create the full current schema. Importing the model modules
     registers every table (registry + UI) on SQLModel.metadata."""
-    import ascore.registry.sqlite_store  # noqa: F401  (registers registry tables)
-    import ascore.server.store  # noqa: F401            (registers UI tables)
+    import agenttic.registry.sqlite_store  # noqa: F401  (registers registry tables)
+    import agenttic.server.store  # noqa: F401            (registers UI tables)
     SQLModel.metadata.create_all(conn)
 
 
@@ -56,8 +56,8 @@ def _add_tenant_id(conn) -> None:
 def _users_table(conn) -> None:
     """v3 — the login-accounts table. Fresh DBs get it from the baseline;
     this creates it on DBs already at v2 (idempotent via checkfirst)."""
-    import ascore.registry.sqlite_store  # noqa: F401 (registers UserRow)
-    from ascore.registry.sqlite_store import UserRow
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers UserRow)
+    from agenttic.registry.sqlite_store import UserRow
     UserRow.__table__.create(bind=conn, checkfirst=True)
 
 
@@ -67,8 +67,8 @@ def _email_verification(conn) -> None:
     verified=1 (never locks out the bootstrapped admin)."""
     from sqlalchemy import inspect
 
-    import ascore.registry.sqlite_store  # noqa: F401 (registers EmailTokenRow)
-    from ascore.registry.sqlite_store import EmailTokenRow
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers EmailTokenRow)
+    from agenttic.registry.sqlite_store import EmailTokenRow
 
     is_pg = conn.dialect.name == "postgresql"
     default, truth = ("false", "true") if is_pg else ("0", "1")
@@ -84,46 +84,46 @@ def _email_verification(conn) -> None:
 
 def _api_keys_table(conn) -> None:
     """v5 — per-tenant provider API keys (encrypted at rest)."""
-    import ascore.registry.sqlite_store  # noqa: F401 (registers ApiKeyRow)
-    from ascore.registry.sqlite_store import ApiKeyRow
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers ApiKeyRow)
+    from agenttic.registry.sqlite_store import ApiKeyRow
     ApiKeyRow.__table__.create(bind=conn, checkfirst=True)
 
 
 def _ab_comparisons_table(conn) -> None:
     """v6 — A/B comparison runs (two variants, head-to-head on one suite)."""
-    import ascore.registry.sqlite_store  # noqa: F401 (registers ABComparisonRow)
-    from ascore.registry.sqlite_store import ABComparisonRow
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers ABComparisonRow)
+    from agenttic.registry.sqlite_store import ABComparisonRow
     ABComparisonRow.__table__.create(bind=conn, checkfirst=True)
 
 
 def _canonical_runs_table(conn) -> None:
     """v7 — standard-benchmark canonical runs (pass^k + ECE + index per agent)."""
-    import ascore.registry.sqlite_store  # noqa: F401 (registers CanonicalRunRow)
-    from ascore.registry.sqlite_store import CanonicalRunRow
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers CanonicalRunRow)
+    from agenttic.registry.sqlite_store import CanonicalRunRow
     CanonicalRunRow.__table__.create(bind=conn, checkfirst=True)
 
 
 def _optimization_runs_table(conn) -> None:
     """v8 — prompt-optimization runs (baseline→best system-prompt lineage +
     train/heldout scores from the self-improving loop)."""
-    import ascore.registry.sqlite_store  # noqa: F401 (registers OptimizationRunRow)
-    from ascore.registry.sqlite_store import OptimizationRunRow
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers OptimizationRunRow)
+    from agenttic.registry.sqlite_store import OptimizationRunRow
     OptimizationRunRow.__table__.create(bind=conn, checkfirst=True)
 
 
 def _personal_api_tokens_table(conn) -> None:
     """v9 — personal API tokens (PATs): per-user programmatic REST access,
     stored hashed; a PAT authenticates as the owning user's tenant + role."""
-    import ascore.registry.sqlite_store  # noqa: F401 (registers PersonalApiTokenRow)
-    from ascore.registry.sqlite_store import PersonalApiTokenRow
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers PersonalApiTokenRow)
+    from agenttic.registry.sqlite_store import PersonalApiTokenRow
     PersonalApiTokenRow.__table__.create(bind=conn, checkfirst=True)
 
 
 def _result_cache_table(conn) -> None:
     """v10 — result cache: deterministic run fingerprint -> completed result,
     per tenant, so identical runs reuse a scorecard instead of re-spending."""
-    import ascore.registry.sqlite_store  # noqa: F401 (registers ResultCacheRow)
-    from ascore.registry.sqlite_store import ResultCacheRow
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers ResultCacheRow)
+    from agenttic.registry.sqlite_store import ResultCacheRow
     ResultCacheRow.__table__.create(bind=conn, checkfirst=True)
 
 
@@ -131,8 +131,8 @@ def _certifications_table(conn) -> None:
     """v11 — Agent Safety Certifications: signed, publicly-verifiable safety
     grades issued from a completed safety scorecard. GLOBAL table keyed by
     cert_id (tenant_id scopes issuance); public read by id ignores tenant."""
-    import ascore.registry.sqlite_store  # noqa: F401 (registers CertificationRow)
-    from ascore.registry.sqlite_store import CertificationRow
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers CertificationRow)
+    from agenttic.registry.sqlite_store import CertificationRow
     CertificationRow.__table__.create(bind=conn, checkfirst=True)
 
 
@@ -140,16 +140,16 @@ def _agent_connections_table(conn) -> None:
     """v12 — "Connect your agent" configs: a tenant's live HTTP endpoint +
     request/response mapping for the Safety Battery scan. The auth header value
     is stored encrypted; ``consent`` gates scanning."""
-    import ascore.registry.sqlite_store  # noqa: F401 (registers AgentConnectionRow)
-    from ascore.registry.sqlite_store import AgentConnectionRow
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers AgentConnectionRow)
+    from agenttic.registry.sqlite_store import AgentConnectionRow
     AgentConnectionRow.__table__.create(bind=conn, checkfirst=True)
 
 
 def _assistant_sessions_table(conn) -> None:
     """v13 — Safe Reference Assistant sessions: tenant-scoped conversation
     state (transcript, scratchpad, step log, pending approval gate)."""
-    import ascore.registry.sqlite_store  # noqa: F401 (registers AssistantSessionRow)
-    from ascore.registry.sqlite_store import AssistantSessionRow
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers AssistantSessionRow)
+    from agenttic.registry.sqlite_store import AssistantSessionRow
     AssistantSessionRow.__table__.create(bind=conn, checkfirst=True)
 
 
@@ -159,8 +159,8 @@ def _training_camp_tables(conn) -> None:
     Wilson-lower-bound accuracy, the promotion-gate decision + human sign-off,
     and the improve-loop ratchet log; ``CampEpisodeRow`` is the reusable memory
     the distillation export and review queue read from."""
-    import ascore.camp.store  # noqa: F401 (registers CampRunRow + CampEpisodeRow)
-    from ascore.camp.store import CampEpisodeRow, CampRunRow
+    import agenttic.camp.store  # noqa: F401 (registers CampRunRow + CampEpisodeRow)
+    from agenttic.camp.store import CampEpisodeRow, CampRunRow
     CampRunRow.__table__.create(bind=conn, checkfirst=True)
     CampEpisodeRow.__table__.create(bind=conn, checkfirst=True)
 
@@ -187,8 +187,8 @@ def _certification_track_tables(conn) -> None:
     """v16 — SPEC-2 certification track: cert_profiles, dossiers +
     dossier_events, incidents + incident_events. The *_events tables are
     append-only; state is folded from them."""
-    import ascore.registry.sqlite_store  # noqa: F401
-    from ascore.registry.sqlite_store import (
+    import agenttic.registry.sqlite_store  # noqa: F401
+    from agenttic.registry.sqlite_store import (
         CertProfileRow, DossierEventRow, DossierRow, IncidentEventRow,
         IncidentRow,
     )
@@ -199,22 +199,22 @@ def _certification_track_tables(conn) -> None:
 
 def _elicitation_summaries_table(conn) -> None:
     """v17 — append-only elicitation-matrix summaries per agent (T13.5)."""
-    import ascore.registry.sqlite_store  # noqa: F401
-    from ascore.registry.sqlite_store import ElicitationSummaryRow
+    import agenttic.registry.sqlite_store  # noqa: F401
+    from agenttic.registry.sqlite_store import ElicitationSummaryRow
     ElicitationSummaryRow.__table__.create(bind=conn, checkfirst=True)
 
 
 def _agent_cards_table(conn) -> None:
     """v18 — append-only, versioned agent cards (SPEC-2 M9)."""
-    import ascore.registry.sqlite_store  # noqa: F401
-    from ascore.registry.sqlite_store import AgentCardRow
+    import agenttic.registry.sqlite_store  # noqa: F401
+    from agenttic.registry.sqlite_store import AgentCardRow
     AgentCardRow.__table__.create(bind=conn, checkfirst=True)
 
 
 def _enforcement_tables(conn) -> None:
     """v19 — enforcement policies, append-only events, approvals (SPEC-2 M11)."""
-    import ascore.registry.sqlite_store  # noqa: F401
-    from ascore.registry.sqlite_store import (
+    import agenttic.registry.sqlite_store  # noqa: F401
+    from agenttic.registry.sqlite_store import (
         ApprovalRequestRow, EnforcementEventRow, EnforcementPolicyRow,
     )
     for model in (EnforcementPolicyRow, EnforcementEventRow, ApprovalRequestRow):
@@ -223,23 +223,23 @@ def _enforcement_tables(conn) -> None:
 
 def _release_ladder_tables(conn) -> None:
     """v20 — release cohorts + append-only promotion records (SPEC-2 M14)."""
-    import ascore.registry.sqlite_store  # noqa: F401
-    from ascore.registry.sqlite_store import CohortRow, PromotionRecordRow
+    import agenttic.registry.sqlite_store  # noqa: F401
+    from agenttic.registry.sqlite_store import CohortRow, PromotionRecordRow
     for model in (CohortRow, PromotionRecordRow):
         model.__table__.create(bind=conn, checkfirst=True)
 
 
 def _canary_sets_table(conn) -> None:
     """v21 — per-agent versioned canary sets (SPEC-2 M15)."""
-    import ascore.registry.sqlite_store  # noqa: F401
-    from ascore.registry.sqlite_store import CanarySetRow
+    import agenttic.registry.sqlite_store  # noqa: F401
+    from agenttic.registry.sqlite_store import CanarySetRow
     CanarySetRow.__table__.create(bind=conn, checkfirst=True)
 
 
 def _passport_tables(conn) -> None:
     """v22 — passports + append-only passport events (SPEC-2 M16)."""
-    import ascore.registry.sqlite_store  # noqa: F401
-    from ascore.registry.sqlite_store import PassportEventRow, PassportRow
+    import agenttic.registry.sqlite_store  # noqa: F401
+    from agenttic.registry.sqlite_store import PassportEventRow, PassportRow
     for model in (PassportRow, PassportEventRow):
         model.__table__.create(bind=conn, checkfirst=True)
 
@@ -247,8 +247,8 @@ def _passport_tables(conn) -> None:
 def _copilot_sessions_table(conn) -> None:
     """v23 — in-app Copilot agent sessions (tenant-scoped transcript + step log +
     any write-action awaiting the user's confirmation)."""
-    import ascore.registry.sqlite_store  # noqa: F401
-    from ascore.registry.sqlite_store import CopilotSessionRow
+    import agenttic.registry.sqlite_store  # noqa: F401
+    from agenttic.registry.sqlite_store import CopilotSessionRow
     CopilotSessionRow.__table__.create(bind=conn, checkfirst=True)
 
 

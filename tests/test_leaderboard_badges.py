@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from ascore.certification.dossier import assemble
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.certification import (
+from agenttic.certification.dossier import assemble
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.certification import (
     Attestation,
     CertificationProfile,
     TierDecision,
 )
-from ascore.server.routes.leaderboard import _attach_certification_badges
+from agenttic.server.routes.leaderboard import _attach_certification_badges
 
 
 def test_badges_only_on_certified_rows(tmp_path):

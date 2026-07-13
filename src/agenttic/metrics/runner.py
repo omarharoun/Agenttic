@@ -17,14 +17,14 @@ from __future__ import annotations
 import re
 import uuid
 
-from ascore import ops
-from ascore.metrics.calibration import abstention_appropriateness, ece
-from ascore.metrics.faithfulness import (
+from agenttic import ops
+from agenttic.metrics.calibration import abstention_appropriateness, ece
+from agenttic.metrics.faithfulness import (
     aggregate_faithfulness, make_llm_claim_checker, score_faithfulness,
 )
-from ascore.metrics.index import compute_index, rollup_metrics_from_means
-from ascore.metrics.reliability import pass_at_1, pass_hat_k
-from ascore.metrics.standard_suites import canonical_suite_ids
+from agenttic.metrics.index import compute_index, rollup_metrics_from_means
+from agenttic.metrics.reliability import pass_at_1, pass_hat_k
+from agenttic.metrics.standard_suites import canonical_suite_ids
 
 MAX_K = 5
 FAITHFULNESS_SUITE_ID = "std-faithfulness-v1"
@@ -42,7 +42,7 @@ def _build_faithfulness_checker(cfg, judge_client, agent_model):
     model = models.get("judge_strong") or models.get("judge_executor")
     if not model or model == agent_model:
         return None
-    from ascore.retry import RetryPolicy
+    from agenttic.retry import RetryPolicy
     policy = RetryPolicy.from_cfg(cfg) if cfg else None
     return make_llm_claim_checker(judge_client, model, retry_policy=policy)
 

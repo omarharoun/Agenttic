@@ -8,14 +8,14 @@ are still computed but marked provisional (Hard Rule 6).
 
 from __future__ import annotations
 
-from ascore.schema.rubric import Rubric
-from ascore.schema.scorecard import CriterionScore, RunScore
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import Trace
-from ascore.schema.rubric import Criterion
-from ascore.scoring.checks import repair_expected, run_check, validate_rubric_checks
-from ascore.scoring.fi_eval import validate_rubric_fi
-from ascore.scoring.judge import LLMJudge
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.scorecard import CriterionScore, RunScore
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import Trace
+from agenttic.schema.rubric import Criterion
+from agenttic.scoring.checks import repair_expected, run_check, validate_rubric_checks
+from agenttic.scoring.fi_eval import validate_rubric_fi
+from agenttic.scoring.judge import LLMJudge
 
 DEFAULT_PASS_THRESHOLD = 0.7
 

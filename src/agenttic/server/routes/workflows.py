@@ -5,10 +5,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.server.auth import require_operator
-from ascore.server.nodes import NODE_TYPES
-from ascore.server.workflow_schema import Workflow, validate_workflow
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.server.auth import require_operator
+from agenttic.server.nodes import NODE_TYPES
+from agenttic.server.workflow_schema import Workflow, validate_workflow
 
 router = APIRouter(tags=["workflows"])
 

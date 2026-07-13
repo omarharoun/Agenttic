@@ -10,10 +10,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from ascore.server import keys as keys_mod
-from ascore.server.auth import require_operator
-from ascore.server.keys import KeyStore
-from ascore.server.pats import PatStore
+from agenttic.server import keys as keys_mod
+from agenttic.server.auth import require_operator
+from agenttic.server.keys import KeyStore
+from agenttic.server.pats import PatStore
 
 router = APIRouter(tags=["settings"])
 

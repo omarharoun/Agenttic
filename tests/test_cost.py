@@ -1,6 +1,6 @@
 """Pre-run cost estimation."""
 
-from ascore.cost import estimate_run_cost, judge_model_for
+from agenttic.cost import estimate_run_cost, judge_model_for
 
 CFG = {
     "models": {"agent_default": "claude-sonnet-4-6",

@@ -7,9 +7,9 @@ frontend can render a confidence interval next to every headline pass-rate.
 
 from __future__ import annotations
 
-from ascore.leaderboard import compute_leaderboard
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
-from ascore.stats import proportion_stats, wilson_interval, wilson_lower_bound
+from agenttic.leaderboard import compute_leaderboard
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.stats import proportion_stats, wilson_interval, wilson_lower_bound
 
 
 class TestWilsonMath:

@@ -21,7 +21,7 @@ from __future__ import annotations
 import pytest
 
 # Pure-function API
-from ascore.metrics.text_overlap import (
+from agenttic.metrics.text_overlap import (
     bleu_score,
     char_ngram_overlap_score,
     cosine_tfidf_score,
@@ -47,10 +47,10 @@ from ascore.metrics.text_overlap import (
 )
 
 # Registry
-from ascore.scoring.checks import CHECKS
+from agenttic.scoring.checks import CHECKS
 
 # Catalog
-from ascore.metrics.catalog import BY_ID, CHECK_TO_METRIC
+from agenttic.metrics.catalog import BY_ID, CHECK_TO_METRIC
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ from ascore.metrics.catalog import BY_ID, CHECK_TO_METRIC
 
 def make_trace(output: str):
     """Minimal Trace-like stub for check invocation."""
-    from ascore.schema.trace import Trace
+    from agenttic.schema.trace import Trace
 
     return Trace(
         trace_id="t1",
@@ -73,7 +73,7 @@ def make_trace(output: str):
 
 def make_tc(expected: dict):
     """Minimal TestCase-like stub."""
-    from ascore.schema.testcase import TestCase
+    from agenttic.schema.testcase import TestCase
 
     return TestCase(
         test_id="x",

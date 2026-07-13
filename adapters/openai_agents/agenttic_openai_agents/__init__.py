@@ -9,7 +9,7 @@ Two lines for the user::
 ``trace`` returns a transparent wrapper around the agent whose ``run``/``run_sync``
 inject an Agenttic ``RunHooks`` instance into ``Runner.run(...)`` — the SDK's
 **public** lifecycle-hook extension point. The hooks observe LLM and tool events
-and emit OTel-GenAI spans via :class:`ascore.ingest.emit.SpanEmitter`. Users who
+and emit OTel-GenAI spans via :class:`agenttic.ingest.emit.SpanEmitter`. Users who
 drive ``Runner`` themselves can pass :class:`AgentticRunHooks` directly.
 
 Guarantees (SPEC-7 Step 36, Hard Rules 31–32): behavior-identical (hooks only
@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ascore.ingest.emit import SpanEmitter
+from agenttic.ingest.emit import SpanEmitter
 
 try:  # public RunHooks lifecycle base; optional at import time
     from agents import RunHooks as _HooksBase
@@ -151,7 +151,7 @@ def trace(agent, *, agent_id: str = "openai-agent", agent_config_hash: str = "",
     fails loudly (T36.3)."""
     guard = None
     if enforce:
-        from ascore.enforce.adapter_guard import build_enforce_guard
+        from agenttic.enforce.adapter_guard import build_enforce_guard
         guard = build_enforce_guard(agent_id, enforce, reg=reg, cfg=cfg)
     return _TracedAgent(agent, agent_id=agent_id,
                         agent_config_hash=agent_config_hash, endpoint=endpoint,

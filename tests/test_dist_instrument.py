@@ -14,9 +14,9 @@ import tempfile
 import pytest
 
 import agenttic
-from ascore.ingest.mapping import ingest_otlp_payload, spans_to_traces
-from ascore.ingest.otel import parse_otlp
-from ascore.registry.sqlite_store import Registry
+from agenttic.ingest.mapping import ingest_otlp_payload, spans_to_traces
+from agenttic.ingest.otel import parse_otlp
+from agenttic.registry.sqlite_store import Registry
 
 
 def _run(sink):

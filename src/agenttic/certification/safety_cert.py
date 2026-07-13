@@ -341,7 +341,7 @@ def _load_public_from_material(material: str) -> Ed25519PublicKey:
 
 
 def _configured_signing_material(cfg: dict | None) -> str:
-    from ascore.secrets import get_secret
+    from agenttic.secrets import get_secret
     m = get_secret(SIGNING_KEY_ENV) or os.environ.get(SIGNING_KEY_ENV, "")
     if not m and cfg:
         m = str((cfg.get("certification", {}) or {}).get("signing_key") or "")
@@ -377,7 +377,7 @@ def signing_key(cfg: dict | None = None) -> Ed25519PrivateKey:
         raise CertificationError(
             f"no certificate signing key configured ({SIGNING_KEY_ENV}) — "
             "refusing to issue certificates in production (fail closed). "
-            "Generate one with `python -m ascore.certification gen-key` and set "
+            "Generate one with `python -m agenttic.certification gen-key` and set "
             f"{SIGNING_KEY_ENV}.")
     return Ed25519PrivateKey.from_private_bytes(_DEV_KEY_SEED)
 
@@ -480,11 +480,11 @@ def signing_secret(cfg: dict | None = None) -> str:
     """The legacy HMAC secret: ``ASCORE_SECRET_KEY`` (env / *_FILE) if set, else
     the session secret, else ``""``. There is **no** insecure hard-coded fallback
     any more — an unset secret makes legacy HMAC verification fail closed."""
-    from ascore.secrets import get_secret
+    from agenttic.secrets import get_secret
     secret = get_secret("ASCORE_SECRET_KEY") or os.environ.get("ASCORE_SECRET_KEY", "")
     if not secret and cfg is not None:
         try:
-            from ascore.server.sessions import session_secret
+            from agenttic.server.sessions import session_secret
             secret = session_secret(cfg)
         except Exception:  # noqa: BLE001
             secret = ""
@@ -662,7 +662,7 @@ def _xml_escape(s: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# Key generation helper — `python -m ascore.certification gen-key`.
+# Key generation helper — `python -m agenttic.certification gen-key`.
 # --------------------------------------------------------------------------- #
 
 
@@ -686,4 +686,4 @@ if __name__ == "__main__":  # pragma: no cover
         print("\n# Public key (published; safe to share):")
         print(json.dumps(entry, indent=2))
     else:
-        print("usage: python -m ascore.certification gen-key")
+        print("usage: python -m agenttic.certification gen-key")

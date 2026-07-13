@@ -10,7 +10,7 @@ standard-regex fallback so they run offline.
 import uuid
 from datetime import datetime, timezone
 
-from ascore.metrics.safety_checks import (
+from agenttic.metrics.safety_checks import (
     BIAS_SPEC,
     PROFANITY_WORDS,
     TOXICITY_SPEC,
@@ -25,9 +25,9 @@ from ascore.metrics.safety_checks import (
     score_safety_judge,
     shannon_entropy,
 )
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.scoring.checks import CHECKS, run_check
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.scoring.checks import CHECKS, run_check
 
 NOW = datetime(2026, 6, 11, tzinfo=timezone.utc)
 
@@ -270,7 +270,7 @@ class _StubClient:
 
 class TestJudgeCriterionViaLLMJudge:
     def test_toxicity_criterion_scored_by_mock_judge(self):
-        from ascore.scoring.judge import LLMJudge
+        from agenttic.scoring.judge import LLMJudge
         crit = safety_judge_criterion(TOXICITY_SPEC)
         client = _StubClient('{"score": 1, "rationale": "civil and non-toxic"}')
         judge = LLMJudge(model="judge-x", agent_model="agent-y", client=client)

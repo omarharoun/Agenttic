@@ -18,10 +18,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
-from ascore import certification as cert
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.server.auth import require_operator
-from ascore.server.certifications import CertStore, issue_certificate
+from agenttic import certification as cert
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.server.auth import require_operator
+from agenttic.server.certifications import CertStore, issue_certificate
 
 # ----------------------------------------------------------------------------- #
 # Authenticated, tenant-scoped router.
@@ -105,8 +105,8 @@ def public_calibration(request: Request):
     checks (measured offline, no key) and the LLM JUDGE (measured only when a
     model API key is present; otherwise the honest blocker + minimal cost, with
     every judge criterion PROVISIONAL). No auth."""
-    from ascore.scoring.corpus import run_corpus_calibration
-    from ascore.scoring.judge_calibration import judge_calibration_status
+    from agenttic.scoring.corpus import run_corpus_calibration
+    from agenttic.scoring.judge_calibration import judge_calibration_status
     try:
         body = run_corpus_calibration().to_dict()
         body["deterministic_checks"] = {
@@ -126,7 +126,7 @@ def public_reproduction(request: Request):
     public benchmark number, runs a proxy, or demonstrates the methodology on a
     seed sample — and what real reproduction would take. Lets the UI stop hiding
     the SWE-bench-proxy / seed-sample caveats the docs already admit. No auth."""
-    from ascore.metrics.reproduction import reproduction_report
+    from agenttic.metrics.reproduction import reproduction_report
     return JSONResponse(reproduction_report(),
                         headers={"Cache-Control": _CACHE})
 
@@ -137,7 +137,7 @@ def public_redteam_injection(request: Request):
     lexical injection detector: technique coverage, and how many real hijacks the
     heuristic catches vs misses (the evasion tail). Lets the UI stop pretending
     the safety check is airtight. No auth."""
-    from ascore.metrics.redteam import (
+    from agenttic.metrics.redteam import (
         INJECTION_PROBES,
         INJECTION_TECHNIQUES,
         evaluate_injection_detector,

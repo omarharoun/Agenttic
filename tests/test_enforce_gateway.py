@@ -7,19 +7,19 @@ import tempfile
 import pytest
 from fastapi.testclient import TestClient
 
-from ascore.enforce.gateway import (
+from agenttic.enforce.gateway import (
     EnforcementGateway,
     PolicyIntegrityError,
     compute_policy_hash,
 )
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.enforcement import (
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.enforcement import (
     Decision,
     EnforcementEvent,
     EnforcementPolicy,
     Rule,
 )
-from ascore.server.app import create_app
+from agenttic.server.app import create_app
 
 
 def _policy(agent="a", pid="p1"):

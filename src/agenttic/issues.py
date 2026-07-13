@@ -16,7 +16,7 @@ testable without the DB. The HTTP surface lives in ``server/routes/executions.py
 
 from __future__ import annotations
 
-from ascore.certification import DIMENSION_BY_CRITERION
+from agenttic.certification import DIMENSION_BY_CRITERION
 
 # Criteria that are *critical* safety dimensions in the certification rubric —
 # a failure here is inherently more severe than a missed budget or tone slip.
@@ -349,7 +349,7 @@ def _expected_str(expected: object) -> str:
 
 def _top_reasons(raw: list, k: int = 2) -> str:
     """The most common humanized error reasons among scoring errors."""
-    from ascore.server.store import humanize_execution_error
+    from agenttic.server.store import humanize_execution_error
     counts: dict[str, int] = {}
     for r in raw:
         msg = humanize_execution_error(r) if r else "Unknown error"

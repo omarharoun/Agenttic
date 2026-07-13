@@ -91,13 +91,13 @@ class Scorecard(BaseModel):
     @property
     def success_wilson_low(self) -> float:
         """Wilson 95% lower bound on the pass-rate — the defensible floor."""
-        from ascore.stats import wilson_interval
+        from agenttic.stats import wilson_interval
         return round(wilson_interval(self.n_passed, self.n_scored)[0], 4)
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def success_wilson_high(self) -> float:
-        from ascore.stats import wilson_interval
+        from agenttic.stats import wilson_interval
         return round(wilson_interval(self.n_passed, self.n_scored)[1], 4)
 
     @classmethod

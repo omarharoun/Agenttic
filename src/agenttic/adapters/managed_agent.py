@@ -2,7 +2,7 @@
 
 Deploy a business-workflow agent once (``ascore deploy``), then run benchmark
 suites against it: each test case becomes a session, and the session's event
-stream is converted into a standard :class:`~ascore.schema.trace.Trace` —
+stream is converted into a standard :class:`~agenttic.schema.trace.Trace` —
 LLM calls, tool calls, thinking, and errors all become spans, so the full
 glass-box rubric applies even though Anthropic hosts the agent loop and the
 sandbox.
@@ -28,8 +28,8 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-from ascore.adapters.base import AgentAdapter
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.adapters.base import AgentAdapter
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 _TERMINAL_STOP = {"end_turn", "retries_exhausted"}
 
@@ -74,7 +74,7 @@ class ManagedAgentAdapter(AgentAdapter):
             import anthropic
             client = anthropic.Anthropic()
         self.client = client
-        from ascore.retry import RetryPolicy
+        from agenttic.retry import RetryPolicy
         self.retry_policy = retry_policy or RetryPolicy()
         self.managed_agent_id = managed_agent_id
         self.environment_id = environment_id
@@ -83,7 +83,7 @@ class ManagedAgentAdapter(AgentAdapter):
         self.max_events = max_events
         self.archive_sessions = archive_sessions
         # Pin the exact agent version under test (GET /v1/agents/{id}).
-        from ascore.retry import with_retry
+        from agenttic.retry import with_retry
         agent = with_retry(lambda: client.beta.agents.retrieve(managed_agent_id),
                            self.retry_policy, op="managed-retrieve")
         self.model = getattr(agent, "model", None)
@@ -108,7 +108,7 @@ class ManagedAgentAdapter(AgentAdapter):
         final_text = ""
         t_wall = time.monotonic()
 
-        from ascore.retry import with_retry
+        from agenttic.retry import with_retry
         session = with_retry(lambda: self.client.beta.sessions.create(
             agent={"type": "agent", "id": self.managed_agent_id,
                    **({"version": self.agent_version} if self.agent_version else {})},

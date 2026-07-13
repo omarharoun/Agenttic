@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ascore.metrics.swebench_resolve import HARNESS_ENV, harness_available
+from agenttic.metrics.swebench_resolve import HARNESS_ENV, harness_available
 
 
 @dataclass(frozen=True)
@@ -114,7 +114,7 @@ def _tool_calling_wedge() -> WedgeReproduction:
     in a RECORDED run (2026-07-03, commit 2aa8a68) but is NOT re-measured live in
     this environment (no model key), so ``reproduced`` (live) is False and the
     recorded figure is surfaced as an attested historical value (``recorded``)."""
-    from ascore.metrics.bfcl_reproduce import validate_scorer
+    from agenttic.metrics.bfcl_reproduce import validate_scorer
     # Live, offline, network-free grader check on the real vendored sample.
     try:
         sample = validate_scorer("simple").to_dict()

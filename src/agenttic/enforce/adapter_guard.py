@@ -17,8 +17,8 @@ Two hard guarantees the acceptance pins:
 """
 from __future__ import annotations
 
-from ascore.enforce.gateway import EnforcementGateway
-from ascore.registry.sqlite_store import NotFoundError
+from agenttic.enforce.gateway import EnforcementGateway
+from agenttic.registry.sqlite_store import NotFoundError
 
 # Non-blocking postures the adapter may enable directly. Blocking postures are
 # reached only through the Step 39 ramp (M21), never through the adapter.

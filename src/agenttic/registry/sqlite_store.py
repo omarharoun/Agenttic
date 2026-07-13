@@ -27,11 +27,11 @@ from pathlib import Path
 from sqlalchemy import UniqueConstraint, event, func
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
-from ascore.schema.agent import DeclaredAgent
-from ascore.schema.scorecard import Scorecard
-from ascore.schema.testcase import TestCase, TestSuite
-from ascore.schema.rubric import Rubric
-from ascore.schema.trace import Trace
+from agenttic.schema.agent import DeclaredAgent
+from agenttic.schema.scorecard import Scorecard
+from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.trace import Trace
 
 DEFAULT_TENANT = "default"
 
@@ -115,7 +115,7 @@ class ScorecardRow(SQLModel, table=True):
 class ABComparisonRow(SQLModel, table=True):
     """One A/B comparison run. ``status`` tracks the background run lifecycle
     (running -> succeeded/failed); ``payload`` holds the serialized
-    :class:`ascore.schema.ab.ABComparison` once the run completes."""
+    :class:`agenttic.schema.ab.ABComparison` once the run completes."""
     __table_args__ = (UniqueConstraint("tenant_id", "comparison_id"),)
     id: int | None = Field(default=None, primary_key=True)
     tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
@@ -130,7 +130,7 @@ class ABComparisonRow(SQLModel, table=True):
 class OptimizationRunRow(SQLModel, table=True):
     """One prompt-optimization run. ``status`` tracks the background lifecycle
     (running -> succeeded/failed); ``payload`` holds the serialized
-    :class:`ascore.schema.optimization.OptimizationRun` (baseline→best prompt
+    :class:`agenttic.schema.optimization.OptimizationRun` (baseline→best prompt
     lineage + train/heldout scores) once it completes. Append-only."""
     __table_args__ = (UniqueConstraint("tenant_id", "run_id"),)
     id: int | None = Field(default=None, primary_key=True)
@@ -617,7 +617,7 @@ class Registry:
             if url is None:
                 url = f"sqlite:///{db_path if db_path is not None else 'ascore.db'}"
             self.engine = make_engine(url)
-        from ascore.migrations import run_migrations
+        from agenttic.migrations import run_migrations
         run_migrations(self.engine)  # idempotent; versioned schema
 
     # -- suites / cases ----------------------------------------------------
@@ -988,7 +988,7 @@ class Registry:
     def save_ab_comparison(self, comparison) -> None:
         """Persist a finished comparison. Upserts: completes the 'running' row
         the manager created, or inserts a new 'succeeded' row (CLI/direct use)."""
-        from ascore.schema.ab import ABComparison
+        from agenttic.schema.ab import ABComparison
         assert isinstance(comparison, ABComparison)
         with Session(self.engine) as s:
             row = s.exec(select(ABComparisonRow).where(
@@ -1020,7 +1020,7 @@ class Registry:
 
     def get_ab_run(self, comparison_id: str) -> dict:
         """Run status + the comparison artifact (parsed, or None while running)."""
-        from ascore.schema.ab import ABComparison
+        from agenttic.schema.ab import ABComparison
         with Session(self.engine) as s:
             row = s.exec(select(ABComparisonRow).where(
                 ABComparisonRow.tenant_id == self.tenant,
@@ -1036,7 +1036,7 @@ class Registry:
 
     def get_ab_comparison(self, comparison_id: str):
         """The finished comparison object (raises if it hasn't completed)."""
-        from ascore.schema.ab import ABComparison
+        from agenttic.schema.ab import ABComparison
         with Session(self.engine) as s:
             row = s.exec(select(ABComparisonRow).where(
                 ABComparisonRow.tenant_id == self.tenant,
@@ -1052,7 +1052,7 @@ class Registry:
             if suite_id:
                 q = q.where(ABComparisonRow.suite_id == suite_id)
             rows = s.exec(q.order_by(ABComparisonRow.created_at.desc())).all()
-        from ascore.schema.ab import ABComparison
+        from agenttic.schema.ab import ABComparison
         out = []
         for r in rows:
             summary = {"comparison_id": r.comparison_id, "suite_id": r.suite_id,
@@ -1085,7 +1085,7 @@ class Registry:
     def save_optimization_run(self, run) -> None:
         """Persist a finished optimization run. Upserts: completes the 'running'
         row the manager created, or inserts a 'succeeded' row (CLI/direct use)."""
-        from ascore.schema.optimization import OptimizationRun
+        from agenttic.schema.optimization import OptimizationRun
         assert isinstance(run, OptimizationRun)
         with Session(self.engine) as s:
             row = s.exec(select(OptimizationRunRow).where(
@@ -1118,7 +1118,7 @@ class Registry:
 
     def get_optimization_run(self, run_id: str) -> dict:
         """Run status + the artifact (parsed, or None while running)."""
-        from ascore.schema.optimization import OptimizationRun
+        from agenttic.schema.optimization import OptimizationRun
         with Session(self.engine) as s:
             row = s.exec(select(OptimizationRunRow).where(
                 OptimizationRunRow.tenant_id == self.tenant,
@@ -1134,7 +1134,7 @@ class Registry:
 
     def get_optimization_artifact(self, run_id: str):
         """The finished OptimizationRun object (raises if it hasn't completed)."""
-        from ascore.schema.optimization import OptimizationRun
+        from agenttic.schema.optimization import OptimizationRun
         with Session(self.engine) as s:
             row = s.exec(select(OptimizationRunRow).where(
                 OptimizationRunRow.tenant_id == self.tenant,
@@ -1145,7 +1145,7 @@ class Registry:
 
     def list_optimization_runs(self, agent_id: str | None = None,
                                suite_id: str | None = None) -> list[dict]:
-        from ascore.schema.optimization import OptimizationRun
+        from agenttic.schema.optimization import OptimizationRun
         with Session(self.engine) as s:
             q = select(OptimizationRunRow).where(
                 OptimizationRunRow.tenant_id == self.tenant)
@@ -1254,7 +1254,7 @@ class Registry:
             s.commit()
 
     def get_profile(self, profile_id: str, version: int | None = None):
-        from ascore.schema.certification import CertificationProfile
+        from agenttic.schema.certification import CertificationProfile
         with Session(self.engine) as s:
             q = select(CertProfileRow).where(
                 CertProfileRow.tenant_id == self.tenant,
@@ -1298,7 +1298,7 @@ class Registry:
             s.commit()
 
     def get_dossier(self, dossier_id: str):
-        from ascore.schema.certification import Dossier
+        from agenttic.schema.certification import Dossier
         with Session(self.engine) as s:
             row = s.exec(select(DossierRow).where(
                 DossierRow.tenant_id == self.tenant,
@@ -1326,7 +1326,7 @@ class Registry:
             ).order_by(DossierRow.id.desc())).first()
             if not row:
                 raise NotFoundError(f"no dossier for agent {agent_id}")
-            from ascore.schema.certification import Dossier
+            from agenttic.schema.certification import Dossier
             return Dossier.model_validate_json(row.payload)
 
     def append_dossier_event(self, dossier_id: str, agent_id: str,
@@ -1373,7 +1373,7 @@ class Registry:
             s.commit()
 
     def get_incident_record(self, incident_id: str):
-        from ascore.schema.incident import Incident
+        from agenttic.schema.incident import Incident
         with Session(self.engine) as s:
             row = s.exec(select(IncidentRow).where(
                 IncidentRow.tenant_id == self.tenant,
@@ -1433,7 +1433,7 @@ class Registry:
             s.commit()
 
     def get_passport(self, passport_id: str):
-        from ascore.schema.passport import Passport
+        from agenttic.schema.passport import Passport
         with Session(self.engine) as s:
             row = s.exec(select(PassportRow).where(
                 PassportRow.tenant_id == self.tenant,
@@ -1474,7 +1474,7 @@ class Registry:
     # -- canary sets (append-only, versioned) ----------------------------------
 
     def save_canary_set(self, canary) -> None:
-        from ascore.schema.enforcement import CanarySet
+        from agenttic.schema.enforcement import CanarySet
         with Session(self.engine) as s:
             latest = s.exec(select(CanarySetRow).where(
                 CanarySetRow.tenant_id == self.tenant,
@@ -1490,7 +1490,7 @@ class Registry:
             s.commit()
 
     def active_canary_set(self, agent_id: str):
-        from ascore.schema.enforcement import CanarySet
+        from agenttic.schema.enforcement import CanarySet
         with Session(self.engine) as s:
             row = s.exec(select(CanarySetRow).where(
                 CanarySetRow.tenant_id == self.tenant,
@@ -1513,7 +1513,7 @@ class Registry:
             s.commit()
 
     def get_cohort(self, cohort_id: str):
-        from ascore.schema.release import Cohort
+        from agenttic.schema.release import Cohort
         with Session(self.engine) as s:
             row = s.exec(select(CohortRow).where(
                 CohortRow.tenant_id == self.tenant,
@@ -1525,7 +1525,7 @@ class Registry:
     def set_cohort_stage(self, cohort_id: str, stage: str) -> None:
         """The one permitted in-place field (like the suite approval flag) — the
         current stage. The transition itself is recorded as a PromotionRecord."""
-        from ascore.schema.release import Cohort
+        from agenttic.schema.release import Cohort
         with Session(self.engine) as s:
             row = s.exec(select(CohortRow).where(
                 CohortRow.tenant_id == self.tenant,
@@ -1588,7 +1588,7 @@ class Registry:
             s.commit()
 
     def get_policy(self, policy_id: str):
-        from ascore.schema.enforcement import EnforcementPolicy
+        from agenttic.schema.enforcement import EnforcementPolicy
         with Session(self.engine) as s:
             row = s.exec(select(EnforcementPolicyRow).where(
                 EnforcementPolicyRow.tenant_id == self.tenant,
@@ -1598,7 +1598,7 @@ class Registry:
             return EnforcementPolicy.model_validate_json(row.payload)
 
     def latest_policy(self, agent_id: str):
-        from ascore.schema.enforcement import EnforcementPolicy
+        from agenttic.schema.enforcement import EnforcementPolicy
         with Session(self.engine) as s:
             row = s.exec(select(EnforcementPolicyRow).where(
                 EnforcementPolicyRow.tenant_id == self.tenant,
@@ -1640,7 +1640,7 @@ class Registry:
             s.commit()
 
     def get_approval(self, approval_id: str):
-        from ascore.schema.enforcement import ApprovalRequest
+        from agenttic.schema.enforcement import ApprovalRequest
         with Session(self.engine) as s:
             row = s.exec(select(ApprovalRequestRow).where(
                 ApprovalRequestRow.tenant_id == self.tenant,
@@ -1695,7 +1695,7 @@ class Registry:
             s.commit()
 
     def get_card(self, agent_id: str, version: int | None = None):
-        from ascore.schema.agent_card import AgentCard
+        from agenttic.schema.agent_card import AgentCard
         with Session(self.engine) as s:
             q = select(AgentCardRow).where(
                 AgentCardRow.tenant_id == self.tenant,

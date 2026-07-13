@@ -9,11 +9,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 
-from ascore.adapters.blackbox_http import BlackBoxHTTPAgent
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.scorecard import Scorecard
-from ascore.schema.testcase import TestCase
-from ascore.scoring.engine import applicable_criteria, score_run
+from agenttic.adapters.blackbox_http import BlackBoxHTTPAgent
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.scorecard import Scorecard
+from agenttic.schema.testcase import TestCase
+from agenttic.scoring.engine import applicable_criteria, score_run
 
 RUBRIC = Rubric(rubric_id="r-bb", criteria=[
     Criterion(criterion_id="routing", description="correct queue", scorer="code",
@@ -88,7 +88,7 @@ class TestBlackBoxAdapter:
             return {"output": "ok"}
 
         monkeypatch.setattr(
-            "ascore.adapters.blackbox_http._http_transport", fake)
+            "agenttic.adapters.blackbox_http._http_transport", fake)
         agent = BlackBoxHTTPAgent(agent_id="x", url="http://unused",
                                   headers={"Authorization": "Bearer t"})
         agent.run({"q": 1})

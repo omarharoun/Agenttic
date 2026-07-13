@@ -11,11 +11,11 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from ascore.certification.swe_pack import PROFILE_ID, pack_manifest, render_markdown
-from ascore.config import load_config
-from ascore.metrics.standard_suites import seed_standard_suites
-from ascore.metrics.swe_suites import seed_swe_suites
-from ascore.registry.sqlite_store import Registry
+from agenttic.certification.swe_pack import PROFILE_ID, pack_manifest, render_markdown
+from agenttic.config import load_config
+from agenttic.metrics.standard_suites import seed_standard_suites
+from agenttic.metrics.swe_suites import seed_swe_suites
+from agenttic.registry.sqlite_store import Registry
 
 OUT = Path("docs/cert-swe-v1/COVERAGE.md")
 

@@ -1,15 +1,15 @@
 """Guardrail-critical unit tests for the folded-in AgentCamp engine: Wilson
 lower bound, the two-condition promotion gate, deterministic grading, and the
 distillation export. Ported from AgentCamp's test_core.py against
-``ascore.camp``."""
+``agenttic.camp``."""
 
 import random
 
-from ascore.camp.gate import PromotionGate
-from ascore.camp.task import Case
-from ascore.camp.tasks import SupportTriageTask
-from ascore.camp.trace import Episode, distillation_records
-from ascore.camp.trainer import CampReport, wilson_lower_bound
+from agenttic.camp.gate import PromotionGate
+from agenttic.camp.task import Case
+from agenttic.camp.tasks import SupportTriageTask
+from agenttic.camp.trace import Episode, distillation_records
+from agenttic.camp.trainer import CampReport, wilson_lower_bound
 
 
 def _report(passes, n, threshold=0.99, min_ep=200):

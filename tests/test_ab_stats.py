@@ -3,7 +3,7 @@ no-difference case for each test, plus the small-sample (underpowered) guard.
 These are the load-bearing claims of the whole feature, so they're tested in
 isolation from the run machinery."""
 
-from ascore.stats import McNemarResult, mcnemar, paired_bootstrap
+from agenttic.stats import McNemarResult, mcnemar, paired_bootstrap
 
 
 class TestMcNemar:

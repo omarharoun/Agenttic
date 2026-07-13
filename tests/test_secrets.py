@@ -2,7 +2,7 @@
 
 import logging
 
-from ascore.secrets import (
+from agenttic.secrets import (
     SecretRedactor, get_secret, hydrate_env_secrets, known_secret_values)
 
 

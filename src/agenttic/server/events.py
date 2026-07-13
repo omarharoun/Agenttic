@@ -20,7 +20,7 @@ import threading
 from collections import defaultdict
 from typing import AsyncIterator
 
-from ascore.server.store import UIStore
+from agenttic.server.store import UIStore
 
 _TERMINAL = {"succeeded", "failed", "cancelled", "interrupted",
              "completed_with_errors"}

@@ -8,7 +8,7 @@ doesn't silently drag the score to zero — its absence is reported instead).
 
 from __future__ import annotations
 
-from ascore.metrics.catalog import BY_ID, CHECK_TO_METRIC, index_weights
+from agenttic.metrics.catalog import BY_ID, CHECK_TO_METRIC, index_weights
 
 
 def rollup_metrics_from_means(per_criterion_means: dict[str, float]) -> dict[str, float]:

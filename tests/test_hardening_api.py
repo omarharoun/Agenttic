@@ -5,8 +5,8 @@ the suite detail. Reuses the app+fakes fixture shared by the API suite."""
 
 import time
 
-from ascore.hardening import regression_suite_id
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.hardening import regression_suite_id
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
 
 from tests.test_api import client  # noqa: F401 — reuse the app+fakes fixture
 

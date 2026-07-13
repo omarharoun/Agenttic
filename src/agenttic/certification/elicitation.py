@@ -96,7 +96,7 @@ async def run_matrix(cfg: dict, reg, adapter, *, k: int = 3, suite_ids=None,
     so an identical config is served from cache for free. ``case_credit`` is the
     per-case gate: a case earns credit only if the NEUTRAL config passes it under
     pass^k (all k runs pass), reusing the reliability machinery."""
-    from ascore.metrics.runner import run_standard
+    from agenttic.metrics.runner import run_standard
 
     configs = load_elicitation_configs(cfg)
     results: dict[str, dict] = {}
@@ -193,7 +193,7 @@ def _case_means(per_case: dict[str, list[bool]]) -> dict[str, float]:
 def analyze_elicitation(matrix: dict, cfg: dict) -> ElicitationAnalysis:
     """Analyze a run matrix for elicitation inconsistency (sandbagging / refusal
     collapse). Returns an :class:`ElicitationAnalysis`."""
-    from ascore.stats import paired_bootstrap
+    from agenttic.stats import paired_bootstrap
 
     ecfg = (cfg or {}).get("certification", {}).get("elicitation", {})
     gap_threshold = float(ecfg.get("gap_threshold", 0.10))

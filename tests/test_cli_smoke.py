@@ -1,5 +1,5 @@
 """CLI smoke test: app imports and registers the full command surface."""
-from ascore.cli import app
+from agenttic.cli import app
 
 def test_cli_commands_registered():
     names = {c.callback.__name__ for c in app.registered_commands}
@@ -19,7 +19,7 @@ def test_pilot_seed_command(tmp_path):
     result = CliRunner().invoke(app, ["pilot", "--config", str(cfg), "--approve"])
     assert result.exit_code == 0, result.output
     assert "Seeded suite" in result.output
-    from ascore.registry.sqlite_store import Registry
+    from agenttic.registry.sqlite_store import Registry
     suite, cases = Registry(tmp_path / "p.db").get_suite("pilot-support-triage")
     assert suite.approved and len(cases) == 10
     # idempotent re-run
@@ -28,7 +28,7 @@ def test_pilot_seed_command(tmp_path):
 
 
 def test_ui_binding_resolution():
-    from ascore.cli import _resolve_ui_binding
+    from agenttic.cli import _resolve_ui_binding
     cfg = {"ui": {"host": "127.0.0.1", "port": 8700}}
     assert _resolve_ui_binding(cfg, "", 0, lan=False) == ("127.0.0.1", 8700)
     assert _resolve_ui_binding(cfg, "", 0, lan=True) == ("0.0.0.0", 8700)

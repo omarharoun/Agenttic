@@ -12,14 +12,14 @@ from datetime import datetime, timezone
 
 import pytest
 
-from ascore.harness.runner import (
+from agenttic.harness.runner import (
     HarnessConfig,
     SuiteNotApprovedError,
     run_suite,
 )
-from ascore.registry.store import InMemoryTraceStore
-from ascore.schema.testcase import TestCase, TestSuite
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.registry.store import InMemoryTraceStore
+from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 
 def make_cases(n, suite_id="s-1"):

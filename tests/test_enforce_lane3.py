@@ -5,12 +5,12 @@ from __future__ import annotations
 import tempfile
 from datetime import datetime, timedelta, timezone
 
-from ascore.config import load_config
-from ascore.enforce.approvals import ApprovalManager
-from ascore.enforce.async_judge import AsyncJudge
-from ascore.enforce.gateway import EnforcementGateway, Session, compute_policy_hash
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.enforcement import Decision, EnforcementPolicy, Rule
+from agenttic.config import load_config
+from agenttic.enforce.approvals import ApprovalManager
+from agenttic.enforce.async_judge import AsyncJudge
+from agenttic.enforce.gateway import EnforcementGateway, Session, compute_policy_hash
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.enforcement import Decision, EnforcementPolicy, Rule
 
 CFG = load_config("config.yaml")
 NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)

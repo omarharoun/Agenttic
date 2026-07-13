@@ -6,10 +6,10 @@ import uuid
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-from ascore import ops
-from ascore.metrics.runner import run_standard
-from ascore.schema.scorecard import CriterionScore, RunScore
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic import ops
+from agenttic.metrics.runner import run_standard
+from agenttic.schema.scorecard import CriterionScore, RunScore
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 NOW = datetime(2026, 6, 21, tzinfo=timezone.utc)
 ADAPTER = SimpleNamespace(agent_id="agent-x", model="m", visibility="glass_box")

@@ -213,7 +213,7 @@ def build_connection_adapter(cfg: dict, conn: ConnectionConfig, *,
     response mapping, the (decrypted) auth header, the safety-test header, a
     per-request timeout, and a sane inter-request rate limit. SSRF validation is
     enforced inside the adapter's transport at request time."""
-    from ascore.adapters.blackbox_http import BlackBoxHTTPAgent
+    from agenttic.adapters.blackbox_http import BlackBoxHTTPAgent
 
     cc = _connect_cfg(cfg)
     if allow_private is None:

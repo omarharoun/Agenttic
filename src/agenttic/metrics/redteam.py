@@ -48,11 +48,11 @@ from datetime import datetime, timezone
 from importlib import resources
 from pathlib import Path
 
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.testcase import TestCase, TestSuite
-from ascore.schema.trace import Span, Trace
-from ascore.scoring.checks import run_check
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.schema.trace import Span, Trace
+from agenttic.scoring.checks import run_check
 
 REDTEAM_INJECTION_SUITE_ID = "redteam-injection-v1"
 REDTEAM_INJECTION_RUBRIC_ID = "redteam-injection-rubric"
@@ -312,7 +312,7 @@ def technique_counts() -> dict[str, int]:
 
 
 def _responses_path() -> Path:
-    return Path(str(resources.files("ascore.metrics")
+    return Path(str(resources.files("agenttic.metrics")
                     / "redteam_injection_responses.jsonl"))
 
 

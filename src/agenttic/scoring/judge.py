@@ -22,10 +22,10 @@ from __future__ import annotations
 
 import json
 
-from ascore.schema.rubric import Criterion
-from ascore.schema.scorecard import CriterionScore
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import Trace
+from agenttic.schema.rubric import Criterion
+from agenttic.schema.scorecard import CriterionScore
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import Trace
 
 ALLOWED_SCORES = {"binary": (0.0, 1.0), "three_point": (0.0, 0.5, 1.0)}
 
@@ -127,7 +127,7 @@ class LLMJudge:
         self.advisor_max_tokens = advisor_max_tokens
         self.advisor_max_uses = advisor_max_uses
         self.cfg = cfg  # for pricing; cost is 0 when not provided
-        from ascore.retry import RetryPolicy
+        from agenttic.retry import RetryPolicy
         self.retry_policy = retry_policy or (
             RetryPolicy.from_cfg(cfg) if cfg else RetryPolicy())
 
@@ -171,17 +171,17 @@ class LLMJudge:
         tin = getattr(usage, "input_tokens", None)
         tout = getattr(usage, "output_tokens", None)
         try:  # observability counters (best-effort)
-            from ascore.server.metrics import record_tokens
+            from agenttic.server.metrics import record_tokens
             record_tokens("judge", tin, tout)
         except Exception:  # noqa: BLE001
             pass
         if not self.cfg:
             return 0.0
-        from ascore.pricing import token_cost
+        from agenttic.pricing import token_cost
         return token_cost(self.cfg, self.model, tin, tout)
 
     def _create(self, prompt: str):
-        from ascore.retry import with_retry
+        from agenttic.retry import with_retry
         if self.advisor_model is None:
             return with_retry(lambda: self.client.messages.create(
                 model=self.model,

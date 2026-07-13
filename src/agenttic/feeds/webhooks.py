@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 
-from ascore.schema.enforcement import EnforcementEvent
+from agenttic.schema.enforcement import EnforcementEvent
 
 # canonical event types
 TIER_CHANGE = "tier_change"
@@ -76,7 +76,7 @@ def deliver_pending(reg, cfg: dict, sender, agent_id: str | None = None
 
 
 def _safe_url(url: str, cfg: dict) -> tuple[bool, str]:
-    from ascore.security import validate_blackbox_url
+    from agenttic.security import validate_blackbox_url
     try:
         validate_blackbox_url(url, cfg=cfg, resolve=False)
         return True, ""

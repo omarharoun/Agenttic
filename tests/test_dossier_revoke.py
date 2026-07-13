@@ -7,11 +7,11 @@ import tempfile
 
 import pytest
 
-from ascore.certification import dossier as dossier_mod
-from ascore.certification import staleness
-from ascore.certification.dossier import assemble, revoke
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.certification import (
+from agenttic.certification import dossier as dossier_mod
+from agenttic.certification import staleness
+from agenttic.certification.dossier import assemble, revoke
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.certification import (
     Attestation,
     CertificationProfile,
     TierDecision,

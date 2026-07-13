@@ -16,10 +16,10 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
-from ascore.connect import ConnectionConfig, Mapping
-from ascore.registry.sqlite_store import AgentConnectionRow
-from ascore.security import validate_blackbox_url
-from ascore.server.crypto import decrypt, encrypt
+from agenttic.connect import ConnectionConfig, Mapping
+from agenttic.registry.sqlite_store import AgentConnectionRow
+from agenttic.security import validate_blackbox_url
+from agenttic.server.crypto import decrypt, encrypt
 
 _DEFAULT = "default"
 
@@ -34,7 +34,7 @@ def _mask(name: str, last4: str) -> str:
 
 class ConnectionStore:
     """CRUD for a tenant's agent connection. Bound to the tenant registry engine
-    (like :class:`ascore.server.keys.KeyStore`)."""
+    (like :class:`agenttic.server.keys.KeyStore`)."""
 
     def __init__(self, engine, cfg: dict):
         self.engine = engine
@@ -53,7 +53,7 @@ class ConnectionStore:
              auth_header_name: str = "", auth_header_value: str = "",
              consent: bool = False) -> dict:
         """Create/update the tenant's connection. Validates the URL for SSRF at
-        save time (raises :class:`ascore.security.UnsafeURLError`). The mapping is
+        save time (raises :class:`agenttic.security.UnsafeURLError`). The mapping is
         normalised through :class:`Mapping` so a preset fills its defaults. If
         ``auth_header_value`` is blank on an update, the existing encrypted secret
         is preserved (lets the user edit the URL/mapping without re-typing it)."""

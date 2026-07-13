@@ -5,14 +5,14 @@ SAFE tools, enforcing every defense at the structural level:
 
 * **Untrusted-content handling** — tool results are guarded (injections
   neutralized) and fenced as untrusted DATA before they re-enter the model's
-  context (:mod:`ascore.assistant.guard`).
-* **Allowlist / default-deny** — only :data:`ascore.assistant.tools.TOOL_REGISTRY`
+  context (:mod:`agenttic.assistant.guard`).
+* **Allowlist / default-deny** — only :data:`agenttic.assistant.tools.TOOL_REGISTRY`
   tools run; anything else is refused as data, never executed.
 * **Human-in-the-loop gate** — a turn that requests a *sensitive* tool PAUSES:
   the loop persists the pending call and returns ``awaiting_approval``; it only
   resumes when the human approves (run) or denies (skip) via :meth:`approve`.
 * **Secret-leak filter** — the assistant's own text and every tool result are
-  passed through :func:`ascore.assistant.guard.redact_secrets`.
+  passed through :func:`agenttic.assistant.guard.redact_secrets`.
 
 The loop is **resumable**: all state lives in a JSON-serializable ``session``
 dict (transcript, scratchpad, step log, pending action) so the approval gate can
@@ -27,9 +27,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from ascore.assistant.guard import redact_secrets
-from ascore.assistant.posture import SYSTEM_PROMPT
-from ascore.assistant.tools import (
+from agenttic.assistant.guard import redact_secrets
+from agenttic.assistant.posture import SYSTEM_PROMPT
+from agenttic.assistant.tools import (
     ToolContext, execute_tool, is_allowlisted, is_sensitive, tool_schemas,
 )
 

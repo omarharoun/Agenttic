@@ -6,9 +6,9 @@ import tempfile
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from ascore.config import load_config
-from ascore.live.incidents import IncidentManager, open_manual
-from ascore.registry.sqlite_store import Registry
+from agenttic.config import load_config
+from agenttic.live.incidents import IncidentManager, open_manual
+from agenttic.registry.sqlite_store import Registry
 
 
 def _reg():
@@ -31,7 +31,7 @@ def test_sla_absolute_across_dst():
     reg = _reg()
     m = IncidentManager(reg)
     # open with a DST-boundary timezone
-    from ascore.schema.incident import Incident
+    from agenttic.schema.incident import Incident
     opened = datetime(2025, 3, 9, 0, 0, tzinfo=ZoneInfo("America/New_York"))
     inc = Incident(incident_id="i-dst", agent_id="a1", severity="S1",
                    opened_at=opened)

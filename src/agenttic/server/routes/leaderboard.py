@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Query, Request
 
-from ascore.leaderboard import compute_leaderboard
+from agenttic.leaderboard import compute_leaderboard
 
 router = APIRouter(tags=["leaderboard"])
 
@@ -40,7 +40,7 @@ def _attach_certification_badges(reg, rows: list[dict]) -> None:
     """Attach a certification badge (tier + attestation + computed status) to
     each row that has a dossier. Uncertified agents get ``certification: None``
     (the UI shows nothing) — never a fabricated badge."""
-    from ascore.certification.staleness import status
+    from agenttic.certification.staleness import status
     for row in rows:
         row["certification"] = None
         try:

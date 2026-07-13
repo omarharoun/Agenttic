@@ -3,11 +3,11 @@ the endpoint is auth-gated + tenant-scoped."""
 
 from fastapi.testclient import TestClient
 
-from ascore.registry.sqlite_store import Registry
-from ascore.reporting.pdf_report import render_pdf
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
-from ascore.server.app import create_app
+from agenttic.registry.sqlite_store import Registry
+from agenttic.reporting.pdf_report import render_pdf
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.server.app import create_app
 
 RUBRIC = Rubric(rubric_id="r-1", criteria=[
     Criterion(criterion_id="routing", description="Routes to the correct queue",

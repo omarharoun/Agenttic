@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
-from ascore.registry.sqlite_store import PersonalApiTokenRow
+from agenttic.registry.sqlite_store import PersonalApiTokenRow
 
 TOKEN_PREFIX = "agt_"          # agenttic token (distinct from sk-ant-… Anthropic)
 _TOKEN_BYTES = 32             # 256 bits of entropy

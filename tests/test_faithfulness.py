@@ -8,18 +8,18 @@ import re
 import uuid
 from types import SimpleNamespace
 
-from ascore.metrics.catalog import BY_ID, index_weights
-from ascore.metrics.faithfulness import (
+from agenttic.metrics.catalog import BY_ID, index_weights
+from agenttic.metrics.faithfulness import (
     FaithfulnessResult, aggregate_faithfulness, extract_atomic_claims,
     make_llm_claim_checker, score_faithfulness,
 )
-from ascore.metrics.index import compute_index
-from ascore.metrics.runner import run_standard
-from ascore.metrics.standard_suites import (
+from agenttic.metrics.index import compute_index
+from agenttic.metrics.runner import run_standard
+from agenttic.metrics.standard_suites import (
     seed_standard_suites, standard_suite_ids,
 )
-from ascore.registry.sqlite_store import Registry
-from ascore.scoring.checks import CHECKS
+from agenttic.registry.sqlite_store import Registry
+from agenttic.scoring.checks import CHECKS
 
 REF = ("Paris is the capital of France. The Eiffel Tower is located in Paris "
        "and was completed in 1889.")
@@ -144,8 +144,8 @@ def _trace(tid, final="grounded answer"):
 
 def _patch_all_suites(monkeypatch):
     """Fake every canonical suite so a full run produces all six components."""
-    from ascore import ops
-    from ascore.schema.scorecard import CriterionScore, RunScore
+    from agenttic import ops
+    from agenttic.schema.scorecard import CriterionScore, RunScore
 
     crit_by_suite = {
         "std-tool-use-v1": "tool_selection_accuracy",
@@ -217,8 +217,8 @@ def test_faithfulness_missing_without_checker(monkeypatch):
 
 
 def test_no_reference_case_is_excluded_and_labeled(monkeypatch):
-    from ascore import ops
-    from ascore.schema.scorecard import CriterionScore, RunScore
+    from agenttic import ops
+    from agenttic.schema.scorecard import CriterionScore, RunScore
 
     async def fake_run_suite(cfg, reg, adapter, sid, version, on_progress=None):
         tid = f"{sid}-c0"
