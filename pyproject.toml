@@ -1,9 +1,10 @@
 [project]
-# The public umbrella distribution. It ships two importable packages:
-#   * agenttic — the supported, semver'd public surface (SPEC-8 Hard Rule 36)
-#   * ascore   — the internal implementation (not part of the public contract)
-# One distribution, one version; the umbrella tracks the core version exactly
-# (kept in lock-step with ascore.__version__, asserted by a test).
+# The public umbrella distribution. It ships ONE importable package, `agenttic`,
+# which is BOTH the supported, semver'd public surface (SPEC-8 Hard Rule 36) AND
+# the internal implementation engine (the former `ascore` package was folded in
+# during the rename; `ascore` survives only as a deprecated CLI alias).
+# One distribution, one version, defined in agenttic/__init__.py and kept in
+# lock-step with the `version` below (asserted by a test).
 name = "agenttic"
 version = "1.0.0"
 description = "Agenttic — certify, trace and enforce AI agents. One install, one import, a signed safety grade."

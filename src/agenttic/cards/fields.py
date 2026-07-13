@@ -29,7 +29,7 @@ def _vendor_path() -> Path:
     here = Path(__file__).resolve()
     candidates = [
         Path.cwd() / "data/vendor/ai-agent-index/2025_annotations.json",
-        # repo root is three parents up from src/ascore/cards/fields.py
+        # repo root is three parents up from src/agenttic/cards/fields.py
         here.parents[3] / "data/vendor/ai-agent-index/2025_annotations.json",
     ]
     for c in candidates:

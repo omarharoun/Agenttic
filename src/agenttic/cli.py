@@ -76,7 +76,7 @@ def generate(business_doc: Path, suite_id: str, config: str = "config.yaml"):
     console.print(f"[yellow]DRAFT[/] suite {suite.suite_id} v{suite.version} "
                   f"({len(suite.test_ids)} cases). Review "
                   f"{cfg['paths']['review_dir']}/{suite_id}.md then run "
-                  f"`uv run ascore approve {suite_id}`.")
+                  f"`uv run agenttic approve {suite_id}`.")
 
 
 @app.command()
@@ -95,8 +95,8 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
         system_prompt: str = "", model: str = "", config: str = "config.yaml"):
     """Run a suite against an agent.
 
-    If --agent matches a name in the declared catalog (`ascore agents add`), its
-    connection details are used automatically — so `ascore run --agent prod
+    If --agent matches a name in the declared catalog (`agenttic agents add`), its
+    connection details are used automatically — so `agenttic run --agent prod
     --suite s` just works. Otherwise build one ad-hoc: the reference agent
     (--system-prompt/--model), --url for black-box HTTP, or
     --managed-agent-id/--environment-id for a deployed Managed Agent. Explicit
@@ -158,7 +158,7 @@ def deploy(workflow: Path, env_name: str = "ascore-workflows",
                   f"[bold]{result['agent_id']}[/] v{result['version']} "
                   f"({result['name']}) in env {result['environment_id']}")
     console.print(
-        f"Run a suite against it:\n  uv run ascore run --agent {result['name']} "
+        f"Run a suite against it:\n  uv run agenttic run --agent {result['name']} "
         f"--suite <suite_id> --managed-agent-id {result['agent_id']} "
         f"--environment-id {result['environment_id']}")
 
@@ -567,7 +567,7 @@ def pilot(config: str = "config.yaml",
         console.print("[green]Approved[/] — runnable immediately.")
     else:
         console.print("Still DRAFT: approve in the UI (Resources → suites) or "
-                      f"`uv run ascore approve {suite.suite_id}`.")
+                      f"`uv run agenttic approve {suite.suite_id}`.")
 
 
 @app.command()
@@ -719,7 +719,7 @@ def agents_list(all_: bool = typer.Option(False, "--all",
     _, reg = _ctx(config)
     rows = reg.list_declared_agents(include_retired=all_)
     if not rows:
-        console.print("No declared agents. Add one with `uv run ascore agents add`.")
+        console.print("No declared agents. Add one with `uv run agenttic agents add`.")
         return
     table = Table("agent", "type", "version", "connection", "active")
     for a in rows:
@@ -818,7 +818,7 @@ def users_list(config: str = "config.yaml"):
     with Session(reg.engine) as s:
         rows = s.exec(select(UserRow).order_by(UserRow.email)).all()
     if not rows:
-        console.print("No users. Create one with `uv run ascore users create`.")
+        console.print("No users. Create one with `uv run agenttic users create`.")
         return
     table = Table("email", "role", "tenant", "created")
     for u in rows:
@@ -1052,7 +1052,7 @@ def cards_show(
     try:
         card = reg.get_card(agent)
     except NotFoundError:
-        raise typer.BadParameter(f"no card for {agent} (run `ascore cards autofill`)")
+        raise typer.BadParameter(f"no card for {agent} (run `agenttic cards autofill`)")
     table = Table("field", "status", "provenance", "refs")
     for key, fv in card.fields.items():
         refs = ", ".join((fv.evidence_refs or fv.citations)[:2]) or "—"

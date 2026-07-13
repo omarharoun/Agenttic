@@ -17,10 +17,11 @@ COPY pyproject.toml README.md ./
 COPY src/ ./src/
 RUN pip install --no-cache-dir ".[postgres,redis]"
 
-# the built frontend (served by the same app). ASCORE_UI_DIST tells the app
+# the built frontend (served by the same app). AGENTTIC_UI_DIST tells the app
 # where dist lives, since the package itself is installed under site-packages.
+# (The legacy ASCORE_UI_DIST is still honored by the env shim as a fallback.)
 COPY --from=ui /ui/dist ./ui/dist
-ENV ASCORE_UI_DIST=/app/ui/dist
+ENV AGENTTIC_UI_DIST=/app/ui/dist
 # default config baked in; override by mounting /app/config.yaml or env vars
 COPY config.yaml ./config.yaml
 
@@ -37,5 +38,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 # single worker by default; scale with --workers once a shared event transport
 # (Redis) is configured — see docs/PRODUCTION_READINESS.md.
-CMD ["uvicorn", "--factory", "ascore.server.app:create_app", \
+CMD ["uvicorn", "--factory", "agenttic.server.app:create_app", \
      "--host", "0.0.0.0", "--port", "8700"]

@@ -2,7 +2,7 @@
 
 A UVM-style verification testbench where the device under test is an **AI
 agent**. Agenttic (install `agenttic`; the `agenttic` CLI, with `ascore` kept as
-a back-compat alias) turns business requirements into versioned benchmark suites,
+a deprecated back-compat alias) turns business requirements into versioned benchmark suites,
 runs any agent against them, scores the runs with deterministic checks plus a
 calibrated LLM judge, and produces client-ready scorecards — with a live
 monitoring path that detects production drift and triggers re-evaluation.
@@ -87,23 +87,23 @@ With a real key, the bespoke-suite operator flow is:
 
 ```bash
 # 1. Draft a benchmark suite from a business document
-ascore generate job_description.txt --suite-id support-v1
+agenttic generate job_description.txt --suite-id support-v1
 
 # 2. Human gate: read review/support-v1.md, then
-ascore approve support-v1
+agenttic approve support-v1
 
 # 3. Run an agent against it
-ascore run --agent ref-agent --suite support-v1            # reference agent
-ascore run --agent client-x --suite support-v1 --url http://...  # black-box
+agenttic run --agent ref-agent --suite support-v1            # reference agent
+agenttic run --agent client-x --suite support-v1 --url http://...  # black-box
 
 # 4. Calibrate the judge against human labels (calibration/support-v1.csv)
-ascore calibrate support-v1
+agenttic calibrate support-v1
 
 # 5. Deliverable
-ascore report <scorecard_id> -o report.md
+agenttic report <scorecard_id> -o report.md
 
 # Regression after any agent/model/prompt change
-ascore regress --agent ref-agent
+agenttic regress --agent ref-agent
 ```
 
 A complete hand-written example lives in `examples/pilot_support_triage/`
@@ -131,7 +131,7 @@ so. Starting a scan signed-out saves the whole conversation and resumes it
 stays one click away. Implementation: `ui/src/components/CertConversation.tsx`
 (the interview + panel), `ui/src/components/ScanExperience.tsx` (the classic
 form and connection manager), backed by `POST /api/scan` in
-`src/ascore/server/routes/scan.py`.
+`src/agenttic/server/routes/scan.py`.
 
 ## Standard benchmarks & the Agenttic Index
 
@@ -155,7 +155,7 @@ methodology:
 The weights sum to 1.0 over the seven weighted metrics and are renormalized over
 whichever components a given run actually produced, so a black-box agent that
 can't be scored on faithfulness isn't penalized against a denominator it never
-had. Single source of truth: `src/ascore/metrics/catalog.py`.
+had. Single source of truth: `src/agenttic/metrics/catalog.py`.
 
 **Honesty stance.** The seeded standard suites (`std-tool-use-v1`,
 `std-safety-refusal-v1`, `std-safety-injection-v1`, `std-faithfulness-v1`)
@@ -166,10 +166,10 @@ Either way the Index starts empty: **numbers populate when you run an agent with
 your own Anthropic key.**
 
 ```bash
-ascore standard seed                 # install the canonical seed suites (idempotent)
-ascore standard metrics              # print the metric catalog + weights
-ascore standard run --agent ref-agent --k 3   # run the standard suites k times → Index
-ascore standard ingest bfcl          # ingest a real dataset suite (see below)
+agenttic standard seed                 # install the canonical seed suites (idempotent)
+agenttic standard metrics              # print the metric catalog + weights
+agenttic standard run --agent ref-agent --k 3   # run the standard suites k times → Index
+agenttic standard ingest bfcl          # ingest a real dataset suite (see below)
 ```
 
 API (all under `/api`): `GET /api/standard/metrics`, `GET /api/standard/suites`,
@@ -198,7 +198,7 @@ sample**; `?full=true` (where the license/gating allows) pulls the full set.
 
 The BFCL splits (`parallel`, `multiple`, `parallel_multiple`, `live_simple`,
 `live_multiple`) are the harder v3 tracks: parallel/multiple-call selection and
-real user-contributed prompts. Adapters live in `src/ascore/metrics/datasets/`;
+real user-contributed prompts. Adapters live in `src/agenttic/metrics/datasets/`;
 the survey [docs/RESEARCH_TESTING_SURVEY.md](docs/RESEARCH_TESTING_SURVEY.md)
 catalogs the wider landscape and why each was (or wasn't) adopted.
 
@@ -220,13 +220,13 @@ bootstrap** (2000 resamples, seeded) for per-criterion deltas with 95% CIs. The
 verdict is `tie` / `A` / `B`, and underpowered comparisons are labeled as such.
 
 ```bash
-ascore ab --suite support-v1 --a ref-agent --b new-prompt \
+agenttic ab --suite support-v1 --a ref-agent --b new-prompt \
           --b-prompt "You are a terse support router." --out ab.md
 ```
 
 API: `POST /api/ab/runs`, `GET /api/ab/runs[/{id}]`,
-`GET /api/ab/runs/{id}/report[.pdf]`. Code: `src/ascore/ab.py`,
-`src/ascore/stats.py`.
+`GET /api/ab/runs/{id}/report[.pdf]`. Code: `src/agenttic/ab.py`,
+`src/agenttic/stats.py`.
 
 ### Harden: turn failures into a regression suite
 
@@ -238,7 +238,7 @@ and failure reason. Re-run it after a fix and get a per-case delta
 
 API: `GET /api/hardening/candidates`, `POST /api/hardening/promote`,
 `GET /api/hardening/suites[/{id}]`, `POST /api/hardening/rerun`. In the UI this
-is the **Hardening** page. Code: `src/ascore/hardening.py`.
+is the **Hardening** page. Code: `src/agenttic/hardening.py`.
 
 ### Optimize a system prompt (with an overfitting guard)
 
@@ -251,13 +251,13 @@ frozen; only the prompt text changes. Bounded and cost-aware (round/candidate/ru
 caps with an up-front run projection).
 
 ```bash
-ascore optimize --suite support-v1 --agent ref-agent \
+agenttic optimize --suite support-v1 --agent ref-agent \
                 --prompt-file base_prompt.txt --rounds 2 --candidates 3 \
                 --heldout 0.3 --max-runs 60 --out best_prompt.txt
 ```
 
 API: `POST /api/optimize/runs`, `GET /api/optimize/runs[/{id}]`. Code:
-`src/ascore/optimizer.py`.
+`src/agenttic/optimizer.py`.
 
 ### Export to / import from Inspect (`inspect_ai`)
 
@@ -269,8 +269,8 @@ scores to Agenttic's `{0, 0.5, 1}` scale. Lets third parties re-run your evals i
 a harness they trust and opens the `inspect_evals` catalog for comparison.
 
 ```bash
-ascore inspect-export <scorecard_id> --out scorecard.json
-ascore inspect-import scorecard.json --save
+agenttic inspect-export <scorecard_id> --out scorecard.json
+agenttic inspect-import scorecard.json --save
 ```
 
 API: `GET /api/scorecards/{id}/inspect.json`. Full mapping and lossy edges:
@@ -287,10 +287,10 @@ infrastructure, and immediately benchmark it:
 # 1. Describe the workflow step as a version-controlled agent YAML
 #    (see examples/pilot_support_triage/workflow.agent.yaml)
 # 2. Deploy it (creates the agent once; re-deploys bump the immutable version)
-ascore deploy examples/pilot_support_triage/workflow.agent.yaml
+agenttic deploy examples/pilot_support_triage/workflow.agent.yaml
 
 # 3. Benchmark it like any other agent — one session per test case
-ascore run --agent triage-wf --suite pilot-support-triage \
+agenttic run --agent triage-wf --suite pilot-support-triage \
            --managed-agent-id agent_01... --environment-id env_01...
 ```
 
@@ -307,8 +307,8 @@ Hard Rule 4 judge selection automatically.
 
 ```bash
 npm --prefix ui install && npm --prefix ui run build   # once
-uv run ascore pilot                                    # seed the demo suite (DRAFT)
-uv run ascore ui                                       # http://127.0.0.1:8700
+uv run agenttic pilot                                    # seed the demo suite (DRAFT)
+uv run agenttic ui                                       # http://127.0.0.1:8700
 ```
 
 An n8n-style canvas over the whole platform: drag nodes from the palette
@@ -321,7 +321,7 @@ pydantic schema), then **Run**. Nodes animate live over SSE — the run node sho
 pages: the 🏆 Index leaderboard, the Standard/Methodology explainer, Hardening,
 executions history, and resource browsers for suites, scorecards, and traces.
 
-Dev mode: `uv run ascore ui` + `npm --prefix ui run dev` (Vite on :5173,
+Dev mode: `uv run agenttic ui` + `npm --prefix ui run dev` (Vite on :5173,
 proxies `/api`). The engine is headless-first: workflows are documents
 (`POST /api/workflows`), executions stream `GET /api/executions/{id}/events`, so
 CI can run the same graphs without the canvas.
@@ -352,15 +352,15 @@ On top of that, you can **declare** agents you run repeatedly — pre-register a
 name, variant, and connection details once, then pick them when configuring a run:
 
 ```bash
-ascore agents add prod-bot --variant blackbox --url https://prod/agent
-ascore agents add triage --variant reference --model claude-sonnet-4-6 \
+agenttic agents add prod-bot --variant blackbox --url https://prod/agent
+agenttic agents add triage --variant reference --model claude-sonnet-4-6 \
                  --system-prompt "You are a support-ticket router."
-ascore agents list                       # the catalog (latest version each)
-ascore run --agent prod-bot --suite support-v1   # connection details resolved
+agenttic agents list                       # the catalog (latest version each)
+agenttic run --agent prod-bot --suite support-v1   # connection details resolved
 ```
 
 The catalog is versioned and append-only in the registry like everything else
-(`ascore agents retire` is a soft-delete that keeps history). CRUD API:
+(`agenttic agents retire` is a soft-delete that keeps history). CRUD API:
 `GET/POST /api/agents/catalog`, `GET/DELETE /api/agents/catalog/{id}`.
 
 ## Scoring backends
@@ -369,7 +369,7 @@ Each rubric criterion is scored by one of three backends:
 
 - **`code`** — deterministic checks (`final_output_matches_expected`,
   `required_tool_called`, the canonical-metric checks in
-  `src/ascore/metrics/canonical_checks.py`, …).
+  `src/agenttic/metrics/canonical_checks.py`, …).
 - **`judge`** — the tiered LLM judge (Sonnet executor consulting an Opus advisor
   on borderline calls).
 - **`fi`** — [Future AGI](https://github.com/future-agi/future-agi)'s open-source
@@ -377,7 +377,7 @@ Each rubric criterion is scored by one of three backends:
   `scorer: fi` + `fi_metric: <name>` on a criterion, or drop an **FI Evaluation**
   node on the canvas. FI's 0–1 score is discretized into the criterion's
   binary/three-point scale (Hard Rule 3), keeping the raw value + reason in the
-  rationale. Optional dependency: `uv pip install ascore[fi]`; the default metric
+  rationale. Optional dependency: `uv pip install agenttic[fi]`; the default metric
   set is offline (cloud LLM-judge metrics need `FI_API_KEY`/`FI_SECRET_KEY`).
 
 **Partial batch scoring:** if a case can't be scored (judge/FI outage, bad check
@@ -407,7 +407,7 @@ budget:
   no redirects.
 - **Rate limiting.** A per-client sliding-window cap on `/api`.
 - **Cost estimation & ceilings.** Pricing lives in `config.yaml` (`pricing`).
-  Before a run, `ascore` projects spend (agent + judge); actual cost (execution
+  Before a run, `agenttic` projects spend (agent + judge); actual cost (execution
   **and** judge tokens) is recorded on every scorecard and shown in the report.
   The `budget` caps abort a run that would exceed the per-run or daily ceiling.
 
@@ -422,7 +422,7 @@ multi-tenant**: each tenant stores its own Anthropic key, encrypted at rest
 kept in clear for masking. Keys are never logged or returned by the API. Every
 run uses the tenant's key — there is no platform fallback — so a missing key
 returns `400 "Add your Anthropic API key in Settings to run tests"`. Code:
-`src/ascore/server/keys.py`.
+`src/agenttic/server/keys.py`.
 
 ## Programmatic access: personal API tokens + run-a-test over REST
 
@@ -436,7 +436,7 @@ Revoking it in Settings takes effect immediately.
 over a session cookie. Among explicit tokens, a configured shared/admin token
 (`ASCORE_API_TOKEN`) is matched first, then PATs. PATs are distinct from your
 Anthropic key (which still powers the actual model calls — set it first or runs
-return `400`). Code: `src/ascore/server/pats.py`; auth wiring in `server/auth.py`.
+return `400`). Code: `src/agenttic/server/pats.py`; auth wiring in `server/auth.py`.
 
 ```bash
 export AGENTTIC_TOKEN=agt_…            # created in Settings → API keys
@@ -487,7 +487,7 @@ generated suite), and `/standard/run`. Bypass with `?force=true` (or
 `"refresh": true`). The mapping lives in the append-only registry
 (`result_cache` table, migration v10); browse past results — fresh vs cached, with
 cost — on the **Results** page (`/app/results`) or via `GET /api/scorecards`.
-Code: `src/ascore/result_cache.py`, cache hooks in `src/ascore/server/nodes.py`.
+Code: `src/agenttic/result_cache.py`, cache hooks in `src/agenttic/server/nodes.py`.
 
 ## Design rules the code enforces
 
@@ -527,7 +527,7 @@ instrumenting an agent for glass-box traces unlocks the full rubric.
 ## Layout
 
 ```
-src/ascore/
+src/agenttic/
 ├── schema/        # Step 1 — Pydantic contracts (trace, testcase, rubric, scorecard)
 ├── adapters/      # Steps 2 & 7 — base driver, reference agent, black-box HTTP, managed
 ├── harness/       # Step 3 — async runner: timeouts, transport-only retries
@@ -541,7 +541,7 @@ src/ascore/
 ├── ab.py · hardening.py · optimizer.py · stats.py   # A/B, hardening loop, prompt-optimizer
 ├── ops.py         # shared pipeline ops (CLI and UI both call these)
 ├── server/        # workflow engine + FastAPI/SSE API for the UI (+ keys, auth, tenancy)
-└── cli.py         # ascore command surface (incl. `ascore ui`, `standard`, `ab`, `optimize`)
+└── cli.py         # agenttic command surface (incl. `agenttic ui`, `standard`, `ab`, `optimize`)
 ui/                # React front end (Vite): public site + intake interview (/scan),
                    # certification surfaces, and the React Flow workflow canvas (/app)
 ```
@@ -573,22 +573,22 @@ generated), a provisional judge caps the tier at B, and elicitation inconsistenc
 
 ```bash
 # 1. Inspect the shipped safety profile (composition, pinned suites, coverage)
-ascore profiles show cert-agent-safety-v1        # cbrn_proxy renders NOT ASSESSED
+agenttic profiles show cert-agent-safety-v1        # cbrn_proxy renders NOT ASSESSED
 
 # 2. Certify an agent → an evidence dossier (offline demo, no API key)
-ascore certify --agent ref-agent --profile cert-agent-safety-v1 --mock -o /tmp/dossier.json
+agenttic certify --agent ref-agent --profile cert-agent-safety-v1 --mock -o /tmp/dossier.json
 
 # 3. Verify the dossier offline (recomputes hashes; names the offending ref on tamper)
-ascore dossier verify /tmp/dossier.json
+agenttic dossier verify /tmp/dossier.json
 
 # 4. Renew (chained dossier; $0 if the agent is unchanged) / revoke (append-only)
-ascore certify --agent ref-agent --profile cert-agent-safety-v1 --renew --mock
-ascore dossier revoke <dossier_id> --reason "safety regression"
+agenttic certify --agent ref-agent --profile cert-agent-safety-v1 --renew --mock
+agenttic dossier revoke <dossier_id> --reason "safety regression"
 ```
 
 Server: `POST /api/certify` (async job) → `GET /api/dossiers/{id}` /
 `…/report.pdf`; **public** `GET /certification/{dossier_id}` verifies from the
-dossier JSON alone. Incidents: `ascore incidents open|list|report|close|export`
+dossier JSON alone. Incidents: `agenttic incidents open|list|report|close|export`
 with S1–S4 SLA clocks (`docs/INCIDENT_CROSSWALK.md`). Regulatory mapping:
 `docs/REGULATORY_CROSSWALK.md` (evidence, **not** a compliance determination).
 
@@ -611,9 +611,9 @@ without a card caps its certification tier at B; frontier autonomy (L4/L5) adds
 required domains and tightens floors.
 
 ```bash
-ascore cards autofill ref-agent     # measured fields from traces/scorecards/dossiers
-ascore cards show ref-agent
-ascore cards annotate ref-agent -f company_accountability.developer -v Acme -c https://acme.com
+agenttic cards autofill ref-agent     # measured fields from traces/scorecards/dossiers
+agenttic cards show ref-agent
+agenttic cards annotate ref-agent -f company_accountability.developer -v Acme -c https://acme.com
 ```
 
 Public: `GET /cards/{agent_id}` (renders from card JSON alone, provenance classes
@@ -657,7 +657,7 @@ is a confirmed positive → deny + S1 incident. Canaries never touch certificati
 scorecards and rotate while preserving trip history.
 
 **Oversight analytics** track approval-process health (latency, approval rate,
-rubber-stamp indicator). An opt-in **interactive RL loop** (`ascore oversight
+rubber-stamp indicator). An opt-in **interactive RL loop** (`agenttic oversight
 watch`) surfaces borderline decisions to a human and adapts posture via a
 contextual bandit — auto-tightening, but only ever *proposing* loosening behind an
 explicit confirmation. All disabled by default.
