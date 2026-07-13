@@ -42,7 +42,7 @@ export function ApiDocsPage() {
   const curl = (e: Ep) => {
     const authed = e.group !== "auth";
     const lines = [`curl -X ${e.method} ${origin}${e.path}`];
-    if (authed) lines.push(`  -H "Authorization: Bearer $ASCORE_API_TOKEN"`);
+    if (authed) lines.push(`  -H "Authorization: Bearer $AGENTTIC_API_TOKEN"`);
     if (["POST", "PUT", "PATCH"].includes(e.method) && e.group === "auth")
       lines.push(`  -H "Content-Type: application/json" \\\n  -d '{"email":"you@example.com","password":"…"}'`);
     return lines.join(" \\\n");
@@ -72,7 +72,8 @@ export function ApiDocsPage() {
             way to script the API as your own account — create one in{" "}
             <Link to="/app/settings?section=api-keys" style={{ color: "var(--accent)" }}>Settings → API keys</Link>{" "}
             and send <code>Authorization: Bearer agt_…</code>. A configured{" "}
-            <b>shared token</b> (<code>ASCORE_API_TOKEN</code>) works the same way for
+            <b>shared token</b> (<code>AGENTTIC_API_TOKEN</code>, or the legacy{" "}
+            <code>ASCORE_API_TOKEN</code>, which still works) works the same way for
             CI. Or use a <b>login session</b>: <code>POST /api/auth/login</code> sets an
             httponly cookie; browser requests then authenticate automatically
             (cookie-based mutations also need the <code>X-CSRF-Token</code> header,
