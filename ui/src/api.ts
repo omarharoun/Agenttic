@@ -218,20 +218,62 @@ export function sseUrl(path: string): string {
   return path + (path.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(t);
 }
 
-async function json<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    let detail = `${res.status}`;
-    try {
-      detail = JSON.stringify((await res.json()).detail);
-    } catch {
-      /* keep status */
-    }
-    if (res.status === 401) detail = "401 unauthenticated — log in or set an API token";
-    const err = new Error(detail) as Error & { status?: number };
-    err.status = res.status;
-    throw err;
+/** A failed (or non-JSON) API call the UI can render gracefully. It always
+ *  carries the HTTP `status` and a human `message`, and — critically — it is
+ *  thrown INSTEAD OF a raw `JSON.parse` SyntaxError. A non-JSON body (a 502/504
+ *  proxy HTML page, or an `/api/*` request that fell through to the SPA HTML
+ *  shell and came back as `200 text/html`) used to blow up as
+ *  "Unexpected Application Error! JSON.parse: unexpected character at line 1
+ *  column 1", crashing the whole app via React Router's error boundary. Now it
+ *  surfaces here as a typed, catchable error. */
+export class ApiError extends Error {
+  status: number;
+  detail?: unknown;
+  constructor(message: string, status: number, detail?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.detail = detail;
   }
-  return res.json();
+}
+
+/** Parse a JSON API response, tolerating ANY body. Both the ok and the error
+ *  path funnel through here: a non-2xx response, or a 2xx whose body isn't JSON,
+ *  yields a typed {@link ApiError} the caller can catch — never an uncaught
+ *  SyntaxError. The body is read once as text so we can parse-or-fall-back
+ *  regardless of what the server (or a proxy in front of it) actually sent. */
+async function json<T>(res: Response): Promise<T> {
+  const ctype = res.headers.get("content-type") || "";
+  const body = await res.text().catch(() => "");
+  let data: any = undefined;
+  // Parse when it's declared JSON, or looks like JSON — so a mislabeled JSON
+  // body still works, while an HTML shell (`<!DOCTYPE …`) never does.
+  if (body && (ctype.includes("application/json") || /^\s*[[{]/.test(body))) {
+    try { data = JSON.parse(body); } catch { /* fall through to typed error */ }
+  }
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new ApiError("401 unauthenticated — log in or set an API token", 401,
+                         data?.detail ?? data ?? body);
+    }
+    let detail: unknown = data?.detail ?? data?.error ?? (data === undefined ? body.trim() : undefined);
+    const msg = typeof detail === "string" && detail
+      ? detail
+      : detail !== undefined ? JSON.stringify(detail) : `${res.status}`;
+    throw new ApiError(msg, res.status, data?.detail ?? data ?? body);
+  }
+
+  // ok, but the body wasn't parseable JSON — the classic case is an `/api/*`
+  // path that slipped through to the HTML SPA shell (200 text/html). An empty
+  // body (e.g. a 204) is a legitimate "no content" and returns undefined.
+  if (data === undefined) {
+    if (res.status === 204 || body.trim() === "") return undefined as unknown as T;
+    throw new ApiError(
+      `Expected JSON but the server returned ${ctype || "an unparseable response"}`,
+      res.status, body.slice(0, 200));
+  }
+  return data as T;
 }
 
 export interface Me { role: string; tenant: string; email: string | null; auth_method: string; }
