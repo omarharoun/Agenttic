@@ -41,6 +41,8 @@ per-wedge status (proxy vs reproduced) is surfaced in ``metrics.reproduction``.
 from __future__ import annotations
 
 import os
+
+from agenttic._env import get_env
 import shutil
 from dataclasses import dataclass
 from typing import Protocol
@@ -94,7 +96,7 @@ def harness_available(cfg: dict | None = None) -> bool:
     package). On this VM those are absent, so it returns False and callers fall
     back to the honest proxy — but provisioning the infra flips this on for real,
     with no code change."""
-    choice = (os.environ.get(HARNESS_ENV) or "").strip().lower()
+    choice = (get_env(HARNESS_ENV) or "").strip().lower()
     if not choice and cfg:
         choice = str((cfg.get("swebench", {}) or {}).get("harness") or "").lower()
     if choice in ("", "off", "none", "false", "0"):
@@ -111,7 +113,7 @@ def build_configured_harness(cfg: dict | None = None) -> ResolveHarness | None:
     mode (no infra) is explicit."""
     if not harness_available(cfg):
         return None
-    choice = (os.environ.get(HARNESS_ENV) or "").strip().lower()
+    choice = (get_env(HARNESS_ENV) or "").strip().lower()
     if not choice and cfg:
         choice = str((cfg.get("swebench", {}) or {}).get("harness") or "").lower()
     if choice == "docker":

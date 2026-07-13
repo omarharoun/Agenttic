@@ -29,7 +29,7 @@ _STATE: dict[str, str | None] = {"tenant": None}
 
 @app.callback()
 def _main(tenant: str = typer.Option(
-        None, "--tenant", envvar="ASCORE_TENANT",
+        None, "--tenant", envvar=["AGENTTIC_TENANT", "ASCORE_TENANT"],
         help="workspace/tenant to operate on (default: 'default')")):
     """Agenttic CLI. The CLI operates directly on the registry DB (admin-level);
     --tenant selects the workspace, matching the server's tenancy model."""
@@ -40,8 +40,9 @@ def _ctx(config_path: str = "config.yaml"):
     from agenttic.secrets import hydrate_env_secrets
     hydrate_env_secrets()  # pull *_FILE secrets into the environment
     cfg = load_config(config_path)
-    tenant = _STATE.get("tenant") or os.environ.get("ASCORE_TENANT") or "default"
-    db_url = os.environ.get("ASCORE_DB") or (cfg.get("database", {}) or {}).get("url") or ""
+    from agenttic._env import get_env
+    tenant = _STATE.get("tenant") or get_env("ASCORE_TENANT") or "default"
+    db_url = get_env("ASCORE_DB") or (cfg.get("database", {}) or {}).get("url") or ""
     if db_url and not db_url.startswith("sqlite"):
         from agenttic.registry.sqlite_store import make_engine
         return cfg, Registry(engine=make_engine(db_url), tenant=tenant)

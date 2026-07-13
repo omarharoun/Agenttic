@@ -84,7 +84,8 @@ def make_rate_limiter(cfg: dict) -> RateLimiterBackend:
     import os
     sec = cfg.get("security", {}) or {}
     backend = str(sec.get("rate_limit_backend", "memory")).lower()
-    url = os.environ.get("ASCORE_REDIS_URL") or sec.get("redis_url", "")
+    from agenttic._env import get_env
+    url = get_env("ASCORE_REDIS_URL") or sec.get("redis_url", "")
     if backend == "redis" and url:
         return RedisRateLimiter(url=url)
     return InMemoryRateLimiter()

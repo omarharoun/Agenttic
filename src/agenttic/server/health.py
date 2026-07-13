@@ -249,5 +249,5 @@ def _discover_version() -> str | None:
 
 def _discover_build() -> str | None:
     # Optional build/commit stamp, set by the deploy pipeline. Never fabricated.
-    import os
-    return os.environ.get("ASCORE_BUILD") or None
+    from agenttic._env import get_env
+    return get_env("ASCORE_BUILD") or None
