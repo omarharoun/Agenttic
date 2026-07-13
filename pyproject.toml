@@ -65,9 +65,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-# Ship both packages from the src layout: the public umbrella and the internal
-# implementation it re-exports.
-packages = ["src/agenttic", "src/ascore"]
+# One package from the src layout. `agenttic` is now BOTH the supported,
+# semver'd public umbrella surface AND the internal engine — the former
+# `ascore` package was folded into it during the rename. `ascore` survives
+# only as a deprecated CLI alias (see [project.scripts]).
+packages = ["src/agenttic"]
 
 [tool.ruff]
 # Match the runtime (CI + Docker run Python 3.12). Keeps lint consistent with
