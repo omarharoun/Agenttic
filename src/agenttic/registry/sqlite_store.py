@@ -603,6 +603,20 @@ def make_engine(url: str):
     return engine
 
 
+def default_db_filename() -> str:
+    """The default SQLite filename when no ``db_path``/``url`` is configured.
+
+    Rename back-compat (no data loss): new installs use ``agenttic.db``, but if
+    a legacy ``ascore.db`` already exists in the working directory — and no
+    ``agenttic.db`` does — we keep using it so an existing registry is never
+    orphaned. ``agenttic.db`` wins whenever it is present."""
+    if Path("agenttic.db").exists():
+        return "agenttic.db"
+    if Path("ascore.db").exists():
+        return "ascore.db"
+    return "agenttic.db"
+
+
 class Registry:
     """Versioned store bound to one tenant. Also satisfies the harness
     TraceStore protocol. Pass ``db_path`` (SQLite file), ``url`` (any backend),
@@ -615,7 +629,8 @@ class Registry:
             self.engine = engine
         else:
             if url is None:
-                url = f"sqlite:///{db_path if db_path is not None else 'ascore.db'}"
+                name = db_path if db_path is not None else default_db_filename()
+                url = f"sqlite:///{name}"
             self.engine = make_engine(url)
         from agenttic.migrations import run_migrations
         run_migrations(self.engine)  # idempotent; versioned schema
