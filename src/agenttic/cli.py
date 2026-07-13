@@ -1,4 +1,7 @@
-"""ascore CLI — the operator surface (SPEC.md `CLI surface`).
+"""agenttic CLI — the operator surface (SPEC.md `CLI surface`).
+
+Exposed as the ``agenttic`` console script (and ``python -m agenttic``). The
+legacy ``ascore`` command remains as a deprecated alias that forwards here.
 
 Requires ANTHROPIC_API_KEY in the environment for commands that call models
 (generate, run with judge criteria, monitor with sampling).
@@ -22,6 +25,18 @@ from agenttic.scoring.calibration import calibration_report, load_labels
 
 app = typer.Typer(help="Agentic scoring & benchmarking platform")
 console = Console()
+
+
+def _ascore_alias() -> None:
+    """Deprecated ``ascore`` console-script entry point.
+
+    ``ascore`` is the pre-rename command name. It still works — it forwards to
+    the identical ``agenttic`` CLI — but prints a one-line deprecation nudge to
+    stderr so operators migrate. Same behavior, same exit codes."""
+    import sys
+    print("warning: the `ascore` command is deprecated; use `agenttic` instead "
+          "(identical behavior).", file=sys.stderr)
+    app()
 
 # Global --tenant (or ASCORE_TENANT) selects the workspace for every command.
 _STATE: dict[str, str | None] = {"tenant": None}

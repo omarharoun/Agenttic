@@ -55,10 +55,10 @@ openai = ["agenttic-openai-agents"]       # → OpenAI Agents SDK support
 all = ["agenttic[langgraph]", "agenttic[openai]", "agenttic[otel]"]
 
 [project.scripts]
-# `agenttic` is the public command; `ascore` stays as a back-compat alias. Both
-# drive the same Typer app (adds `agenttic init`, `agenttic doctor`, certify, …).
-agenttic = "ascore.cli:app"
-ascore = "ascore.cli:app"
+# `agenttic` is the public command. `ascore` stays as a deprecated back-compat
+# alias: same Typer app, but it prints a one-line deprecation nudge to stderr.
+agenttic = "agenttic.cli:app"
+ascore = "agenttic.cli:_ascore_alias"
 
 [build-system]
 requires = ["hatchling"]
