@@ -195,7 +195,7 @@ _PRESIDIO_TRIED = False
 def _get_presidio():
     """Return a cached Presidio ``AnalyzerEngine`` or ``None`` if unavailable.
 
-    Presidio is an OPTIONAL dependency (``pip install 'ascore[safety]'``). It is
+    Presidio is an OPTIONAL dependency (``pip install 'agenttic[safety]'``). It is
     imported lazily and any failure (missing package, missing spaCy model) is
     swallowed so the regex fallback runs — the checks stay green offline."""
     global _PRESIDIO_ANALYZER, _PRESIDIO_TRIED

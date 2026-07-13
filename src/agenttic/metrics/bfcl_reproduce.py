@@ -508,7 +508,7 @@ def minimal_run_plan(split: str = "simple", model: str = "claude-*") -> dict:
         "requires": "ANTHROPIC_API_KEY (to generate the model's predictions)",
         "est_cost_usd_order": "~$0.05–$1 for a small/light model over one category "
                               "(hundreds of short function-calling prompts)",
-        "one_command": (f"ASCORE run: `uv run ascore reproduce-bfcl --split {split} "
+        "one_command": (f"ASCORE run: `uv run agenttic reproduce-bfcl --split {split} "
                         f"--model <MODEL> --published <PUBLISHED_ACC> "
                         f"--published-source <URL>` — with a key set, this generates "
                         "predictions, scores them, and reports reproduced vs "

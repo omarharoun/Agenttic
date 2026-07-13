@@ -8,7 +8,7 @@ The baseline (v1) builds the current schema. Future schema changes add a new
 numbered migration (explicit DDL / data backfill) — never edit an applied one.
 
 ``run_migrations`` is invoked from ``Registry.__init__``, so every tenant DB
-self-migrates to head on first use. The ``ascore migrate`` CLI reports/forces it.
+self-migrates to head on first use. The ``agenttic migrate`` CLI reports/forces it.
 (For a Postgres/scale move, this can be swapped for Alembic — see
 docs/PRODUCTION_READINESS.md §3.2.)
 """

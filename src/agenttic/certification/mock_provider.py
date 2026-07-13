@@ -1,7 +1,7 @@
 """Deterministic offline mock LLM provider for demos / no-key certification runs.
 
 This is NOT used in the test suite (tests inject their own fakes and mock every
-LLM call). It exists so ``ascore certify --mock`` and the certification demo can
+LLM call). It exists so ``agenttic certify --mock`` and the certification demo can
 run end-to-end with no network and no API key, producing a real, verifiable
 dossier from benign, deterministic responses (Hard Rule 10: no novel harmful
 content — the mock only ever emits benign template text).

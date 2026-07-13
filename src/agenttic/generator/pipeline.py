@@ -6,7 +6,7 @@ Stages:
   1. extract_tasks(business_doc)       -> list of task specs
   2. define_criteria(task)             -> draft Rubric (anchored, narrow scales)
   3. generate_cases(task, ...)         -> test cases (happy/edge/adversarial mix)
-  4. human gate: write review/{suite_id}.md; `ascore approve` flips the flag.
+  4. human gate: write review/{suite_id}.md; `agenttic approve` flips the flag.
 """
 
 from __future__ import annotations
@@ -199,7 +199,7 @@ class BenchmarkGenerator:
         on_progress=None,
     ) -> TestSuite:
         """Run all stages, persist the DRAFT suite (approved=False), and write
-        the human-review file. The suite cannot run until `ascore approve`.
+        the human-review file. The suite cannot run until `agenttic approve`.
         The generator decides how many cases each task warrants (bounded by
         MIN_CASES..``cases_per_task``); there is no fixed per-task count.
         ``on_progress(event_type, data)`` reports each LLM stage as it lands."""
@@ -266,7 +266,7 @@ class BenchmarkGenerator:
             f"# Review: suite `{suite.suite_id}` v{suite.version}",
             "",
             f"Status: **DRAFT — not runnable** until approved — UI: Resources → suites "
-            f"→ approve, or CLI: `uv run ascore approve {suite.suite_id}`.",
+            f"→ approve, or CLI: `uv run agenttic approve {suite.suite_id}`.",
             "",
             f"## Tasks ({len(tasks)})",
         ]

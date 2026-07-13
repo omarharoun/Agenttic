@@ -94,5 +94,5 @@ class TestErrorHandling:
     def test_missing_dependency_message(self):
         ev = FiEvaluator(evaluate_fn=None)  # forces the lazy import path
         # ai-evaluation isn't installed in the test env -> clear FiError
-        with pytest.raises(FiError, match="ascore\\[fi\\]"):
+        with pytest.raises(FiError, match="agenttic\\[fi\\]"):
             ev.score_criterion(fi_criterion(), make_trace(), make_tc())
