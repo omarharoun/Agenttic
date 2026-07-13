@@ -2,7 +2,7 @@
 
 import pytest
 
-from ascore.security import UnsafeURLError, validate_blackbox_url
+from agenttic.security import UnsafeURLError, validate_blackbox_url
 
 
 class TestSchemeAndHost:

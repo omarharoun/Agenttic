@@ -6,7 +6,7 @@
   → tenant map and the webhook-idempotency log (both UNAUTHENTICATED-reachable).
 
 Both call ``SQLModel.metadata.create_all`` on construction (idempotent), like
-:class:`ascore.server.store.UIStore`, so the tables exist the first time billing
+:class:`agenttic.server.store.UIStore`, so the tables exist the first time billing
 is touched — no migration step required.
 """
 
@@ -19,14 +19,14 @@ from datetime import datetime, timezone
 from sqlalchemy import func
 from sqlmodel import Session, SQLModel, select
 
-from ascore.billing.models import (
+from agenttic.billing.models import (
     BillingCustomerRow,
     InvoiceRow,
     LedgerRow,
     SubscriptionRow,
     WebhookEventRow,
 )
-from ascore.registry.sqlite_store import DEFAULT_TENANT
+from agenttic.registry.sqlite_store import DEFAULT_TENANT
 
 
 def _now() -> datetime:

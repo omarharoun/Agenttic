@@ -12,14 +12,14 @@ import tempfile
 import pytest
 from fastapi.testclient import TestClient
 
-from ascore.airgap import (
+from agenttic.airgap import (
     AirgapEgressError,
     assert_airgap_safe,
     egress_self_check,
     is_airgap,
 )
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
 
 
 # --- self-check unit contracts ---------------------------------------------
@@ -149,7 +149,7 @@ def _local(host: str) -> bool:
 
 
 def test_ingest_roundtrip_with_egress_blocked():
-    from ascore.ingest import ingest_otlp_payload
+    from agenttic.ingest import ingest_otlp_payload
     payload = {"resourceSpans": [{"resource": {"attributes": [
         {"key": "agenttic.agent_id", "value": {"stringValue": "ag"}}]},
         "scopeSpans": [{"scope": {"name": "x"}, "spans": [
@@ -168,9 +168,9 @@ def test_mock_certification_completes_with_egress_blocked():
     internet disabled — the air-gap 'full scan + certification' acceptance."""
     import asyncio
 
-    from ascore.certification.certify import certify as _certify
-    from ascore.certification.mock_provider import MockAnthropicClient
-    from ascore.config import load_config
+    from agenttic.certification.certify import certify as _certify
+    from agenttic.certification.mock_provider import MockAnthropicClient
+    from agenttic.config import load_config
     cfg = load_config("config.yaml")
     with _EgressBlocked(), tempfile.TemporaryDirectory() as tmp:
         reg = Registry(db_path=f"{tmp}/t.db")

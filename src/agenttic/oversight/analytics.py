@@ -94,7 +94,7 @@ def _post_approval_incidents(reg, cfg, agent_id, approved) -> int:
         return 0
     earliest = min(times)
     count = 0
-    from ascore.live.incidents import IncidentManager
+    from agenttic.live.incidents import IncidentManager
     for row in IncidentManager(reg).list_with_sla(cfg, agent_id=agent_id):
         try:
             opened = datetime.fromisoformat(row["opened_at"])

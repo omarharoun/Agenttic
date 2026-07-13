@@ -1,6 +1,6 @@
 """Wire the real billing provider into the Copilot credits seam.
 
-:mod:`ascore.copilot.credits` defines a :class:`CreditsProvider` interface with a
+:mod:`agenttic.copilot.credits` defines a :class:`CreditsProvider` interface with a
 permissive stub as the default. This module supplies the REAL implementation —
 :class:`BillingCreditsProvider` — and installs it at app startup, so:
 
@@ -24,11 +24,11 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from ascore.billing import plans, service
-from ascore.copilot import credits as copilot_credits
-from ascore.copilot.credits import CreditDecision, CreditsProvider, UsageRecord
+from agenttic.billing import plans, service
+from agenttic.copilot import credits as copilot_credits
+from agenttic.copilot.credits import CreditDecision, CreditsProvider, UsageRecord
 
-log = logging.getLogger("ascore.billing")
+log = logging.getLogger("agenttic.billing")
 
 
 class BillingCreditsProvider(CreditsProvider):

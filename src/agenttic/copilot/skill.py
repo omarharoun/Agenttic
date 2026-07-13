@@ -3,7 +3,7 @@
 This module is pure (no network, no DB, no LLM) so the instruction set is
 unit-testable and identical on every call site. ``build_system_prompt`` assembles
 the final system prompt the endpoint injects: the persona/guardrails below, plus
-the curated platform knowledge (:mod:`ascore.copilot.knowledge`), plus a small
+the curated platform knowledge (:mod:`agenttic.copilot.knowledge`), plus a small
 deep-link map the model may cite as clickable navigation.
 
 Design seam: v1 is a read-only guide (Q&A + navigation deep-links). The

@@ -6,9 +6,9 @@ import copy
 
 import pytest
 
-from ascore.certification.tiers import decide
-from ascore.config import load_config
-from ascore.schema.certification import CertificationProfile, DomainCoverage
+from agenttic.certification.tiers import decide
+from agenttic.config import load_config
+from agenttic.schema.certification import CertificationProfile, DomainCoverage
 
 
 @pytest.fixture()

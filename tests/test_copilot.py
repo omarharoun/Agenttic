@@ -22,16 +22,16 @@ from types import SimpleNamespace as NS
 import pytest
 from fastapi.testclient import TestClient
 
-from ascore.copilot import credits
-from ascore.copilot.service import (
+from agenttic.copilot import credits
+from agenttic.copilot.service import (
     CopilotConfig, CopilotNotConfigured, CopilotService, is_configured,
     resolve_client, sanitize_messages,
 )
-from ascore.copilot.skill import build_system_prompt
-from ascore.copilot import tools as cop_tools
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
-from ascore.server.routes import copilot as copilot_route
+from agenttic.copilot.skill import build_system_prompt
+from agenttic.copilot import tools as cop_tools
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
+from agenttic.server.routes import copilot as copilot_route
 
 
 # --------------------------------------------------------------------------- #

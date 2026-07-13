@@ -6,12 +6,12 @@ from datetime import datetime, timezone
 
 import pytest
 
-from ascore.adapters.base import AgentAdapter
-from ascore.budget import BudgetExceededError, RunBudget, check_pre_run
-from ascore.harness.runner import HarnessConfig, run_suite
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.testcase import TestCase, TestSuite
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.adapters.base import AgentAdapter
+from agenttic.budget import BudgetExceededError, RunBudget, check_pre_run
+from agenttic.harness.runner import HarnessConfig, run_suite
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 
 class TestPreRunGate:
@@ -44,7 +44,7 @@ class TestPreRunGate:
 
 class TestGateInOpsPath:
     def test_run_and_score_blocked_by_tiny_cap(self, tmp_path):
-        from ascore import ops
+        from agenttic import ops
         from tests.test_e2e_pipeline import RoutingFakeClient
         from tests.test_executor import load_pilot
 

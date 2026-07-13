@@ -12,9 +12,9 @@ import urllib.request
 import uuid
 from datetime import datetime, timezone
 
-from ascore.adapters.base import AgentAdapter
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.security import validate_blackbox_url
+from agenttic.adapters.base import AgentAdapter
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.security import validate_blackbox_url
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -45,8 +45,8 @@ def _http_transport(url: str, payload: dict, timeout: float,
 
 
 #: Header set on every request to the user's agent so the operator can recognise
-#: Agenttic's safety traffic. Defined in ``ascore.connect`` (single source).
-from ascore.connect import SAFETY_TEST_HEADER  # noqa: E402
+#: Agenttic's safety traffic. Defined in ``agenttic.connect`` (single source).
+from agenttic.connect import SAFETY_TEST_HEADER  # noqa: E402
 
 
 class BlackBoxHTTPAgent(AgentAdapter):
@@ -55,7 +55,7 @@ class BlackBoxHTTPAgent(AgentAdapter):
     Two response-extraction modes:
 
     * legacy/flat — ``output_field``: a top-level key in the JSON response.
-    * ``mapping`` (a :class:`ascore.connect.Mapping`): the request prompt is
+    * ``mapping`` (a :class:`agenttic.connect.Mapping`): the request prompt is
       rendered into the mapped request body and the reply is read from a dotted
       response path (e.g. ``choices[0].message.content``). This is what the
       "Connect your agent" flow uses; it also builds the request body so an
@@ -77,7 +77,7 @@ class BlackBoxHTTPAgent(AgentAdapter):
         allow_private_url: bool = False,  # opt-in to hit private/loopback hosts
         cost_per_call_usd: float = 0.0,   # declared cost (black-box has no usage)
         headers: dict | None = None,      # auth / custom headers for the endpoint
-        mapping=None,                     # ascore.connect.Mapping | None
+        mapping=None,                     # agenttic.connect.Mapping | None
         min_interval_s: float = 0.0,      # min seconds between requests (rate limit)
         transport=None,  # injectable for tests; defaults to real HTTP
     ):
@@ -110,17 +110,17 @@ class BlackBoxHTTPAgent(AgentAdapter):
     def _request_body(self, test_input: dict) -> dict:
         """The JSON body to POST: mapped (Connect flow) or the raw case input."""
         if self.mapping is not None:
-            from ascore.connect import build_request_body, render_prompt
+            from agenttic.connect import build_request_body, render_prompt
             return build_request_body(self.mapping, render_prompt(test_input))
         return test_input
 
     def _extract_reply(self, body: dict) -> str:
         """The reply text from the response (raises so callers record an error)."""
         if self.mapping is not None:
-            from ascore.connect import extract_reply
+            from agenttic.connect import extract_reply
             return extract_reply(self.mapping, body)
         if self.output_field not in body:
-            from ascore.connect import MappingError
+            from agenttic.connect import MappingError
             raise MappingError(
                 f"response missing field {self.output_field!r}: keys={list(body)}")
         return str(body[self.output_field])

@@ -20,7 +20,7 @@ code". The detectors are recall-bounded lexical screens, not a security audit.
 
 from __future__ import annotations
 
-from ascore.metrics.catalog import CanonicalMetric
+from agenttic.metrics.catalog import CanonicalMetric
 
 SWE_METRICS: tuple[CanonicalMetric, ...] = (
     CanonicalMetric(

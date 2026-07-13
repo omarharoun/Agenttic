@@ -22,19 +22,19 @@ import uuid
 
 import pytest
 
-from ascore import optimizer as optmod
-from ascore.optimizer import (
+from agenttic import optimizer as optmod
+from agenttic.optimizer import (
     evaluate_candidate,
     project_runs,
     reflect_on_failures,
     split_suite,
 )
-from ascore.ab import compare_scorecards
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.ab import ABVariant
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
-from ascore.schema.testcase import TestCase, TestSuite
+from agenttic.ab import compare_scorecards
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.ab import ABVariant
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.schema.testcase import TestCase, TestSuite
 
 CFG = {
     "models": {"agent_default": "agent-model", "judge_strong": "judge-model",

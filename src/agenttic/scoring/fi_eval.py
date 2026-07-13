@@ -21,10 +21,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from ascore.schema.rubric import Rubric
-from ascore.schema.scorecard import CriterionScore
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import Trace
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.scorecard import CriterionScore
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import Trace
 
 
 class FiError(RuntimeError):

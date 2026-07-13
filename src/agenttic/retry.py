@@ -18,7 +18,7 @@ import random
 import time
 from dataclasses import dataclass
 
-logger = logging.getLogger("ascore.retry")
+logger = logging.getLogger("agenttic.retry")
 
 _RETRYABLE_STATUS = {408, 409, 429, 500, 502, 503, 529}
 _RETRYABLE_NAMES = {

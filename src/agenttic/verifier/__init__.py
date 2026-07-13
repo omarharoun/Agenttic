@@ -4,7 +4,7 @@ delegation chains against a fetched JWKS. No Agenttic account required.
 Verification failures raise distinct, named errors (Hard Rule 27); status is
 checked separately from the signature (Hard Rule 28)."""
 
-from ascore.verify.sdk import (  # noqa: F401
+from agenttic.verifier.sdk import (  # noqa: F401
     ExpiredError,
     RevokedError,
     TamperedError,

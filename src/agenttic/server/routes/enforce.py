@@ -17,9 +17,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from ascore.enforce.gateway import PolicyIntegrityError
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.server.auth import require_operator
+from agenttic.enforce.gateway import PolicyIntegrityError
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.server.auth import require_operator
 
 router = APIRouter(tags=["enforce"])
 
@@ -83,7 +83,7 @@ def enforce_events(request: Request, session_id: str | None = None,
 @router.get("/enforce/export")
 def enforce_export(request: Request, fmt: str = "json",
                    session_id: str | None = None, agent_id: str | None = None):
-    from ascore.enforce.export import export_json, export_otel
+    from agenttic.enforce.export import export_json, export_otel
     if fmt == "otel":
         return export_otel(request.state.reg, session_id, agent_id)
     import json
@@ -93,14 +93,14 @@ def enforce_export(request: Request, fmt: str = "json",
 @router.get("/enforce/dashboard")
 def enforce_dashboard(request: Request, agent_id: str | None = None,
                       session_id: str | None = None):
-    from ascore.enforce.dashboard import dashboard_metrics
+    from agenttic.enforce.dashboard import dashboard_metrics
     return dashboard_metrics(request.state.reg, agent_id, session_id)
 
 
 @router.get("/enforce/shadow-report")
 def enforce_shadow_report(request: Request, agent_id: str):
     """The would-be-block report for the ramp dashboard panel (SPEC-7 Step 39)."""
-    from ascore.enforce.ramp import shadow_report
+    from agenttic.enforce.ramp import shadow_report
     return shadow_report(request.state.reg, agent_id)
 
 
@@ -112,7 +112,7 @@ class RampModeRequest(BaseModel):
 @router.post("/enforce/mode", dependencies=[Depends(require_operator)])
 def enforce_set_mode(body: RampModeRequest, request: Request):
     """Advance or step down an agent's enforcement mode (append-only, actor-stamped)."""
-    from ascore.enforce.ramp import RampError, set_mode
+    from agenttic.enforce.ramp import RampError, set_mode
     actor = getattr(request.state, "user_email", None) or "operator"
     try:
         return set_mode(request.state.reg, body.agent_id, body.mode, f"pat:{actor}")
@@ -122,7 +122,7 @@ def enforce_set_mode(body: RampModeRequest, request: Request):
 
 @router.get("/enforce/mode")
 def enforce_get_mode(request: Request, agent_id: str):
-    from ascore.enforce.ramp import current_mode, mode_history
+    from agenttic.enforce.ramp import current_mode, mode_history
     return {"agent_id": agent_id,
             "mode": current_mode(request.state.reg, agent_id),
             "history": mode_history(request.state.reg, agent_id)}
@@ -138,7 +138,7 @@ class ShadowFPRequest(BaseModel):
              dependencies=[Depends(require_operator)])
 def enforce_shadow_fp(body: ShadowFPRequest, request: Request):
     """Mark a shadow would-be-block benign → feed the hardening loop."""
-    from ascore.enforce.ramp import mark_shadow_false_positive
+    from agenttic.enforce.ramp import mark_shadow_false_positive
     reviewer = getattr(request.state, "user_email", None) or "reviewer"
     event_id = mark_shadow_false_positive(
         request.state.reg, body.agent_id, body.shadow_ref, reviewer, body.note)
@@ -155,7 +155,7 @@ class FalsePositiveRequest(BaseModel):
 @router.post("/enforce/false-positive", dependencies=[Depends(require_operator)])
 def enforce_false_positive(body: FalsePositiveRequest, request: Request):
     """The dashboard FP button: mark a flagged decision benign → checker-eval case."""
-    from ascore.enforce.feedback import mark_false_positive
+    from agenttic.enforce.feedback import mark_false_positive
     reviewer = getattr(request.state, "user_email", None) or "reviewer"
     case_id = mark_false_positive(request.state.reg, body.session_id,
                                   body.agent_id, body.decision_ref, reviewer,
@@ -171,14 +171,14 @@ class ApprovalResolveRequest(BaseModel):
 @router.get("/oversight/analytics")
 def oversight_analytics(request: Request, agent_id: str | None = None):
     """Approval-quality process-health metrics (renders from the log alone)."""
-    from ascore.oversight.analytics import approval_analytics
+    from agenttic.oversight.analytics import approval_analytics
     return approval_analytics(request.state.reg, request.state.cfg, agent_id)
 
 
 @router.get("/oversight/pending")
 def oversight_pending(request: Request, agent_id: str | None = None):
     """Pending oversight reviews + loosening proposals (the SSE/UI feed source)."""
-    from ascore.enforce.interactive_oversight import (
+    from agenttic.enforce.interactive_oversight import (
         pending_loosen_proposals,
         pending_reviews,
     )
@@ -203,7 +203,7 @@ def oversight_confirm(proposal_id: str, body: ConfirmLooseningRequest,
                       request: Request):
     """Explicitly confirm a loosening proposal (the only path that ever applies
     a loosening — never automatic)."""
-    from ascore.enforce.interactive_oversight import InteractiveOversightLoop
+    from agenttic.enforce.interactive_oversight import InteractiveOversightLoop
     identity = getattr(request.state, "user_email", None) or "operator"
     loop = InteractiveOversightLoop(request.state.reg, request.state.cfg)
     try:
@@ -223,8 +223,8 @@ def enforce_approvals(request: Request, session_id: str | None = None,
              dependencies=[Depends(require_operator)])
 def resolve_approval(approval_id: str, body: ApprovalResolveRequest,
                      request: Request):
-    from ascore.enforce.approvals import ApprovalManager
-    from ascore.registry.sqlite_store import NotFoundError
+    from agenttic.enforce.approvals import ApprovalManager
+    from agenttic.registry.sqlite_store import NotFoundError
     identity = getattr(request.state, "user_email", None) or "operator"
     am = ApprovalManager(request.state.reg, request.state.cfg)
     try:

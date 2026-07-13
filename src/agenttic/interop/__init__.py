@@ -3,10 +3,10 @@ and from external eval harnesses so others can re-run our evals in tooling they
 already trust.
 
 Currently ships the **Inspect** bridge (UK AI Safety Institute's ``inspect_ai``
-``EvalLog`` format). See :mod:`ascore.interop.inspect_log`.
+``EvalLog`` format). See :mod:`agenttic.interop.inspect_log`.
 """
 
-from ascore.interop.inspect_log import (
+from agenttic.interop.inspect_log import (
     INTEROP_VERSION,
     from_inspect_log,
     to_inspect_log,

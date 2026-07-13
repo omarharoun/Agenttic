@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 
-from ascore.schema.enforcement import EnforcementEvent
+from agenttic.schema.enforcement import EnforcementEvent
 
 
 def hardening_candidates(reg, session_id: str | None = None,

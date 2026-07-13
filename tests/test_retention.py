@@ -5,8 +5,8 @@ from datetime import datetime, timedelta, timezone
 
 from sqlmodel import Session
 
-from ascore.registry.sqlite_store import Registry, TraceRow
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.registry.sqlite_store import Registry, TraceRow
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 
 def _trace(out="secret answer"):
@@ -62,7 +62,7 @@ def test_zero_is_noop(tmp_path):
 def test_cli_retention_dry_run_and_apply(tmp_path):
     from typer.testing import CliRunner
 
-    from ascore.cli import app
+    from agenttic.cli import app
     cfg = tmp_path / "config.yaml"
     cfg.write_text(
         "models: {agent_default: a, judge_strong: j, judge_light: l, generator: g}\n"

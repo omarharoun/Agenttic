@@ -1,7 +1,7 @@
 """A/B comparison schema — two agent variants, head-to-head on one suite.
 
 A **variant** is an agent-under-test configuration. It mirrors the arguments
-:func:`ascore.ops.build_adapter` needs (same fields as a declared agent), so any
+:func:`agenttic.ops.build_adapter` needs (same fields as a declared agent), so any
 of three comparisons fall out of the same abstraction:
 
 * two different agents (different ``agent_id`` / ``url`` / managed ids),
@@ -11,7 +11,7 @@ of three comparisons fall out of the same abstraction:
 
 The :class:`ABComparison` is the paired-comparison artifact: both variants'
 scorecards, the per-case pass/fail diff, per-criterion deltas, cost/latency, and
-a statistically honest verdict (see :mod:`ascore.stats`).
+a statistically honest verdict (see :mod:`agenttic.stats`).
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from ascore.schema.agent import AgentVariant
+from agenttic.schema.agent import AgentVariant
 
 
 class ABVariant(BaseModel):
@@ -118,7 +118,7 @@ class ABComparison(BaseModel):
     success_rate_a: float
     success_rate_b: float
     success_delta: float                 # rate_b - rate_a
-    mcnemar: dict                        # ascore.stats.McNemarResult.to_dict()
+    mcnemar: dict                        # agenttic.stats.McNemarResult.to_dict()
 
     per_criterion: list[CriterionComparison] = Field(default_factory=list)
     flipped_cases: list[FlippedCase] = Field(default_factory=list)

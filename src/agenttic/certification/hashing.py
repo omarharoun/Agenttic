@@ -36,7 +36,7 @@ def sha256_hex(payload: Any) -> str:
 def compute_dossier_hash(dossier: "Dossier | dict") -> str:  # noqa: F821
     """Compute a dossier's ``content_sha256`` over every field except itself.
 
-    Accepts a :class:`~ascore.schema.certification.Dossier` (uses its
+    Accepts a :class:`~agenttic.schema.certification.Dossier` (uses its
     ``hashable_content()``) or a plain dict (``content_sha256`` is dropped)."""
     if hasattr(dossier, "hashable_content"):
         content = dossier.hashable_content()

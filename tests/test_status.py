@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
-from ascore.server.health import (
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
+from agenttic.server.health import (
     DEGRADED,
     DOWN,
     OPERATIONAL,
@@ -180,7 +180,7 @@ def test_healthz_is_liveness(tmp_path):
 
 
 def _mk(states):
-    from ascore.server.health import ComponentHealth
+    from agenttic.server.health import ComponentHealth
     return [ComponentHealth(name=f"c{i}", status=s, latency_ms=0.0,
                             detail="", last_checked="t")
             for i, s in enumerate(states)]

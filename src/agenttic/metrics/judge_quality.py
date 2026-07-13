@@ -1,6 +1,6 @@
 """LLM-judge quality & RAG rubric evaluators — the qualitative dimensions
 (groundedness, relevance, coherence, tone, …) scored by Agenttic's anchored,
-one-criterion-per-call judge harness (``ascore.scoring.judge``).
+one-criterion-per-call judge harness (``agenttic.scoring.judge``).
 
 Why a dedicated family module
 ------------------------------
@@ -39,7 +39,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ascore.schema.rubric import Criterion, Rubric
+from agenttic.schema.rubric import Criterion, Rubric
 
 # Rubric provenance tags (for the honest catalog surface).
 SOURCE_ORIGINAL = "original"

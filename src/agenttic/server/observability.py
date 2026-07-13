@@ -17,10 +17,10 @@ import uuid
 
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from ascore.server import metrics
-from ascore.server.tracing import span
+from agenttic.server import metrics
+from agenttic.server.tracing import span
 
-logger = logging.getLogger("ascore.request")
+logger = logging.getLogger("agenttic.request")
 
 
 class _JsonFormatter(logging.Formatter):
@@ -35,7 +35,7 @@ class _JsonFormatter(logging.Formatter):
 
 
 def configure_logging(cfg: dict) -> None:
-    from ascore.secrets import (
+    from agenttic.secrets import (
         SecretRedactor, hydrate_env_secrets, known_secret_values)
 
     hydrate_env_secrets()  # pull *_FILE secrets into the environment

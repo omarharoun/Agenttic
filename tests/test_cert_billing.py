@@ -13,12 +13,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from ascore import ops
-from ascore.budget import BudgetExceededError
-from ascore.certification.certify import certify
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.scorecard import CriterionScore, RunScore
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic import ops
+from agenttic.budget import BudgetExceededError
+from agenttic.certification.certify import certify
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.scorecard import CriterionScore, RunScore
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 NOW = datetime(2026, 6, 21, tzinfo=timezone.utc)
 

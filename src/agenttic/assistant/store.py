@@ -1,6 +1,6 @@
 """Tenant-scoped persistence for Safe Reference Assistant sessions.
 
-Thin wrapper over :class:`ascore.registry.sqlite_store.AssistantSessionRow`. A
+Thin wrapper over :class:`agenttic.registry.sqlite_store.AssistantSessionRow`. A
 session's full state (transcript, scratchpad, step log, pending approval) lives
 in the ``payload`` JSON; ``status`` is mirrored to a column so the API can list
 sessions and answer "is this one waiting on me?" without parsing every payload.
@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
-from ascore.registry.sqlite_store import AssistantSessionRow, NotFoundError
+from agenttic.registry.sqlite_store import AssistantSessionRow, NotFoundError
 
 
 def _now() -> datetime:

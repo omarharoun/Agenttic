@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from ascore.config import load_config
+from agenttic.config import load_config
 
 ROOT = Path(__file__).resolve().parents[1]
 

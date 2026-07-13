@@ -51,7 +51,7 @@ def _config_get(cfg: Any, *keys: str) -> Any:
     path = os.environ.get("AGENTTIC_CONFIG")
     if path and os.path.exists(path):
         try:
-            from ascore.config import load_config
+            from agenttic.config import load_config
             dist = (load_config(path).get("distribution") or {})
             for key in keys:
                 if dist.get(key):
@@ -235,7 +235,7 @@ def _wrap_callable(fn: Any, *, agent_id: str, agent_config_hash: str = "",
     import functools
     import time
 
-    from ascore.ingest.emit import SpanEmitter
+    from agenttic.ingest.emit import SpanEmitter
 
     def _emit(inp: Any, out: Any, err: Exception | None, t0: int) -> None:
         latency_ms = (time.time_ns() - t0) / 1e6
@@ -252,7 +252,7 @@ def _wrap_callable(fn: Any, *, agent_id: str, agent_config_hash: str = "",
     def _guard():
         if not enforce:
             return None
-        from ascore.enforce.adapter_guard import build_enforce_guard
+        from agenttic.enforce.adapter_guard import build_enforce_guard
         return build_enforce_guard(agent_id, enforce, reg=reg, cfg=cfg)
 
     is_async = _is_coro(fn)

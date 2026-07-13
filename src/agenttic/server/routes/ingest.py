@@ -15,8 +15,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request, Response
 
-from ascore.ingest.mapping import ingest_otlp_payload
-from ascore.ingest.otel import otlp_success_response
+from agenttic.ingest.mapping import ingest_otlp_payload
+from agenttic.ingest.otel import otlp_success_response
 
 router = APIRouter(tags=["ingest"])
 

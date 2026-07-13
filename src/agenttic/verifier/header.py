@@ -26,8 +26,8 @@ def verify_agent_passport(header_value: str, jwks: dict, *, status_fetcher=None,
     """Verify an ``Agent-Passport`` header. Returns the claims on success; raises
     a distinct verifier error otherwise. When ``check_status`` and a fetcher are
     given, the status URL is consulted (revocation beats a valid signature)."""
-    from ascore.verify.sdk import check_status as _check_status
-    from ascore.verify.sdk import verify_passport
+    from agenttic.verifier.sdk import check_status as _check_status
+    from agenttic.verifier.sdk import verify_passport
 
     passport = decode_passport_header(header_value)
     status = None

@@ -12,7 +12,7 @@ Guards applied here (defense in depth; the route adds rate-limit + credits):
 - User content is capped in length and count (context/cost ceiling) and passed as
   ordinary chat turns — the system prompt already instructs the model to treat
   all conversation content as untrusted data, not instructions.
-- Streamed output is scrubbed with :func:`ascore.assistant.guard.redact_secrets`
+- Streamed output is scrubbed with :func:`agenttic.assistant.guard.redact_secrets`
   so no key/secret pattern can be echoed back.
 - ``max_tokens`` is capped so a single answer can't run away.
 
@@ -27,11 +27,11 @@ import os
 from collections.abc import Iterator
 from dataclasses import dataclass
 
-from ascore.assistant.guard import redact_secrets
-from ascore.copilot.errors import classify
-from ascore.copilot.skill import build_system_prompt
+from agenttic.assistant.guard import redact_secrets
+from agenttic.copilot.errors import classify
+from agenttic.copilot.skill import build_system_prompt
 
-log = logging.getLogger("ascore.copilot.service")
+log = logging.getLogger("agenttic.copilot.service")
 
 DEFAULT_MODEL = "claude-sonnet-4-6"
 

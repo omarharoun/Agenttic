@@ -17,8 +17,8 @@ from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 from fpdf.fonts import FontFace
 
-from ascore.schema.rubric import Rubric
-from ascore.schema.scorecard import Scorecard
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.scorecard import Scorecard
 
 CLAY = (201, 100, 66)
 INK = (33, 31, 26)

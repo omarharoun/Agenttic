@@ -1,7 +1,7 @@
 """Adapter base — the driver interface every agent must be wrapped in.
 
 An adapter's single job: accept a test input, run the agent, and emit a
-well-formed :class:`~ascore.schema.trace.Trace`. The harness (Step 3) only
+well-formed :class:`~agenttic.schema.trace.Trace`. The harness (Step 3) only
 ever talks to this interface, which is what makes "any agent, any framework"
 possible.
 """
@@ -13,7 +13,7 @@ import json
 from abc import ABC, abstractmethod
 from typing import Literal
 
-from ascore.schema.trace import Trace
+from agenttic.schema.trace import Trace
 
 
 class AgentAdapter(ABC):

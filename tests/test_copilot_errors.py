@@ -4,7 +4,7 @@ and the REAL underlying error is logged server-side (never the generic 200 the
 old bare-except produced).
 
 Covered:
-* :func:`ascore.copilot.errors.classify` maps each upstream failure to the right
+* :func:`agenttic.copilot.errors.classify` maps each upstream failure to the right
   case, and the user-facing message never leaks internals (no "Anthropic", no
   "credit balance") for the out-of-Agenttic-credits case;
 * the agentic endpoint, when the model call raises, streams a structured SSE
@@ -19,13 +19,13 @@ from types import SimpleNamespace as NS
 
 from fastapi.testclient import TestClient
 
-from ascore.copilot import credits
-from ascore.copilot.errors import (
+from agenttic.copilot import credits
+from agenttic.copilot.errors import (
     GENERIC, OUT_OF_CREDITS, RATE_LIMITED, UNAVAILABLE, classify,
 )
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
-from ascore.server.routes import copilot as copilot_route
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
+from agenttic.server.routes import copilot as copilot_route
 
 
 # --------------------------------------------------------------------------- #
@@ -150,13 +150,13 @@ class TestEndpointErrorSurface:
             self, tmp_path):
         exc = FakeAPIError("RateLimitError", 429, "rate_limit_error", "slow down")
         app = _mk_app(tmp_path, exc)
-        recs, h = _capture("ascore.copilot.agent")
+        recs, h = _capture("agenttic.copilot.agent")
         try:
             with TestClient(app) as c:
                 r = c.post("/api/copilot/chat", headers={"Authorization": "Bearer adm"},
                            json={"message": "hi"})
         finally:
-            logging.getLogger("ascore.copilot.agent").removeHandler(h)
+            logging.getLogger("agenttic.copilot.agent").removeHandler(h)
         assert r.status_code == 200
         errs = [json.loads(d) for e, d in _events(r) if e == "error"]
         assert errs and errs[0]["code"] == "rate_limited"

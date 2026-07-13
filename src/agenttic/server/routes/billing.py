@@ -24,12 +24,12 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
-from ascore.billing import plans, service
-from ascore.billing.gateways import paypal_gateway, stripe_gateway
-from ascore.billing.invoices import render_invoice_html
-from ascore.billing.store import BillingStore, GlobalBillingStore
+from agenttic.billing import plans, service
+from agenttic.billing.gateways import paypal_gateway, stripe_gateway
+from agenttic.billing.invoices import render_invoice_html
+from agenttic.billing.store import BillingStore, GlobalBillingStore
 
-log = logging.getLogger("ascore.billing")
+log = logging.getLogger("agenttic.billing")
 
 router = APIRouter(tags=["billing"], prefix="/billing")
 public_router = APIRouter(tags=["billing-public"])
@@ -280,7 +280,7 @@ async def stripe_webhook(request: Request):
     except Exception as exc:  # noqa: BLE001 — bad signature / not configured
         log.warning("stripe webhook rejected: %s", type(exc).__name__)
         raise HTTPException(400, "invalid Stripe signature")
-    from ascore.billing.webhooks import apply_stripe_event
+    from agenttic.billing.webhooks import apply_stripe_event
     try:
         result = apply_stripe_event(
             event, resolve_engine=_resolve_engine(request),
@@ -315,7 +315,7 @@ async def paypal_webhook(request: Request):
     else:
         log.warning("paypal webhook received but PAYPAL_WEBHOOK_ID is unset — "
                     "processing UNVERIFIED (set it before going live)")
-    from ascore.billing.webhooks import apply_paypal_event
+    from agenttic.billing.webhooks import apply_paypal_event
     try:
         result = apply_paypal_event(
             body, resolve_engine=_resolve_engine(request),

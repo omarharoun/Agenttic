@@ -8,8 +8,8 @@ recommendations section built from the worst-performing criteria.
 
 from __future__ import annotations
 
-from ascore.schema.rubric import Rubric
-from ascore.schema.scorecard import Scorecard
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.scorecard import Scorecard
 
 
 def _pct(x: float) -> str:

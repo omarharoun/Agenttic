@@ -25,15 +25,15 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from ascore.config import load_config
-from ascore.registry.sqlite_store import Registry
-from ascore.server import metrics
-from ascore.server.auth import check_startup, require_auth
-from ascore.server.events import EventBus, make_transport
-from ascore.server.executor import ExecutionManager
-from ascore.server.observability import ObservabilityMiddleware, configure_logging
-from ascore.server.ratelimit import RateLimitMiddleware
-from ascore.server.store import UIStore
+from agenttic.config import load_config
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server import metrics
+from agenttic.server.auth import check_startup, require_auth
+from agenttic.server.events import EventBus, make_transport
+from agenttic.server.executor import ExecutionManager
+from agenttic.server.observability import ObservabilityMiddleware, configure_logging
+from agenttic.server.ratelimit import RateLimitMiddleware
+from agenttic.server.store import UIStore
 
 # UI_DIST: env override (ASCORE_UI_DIST) for installed/container layouts where
 # the package lives in site-packages; falls back to the repo-relative path for
@@ -111,7 +111,7 @@ class Workspaces:
     def _build(self, tenant: str):
         if self._postgres:
             if self._shared_engine is None:
-                from ascore.registry.sqlite_store import make_engine
+                from agenttic.registry.sqlite_store import make_engine
                 self._shared_engine = make_engine(self._db_url)
             reg = Registry(engine=self._shared_engine, tenant=tenant)
             store = UIStore(self._shared_engine, tenant=tenant)
@@ -133,15 +133,15 @@ class Workspaces:
             bus = EventBus(store, loop=self.loop, transport=self._transport)
             manager = ExecutionManager(self.cfg, reg, store, bus,
                                        clients=self.clients)
-            from ascore.server.ab_manager import ABManager
+            from agenttic.server.ab_manager import ABManager
             ab = ABManager(self.cfg, reg, clients=self.clients)
-            from ascore.server.optimizer_manager import OptimizerManager
+            from agenttic.server.optimizer_manager import OptimizerManager
             optimizer = OptimizerManager(self.cfg, reg, clients=self.clients)
-            from ascore.server.certify_manager import CertifyManager
+            from agenttic.server.certify_manager import CertifyManager
             certifier = CertifyManager(self.cfg, reg, clients=self.clients)
-            from ascore.enforce.gateway import EnforcementGateway
+            from agenttic.enforce.gateway import EnforcementGateway
             enforcer = EnforcementGateway(reg, self.cfg)
-            from ascore.camp.store import CampStore
+            from agenttic.camp.store import CampStore
             camp_tenant = tenant if self._postgres else "default"
             camp = CampStore(reg.engine, tenant=camp_tenant)
             camp.interrupt_orphans()  # sweep runs left 'running' by a dead process
@@ -180,11 +180,11 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         import asyncio
         cfg = load_config(config_path)
         configure_logging(cfg)
-        from ascore.server.tracing import setup_tracing
+        from agenttic.server.tracing import setup_tracing
         # Air-gap self-check FIRST: if air-gap mode is on and any enabled
         # capability would require egress, refuse to boot naming the offender
         # (Hard Rule 34) — before we wire tracing/exporters that might egress.
-        from ascore.airgap import assert_airgap_safe
+        from agenttic.airgap import assert_airgap_safe
         assert_airgap_safe(cfg)
         setup_tracing(cfg)  # OTel exporter when observability.otel_enabled
         check_startup(cfg)  # fail closed if auth.required without a token
@@ -200,19 +200,19 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         app.state.manager = default.manager
         app.state.clients = clients or {}
         # app-level passport signing key (one JWKS for the deployment)
-        from ascore.passport.keys import PassportKeyManager
+        from agenttic.passport.keys import PassportKeyManager
         app.state.passport_keys = PassportKeyManager(cfg)
         # live service-health checker — probes real components for /api/status
         # and stamps process start time for an honest uptime figure.
-        from ascore.server.health import HealthChecker
+        from agenttic.server.health import HealthChecker
         app.state.health = HealthChecker()
         # first-admin bootstrap (env-driven, idempotent)
         admin_email = os.environ.get("ASCORE_ADMIN_EMAIL")
-        from ascore.secrets import get_secret
+        from agenttic.secrets import get_secret
         admin_pw = get_secret("ASCORE_ADMIN_PASSWORD")
         if admin_email and admin_pw:
             try:
-                from ascore.server.users import UserStore
+                from agenttic.server.users import UserStore
                 created = UserStore(default.reg.engine).ensure_admin(
                     admin_email, admin_pw)
                 logging.getLogger("ascore").info(
@@ -223,7 +223,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         # Billing: replace the permissive Copilot credits stub with real
         # free-credit accounting (only if it's still the default stub, so tests
         # that install their own provider aren't clobbered). Restored on shutdown.
-        from ascore.billing import credits_provider as _billing_credits
+        from agenttic.billing import credits_provider as _billing_credits
         app.state.billing_provider_token = _billing_credits.install_if_default(
             workspaces, cfg)
         try:
@@ -242,7 +242,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         # error is logged server-side with the request id for correlation.
         from fastapi.responses import JSONResponse
         rid = getattr(request.state, "request_id", None)
-        logging.getLogger("ascore.error").error(
+        logging.getLogger("agenttic.error").error(
             "unhandled error", extra={"extra_fields": {
                 "request_id": rid, "path": request.url.path,
                 "error": f"{type(exc).__name__}: {exc}"}})
@@ -273,29 +273,29 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     async def metrics_endpoint():
         return PlainTextResponse(metrics.render())
 
-    from ascore.server.routes.ab import router as ab_router
-    from ascore.server.routes.assistant import router as assistant_router
-    from ascore.server.routes.auth import router as auth_router
-    from ascore.server.routes.camp import router as camp_router
-    from ascore.server.routes.certifications import (
+    from agenttic.server.routes.ab import router as ab_router
+    from agenttic.server.routes.assistant import router as assistant_router
+    from agenttic.server.routes.auth import router as auth_router
+    from agenttic.server.routes.camp import router as camp_router
+    from agenttic.server.routes.certifications import (
         public_router as certifications_public_router,
     )
-    from ascore.server.routes.certifications import router as certifications_router
-    from ascore.server.routes.connect import router as connect_router
-    from ascore.server.routes.copilot import router as copilot_router
-    from ascore.server.routes.cost import router as cost_router
-    from ascore.server.routes.executions import router as executions_router
-    from ascore.server.routes.hardening import router as hardening_router
-    from ascore.server.routes.ingest import router as ingest_router
-    from ascore.server.routes.leaderboard import router as leaderboard_router
-    from ascore.server.routes.live import router as live_router
-    from ascore.server.routes.optimize import router as optimize_router
-    from ascore.server.routes.quickstart import router as quickstart_router
-    from ascore.server.routes.resources import router as resources_router
-    from ascore.server.routes.scan import router as scan_router
-    from ascore.server.routes.settings import router as settings_router
-    from ascore.server.routes.standard import router as standard_router
-    from ascore.server.routes.workflows import router as workflows_router
+    from agenttic.server.routes.certifications import router as certifications_router
+    from agenttic.server.routes.connect import router as connect_router
+    from agenttic.server.routes.copilot import router as copilot_router
+    from agenttic.server.routes.cost import router as cost_router
+    from agenttic.server.routes.executions import router as executions_router
+    from agenttic.server.routes.hardening import router as hardening_router
+    from agenttic.server.routes.ingest import router as ingest_router
+    from agenttic.server.routes.leaderboard import router as leaderboard_router
+    from agenttic.server.routes.live import router as live_router
+    from agenttic.server.routes.optimize import router as optimize_router
+    from agenttic.server.routes.quickstart import router as quickstart_router
+    from agenttic.server.routes.resources import router as resources_router
+    from agenttic.server.routes.scan import router as scan_router
+    from agenttic.server.routes.settings import router as settings_router
+    from agenttic.server.routes.standard import router as standard_router
+    from agenttic.server.routes.workflows import router as workflows_router
 
     # every /api route authenticates (sets role + tenant) then binds the
     # tenant's workspace onto request.state — incl. SSE and the approval gate.
@@ -310,14 +310,14 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
 
     # Public, UNAUTHENTICATED service-status rollup (powers the /status page).
     # Aggregate-only; no auth so uptime is visible even during an incident.
-    from ascore.server.routes.status import public_router as status_public_router
+    from agenttic.server.routes.status import public_router as status_public_router
     app.include_router(status_public_router, prefix="/api")
 
     # Public billing surfaces (UNAUTHENTICATED): the pricing catalog for the
     # landing/pricing page, and the Stripe + PayPal webhooks (signature-verified,
     # idempotent). Mounted before the auth-protected routers.
-    from ascore.server.routes.billing import public_router as billing_public_router
-    from ascore.server.routes.billing import webhook_router as billing_webhook_router
+    from agenttic.server.routes.billing import public_router as billing_public_router
+    from agenttic.server.routes.billing import webhook_router as billing_webhook_router
     app.include_router(billing_public_router, prefix="/api")
     app.include_router(billing_webhook_router, prefix="/api")
 
@@ -328,7 +328,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         issuer-independent certificate verification (see docs/CERTIFICATION.md)."""
         from fastapi.responses import JSONResponse
 
-        from ascore import certification as _cert
+        from agenttic import certification as _cert
         return JSONResponse(
             {"alg": _cert.SIGNATURE_ALG,
              "keys": _cert.published_public_keys(request.app.state.cfg)},
@@ -351,26 +351,26 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(connect_router, prefix="/api", dependencies=protected)
     app.include_router(assistant_router, prefix="/api", dependencies=protected)
     app.include_router(copilot_router, prefix="/api", dependencies=protected)
-    from ascore.server.routes.billing import router as billing_router
+    from agenttic.server.routes.billing import router as billing_router
     app.include_router(billing_router, prefix="/api", dependencies=protected)
     app.include_router(certifications_router, prefix="/api", dependencies=protected)
-    from ascore.server.routes.dossiers import router as dossiers_router
+    from agenttic.server.routes.dossiers import router as dossiers_router
     app.include_router(dossiers_router, prefix="/api", dependencies=protected)
     # Public, unauthenticated dossier verification at the root path (registered
     # before the SPA catch-all so it isn't shadowed).
-    from ascore.server.routes.dossiers import public_router as dossiers_public
+    from agenttic.server.routes.dossiers import public_router as dossiers_public
     app.include_router(dossiers_public)
-    from ascore.server.routes.enforce import router as enforce_router
+    from agenttic.server.routes.enforce import router as enforce_router
     app.include_router(enforce_router, prefix="/api", dependencies=protected)
     # OTLP/HTTP receiver — standard /v1/traces path (no /api prefix), auth+tenant
     # scoped like every other protected route.
     app.include_router(ingest_router, dependencies=protected)
     # public JWKS + passport status (unauthenticated); issuer routes are protected
-    from ascore.server.routes.passport import public_router as passport_public
-    from ascore.server.routes.passport import router as passport_router
+    from agenttic.server.routes.passport import public_router as passport_public
+    from agenttic.server.routes.passport import router as passport_router
     app.include_router(passport_public)
     app.include_router(passport_router, prefix="/api", dependencies=protected)
-    from ascore.server.routes.feeds import router as feeds_router
+    from agenttic.server.routes.feeds import router as feeds_router
     app.include_router(feeds_router, prefix="/api", dependencies=protected)
     app.include_router(camp_router, prefix="/api", dependencies=protected)
 

@@ -23,7 +23,7 @@ AgentVariant = Literal["reference", "blackbox", "managed"]
 
 class DeclaredAgent(BaseModel):
     """An agent an operator has registered for reuse. The fields mirror the
-    arguments :func:`ascore.ops.build_adapter` needs, so a declared entry maps
+    arguments :func:`agenttic.ops.build_adapter` needs, so a declared entry maps
     one-to-one onto a runnable adapter."""
 
     agent_id: str

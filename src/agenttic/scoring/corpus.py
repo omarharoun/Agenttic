@@ -30,13 +30,13 @@ from datetime import datetime, timezone
 from importlib import resources
 from pathlib import Path
 
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import Span, Trace
-from ascore.scoring.calibration import (
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import Span, Trace
+from agenttic.scoring.calibration import (
     CriterionCalibration,
     calibration_report,
 )
-from ascore.scoring.checks import run_check
+from agenttic.scoring.checks import run_check
 
 CORPUS_VERSION = "deterministic-calibration/v1"
 DEFAULT_THRESHOLD = 0.8
@@ -57,7 +57,7 @@ HEURISTIC_CRITERIA: frozenset[str] = frozenset({
 
 
 def _corpus_path() -> Path:
-    return Path(str(resources.files("ascore.scoring") / "calibration_corpus.jsonl"))
+    return Path(str(resources.files("agenttic.scoring") / "calibration_corpus.jsonl"))
 
 
 def load_corpus(path: str | Path | None = None) -> list[dict]:
@@ -210,7 +210,7 @@ def uncalibrated_criteria(criterion_ids, scorers: dict[str, str] | None = None,
 
     Pure-deterministic checks (unambiguous ground truth) are calibrated by
     construction and are never flagged."""
-    from ascore.scoring.judge_calibration import demonstrated_calibrated_judge
+    from agenttic.scoring.judge_calibration import demonstrated_calibrated_judge
     scorers = scorers or {}
     calibrated = demonstrated_calibrated(path)
     judge_calibrated = demonstrated_calibrated_judge()

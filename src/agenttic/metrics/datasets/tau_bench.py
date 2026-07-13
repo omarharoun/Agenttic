@@ -30,15 +30,15 @@ import json
 import urllib.request
 from importlib import resources
 
-from ascore.metrics.datasets.base import DatasetAdapter, DatasetInfo
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.testcase import TestCase
+from agenttic.metrics.datasets.base import DatasetAdapter, DatasetInfo
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.testcase import TestCase
 
 _GH = ("https://raw.githubusercontent.com/sierra-research/tau-bench/main/"
        "tau_bench/envs/")
 # (domain, upstream task file) — the public test splits.
 _FILES = [("retail", "retail/tasks_test.py"), ("airline", "airline/tasks_test.py")]
-_DATA = resources.files("ascore.metrics.datasets") / "tau_bench_data"
+_DATA = resources.files("agenttic.metrics.datasets") / "tau_bench_data"
 
 INFO = DatasetInfo(
     dataset_id="tau-bench",

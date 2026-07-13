@@ -23,9 +23,9 @@ from .trace import Episode, TraceStore
 def wilson_lower_bound(passes: int, n: int, z: float = 1.96) -> float:
     """Lower bound of the Wilson score interval for a binomial proportion.
 
-    Delegates to ``ascore.stats.wilson_lower_bound`` (single source of truth) so
+    Delegates to ``agenttic.stats.wilson_lower_bound`` (single source of truth) so
     the camp gate and every scorecard/leaderboard interval agree."""
-    from ascore.stats import wilson_lower_bound as _wlb
+    from agenttic.stats import wilson_lower_bound as _wlb
     return _wlb(passes, n, z)
 
 

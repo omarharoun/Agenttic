@@ -14,12 +14,12 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field
 
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.rubric import Criterion
-from ascore.schema.scorecard import Scorecard
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import Trace
-from ascore.scoring.judge import LLMJudge
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.rubric import Criterion
+from agenttic.schema.scorecard import Scorecard
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import Trace
+from agenttic.scoring.judge import LLMJudge
 
 _LIVE_TC = TestCase(
     test_id="live-traffic", suite_id="live", version=1,

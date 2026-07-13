@@ -28,14 +28,14 @@ def _b64d(s: str) -> bytes:
 
 def session_secret(cfg: dict) -> str:
     """Resolve the signing secret (env > config > derived from the API token)."""
-    from ascore.secrets import get_secret
+    from agenttic.secrets import get_secret
     env = get_secret("ASCORE_SESSION_SECRET")
     if env:
         return env
     auth = cfg.get("auth", {}) or {}
     if auth.get("session_secret"):
         return str(auth["session_secret"])
-    from ascore.server.auth import configured_token
+    from agenttic.server.auth import configured_token
     tok = configured_token(cfg)
     return f"session::{tok}" if tok else "ascore-dev-insecure-session-secret"
 

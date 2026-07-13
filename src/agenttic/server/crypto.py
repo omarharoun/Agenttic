@@ -22,7 +22,7 @@ from cryptography.fernet import Fernet, InvalidToken
 def _derive_key(cfg: dict) -> bytes:
     secret = os.environ.get("ASCORE_SECRET_KEY")
     if not secret:
-        from ascore.server.sessions import session_secret
+        from agenttic.server.sessions import session_secret
         try:
             secret = session_secret(cfg)
         except Exception:  # noqa: BLE001
@@ -31,7 +31,7 @@ def _derive_key(cfg: dict) -> bytes:
         # Fail closed in production: never encrypt tenant secrets under a
         # hard-coded default key. Outside production a deterministic dev key is
         # used so local runs work (dev data is not protected — by design).
-        from ascore.certification import is_production
+        from agenttic.certification import is_production
         if is_production(cfg):
             raise RuntimeError(
                 "ASCORE_SECRET_KEY is not set — refusing to encrypt secrets "

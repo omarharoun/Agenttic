@@ -21,7 +21,7 @@ BUDGET_SECONDS = int(os.environ.get("QUICKSTART_BUDGET_SECONDS", "60"))
 
 
 def _cli(*args: str, cwd: Path) -> subprocess.CompletedProcess:
-    return subprocess.run([sys.executable, "-m", "ascore", *args],
+    return subprocess.run([sys.executable, "-m", "agenttic", *args],
                           cwd=str(cwd), capture_output=True, text=True)
 
 

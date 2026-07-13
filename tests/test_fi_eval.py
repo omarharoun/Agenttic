@@ -7,14 +7,14 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from ascore.scoring.fi_eval import (
+from agenttic.scoring.fi_eval import (
     FI_METRICS,
     FiError,
     FiEvaluator,
     UnknownFiMetricError,
     validate_rubric_fi,
 )
-from ascore.schema.rubric import Criterion, Rubric
+from agenttic.schema.rubric import Criterion, Rubric
 from tests.test_judge_calibration import make_tc, make_trace
 
 

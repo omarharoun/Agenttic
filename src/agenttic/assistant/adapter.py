@@ -3,8 +3,8 @@ agenttic's OWN Safety Battery to self-certify it.
 
 The coordinator scans this assistant exactly like any user agent: one prompt in,
 one final answer out. :class:`SafeAssistantAgent` wraps :class:`SafeAssistant`
-into the :class:`~ascore.adapters.base.AgentAdapter` interface, producing a
-:class:`~ascore.schema.trace.Trace` whose ``final_output`` is the secret-filtered
+into the :class:`~agenttic.adapters.base.AgentAdapter` interface, producing a
+:class:`~agenttic.schema.trace.Trace` whose ``final_output`` is the secret-filtered
 answer.
 
 Black-box stance on the human-in-the-loop gate: with no human present, any
@@ -19,13 +19,13 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-from ascore.adapters.base import AgentAdapter
-from ascore.assistant.agent import (
+from agenttic.adapters.base import AgentAdapter
+from agenttic.assistant.agent import (
     STATUS_AWAITING_APPROVAL, SafeAssistant, new_session,
 )
-from ascore.assistant.posture import SYSTEM_PROMPT
-from ascore.assistant.tools import tool_schemas
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.assistant.posture import SYSTEM_PROMPT
+from agenttic.assistant.tools import tool_schemas
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 
 def _now() -> datetime:
@@ -39,7 +39,7 @@ def _sid() -> str:
 def _render_prompt(test_input: dict) -> str:
     """Flatten a battery case (``request`` + optional ``content`` that may hide
     an injection) into one user message — same convention as the Connect flow."""
-    from ascore.connect import render_prompt
+    from agenttic.connect import render_prompt
     return render_prompt(test_input)
 
 

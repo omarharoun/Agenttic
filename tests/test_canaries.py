@@ -5,12 +5,12 @@ from __future__ import annotations
 import tempfile
 from datetime import datetime, timedelta, timezone
 
-from ascore.config import load_config
-from ascore.enforce.canaries import CanaryManager
-from ascore.enforce.gateway import EnforcementGateway, compute_policy_hash
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.enforcement import EnforcementPolicy, Rule
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.config import load_config
+from agenttic.enforce.canaries import CanaryManager
+from agenttic.enforce.gateway import EnforcementGateway, compute_policy_hash
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.enforcement import EnforcementPolicy, Rule
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
 
 CFG = load_config("config.yaml")
 

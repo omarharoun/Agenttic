@@ -12,12 +12,12 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from ascore.live.monitor import LiveMonitor
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.rubric import Criterion
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.scoring.judge import LLMJudge
+from agenttic.live.monitor import LiveMonitor
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.rubric import Criterion
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.scoring.judge import LLMJudge
 
 NOW = datetime(2026, 6, 11, tzinfo=timezone.utc)
 

@@ -15,8 +15,8 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
-from ascore import certification as cert
-from ascore.registry.sqlite_store import CertificationRow, NotFoundError
+from agenttic import certification as cert
+from agenttic.registry.sqlite_store import CertificationRow, NotFoundError
 
 
 def _now() -> datetime:

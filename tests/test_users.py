@@ -4,10 +4,10 @@ import time
 
 import pytest
 
-from ascore.registry.sqlite_store import Registry, UserRow
-from ascore.server.passwords import hash_password, verify_password
-from ascore.server.sessions import session_secret, sign_session, verify_session
-from ascore.server.users import DuplicateUserError, UserStore
+from agenttic.registry.sqlite_store import Registry, UserRow
+from agenttic.server.passwords import hash_password, verify_password
+from agenttic.server.sessions import session_secret, sign_session, verify_session
+from agenttic.server.users import DuplicateUserError, UserStore
 
 
 class TestPasswords:

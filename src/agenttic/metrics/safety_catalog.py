@@ -13,7 +13,7 @@ and surface in the Issues report; earning index weight is a calibration step.
 
 from __future__ import annotations
 
-from ascore.metrics.catalog import CanonicalMetric
+from agenttic.metrics.catalog import CanonicalMetric
 
 # status="provisional" for the rubric-judge checks (need a calibrated judge);
 # the deterministic detectors are "implemented" but weight 0 (recall-bounded).

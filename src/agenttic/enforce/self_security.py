@@ -13,8 +13,8 @@ The enforcement layer secures *itself*:
 
 from __future__ import annotations
 
-from ascore.enforce.lanes import redact_secrets
-from ascore.registry.sqlite_store import NotFoundError
+from agenttic.enforce.lanes import redact_secrets
+from agenttic.registry.sqlite_store import NotFoundError
 
 
 def verify_policy_provenance(reg, policy) -> tuple[bool, list[str]]:

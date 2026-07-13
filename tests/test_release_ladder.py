@@ -7,26 +7,26 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from ascore.certification.dossier import assemble
-from ascore.config import load_config
-from ascore.enforce.compiler import recompile_for_agent
-from ascore.enforce.gateway import EnforcementGateway, compute_policy_hash
-from ascore.live.incidents import open_manual
-from ascore.registry.sqlite_store import Registry
-from ascore.release.ladder import agent_stage, stage_gate
-from ascore.release.promotion import (
+from agenttic.certification.dossier import assemble
+from agenttic.config import load_config
+from agenttic.enforce.compiler import recompile_for_agent
+from agenttic.enforce.gateway import EnforcementGateway, compute_policy_hash
+from agenttic.live.incidents import open_manual
+from agenttic.registry.sqlite_store import Registry
+from agenttic.release.ladder import agent_stage, stage_gate
+from agenttic.release.promotion import (
     PromotionRefused,
     auto_demote_on_incident,
     evaluate_promotion,
     grant_promotion,
 )
-from ascore.schema.certification import (
+from agenttic.schema.certification import (
     Attestation,
     CertificationProfile,
     TierDecision,
 )
-from ascore.schema.enforcement import EnforcementPolicy, Rule
-from ascore.schema.release import Cohort
+from agenttic.schema.enforcement import EnforcementPolicy, Rule
+from agenttic.schema.release import Cohort
 
 CFG = load_config("config.yaml")
 NOW = datetime(2026, 7, 7, tzinfo=timezone.utc)

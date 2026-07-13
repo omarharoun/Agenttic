@@ -4,7 +4,7 @@
   the credit ledger, the subscription, and invoices. On SQLite these live in the
   tenant's own DB file (``tenant_id`` stays ``"default"`` within the file); on
   Postgres they share one engine with row-level ``tenant_id`` isolation — exactly
-  like :class:`ascore.registry.sqlite_store.Registry`.
+  like :class:`agenttic.registry.sqlite_store.Registry`.
 
 * **GLOBAL** (live in the DEFAULT tenant's engine, like ``users`` / ``api_keys`` /
   ``certifications``): the external-customer → tenant map and the webhook-event
@@ -21,7 +21,7 @@ from datetime import datetime
 
 from sqlmodel import Field, SQLModel, UniqueConstraint
 
-from ascore.registry.sqlite_store import DEFAULT_TENANT
+from agenttic.registry.sqlite_store import DEFAULT_TENANT
 
 
 class LedgerRow(SQLModel, table=True):

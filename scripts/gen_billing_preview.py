@@ -17,7 +17,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
-from ascore.billing.invoices import render_invoice_html  # noqa: E402
+from agenttic.billing.invoices import render_invoice_html  # noqa: E402
 
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "billing-preview"
 OUT.mkdir(parents=True, exist_ok=True)

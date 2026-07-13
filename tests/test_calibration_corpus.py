@@ -7,7 +7,7 @@ checks are marked PROVISIONAL, while corpus-demonstrated checks are calibrated.
 
 from __future__ import annotations
 
-from ascore.scoring.corpus import (
+from agenttic.scoring.corpus import (
     HEURISTIC_CRITERIA,
     demonstrated_calibrated,
     run_corpus_calibration,
@@ -95,8 +95,8 @@ class TestPublicEndpoint:
     def test_public_calibration_endpoint(self, tmp_path):
         from fastapi.testclient import TestClient
 
-        from ascore.registry.sqlite_store import Registry
-        from ascore.server.app import create_app
+        from agenttic.registry.sqlite_store import Registry
+        from agenttic.server.app import create_app
 
         cfg_path = tmp_path / "config.yaml"
         cfg_path.write_text(

@@ -7,16 +7,16 @@ import tempfile
 
 import pytest
 
-from ascore.certification.dossier import assemble
-from ascore.config import load_config
-from ascore.enforce.compiler import (
+from agenttic.certification.dossier import assemble
+from agenttic.config import load_config
+from agenttic.enforce.compiler import (
     OverrideError,
     apply_overrides,
     compile_policy,
     recompile_for_agent,
 )
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.certification import (
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.certification import (
     Attestation,
     CertificationProfile,
     Dossier,

@@ -13,14 +13,14 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from ascore import ops
-from ascore.metrics.catalog import catalog_payload, index_weights
-from ascore.metrics.runner import MAX_K
-from ascore.metrics.standard_suites import (
+from agenttic import ops
+from agenttic.metrics.catalog import catalog_payload, index_weights
+from agenttic.metrics.runner import MAX_K
+from agenttic.metrics.standard_suites import (
     seed_standard_suites, standard_suite_ids,
 )
-from ascore.server.auth import require_operator
-from ascore.server.keys import KeyStore
+from agenttic.server.auth import require_operator
+from agenttic.server.keys import KeyStore
 
 router = APIRouter(tags=["standard"])
 logger = logging.getLogger(__name__)
@@ -64,10 +64,10 @@ def _standard_cache_key(cfg: dict, reg, body: "RunBody", k: int) -> str | None:
     """Cache key for a standard run: the agent config + the canonical suite set
     present + k + judge models. None if the adapter can't be fingerprinted."""
     try:
-        from ascore.metrics.standard_suites import (
+        from agenttic.metrics.standard_suites import (
             canonical_suite_ids, seed_standard_suites,
         )
-        from ascore.result_cache import canonical_cache_key
+        from agenttic.result_cache import canonical_cache_key
         seed_standard_suites(reg)
         adapter = ops.build_adapter(cfg, variant=body.variant,
                                     agent_id=body.agent_id, url=body.url,
@@ -130,7 +130,7 @@ async def run_standard(body: RunBody, request: Request, force: bool = False):
 def standard_datasets(request: Request):
     """Real public datasets available to ingest (BFCL now), with license +
     citation + whether each is present in this workspace."""
-    from ascore.metrics.datasets import dataset_infos
+    from agenttic.metrics.datasets import dataset_infos
     out = []
     for info in dataset_infos():
         try:
@@ -156,7 +156,7 @@ def standard_datasets(request: Request):
 @router.post("/standard/ingest/{dataset_id}", dependencies=[Depends(require_operator)])
 def ingest_dataset(dataset_id: str, request: Request, full: bool = False):
     """Ingest a real public dataset (e.g. BFCL) into a labeled standard suite."""
-    from ascore.metrics.datasets import get_adapter
+    from agenttic.metrics.datasets import get_adapter
     try:
         adapter = get_adapter(dataset_id)
     except KeyError as exc:

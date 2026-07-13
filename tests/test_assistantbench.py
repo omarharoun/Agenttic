@@ -11,17 +11,17 @@ from datetime import datetime, timezone
 
 import pytest
 
-from ascore.metrics import answer_match as am
-from ascore.metrics import canonical_checks as cc
-from ascore.metrics.catalog import BY_ID, CHECK_TO_METRIC, index_weights
-from ascore.metrics.datasets.assistantbench import AssistantBenchAdapter
-from ascore.metrics.index import compute_index, rollup_metrics_from_means
-from ascore.metrics.standard_suites import DATASET_SUITE_IDS, canonical_suite_ids
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.scoring.checks import CHECKS
-from ascore.scoring.engine import score_run
+from agenttic.metrics import answer_match as am
+from agenttic.metrics import canonical_checks as cc
+from agenttic.metrics.catalog import BY_ID, CHECK_TO_METRIC, index_weights
+from agenttic.metrics.datasets.assistantbench import AssistantBenchAdapter
+from agenttic.metrics.index import compute_index, rollup_metrics_from_means
+from agenttic.metrics.standard_suites import DATASET_SUITE_IDS, canonical_suite_ids
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.scoring.checks import CHECKS
+from agenttic.scoring.engine import score_run
 
 NOW = datetime(2026, 6, 21, tzinfo=timezone.utc)
 

@@ -17,7 +17,7 @@ def export_json(reg, session_id: str | None = None,
                 agent_id: str | None = None, *, redact: bool = True) -> str:
     events = reg.list_enforcement_events(session_id, agent_id)
     if redact:
-        from ascore.enforce.self_security import redact_events
+        from agenttic.enforce.self_security import redact_events
         events = redact_events(events)
     return json.dumps(events, sort_keys=True)
 
@@ -51,6 +51,6 @@ def export_otel(reg, session_id: str | None = None,
     return {
         "schema_url": OTEL_SCHEMA,
         "resource": {"attributes": {"service.name": "agenttic-enforce"}},
-        "scope": {"name": "ascore.enforce", "version": "1"},
+        "scope": {"name": "agenttic.enforce", "version": "1"},
         "spans": spans,
     }

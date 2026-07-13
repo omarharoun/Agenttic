@@ -7,8 +7,8 @@ import time
 
 from fastapi.testclient import TestClient
 
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
 
 CONFIG = """\
 models: {agent_default: a, judge_strong: j, judge_light: l}
@@ -78,7 +78,7 @@ def test_start_is_async_then_succeeds_with_wilson(tmp_path):
 
 
 def test_background_failure_sets_failed_with_message(tmp_path, monkeypatch):
-    import ascore.server.routes.camp as camp_routes
+    import agenttic.server.routes.camp as camp_routes
 
     def boom(**_kw):
         raise RuntimeError("kaboom in the background")
@@ -120,7 +120,7 @@ def test_promotion_requires_floor_and_signoff(tmp_path):
 
 def test_cannot_approve_while_running(tmp_path, monkeypatch):
     # A run stuck 'running' can't be approved (422).
-    import ascore.server.routes.camp as camp_routes
+    import agenttic.server.routes.camp as camp_routes
 
     def slow(**_kw):
         time.sleep(2)

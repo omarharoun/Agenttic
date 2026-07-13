@@ -18,12 +18,12 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from ascore.metrics import judge_quality as jq
-from ascore.metrics.catalog import catalog_payload
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.scoring.judge import ALLOWED_SCORES, JudgeError, LLMJudge
+from agenttic.metrics import judge_quality as jq
+from agenttic.metrics.catalog import catalog_payload
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.scoring.judge import ALLOWED_SCORES, JudgeError, LLMJudge
 
 NOW = datetime(2026, 7, 3, tzinfo=timezone.utc)
 
@@ -177,18 +177,18 @@ class TestScoringWithMockJudge:
 
 class TestProvisionalByDefault:
     def test_none_in_demonstrated_calibrated_judge(self):
-        from ascore.scoring.judge_calibration import demonstrated_calibrated_judge
+        from agenttic.scoring.judge_calibration import demonstrated_calibrated_judge
         assert set(jq.criterion_ids()).isdisjoint(demonstrated_calibrated_judge())
 
     def test_uncalibrated_criteria_flags_all_of_them(self):
-        from ascore.scoring.corpus import uncalibrated_criteria
+        from agenttic.scoring.corpus import uncalibrated_criteria
         ids = jq.criterion_ids()
         scorers = {i: "judge" for i in ids}
         uncal = uncalibrated_criteria(ids, scorers)
         assert set(ids) <= uncal  # every judge-quality criterion is provisional
 
     def test_scored_criterion_marked_uncalibrated_in_engine(self):
-        from ascore.scoring.engine import score_run
+        from agenttic.scoring.engine import score_run
         crit = jq.get_criterion("conciseness_judge")
         rubric = Rubric(rubric_id="r", version=1, criteria=[crit])
         judge = make_judge([verdict(1.0)])
@@ -219,5 +219,5 @@ class TestCatalogRegistration:
         assert set(jq.criterion_ids()) <= ids
         # judge-quality entries are non-index (weight 0) and don't leak into
         # index weights.
-        from ascore.metrics.catalog import index_weights
+        from agenttic.metrics.catalog import index_weights
         assert set(jq.criterion_ids()).isdisjoint(index_weights())

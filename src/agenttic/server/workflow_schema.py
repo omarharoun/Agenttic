@@ -43,7 +43,7 @@ def validate_workflow(wf: Workflow) -> list[str]:
     Checks: unknown node types, per-node config validity, dangling edges,
     port-kind mismatches, duplicate node ids, cycles (Kahn).
     """
-    from ascore.server.nodes import NODE_TYPES
+    from agenttic.server.nodes import NODE_TYPES
 
     problems: list[str] = []
     ids = [n.node_id for n in wf.nodes]

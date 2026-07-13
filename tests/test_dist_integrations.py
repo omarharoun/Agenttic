@@ -16,8 +16,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
 
 REPO = Path(__file__).resolve().parent.parent
 DOCS = REPO / "docs" / "integrations"

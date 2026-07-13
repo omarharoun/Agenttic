@@ -24,10 +24,10 @@ from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 
-from ascore.schema.rubric import Criterion
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import Trace
-from ascore.scoring.calibration import calibration_report
+from agenttic.schema.rubric import Criterion
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import Trace
+from agenttic.scoring.calibration import calibration_report
 
 CORPUS_VERSION = "judge-calibration/v1"
 DEFAULT_THRESHOLD = 0.8
@@ -90,7 +90,7 @@ def demonstrated_calibrated_judge() -> set[str]:
 
 
 def _corpus_path() -> Path:
-    return Path(str(resources.files("ascore.scoring")
+    return Path(str(resources.files("agenttic.scoring")
                     / "judge_calibration_corpus.jsonl"))
 
 
@@ -136,7 +136,7 @@ def judge_calibration_available() -> bool:
     """Whether a judge can actually be run here (needs a model API key)."""
     import os
 
-    from ascore.secrets import get_secret
+    from agenttic.secrets import get_secret
     return bool(get_secret("ANTHROPIC_API_KEY")
                 or os.environ.get("ANTHROPIC_API_KEY"))
 
@@ -186,7 +186,7 @@ def run_judge_calibration(cfg: dict, *, client=None, model: str = "",
     available. Never fabricates a number."""
     if client is None and not judge_calibration_available():
         raise JudgeCalibrationBlocked(json.dumps(judge_blocker(cfg, path=path)))
-    from ascore.scoring.judge import make_judge
+    from agenttic.scoring.judge import make_judge
 
     records = load_judge_corpus(path)
     agent_model = model or "unknown-agent-under-test"
@@ -215,7 +215,7 @@ def estimate_cost(cfg: dict | None = None, path: str | Path | None = None) -> di
     tin, tout = n * _EST_INPUT_TOKENS, n * _EST_OUTPUT_TOKENS
     usd = None
     try:
-        from ascore.pricing import token_cost
+        from agenttic.pricing import token_cost
         judge_model = (cfg or {}).get("models", {}).get("judge_strong")
         usd = round(token_cost(cfg or {}, judge_model, tin, tout), 4)
     except Exception:  # noqa: BLE001 — pricing is best-effort

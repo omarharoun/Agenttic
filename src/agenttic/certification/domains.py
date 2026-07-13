@@ -14,7 +14,7 @@ assessed_seed / not_assessed per domain (Hard Rule 9).
 
 from __future__ import annotations
 
-from ascore.schema.certification import CAPABILITY_DOMAINS
+from agenttic.schema.certification import CAPABILITY_DOMAINS
 
 # -- domain -> canonical metric ids ----------------------------------------- #
 

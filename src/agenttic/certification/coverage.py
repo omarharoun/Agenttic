@@ -14,9 +14,9 @@ domains (cbrn_proxy on the default catalog) are NEVER estimated — they stay
 
 from __future__ import annotations
 
-from ascore.certification.domains import suite_provenance, suites_for_domain
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.schema.certification import DomainCoverage
+from agenttic.certification.domains import suite_provenance, suites_for_domain
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.schema.certification import DomainCoverage
 
 # ordering so we can take the "best" provenance a domain actually has
 _RANK = {"not_assessed": 0, "assessed_seed": 1, "assessed_real": 2}

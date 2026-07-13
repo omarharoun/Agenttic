@@ -7,17 +7,17 @@ import tempfile
 import pytest
 from typer.testing import CliRunner
 
-from ascore.certification.coverage import coverage, domain_coverage
-from ascore.certification.profiles import (
+from agenttic.certification.coverage import coverage, domain_coverage
+from agenttic.certification.profiles import (
     ProfileError,
     build_profile,
     load_profile,
     seed_profile,
 )
-from ascore.config import load_config
-from ascore.metrics.standard_suites import seed_standard_suites
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.testcase import TestCase, TestSuite
+from agenttic.config import load_config
+from agenttic.metrics.standard_suites import seed_standard_suites
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.testcase import TestCase, TestSuite
 from pathlib import Path
 
 
@@ -129,11 +129,11 @@ def test_cli_profiles_show_snapshot(tmp_path, monkeypatch):
     assert "cbrn_proxy" in out
     # cleanup the per-tenant db this created
     import os
-    for p in ("ascore.cliproftest.db",):
+    for p in ("agenttic.cliproftest.db",):
         if os.path.exists(p):
             os.remove(p)
 
 
 def app_ref():
-    from ascore.cli import app
+    from agenttic.cli import app
     return app

@@ -8,14 +8,14 @@ import asyncio
 
 import pytest
 
-from ascore.registry.sqlite_store import Registry, make_engine
-from ascore.result_cache import scorecard_cache_key
-from ascore.server.events import EventBus
-from ascore.server.executor import ExecutionManager
-from ascore.server.store import UIStore
+from agenttic.registry.sqlite_store import Registry, make_engine
+from agenttic.result_cache import scorecard_cache_key
+from agenttic.server.events import EventBus
+from agenttic.server.executor import ExecutionManager
+from agenttic.server.store import UIStore
 from tests.test_e2e_pipeline import ProfessionalToneJudgeClient, RoutingFakeClient
 from tests.test_executor import CFG, edge, eval_workflow, load_pilot, node
-from ascore.server.workflow_schema import Workflow
+from agenttic.server.workflow_schema import Workflow
 
 
 # -- call-counting LLM clients --------------------------------------------
@@ -149,7 +149,7 @@ class TestResultCache:
 
 def test_cache_is_per_tenant(tmp_path):
     eng = make_engine(f"sqlite:///{tmp_path/'shared.db'}")
-    from ascore.migrations import run_migrations
+    from agenttic.migrations import run_migrations
     run_migrations(eng)
     a = Registry(engine=eng, tenant="tenant-a")
     b = Registry(engine=eng, tenant="tenant-b")

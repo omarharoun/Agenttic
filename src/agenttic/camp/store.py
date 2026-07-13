@@ -2,7 +2,7 @@
 Per-tenant persistence for training-camp runs.
 
 Two tenant-scoped tables, following the same conventions as
-:mod:`ascore.server.store` (``tenant_id`` on every row, a ``UniqueConstraint``
+:mod:`agenttic.server.store` (``tenant_id`` on every row, a ``UniqueConstraint``
 including the tenant, JSON blobs for structured payloads):
 
 - ``CampRunRow``   — one camp run: config, the ``CampReport`` numbers (passes,
@@ -25,7 +25,7 @@ from typing import Any, Iterator
 from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, Session, SQLModel, select
 
-from ascore.registry.sqlite_store import DEFAULT_TENANT, NotFoundError
+from agenttic.registry.sqlite_store import DEFAULT_TENANT, NotFoundError
 
 from .trace import Episode
 

@@ -9,14 +9,14 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ascore.certification.dossier import assemble
-from ascore.config import load_config
-from ascore.passport.issuer import PassportIssuer
-from ascore.passport.keys import PassportKeyManager, generate_key
-from ascore.passport.receipts import ReceiptIssuer
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.certification import Attestation, CertificationProfile, TierDecision
-from ascore.schema.enforcement import Decision, EnforcementEvent
+from agenttic.certification.dossier import assemble
+from agenttic.config import load_config
+from agenttic.passport.issuer import PassportIssuer
+from agenttic.passport.keys import PassportKeyManager, generate_key
+from agenttic.passport.receipts import ReceiptIssuer
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.certification import Attestation, CertificationProfile, TierDecision
+from agenttic.schema.enforcement import Decision, EnforcementEvent
 
 OUT = Path(__file__).with_name("golden.json")
 

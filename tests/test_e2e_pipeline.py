@@ -12,15 +12,15 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from ascore.adapters.anthropic_simple import AnthropicSimpleAgent
-from ascore.harness.runner import HarnessConfig, run_suite
-from ascore.registry.sqlite_store import Registry
-from ascore.reporting.scorecard_report import render_markdown
-from ascore.schema.rubric import Rubric
-from ascore.schema.scorecard import Scorecard
-from ascore.schema.testcase import TestCase, TestSuite
-from ascore.scoring.engine import score_run
-from ascore.scoring.judge import LLMJudge
+from agenttic.adapters.anthropic_simple import AnthropicSimpleAgent
+from agenttic.harness.runner import HarnessConfig, run_suite
+from agenttic.registry.sqlite_store import Registry
+from agenttic.reporting.scorecard_report import render_markdown
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.scorecard import Scorecard
+from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.scoring.engine import score_run
+from agenttic.scoring.judge import LLMJudge
 
 PILOT = Path(__file__).parent.parent / "examples" / "pilot_support_triage"
 

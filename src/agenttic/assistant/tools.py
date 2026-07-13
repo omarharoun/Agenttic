@@ -28,8 +28,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Callable
 
-from ascore.assistant.guard import guard_untrusted
-from ascore.security import UnsafeURLError, validate_blackbox_url
+from agenttic.assistant.guard import guard_untrusted
+from agenttic.security import UnsafeURLError, validate_blackbox_url
 
 # --------------------------------------------------------------------------- #
 # calculator — arithmetic only, no eval().

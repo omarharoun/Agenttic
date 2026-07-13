@@ -10,16 +10,16 @@ from datetime import datetime, timezone
 
 import pytest
 
-from ascore.metrics.canonical_checks import (
+from agenttic.metrics.canonical_checks import (
     swebench_patch_generated, swebench_patch_targets_gold_files)
-from ascore.metrics.datasets import dataset_infos, get_adapter
-from ascore.metrics.datasets.swebench import SWEBenchAdapter, patched_files
-from ascore.metrics.standard_suites import DATASET_SUITE_IDS, canonical_suite_ids
-from ascore.metrics.swebench_resolve import (
+from agenttic.metrics.datasets import dataset_infos, get_adapter
+from agenttic.metrics.datasets.swebench import SWEBenchAdapter, patched_files
+from agenttic.metrics.standard_suites import DATASET_SUITE_IDS, canonical_suite_ids
+from agenttic.metrics.swebench_resolve import (
     ExecutionHarnessRequired, ResolveInstance, harness_available, resolve_rate)
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.scoring.engine import score_run
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.scoring.engine import score_run
 
 NOW = datetime(2026, 6, 22, tzinfo=timezone.utc)
 
@@ -199,7 +199,7 @@ def test_harness_available_detects_configuration(monkeypatch):
     # package (absent here, so still False); a custom dotted path counts as
     # "configured".
     monkeypatch.setenv("ASCORE_SWEBENCH_HARNESS", "docker")
-    from ascore.metrics import swebench_resolve as swe
+    from agenttic.metrics import swebench_resolve as swe
     assert swe.harness_available() == (swe._docker_present()
                                        and swe._swebench_present())
     monkeypatch.setenv("ASCORE_SWEBENCH_HARNESS", "mypkg.mod:make")
@@ -210,7 +210,7 @@ def test_harness_available_detects_configuration(monkeypatch):
 
 def test_reproduction_status_is_honest(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    from ascore.metrics.reproduction import reproduction_report
+    from agenttic.metrics.reproduction import reproduction_report
     rep = reproduction_report()
     by_wedge = {w["wedge"]: w for w in rep["wedges"]}
     # the code wedge is still a proxy (needs the Docker resolve-rate harness)
@@ -234,8 +234,8 @@ def test_reproduction_status_is_honest(monkeypatch):
 def test_public_reproduction_endpoint(tmp_path):
     from fastapi.testclient import TestClient
 
-    from ascore.registry.sqlite_store import Registry
-    from ascore.server.app import create_app
+    from agenttic.registry.sqlite_store import Registry
+    from agenttic.server.app import create_app
 
     cfg_path = tmp_path / "config.yaml"
     cfg_path.write_text(

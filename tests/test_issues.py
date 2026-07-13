@@ -8,7 +8,7 @@ endpoint over a real pilot execution (0.8 success ⇒ real failures).
 
 from __future__ import annotations
 
-from ascore.issues import build_issues, categorize_criterion
+from agenttic.issues import build_issues, categorize_criterion
 from tests.test_api import client  # noqa: F401  (fixture)
 from tests.test_executor import eval_workflow
 
@@ -131,7 +131,7 @@ class TestIssuesEndpoint:
         # the pilot fails some cases (0.8 success) → at least one criterion issue
         assert any(i["criterion_id"] for i in rep["issues"])
         # ranked worst-first by severity rank
-        from ascore.issues import SEVERITY_RANK
+        from agenttic.issues import SEVERITY_RANK
         ranks = [SEVERITY_RANK[i["severity"]] for i in rep["issues"]]
         assert ranks == sorted(ranks, reverse=True)
         # every issue carries a fix + real evidence

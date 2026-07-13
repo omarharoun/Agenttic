@@ -16,13 +16,13 @@ permitted as a safety valve. Crucially, a mode change **never loosens the
 compiled policy** — the policy is immutable evidence-compiled state; the ramp only
 chooses how much of it bites (Hard Rule 35, and SPEC-4 Rule 20 still governs the
 policy itself). Shadow evaluation + the would-be-block report live in
-:mod:`ascore.enforce.ramp` too (T39.2).
+:mod:`agenttic.enforce.ramp` too (T39.2).
 """
 from __future__ import annotations
 
 import uuid
 
-from ascore.schema.enforcement import EnforcementEvent
+from agenttic.schema.enforcement import EnforcementEvent
 
 # Strict order — advancing raises the posture, stepping down lowers it.
 MODES = ["observe", "shadow", "enforce_reads", "enforce_all"]
@@ -228,7 +228,7 @@ def shadow_report(reg, agent_id: str) -> dict:
 def assert_policy_unchanged(reg, agent_id: str, before_hash: str) -> None:
     """Invariant guard: a mode change must never alter the compiled policy. Call
     with the policy hash captured before the change; raises if it moved."""
-    from ascore.registry.sqlite_store import NotFoundError
+    from agenttic.registry.sqlite_store import NotFoundError
     try:
         after = reg.latest_policy(agent_id).content_hash
     except NotFoundError:

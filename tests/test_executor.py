@@ -10,14 +10,14 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel
 
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.rubric import Rubric
-from ascore.schema.testcase import TestCase, TestSuite
-from ascore.server.events import EventBus
-from ascore.server.executor import ExecutionManager, WorkflowValidationError
-from ascore.server.nodes import NODE_TYPES, NodeSpec
-from ascore.server.store import UIStore
-from ascore.server.workflow_schema import Workflow, WorkflowEdge, WorkflowNode
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.server.events import EventBus
+from agenttic.server.executor import ExecutionManager, WorkflowValidationError
+from agenttic.server.nodes import NODE_TYPES, NodeSpec
+from agenttic.server.store import UIStore
+from agenttic.server.workflow_schema import Workflow, WorkflowEdge, WorkflowNode
 from tests.test_e2e_pipeline import ProfessionalToneJudgeClient, RoutingFakeClient
 
 PILOT = Path(__file__).parent.parent / "examples" / "pilot_support_triage"
@@ -233,7 +233,7 @@ class TestFailureAndCancel:
         asyncio.run(main())
 
     def test_humanize_execution_error_reasons(self):
-        from ascore.server.store import humanize_execution_error
+        from agenttic.server.store import humanize_execution_error
         assert "Anthropic" in humanize_execution_error(
             "HTTPError: 400 Add your Anthropic API key")
         assert humanize_execution_error(

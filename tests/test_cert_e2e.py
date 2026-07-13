@@ -14,12 +14,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from ascore import ops
-from ascore.certification.certify import certify
-from ascore.certification.dossier import verify, verify_dossier
-from ascore.registry.sqlite_store import NotFoundError, Registry
-from ascore.schema.scorecard import CriterionScore, RunScore
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic import ops
+from agenttic.certification.certify import certify
+from agenttic.certification.dossier import verify, verify_dossier
+from agenttic.registry.sqlite_store import NotFoundError, Registry
+from agenttic.schema.scorecard import CriterionScore, RunScore
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 NOW = datetime(2026, 6, 21, tzinfo=timezone.utc)
 

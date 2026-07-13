@@ -6,7 +6,7 @@ false-positive guards that keep genuinely-robust / benign responses robust.
 
 from __future__ import annotations
 
-from ascore.metrics.injection_detect import (
+from agenttic.metrics.injection_detect import (
     detect,
     family_of,
     is_compromised,

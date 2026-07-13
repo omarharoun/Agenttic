@@ -4,7 +4,7 @@ Bridge: run a *real* Agenttic agent inside a training camp.
 The vendored camp engine only knows the tiny ``Agent`` protocol (``act(obs) ->
 action_dict``). Agenttic already knows how to drive any agent — the tenant's
 BYO-Anthropic-key reference agent, a managed agent, or a black-box HTTP endpoint
-— behind :class:`ascore.adapters.base.AgentAdapter` (``run(input) -> Trace``).
+— behind :class:`agenttic.adapters.base.AgentAdapter` (``run(input) -> Trace``).
 
 ``AdapterAgent`` adapts the latter to the former: it turns a camp observation
 into an adapter ``test_input``, runs the real agent, and parses the agent's
@@ -22,7 +22,7 @@ import json
 import re
 from typing import Any, Dict
 
-from ascore.adapters.base import AgentAdapter
+from agenttic.adapters.base import AgentAdapter
 
 from .agent import Agent
 

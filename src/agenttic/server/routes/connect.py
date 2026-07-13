@@ -20,10 +20,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from ascore import connect
-from ascore.security import UnsafeURLError
-from ascore.server.auth import require_operator
-from ascore.server.connections import ConnectionStore
+from agenttic import connect
+from agenttic.security import UnsafeURLError
+from agenttic.server.auth import require_operator
+from agenttic.server.connections import ConnectionStore
 
 router = APIRouter(tags=["connect"])
 
@@ -104,7 +104,7 @@ def test_connection(body: ConnectionBody, request: Request):
 
     # SSRF gate before we build/dial anything (the adapter re-checks too).
     try:
-        from ascore.security import validate_blackbox_url
+        from agenttic.security import validate_blackbox_url
         validate_blackbox_url(body.endpoint_url.strip(), cfg=cfg, allow_unresolved=True)
     except UnsafeURLError as exc:
         return {"ok": False, "error": connect._trace_error_msg(f"UnsafeURLError: {exc}")}

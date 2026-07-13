@@ -125,5 +125,5 @@ class AgentCard(BaseModel):
         return f"card:{self.agent_id}@v{self.version}"
 
     def completeness(self) -> dict:
-        from ascore.cards.fields import card_completeness
+        from agenttic.cards.fields import card_completeness
         return card_completeness(self)

@@ -13,8 +13,8 @@ byte-identical policy (the content hash is its identity). Postures only ever
 
 from __future__ import annotations
 
-from ascore.enforce.gateway import compute_policy_hash
-from ascore.schema.enforcement import EnforcementPolicy, Rule
+from agenttic.enforce.gateway import compute_policy_hash
+from agenttic.schema.enforcement import EnforcementPolicy, Rule
 
 # posture tightening orders
 _APPROVALS_ORDER = {"none": 0, "write": 1}
@@ -203,7 +203,7 @@ def compile_policy(dossier, card, incidents, cfg: dict, *,
     _apply_oversight(posture, cfg, oversight_rubber_stamp)
     # stage dimension: higher-exposure stages are stricter-or-equal (tighten-only)
     if stage:
-        from ascore.release.ladder import apply_stage_to_posture
+        from agenttic.release.ladder import apply_stage_to_posture
         apply_stage_to_posture(posture, cfg, stage)
 
     rules = _materialize_rules(posture)
@@ -227,8 +227,8 @@ def recompile_for_agent(reg, cfg: dict, agent_id: str, *, persist: bool = True):
     dossier + card + open incidents + computed staleness status). Wired to run on
     staleness / evidence change. Idempotent: if the resulting policy hash is
     unchanged, the existing policy is returned and nothing new is written."""
-    from ascore.certification.staleness import status as compute_status
-    from ascore.registry.sqlite_store import NotFoundError
+    from agenttic.certification.staleness import status as compute_status
+    from agenttic.registry.sqlite_store import NotFoundError
 
     dossier = reg.latest_dossier(agent_id)  # raises NotFoundError if none
     try:
@@ -236,7 +236,7 @@ def recompile_for_agent(reg, cfg: dict, agent_id: str, *, persist: bool = True):
     except NotFoundError:
         card = None
     try:
-        from ascore.live.incidents import IncidentManager
+        from agenttic.live.incidents import IncidentManager
         incidents = IncidentManager(reg).list_with_sla(cfg, agent_id=agent_id)
     except Exception:  # noqa: BLE001
         incidents = []
@@ -246,7 +246,7 @@ def recompile_for_agent(reg, cfg: dict, agent_id: str, *, persist: bool = True):
     rubber_stamp = False
     if (cfg or {}).get("oversight", {}).get("posture_toggle", False):
         try:
-            from ascore.oversight.analytics import approval_analytics
+            from agenttic.oversight.analytics import approval_analytics
             rubber_stamp = approval_analytics(reg, cfg, agent_id)["rubber_stamp"]
         except Exception:  # noqa: BLE001
             rubber_stamp = False
@@ -262,7 +262,7 @@ def recompile_for_agent(reg, cfg: dict, agent_id: str, *, persist: bool = True):
         except NotFoundError:
             pass
         reg.save_policy(policy)
-        from ascore.schema.enforcement import EnforcementEvent
+        from agenttic.schema.enforcement import EnforcementEvent
         import uuid
         reg.append_enforcement_event(EnforcementEvent(
             event_id=f"evt-{uuid.uuid4().hex[:12]}", session_id="",

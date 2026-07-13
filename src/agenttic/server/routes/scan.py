@@ -8,7 +8,7 @@ grade. This route is a THIN orchestrator over the existing engine:
     GET  /api/scan/{scan_id}  poll live progress + the graded result + cert
     GET  /api/scan/preview    what a scan will do (dimensions, key/cost) before running
 
-The heavy lifting is ``ascore.scan.run_safety_scan`` (build adapter → run + score
+The heavy lifting is ``agenttic.scan.run_safety_scan`` (build adapter → run + score
 the Safety Battery → grade) and ``server.certifications.issue_certificate`` (the
 signed, tamper-evident certificate). We add no scoring here.
 
@@ -36,13 +36,13 @@ from dataclasses import asdict, dataclass, field
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from ascore import certification as cert
-from ascore import ops, scan
-from ascore.metrics.safety_battery import BATTERY_DIMENSIONS
-from ascore.server.abuse import guard_cost_endpoint
-from ascore.server.auth import require_operator
-from ascore.server.certifications import issue_certificate
-from ascore.server.keys import NO_KEY_MSG, KeyStore
+from agenttic import certification as cert
+from agenttic import ops, scan
+from agenttic.metrics.safety_battery import BATTERY_DIMENSIONS
+from agenttic.server.abuse import guard_cost_endpoint
+from agenttic.server.auth import require_operator
+from agenttic.server.certifications import issue_certificate
+from agenttic.server.keys import NO_KEY_MSG, KeyStore
 
 router = APIRouter(tags=["scan"])
 logger = logging.getLogger(__name__)
@@ -134,8 +134,8 @@ def _build_scan_adapter(request: Request, body: ScanBody):
         # Scan the saved "Connect your agent" config. NO Anthropic key needed.
         # The consent gate is mandatory: the user must have confirmed they
         # own/are-authorized-to-test the agent before we send it any traffic.
-        from ascore.connect import build_connection_adapter
-        from ascore.server.connections import ConnectionStore
+        from agenttic.connect import build_connection_adapter
+        from agenttic.server.connections import ConnectionStore
         tenant = getattr(request.state, "tenant", "default")
         conn = ConnectionStore(reg.engine, cfg).get(tenant)
         if conn is None:
@@ -226,7 +226,7 @@ async def start_scan(body: ScanBody, request: Request):
     # A demo scan spends the tenant's metered model budget, so gate it on credits
     # (endpoint/connection scans run on the user's own infra → no gate).
     if (body.target or "endpoint").lower() == "demo":
-        from ascore.billing import service as billing_service
+        from agenttic.billing import service as billing_service
         try:
             billing_service.ensure_credits(reg.engine, tenant, cfg)
         except billing_service.OutOfCreditsError as exc:
@@ -235,7 +235,7 @@ async def start_scan(body: ScanBody, request: Request):
     # Gentle traffic against a user's live agent: force sequential (1-in-flight)
     # requests. Per-request timeout + rate limit are set on the connection adapter.
     if (body.target or "").lower() == "connection":
-        from ascore.connect import gentle_scan_cfg
+        from agenttic.connect import gentle_scan_cfg
         cfg = gentle_scan_cfg(cfg)
 
     scan_id = "scan_" + uuid.uuid4().hex[:16]
@@ -304,7 +304,7 @@ async def start_scan(body: ScanBody, request: Request):
             scan_cost = float(result.get("cost_usd") or 0.0)
             if scan_cost > 0:
                 try:
-                    from ascore.billing import service as billing_service
+                    from agenttic.billing import service as billing_service
                     billing_service.meter_cost(
                         reg.engine, tenant, "scan", scan_cost, cfg=cfg,
                         ref=scan_id)

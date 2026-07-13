@@ -16,9 +16,9 @@ pytestmark = pytest.mark.skipif(
 
 
 def test_migrations_and_row_level_isolation():
-    from ascore.registry.sqlite_store import Registry, make_engine
-    from ascore.schema.agent import DeclaredAgent
-    from ascore.schema.testcase import TestCase, TestSuite
+    from agenttic.registry.sqlite_store import Registry, make_engine
+    from agenttic.schema.agent import DeclaredAgent
+    from agenttic.schema.testcase import TestCase, TestSuite
 
     engine = make_engine(PG)  # also runs migrations via Registry below
     t1, t2 = f"t_{uuid.uuid4().hex[:8]}", f"t_{uuid.uuid4().hex[:8]}"

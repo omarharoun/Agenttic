@@ -15,15 +15,15 @@ what makes a dossier reproducible.
 
 from __future__ import annotations
 
-from ascore.certification.domains import (
+from agenttic.certification.domains import (
     DOMAIN_THRESHOLD_KEY,
     domain_for_suite,
     suite_provenance,
     suites_for_domain,
 )
-from ascore.metrics.catalog import METRICS
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.schema.certification import (
+from agenttic.metrics.catalog import METRICS
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.schema.certification import (
     CAPABILITY_DOMAINS,
     CertificationProfile,
     SuiteRef,

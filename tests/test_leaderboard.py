@@ -1,6 +1,6 @@
 """Agenttic Index leaderboard: pure compute_leaderboard ranking + coverage."""
 
-from ascore.leaderboard import compute_leaderboard
+from agenttic.leaderboard import compute_leaderboard
 
 
 def sc(agent, suite, rate, *, cost=0.01, p95=100.0, created="2026-06-15T00:00:00",

@@ -3,8 +3,8 @@
 from sqlalchemy import text
 from sqlmodel import SQLModel, create_engine
 
-from ascore.migrations import migration_status, run_migrations
-from ascore.registry.sqlite_store import Registry
+from agenttic.migrations import migration_status, run_migrations
+from agenttic.registry.sqlite_store import Registry
 
 
 def _tables(engine) -> set[str]:
@@ -56,7 +56,7 @@ class TestHardening:
 
         def writer():
             try:
-                from ascore.schema.agent import DeclaredAgent
+                from agenttic.schema.agent import DeclaredAgent
                 reg.register_agent(DeclaredAgent(agent_id="x", variant="reference"))
             except Exception as exc:  # noqa: BLE001
                 errors.append(exc)

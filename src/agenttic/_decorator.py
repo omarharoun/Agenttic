@@ -27,7 +27,7 @@ import logging
 import time
 from typing import Any
 
-from ascore.ingest.emit import SpanEmitter
+from agenttic.ingest.emit import SpanEmitter
 
 # The generic-run mechanism is shared with the auto-detecting trace() fallback:
 # @instrument and trace(plain_callable) produce the same canonical run.
@@ -93,7 +93,7 @@ class _Session:
     def __enter__(self) -> "_Session":
         self._t0 = time.time_ns()
         if self._enforce:
-            from ascore.enforce.adapter_guard import build_enforce_guard
+            from agenttic.enforce.adapter_guard import build_enforce_guard
             self._guard = build_enforce_guard(
                 self.agent_id, self._enforce, reg=self._reg, cfg=self._cfg)
             self._guard.begin()

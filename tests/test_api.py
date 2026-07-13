@@ -10,9 +10,9 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
-from ascore.server.nodes import NODE_TYPES, NodeSpec
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
+from agenttic.server.nodes import NODE_TYPES, NodeSpec
 from tests.test_e2e_pipeline import ProfessionalToneJudgeClient, RoutingFakeClient
 from tests.test_executor import eval_workflow, load_pilot
 
@@ -70,7 +70,7 @@ def client(tmp_path):
 
 def _make_unapproved_suite(reg, suite_id: str) -> None:
     """Two scoreable cases (same expected shape as the pilot) — DRAFT."""
-    from ascore.schema.testcase import TestCase, TestSuite
+    from agenttic.schema.testcase import TestCase, TestSuite
     cases = [TestCase(
         test_id=f"g-{i}", suite_id=suite_id, task_description="t",
         input={"ticket": "I was charged twice, refund one charge"},

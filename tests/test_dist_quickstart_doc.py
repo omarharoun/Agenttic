@@ -41,7 +41,7 @@ def test_every_shell_command_is_runnable_against_mock(tmp_path):
             if "--url" in cmd or "http://" in cmd or "https://" in cmd:
                 continue
             args = cmd.split()[1:]  # drop the leading `agenttic`
-            r = subprocess.run([sys.executable, "-m", "ascore", *args],
+            r = subprocess.run([sys.executable, "-m", "agenttic", *args],
                                cwd=str(tmp_path), capture_output=True, text=True)
             assert r.returncode == 0, f"`{cmd}` failed:\n{r.stderr}"
             ran.append(cmd)

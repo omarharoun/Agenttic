@@ -2,7 +2,7 @@
 
 This umbrella package is a **semver'd promise** (SPEC-8 Hard Rule 36): every
 name it exports is a stable, supported surface. The implementation lives in the
-internal ``ascore.*`` package, which is not part of the public contract and may
+internal ``agenttic.*`` package, which is not part of the public contract and may
 change without notice. Import from here, never from ``ascore``.
 
 The whole point of Agenttic distribution: a developer who has never seen it can
@@ -38,16 +38,20 @@ Public surface (exactly ``__all__``; a test fails if anything else leaks):
 # Aliased private so it never leaks into the public surface (Hard Rule 36).
 from typing import Any as _Any
 
-# Version: the umbrella tracks the core version exactly (SPEC-8 Step 40).
-from ascore import __version__ as __version__
+# Version: single source of truth for the package. `agenttic` is now both the
+# public umbrella and the internal engine (the former `ascore` package was
+# folded in during the rename), so the version lives here directly. The
+# distribution `version` in pyproject.toml is kept in lock-step (asserted by a
+# test).
+__version__ = "1.0.0"
 
 # Certification surface — re-exported directly (core, no framework SDKs).
-from ascore.certification.certify import certify as certify
-from ascore.certification.dossier import verify as verify
+from agenttic.certification.certify import certify as certify
+from agenttic.certification.dossier import verify as verify
 
 # The canonical run type the ingest/certification pipeline consumes.
-from ascore.schema.trace import Span as Span
-from ascore.schema.trace import Trace as Trace
+from agenttic.schema.trace import Span as Span
+from agenttic.schema.trace import Trace as Trace
 
 __all__ = [
     "trace",

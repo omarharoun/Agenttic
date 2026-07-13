@@ -2,9 +2,9 @@
 
 from fastapi.testclient import TestClient
 
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
-from ascore.server.ratelimit import (
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
+from agenttic.server.ratelimit import (
     InMemoryRateLimiter, RedisRateLimiter, make_rate_limiter)
 
 CONFIG = """\

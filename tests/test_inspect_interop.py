@@ -11,13 +11,13 @@ from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 
-from ascore.interop import INTEROP_VERSION, from_inspect_log, to_inspect_log
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import Span, Trace
-from ascore.server.app import create_app
+from agenttic.interop import INTEROP_VERSION, from_inspect_log, to_inspect_log
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import Span, Trace
+from agenttic.server.app import create_app
 
 T0 = datetime(2026, 6, 22, 10, 0, 0, tzinfo=timezone.utc)
 T1 = datetime(2026, 6, 22, 10, 0, 5, tzinfo=timezone.utc)
@@ -173,7 +173,7 @@ class TestForeignLog:
         assert {t.final_output for t in back["traces"]} == {"4", "Lyon"}
 
     def test_score_snapping_to_three_point(self):
-        from ascore.interop.inspect_log import _coerce_score
+        from agenttic.interop.inspect_log import _coerce_score
         assert _coerce_score("C") == 1.0
         assert _coerce_score(True) == 1.0
         assert _coerce_score("partial") == 0.5
@@ -265,7 +265,7 @@ class TestCli:
     def test_export_and_import_roundtrip(self, tmp_path):
         from typer.testing import CliRunner
 
-        from ascore.cli import app
+        from agenttic.cli import app
         reg = Registry(tmp_path / "p.db")
         reg.save_rubric(RUBRIC)
         for t in (_trace(i) for i in range(3)):

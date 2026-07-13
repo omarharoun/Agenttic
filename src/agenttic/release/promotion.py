@@ -16,8 +16,8 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.schema.release import (
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.schema.release import (
     PromotionRecord,
     STAGE_ORDER,
     stage_rank,
@@ -68,8 +68,8 @@ def _promotion_cfg(cfg: dict) -> dict:
 
 def evaluate_promotion(reg, cfg: dict, agent_id: str, to_stage: str, *,
                        now: datetime | None = None) -> PromotionEvaluation:
-    from ascore.live.incidents import IncidentManager
-    from ascore.release.ladder import agent_stage
+    from agenttic.live.incidents import IncidentManager
+    from agenttic.release.ladder import agent_stage
 
     now = now or _now()
     current = agent_stage(reg, agent_id)
@@ -145,8 +145,8 @@ def auto_demote_on_incident(reg, cfg: dict, agent_id: str, *,
                             now: datetime | None = None) -> PromotionRecord | None:
     """If an S1/S2 incident is open, demote to the lowest stage immediately and
     recompile. Returns the demotion record or None."""
-    from ascore.live.incidents import IncidentManager
-    from ascore.release.ladder import agent_stage
+    from agenttic.live.incidents import IncidentManager
+    from agenttic.release.ladder import agent_stage
 
     mgr = IncidentManager(reg)
     open_crit = [r for r in mgr.list_with_sla(cfg, agent_id=agent_id, now=now)
@@ -166,7 +166,7 @@ def auto_demote_on_incident(reg, cfg: dict, agent_id: str, *,
     reg.append_promotion_record(record)
     _recompile_at_stage(reg, cfg, agent_id, lowest)
     try:
-        from ascore.feeds.webhooks import STAGE_DEMOTION, enqueue_webhook
+        from agenttic.feeds.webhooks import STAGE_DEMOTION, enqueue_webhook
         enqueue_webhook(reg, cfg, STAGE_DEMOTION, agent_id,
                         {"from_stage": current, "to_stage": lowest})
     except Exception:  # noqa: BLE001 — feeds optional
@@ -177,15 +177,15 @@ def auto_demote_on_incident(reg, cfg: dict, agent_id: str, *,
 def _recompile_at_stage(reg, cfg: dict, agent_id: str, stage: str) -> None:
     """Recompile the agent's policy carrying the new stage dimension."""
     try:
-        from ascore.certification.staleness import status as compute_status
-        from ascore.enforce.compiler import compile_policy
+        from agenttic.certification.staleness import status as compute_status
+        from agenttic.enforce.compiler import compile_policy
 
         dossier = reg.latest_dossier(agent_id)
         try:
             card = reg.get_card(agent_id)
         except NotFoundError:
             card = None
-        from ascore.live.incidents import IncidentManager
+        from agenttic.live.incidents import IncidentManager
         incidents = IncidentManager(reg).list_with_sla(cfg, agent_id=agent_id)
         status = compute_status(reg, dossier)
         policy = compile_policy(dossier, card, incidents, cfg, status=status,

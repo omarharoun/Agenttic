@@ -10,7 +10,7 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from ascore.scoring.judge import ADVISOR_BETA, JudgeError, LLMJudge, make_judge
+from agenttic.scoring.judge import ADVISOR_BETA, JudgeError, LLMJudge, make_judge
 from tests.test_judge_calibration import TONE, make_tc, make_trace
 
 VERDICT = json.dumps({"score": 1, "rationale": "meets the pass anchor"})

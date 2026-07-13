@@ -191,7 +191,7 @@ def _run_gate(tmp_path, tenant, env_extra):
 
 def _cleanup_tenant(tenant):
     root = Path(__file__).resolve().parents[1]
-    for p in root.glob(f"ascore.{tenant}.db*"):
+    for p in root.glob(f"agenttic.{tenant}.db*"):
         p.unlink(missing_ok=True)
 
 

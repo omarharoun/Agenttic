@@ -3,7 +3,7 @@ an in-memory implementation of the harness's TraceStore protocol."""
 
 from __future__ import annotations
 
-from ascore.schema.trace import Trace
+from agenttic.schema.trace import Trace
 
 
 class InMemoryTraceStore:

@@ -37,7 +37,7 @@ class CertifyManager:
 
     async def _run(self, job_id, agent_id, profile_id, variant, url,
                    system_prompt, clients, tenant, role=None):
-        from ascore.certification.certify import certify
+        from agenttic.certification.certify import certify
         client = (clients or {}).get("agent")
         judge = (clients or {}).get("judge") or client
         try:
@@ -54,7 +54,7 @@ class CertifyManager:
             # cached run spent nothing, so nothing is debited.
             if not res.cached and (res.cost_usd or 0) > 0:
                 try:
-                    from ascore.billing import service as billing_service
+                    from agenttic.billing import service as billing_service
                     billing_service.meter_cost(
                         self.reg.engine, tenant, "certification",
                         res.cost_usd, cfg=self.cfg, ref=job_id)

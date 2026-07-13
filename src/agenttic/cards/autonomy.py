@@ -25,7 +25,7 @@ class AutonomyClassification:
 
     def to_field_value(self):
         """As a measured FieldValue for the card's autonomy field (or None)."""
-        from ascore.cards.autofill import FieldValue
+        from agenttic.cards.autofill import FieldValue
         key = "autonomy_control.autonomy_level_and_planning_depth"
         if self.level is None:
             return None

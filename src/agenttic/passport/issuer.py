@@ -14,8 +14,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.schema.passport import Passport, PassportClaims
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.schema.passport import Passport, PassportClaims
 
 
 def _now() -> datetime:
@@ -39,7 +39,7 @@ class PassportIssuer:
     def issue(self, agent_id: str, *, now: datetime | None = None) -> Passport:
         """Issue a passport bound to the agent's latest certification evidence.
         Refuses if the certification is revoked or stale."""
-        from ascore.certification.staleness import status as cert_status
+        from agenttic.certification.staleness import status as cert_status
 
         now = now or _now()
         dossier = self.reg.latest_dossier(agent_id)  # raises NotFoundError
@@ -57,7 +57,7 @@ class PassportIssuer:
 
         stage = "internal"
         try:
-            from ascore.release.ladder import agent_stage
+            from agenttic.release.ladder import agent_stage
             stage = agent_stage(self.reg, agent_id)
         except Exception:  # noqa: BLE001
             pass
@@ -103,7 +103,7 @@ class PassportIssuer:
 def verify_passport_object(passport: Passport, key_manager, *, status: str,
                            now: datetime | None = None) -> dict:
     """Pure verification of a passport object against a key manager + status."""
-    from ascore.passport.keys import verify_payload
+    from agenttic.passport.keys import verify_payload
 
     now = now or _now()
     kr = key_manager.keyref_for(passport.claims.key_id)

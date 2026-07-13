@@ -3,7 +3,7 @@ Camp orchestration — the glue between the vendored engine and Agenttic.
 
 Pure, side-effect-free with respect to the DB: these functions run a camp (or an
 improve loop) in memory and return plain dicts + the episode list. The router
-(:mod:`ascore.server.routes.camp`) is what persists them via ``CampStore``. That
+(:mod:`agenttic.server.routes.camp`) is what persists them via ``CampStore``. That
 split keeps the trainer/gate/holdout code exactly as tested and makes the whole
 thing easy to unit-test without a database or a network.
 

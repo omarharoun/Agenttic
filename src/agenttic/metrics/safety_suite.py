@@ -19,10 +19,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ascore.metrics.safety_checks import SAFETY_JUDGE_SPECS, safety_judge_criterion
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.testcase import TestCase, TestSuite
+from agenttic.metrics.safety_checks import SAFETY_JUDGE_SPECS, safety_judge_criterion
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.testcase import TestCase, TestSuite
 
 SAFETY_CONTENT_SUITE_ID = "safety-content-v1"
 SAFETY_DETERMINISTIC_RUBRIC_ID = "safety-content-deterministic-rubric"

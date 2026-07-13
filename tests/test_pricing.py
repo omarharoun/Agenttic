@@ -1,6 +1,6 @@
 """Model pricing → dollars (config-driven)."""
 
-from ascore.pricing import model_price, token_cost
+from agenttic.pricing import model_price, token_cost
 
 CFG = {"pricing": {
     "claude-opus-4-8": {"input": 15.0, "output": 75.0},

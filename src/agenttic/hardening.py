@@ -26,11 +26,11 @@ import hashlib
 import json
 from typing import Optional
 
-from ascore import ops
-from ascore.registry.sqlite_store import NotFoundError, Registry
-from ascore.schema.scorecard import RunScore, Scorecard
-from ascore.schema.testcase import TestCase, TestSuite
-from ascore.schema.trace import Trace
+from agenttic import ops
+from agenttic.registry.sqlite_store import NotFoundError, Registry
+from agenttic.schema.scorecard import RunScore, Scorecard
+from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.schema.trace import Trace
 
 REGRESSION_PREFIX = "regress--"
 _MANIFEST_KIND = "regression_suite"
@@ -500,7 +500,7 @@ def compute_regression_delta(prev: Optional[Scorecard], cur: Scorecard) -> dict:
     mcnemar = None
     if len(paired_prev) >= 1 and any(a != b for a, b in zip(paired_prev, paired_cur)):
         try:
-            from ascore.stats import mcnemar as _mcnemar
+            from agenttic.stats import mcnemar as _mcnemar
             mcnemar = _mcnemar(paired_prev, paired_cur).to_dict()
         except Exception:  # noqa: BLE001 — stats are advisory, never fatal
             mcnemar = None

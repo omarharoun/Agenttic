@@ -6,16 +6,16 @@ multi-call ground truth scores through the canonical tool-call-accuracy checks
 import uuid
 from datetime import datetime, timezone
 
-from ascore.metrics.canonical_checks import (
+from agenttic.metrics.canonical_checks import (
     tool_selection_accuracy, tool_sequence_accuracy)
-from ascore.metrics.datasets import get_adapter
-from ascore.metrics.datasets.bfcl import (
+from agenttic.metrics.datasets import get_adapter
+from agenttic.metrics.datasets.bfcl import (
     BFCLLiveMultipleAdapter, BFCLLiveSimpleAdapter, BFCLMultipleAdapter,
     BFCLParallelAdapter, BFCLParallelMultipleAdapter)
-from ascore.metrics.standard_suites import DATASET_SUITE_IDS, canonical_suite_ids
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.scoring.engine import score_run
+from agenttic.metrics.standard_suites import DATASET_SUITE_IDS, canonical_suite_ids
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.scoring.engine import score_run
 
 NOW = datetime(2026, 6, 21, tzinfo=timezone.utc)
 

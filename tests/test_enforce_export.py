@@ -5,11 +5,11 @@ from __future__ import annotations
 import json
 import tempfile
 
-from ascore.config import load_config
-from ascore.enforce.export import export_json, export_otel
-from ascore.enforce.gateway import EnforcementGateway, compute_policy_hash
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.enforcement import EnforcementPolicy, Rule
+from agenttic.config import load_config
+from agenttic.enforce.export import export_json, export_otel
+from agenttic.enforce.gateway import EnforcementGateway, compute_policy_hash
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.enforcement import EnforcementPolicy, Rule
 
 CFG = load_config("config.yaml")
 
@@ -43,7 +43,7 @@ def test_json_export_is_verbatim_events():
 def test_otel_export_golden_shape():
     reg, s = _gw()
     otel = export_otel(reg, s.session_id)
-    assert otel["scope"]["name"] == "ascore.enforce"
+    assert otel["scope"]["name"] == "agenttic.enforce"
     assert otel["resource"]["attributes"]["service.name"] == "agenttic-enforce"
     spans = otel["spans"]
     # one span per decision (2 tool calls)

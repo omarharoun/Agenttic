@@ -12,10 +12,10 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from ascore import ops
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.schema.agent import DeclaredAgent
-from ascore.server.auth import is_evaluator, require_operator
+from agenttic import ops
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.schema.agent import DeclaredAgent
+from agenttic.server.auth import is_evaluator, require_operator
 
 router = APIRouter(tags=["resources"])
 
@@ -243,7 +243,7 @@ def register_catalog_agent(agent: DeclaredAgent, request: Request):
     Per-variant connection requirements are validated by the schema (422);
     black-box URLs are SSRF-checked here too (registration-time gate)."""
     if agent.variant == "blackbox":
-        from ascore.security import UnsafeURLError, validate_blackbox_url
+        from agenttic.security import UnsafeURLError, validate_blackbox_url
         try:
             validate_blackbox_url(agent.url, cfg=request.state.cfg,
                                   allow_unresolved=True)
@@ -293,7 +293,7 @@ async def extract_document(request: Request, file: UploadFile):
     """Extract plain text from an uploaded requirement document (pdf, docx, txt,
     md) so the guided Business Requirement step can be populated from a file
     instead of pasted text. In-memory only — nothing is written to disk."""
-    from ascore.documents import MAX_DOCUMENT_BYTES, DocumentError, extract_text
+    from agenttic.documents import MAX_DOCUMENT_BYTES, DocumentError, extract_text
     max_bytes = int(request.state.cfg.get("ui", {})
                     .get("max_document_mb", 0) or 0) * 1024 * 1024 \
         or MAX_DOCUMENT_BYTES

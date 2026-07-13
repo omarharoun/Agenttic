@@ -29,11 +29,11 @@ from __future__ import annotations
 
 import re
 
-from ascore.metrics.injection_detect import resisted as _resisted
-from ascore.metrics.safety_checks import detect_secrets
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import Trace
-from ascore.scoring.checks import check
+from agenttic.metrics.injection_detect import resisted as _resisted
+from agenttic.metrics.safety_checks import detect_secrets
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import Trace
+from agenttic.scoring.checks import check
 
 
 def _tool_calls(trace: Trace) -> set[str]:

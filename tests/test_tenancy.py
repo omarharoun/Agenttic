@@ -6,8 +6,8 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import Workspaces, create_app
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import Workspaces, create_app
 
 CONFIG = """\
 models: {agent_default: a, judge_strong: j, judge_light: l}
@@ -54,7 +54,9 @@ def test_tenant_dbs_are_separate_files(tmp_path):
     with TestClient(_app(tmp_path)) as c:
         c.post("/api/agents/catalog", headers=_hdr("acme_tok"),
                json={"agent_id": "a", "variant": "reference"})
-    # acme's data lives in a sibling DB, not the default one
+    # acme's data lives in a sibling DB, not the default one. The base DB here
+    # is configured as ascore.db (see CONFIG), so the per-tenant sibling is
+    # derived as ascore.acme.db — an on-disk literal, NOT an import path.
     assert (tmp_path / "ascore.acme.db").exists()
 
 

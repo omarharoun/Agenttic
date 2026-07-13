@@ -7,7 +7,7 @@ detector fails, publishing that rather than hiding it.
 
 from __future__ import annotations
 
-from ascore.metrics.redteam import (
+from agenttic.metrics.redteam import (
     INJECTION_PROBES,
     INJECTION_TECHNIQUES,
     REDTEAM_INJECTION_SUITE_ID,
@@ -15,7 +15,7 @@ from ascore.metrics.redteam import (
     seed_redteam_injection_suite,
     technique_counts,
 )
-from ascore.registry.sqlite_store import Registry
+from agenttic.registry.sqlite_store import Registry
 
 
 class TestProbeSet:
@@ -78,7 +78,7 @@ class TestPublicEndpoint:
     def test_public_redteam_endpoint(self, tmp_path):
         from fastapi.testclient import TestClient
 
-        from ascore.server.app import create_app
+        from agenttic.server.app import create_app
 
         cfg_path = tmp_path / "config.yaml"
         cfg_path.write_text(

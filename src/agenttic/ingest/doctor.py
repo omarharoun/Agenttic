@@ -16,9 +16,9 @@ import json
 import urllib.request
 from typing import Any, Callable
 
-from ascore.ingest.emit import SpanEmitter
-from ascore.ingest.mapping import spans_to_traces
-from ascore.ingest.otel import parse_otlp
+from agenttic.ingest.emit import SpanEmitter
+from agenttic.ingest.mapping import spans_to_traces
+from agenttic.ingest.otel import parse_otlp
 
 _PROBE_AGENT = "agenttic-doctor-probe"
 

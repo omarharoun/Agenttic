@@ -30,13 +30,13 @@ import json
 import urllib.request
 from importlib import resources
 
-from ascore.metrics.datasets.base import DatasetAdapter, DatasetInfo
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.testcase import TestCase
+from agenttic.metrics.datasets.base import DatasetAdapter, DatasetInfo
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.testcase import TestCase
 
 _HF = ("https://huggingface.co/datasets/AssistantBench/AssistantBench/"
        "resolve/main/assistant_bench_v1.0_dev.jsonl")
-_DATA = resources.files("ascore.metrics.datasets") / "assistantbench_data"
+_DATA = resources.files("agenttic.metrics.datasets") / "assistantbench_data"
 _SAMPLE = "assistant_bench_v1.0_dev.sample.jsonl"
 
 INFO = DatasetInfo(

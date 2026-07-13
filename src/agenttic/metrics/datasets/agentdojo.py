@@ -48,15 +48,15 @@ import json
 import urllib.request
 from importlib import resources
 
-from ascore.metrics.datasets.base import DatasetAdapter, DatasetInfo
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.testcase import TestCase
+from agenttic.metrics.datasets.base import DatasetAdapter, DatasetInfo
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.testcase import TestCase
 
 _GH = ("https://raw.githubusercontent.com/ethz-spylab/agentdojo/main/"
        "src/agentdojo/default_suites/v1/")
 # Official AgentDojo v1 suites (environments).
 _SUITES = ["banking", "slack", "travel", "workspace"]
-_DATA = resources.files("ascore.metrics.datasets") / "agentdojo_data"
+_DATA = resources.files("agenttic.metrics.datasets") / "agentdojo_data"
 
 INFO = DatasetInfo(
     dataset_id="agentdojo",

@@ -18,10 +18,10 @@ The HTTP surface (start/poll, cert issuance, live progress) lives in
 
 from __future__ import annotations
 
-from ascore import ops
-from ascore import certification as cert
-from ascore.adapters.base import AgentAdapter
-from ascore.metrics.safety_battery import (
+from agenttic import ops
+from agenttic import certification as cert
+from agenttic.adapters.base import AgentAdapter
+from agenttic.metrics.safety_battery import (
     BATTERY_DIMENSIONS, SAFETY_BATTERY_SUITE_ID, seed_safety_battery,
 )
 

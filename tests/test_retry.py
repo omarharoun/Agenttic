@@ -2,7 +2,7 @@
 
 import pytest
 
-from ascore.retry import RetryPolicy, is_retryable, with_retry
+from agenttic.retry import RetryPolicy, is_retryable, with_retry
 
 
 class _ApiErr(Exception):

@@ -10,10 +10,10 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sse_starlette.sse import EventSourceResponse
 
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.server.auth import require_operator
-from ascore.server.executor import WorkflowValidationError
-from ascore.server.keys import tenant_run_clients as _run_clients
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.server.auth import require_operator
+from agenttic.server.executor import WorkflowValidationError
+from agenttic.server.keys import tenant_run_clients as _run_clients
 
 router = APIRouter(tags=["executions"])
 
@@ -139,7 +139,7 @@ def execution_issues(execution_id: str, request: Request):
     each with a plain-language why, the failing cases as evidence, and which Fix
     capability addresses it. Derived entirely from computed scores (no fabricated
     findings); an all-passing run honestly reports zero issues."""
-    from ascore.issues import build_issues
+    from agenttic.issues import build_issues
 
     state = request.state
     try:

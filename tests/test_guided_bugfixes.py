@@ -15,12 +15,12 @@ import io
 import pytest
 from fastapi.testclient import TestClient
 
-from ascore import ops
-from ascore.adapters.anthropic_simple import AnthropicSimpleAgent
-from ascore.documents import MAX_DOCUMENT_BYTES, DocumentError, extract_text
-from ascore.registry.sqlite_store import Registry
-from ascore.server import nodes
-from ascore.server.app import create_app
+from agenttic import ops
+from agenttic.adapters.anthropic_simple import AnthropicSimpleAgent
+from agenttic.documents import MAX_DOCUMENT_BYTES, DocumentError, extract_text
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server import nodes
+from agenttic.server.app import create_app
 from tests.test_e2e_pipeline import RoutingFakeClient
 
 CFG = {

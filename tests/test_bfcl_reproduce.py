@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from ascore.metrics.bfcl_reproduce import (
+from agenttic.metrics.bfcl_reproduce import (
     ReproductionResult,
     _load_cases,
     model_predictions_available,
@@ -97,7 +97,7 @@ class TestReproductionStatusSurface:
         # reproduced (live) is False while recorded is True. The recorded figure
         # is still surfaced (not deleted).
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        from ascore.metrics.reproduction import reproduction_report
+        from agenttic.metrics.reproduction import reproduction_report
         rep = reproduction_report()
         assert rep["any_reproduced"] is False           # nothing reproduced LIVE here
         assert rep["any_reproduced_recorded"] is True   # BFCL has a recorded run

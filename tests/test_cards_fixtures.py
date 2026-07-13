@@ -7,19 +7,19 @@ from datetime import datetime, timezone
 
 import pytest
 
-from ascore.cards.agency import detect_covered_agent
-from ascore.cards.autofill import autofill_card
-from ascore.cards.autonomy import classify_autonomy
-from ascore.certification.dossier import assemble
-from ascore.config import load_config
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.certification import (
+from agenttic.cards.agency import detect_covered_agent
+from agenttic.cards.autofill import autofill_card
+from agenttic.cards.autonomy import classify_autonomy
+from agenttic.certification.dossier import assemble
+from agenttic.config import load_config
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.certification import (
     Attestation,
     CertificationProfile,
     TierDecision,
 )
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 NOW = datetime(2026, 6, 21, tzinfo=timezone.utc)
 
@@ -67,7 +67,7 @@ def _rich_agent(reg, agent="ref-agent"):
         task_success_rate=1.0, mean_cost_usd=0.0, p95_latency_ms=0.0,
         visibility_tier="glass_box"))
     # an incident
-    from ascore.live.incidents import open_manual
+    from agenttic.live.incidents import open_manual
     open_manual(reg, agent_id=agent, severity="S3", title="drift")
     # a dossier (certification)
     assemble(reg, agent_id=agent, agent_config_hash="h",

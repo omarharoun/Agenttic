@@ -12,16 +12,16 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.scoring.calibration import (
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.scoring.calibration import (
     calibration_report,
     krippendorff_alpha_interval,
     load_labels,
 )
-from ascore.scoring.engine import score_run
-from ascore.scoring.judge import JudgeError, LLMJudge
+from agenttic.scoring.engine import score_run
+from agenttic.scoring.judge import JudgeError, LLMJudge
 
 NOW = datetime(2026, 6, 11, tzinfo=timezone.utc)
 

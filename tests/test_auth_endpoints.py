@@ -4,8 +4,8 @@ user drives the same RBAC + tenant scoping as the bearer token."""
 import pytest
 from fastapi.testclient import TestClient
 
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
 
 # auth.required so the API enforces; allow_signup; viewer signup role so we can
 # test the operator gate. cookie_secure omitted -> defaults false (TestClient http).
@@ -39,7 +39,7 @@ def _client_verify(tmp_path):
 
 class TestEmailVerificationGate:
     def test_signup_unverified_then_verify_unlocks_login(self, tmp_path):
-        from ascore.registry.sqlite_store import EmailTokenRow, Registry
+        from agenttic.registry.sqlite_store import EmailTokenRow, Registry
         from sqlmodel import Session, select
         with _client_verify(tmp_path) as c:
             r = c.post("/api/auth/signup",

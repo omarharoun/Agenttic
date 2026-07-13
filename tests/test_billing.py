@@ -12,12 +12,12 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from ascore.billing import plans, service
-from ascore.billing.store import BillingStore, GlobalBillingStore
-from ascore.billing.webhooks import apply_paypal_event, apply_stripe_event
-from ascore.copilot import credits as copilot_credits
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
+from agenttic.billing import plans, service
+from agenttic.billing.store import BillingStore, GlobalBillingStore
+from agenttic.billing.webhooks import apply_paypal_event, apply_stripe_event
+from agenttic.copilot import credits as copilot_credits
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
 
 CFG = {
     "billing": {
@@ -221,7 +221,7 @@ class TestStripeGatewaySignature:
 
     def test_construct_event_returns_plain_dict(self, monkeypatch):
         pytest.importorskip("stripe")
-        from ascore.billing.gateways import stripe_gateway as sg
+        from agenttic.billing.gateways import stripe_gateway as sg
         secret = "whsec_testsecret_000000000000000000000000"
         monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", secret)
         payload = json.dumps({"id": "evt_1", "object": "event",
@@ -236,7 +236,7 @@ class TestStripeGatewaySignature:
     def test_bad_signature_rejected(self, monkeypatch):
         pytest.importorskip("stripe")
         import stripe
-        from ascore.billing.gateways import stripe_gateway as sg
+        from agenttic.billing.gateways import stripe_gateway as sg
         monkeypatch.setenv("STRIPE_WEBHOOK_SECRET",
                            "whsec_testsecret_000000000000000000000000")
         payload = b'{"id":"evt_1","object":"event","type":"x","data":{"object":{}}}'
@@ -331,7 +331,7 @@ class TestBillingHTTP:
     def test_real_provider_installed_when_enabled(self, tmp_path):
         app = _mk_app(tmp_path)
         with TestClient(app):
-            from ascore.billing.credits_provider import BillingCreditsProvider
+            from agenttic.billing.credits_provider import BillingCreditsProvider
             assert isinstance(copilot_credits.get_provider(), BillingCreditsProvider)
         # restored to the default stub on shutdown
         assert type(copilot_credits.get_provider()) is copilot_credits.CreditsProvider
@@ -344,7 +344,7 @@ class TestBillingHTTP:
                        "metadata": {"tenant": "default", "topup_id": "topup_10",
                                     "credits": "1000", "description": "$10 top-up"}}}}
         # bypass signature verification by faking the SDK construct_event
-        from ascore.billing.gateways import stripe_gateway
+        from agenttic.billing.gateways import stripe_gateway
         monkeypatch.setattr(stripe_gateway, "construct_event",
                             lambda payload, sig: evt)
         with TestClient(app) as c:

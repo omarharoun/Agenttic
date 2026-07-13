@@ -2,9 +2,9 @@
 the failure path, and the stale-run sweep (orphaned 'running' rows from a dead
 process get marked failed on startup)."""
 
-from ascore.camp.store import CampStore
-from ascore.migrations import run_migrations
-from ascore.registry.sqlite_store import make_engine
+from agenttic.camp.store import CampStore
+from agenttic.migrations import run_migrations
+from agenttic.registry.sqlite_store import make_engine
 
 
 def _store(tmp_path):

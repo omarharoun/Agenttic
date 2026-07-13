@@ -7,17 +7,17 @@ import tempfile
 
 from fastapi.testclient import TestClient
 
-from ascore.interop.agent_index import (
+from agenttic.interop.agent_index import (
     export_card,
     import_index_cards,
     load_index_cards,
     validate_export_round_trip,
 )
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.agent_card import AgentCard, FieldValue
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
-from ascore.server.app import create_app
-from ascore.server.routes.leaderboard import _attach_certification_badges
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.agent_card import AgentCard, FieldValue
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.server.app import create_app
+from agenttic.server.routes.leaderboard import _attach_certification_badges
 
 VENDOR = "data/vendor/ai-agent-index/2025_annotations.json"
 

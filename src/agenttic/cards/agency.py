@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ascore.cards.autonomy import _span_is_approval_gated, _write_actions
+from agenttic.cards.autonomy import _span_is_approval_gated, _write_actions
 
 MIN_AUTONOMOUS_CALLS = 3
 MIN_TRACES_FOR_CONTRADICTION = 3

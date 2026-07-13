@@ -9,10 +9,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from ascore.optimizer import project_runs
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.server.auth import require_operator
-from ascore.server.keys import tenant_run_clients
+from agenttic.optimizer import project_runs
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.server.auth import require_operator
+from agenttic.server.keys import tenant_run_clients
 
 router = APIRouter(tags=["optimize"])
 

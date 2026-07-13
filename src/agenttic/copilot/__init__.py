@@ -5,24 +5,24 @@ Agenttic's own key) that helps authenticated users understand and navigate the
 platform. v1 is a guide/answer copilot: Q&A + navigation deep-links, no actions.
 
 Pieces:
-- :mod:`ascore.copilot.skill` — persona, scope, tone, guardrails (the "skill").
+- :mod:`agenttic.copilot.skill` — persona, scope, tone, guardrails (the "skill").
 - ``knowledge.md`` — curated, grounded platform knowledge injected each turn.
-- :mod:`ascore.copilot.service` — build request, call Sonnet 4.6, stream + guard.
-- :mod:`ascore.copilot.credits` — the billing/free-credits integration seam.
-The HTTP/SSE surface is :mod:`ascore.server.routes.copilot`.
+- :mod:`agenttic.copilot.service` — build request, call Sonnet 4.6, stream + guard.
+- :mod:`agenttic.copilot.credits` — the billing/free-credits integration seam.
+The HTTP/SSE surface is :mod:`agenttic.server.routes.copilot`.
 """
 
-from ascore.copilot.agent import CopilotAgent, new_session
-from ascore.copilot.credits import (
+from agenttic.copilot.agent import CopilotAgent, new_session
+from agenttic.copilot.credits import (
     CreditDecision, check_credits, get_provider, record_action, record_usage,
 )
-from ascore.copilot.service import (
+from agenttic.copilot.service import (
     CopilotConfig, CopilotNotConfigured, CopilotService, is_configured,
     resolve_client,
 )
-from ascore.copilot.skill import build_system_prompt, load_knowledge
-from ascore.copilot.store import CopilotStore
-from ascore.copilot.tools import ToolContext, all_tools, tool_schemas
+from agenttic.copilot.skill import build_system_prompt, load_knowledge
+from agenttic.copilot.store import CopilotStore
+from agenttic.copilot.tools import ToolContext, all_tools, tool_schemas
 
 __all__ = [
     "CopilotConfig", "CopilotNotConfigured", "CopilotService", "is_configured",

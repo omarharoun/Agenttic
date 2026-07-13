@@ -18,8 +18,8 @@ import pytest
 
 import agenttic
 from agenttic import _detect
-from ascore.ingest.mapping import spans_to_traces
-from ascore.ingest.otel import parse_otlp
+from agenttic.ingest.mapping import spans_to_traces
+from agenttic.ingest.otel import parse_otlp
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ADAPTER_DIRS = [REPO_ROOT / "adapters" / "langgraph",

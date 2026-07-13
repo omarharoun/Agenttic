@@ -14,7 +14,7 @@ from pathlib import Path
 # The files copied into the target directory, in stable order.
 SCAFFOLD_FILES = ("config.yaml", "kb.json", "agent_sample.py", "QUICKSTART.md")
 
-_ASSET_PKG = "ascore.release.scaffold_assets"
+_ASSET_PKG = "agenttic.release.scaffold_assets"
 
 
 def _asset_text(name: str) -> str:

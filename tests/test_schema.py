@@ -9,10 +9,10 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from pydantic import ValidationError
 
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.schema.testcase import TestCase, TestSuite
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
 
 T0 = datetime(2026, 6, 11, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -102,7 +102,7 @@ class TestSchemaVersion:
         assert make_trace().schema_version == SCHEMA_VERSION
 
     def test_bump_rule_documented(self):
-        import ascore.schema.trace as m
+        import agenttic.schema.trace as m
         assert "MAJOR" in m.__doc__ and "MINOR" in m.__doc__
 
 

@@ -3,9 +3,9 @@ rollup endpoint (auth-gated, tenant-scoped)."""
 
 from fastapi.testclient import TestClient
 
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
-from ascore.server.app import create_app
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.server.app import create_app
 
 CONFIG = """\
 models: {agent_default: a, judge_strong: j, judge_light: l}

@@ -7,7 +7,7 @@ actual allowlist. Surfaced read-only at ``GET /api/assistant/posture``.
 
 from __future__ import annotations
 
-from ascore.assistant.tools import TOOL_REGISTRY
+from agenttic.assistant.tools import TOOL_REGISTRY
 
 #: The safety-first system prompt. Narrow scope, refuse harmful/destructive
 #: requests, treat all tool output as untrusted data, and escalate anything

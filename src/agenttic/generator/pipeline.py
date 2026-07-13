@@ -18,10 +18,10 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.testcase import TestCase, TestSuite
-from ascore.scoring.checks import CHECKS
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.scoring.checks import CHECKS
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ class GeneratorError(RuntimeError):
 # lives in scoring.checks so the SAME contract runs at both generation time
 # (here, via generate_cases) and scoring time (engine.score_run) — the latter is
 # what lets old/resumed suites that predate a required field still score.
-from ascore.scoring.checks import repair_expected as _repair_expected  # noqa: E402
+from agenttic.scoring.checks import repair_expected as _repair_expected  # noqa: E402
 
 
 class BenchmarkGenerator:
@@ -97,7 +97,7 @@ class BenchmarkGenerator:
         self.client = client
         self.model = model
         self.max_tokens = max_tokens
-        from ascore.retry import RetryPolicy
+        from agenttic.retry import RetryPolicy
         self.retry_policy = retry_policy or RetryPolicy()
         self.pricing = pricing_per_mtok or {"input": 3.0, "output": 15.0}
         # token usage accumulated across stages, so cost is recorded even when a
@@ -113,7 +113,7 @@ class BenchmarkGenerator:
     # -- LLM plumbing ------------------------------------------------------
 
     def _ask_json(self, prompt: str) -> dict:
-        from ascore.retry import with_retry
+        from agenttic.retry import with_retry
         last = ""
         for _ in range(2):  # one retry on malformed output (transient 5xx retried below)
             resp = with_retry(lambda: self.client.messages.create(
@@ -203,7 +203,7 @@ class BenchmarkGenerator:
         The generator decides how many cases each task warrants (bounded by
         MIN_CASES..``cases_per_task``); there is no fixed per-task count.
         ``on_progress(event_type, data)`` reports each LLM stage as it lands."""
-        from ascore.registry.sqlite_store import DuplicateVersionError
+        from agenttic.registry.sqlite_store import DuplicateVersionError
         emit = on_progress or (lambda t, d: None)
         try:
             tasks = self.extract_tasks(business_doc)

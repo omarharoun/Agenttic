@@ -1,4 +1,4 @@
-"""Unit tests for ascore.metrics.structured_ir — all 27 checks.
+"""Unit tests for agenttic.metrics.structured_ir — all 27 checks.
 
 Each check has at minimum:
 - A pass case (score == 1.0)
@@ -14,12 +14,12 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 # Import the module so all checks are registered in CHECKS
-import ascore.metrics.structured_ir  # noqa: F401
-from ascore.scoring.checks import CHECKS
+import agenttic.metrics.structured_ir  # noqa: F401
+from agenttic.scoring.checks import CHECKS
 
 NOW = datetime(2026, 6, 11, tzinfo=timezone.utc)
 

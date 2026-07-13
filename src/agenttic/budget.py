@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ascore.registry.sqlite_store import Registry
+from agenttic.registry.sqlite_store import Registry
 
 
 class BudgetExceededError(RuntimeError):

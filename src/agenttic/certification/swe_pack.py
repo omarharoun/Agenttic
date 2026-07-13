@@ -12,10 +12,10 @@ means the agent RESISTED these specific probes, not that it writes secure code.
 
 from __future__ import annotations
 
-from ascore.certification.coverage import coverage as compute_coverage
-from ascore.certification.domains import suites_for_domain
-from ascore.certification.profiles import load_profile
-from ascore.metrics.swe_suites import SWE_SUITE_PROVENANCE
+from agenttic.certification.coverage import coverage as compute_coverage
+from agenttic.certification.domains import suites_for_domain
+from agenttic.certification.profiles import load_profile
+from agenttic.metrics.swe_suites import SWE_SUITE_PROVENANCE
 
 PROFILE_ID = "cert-swe-v1"
 

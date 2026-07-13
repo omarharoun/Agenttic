@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from fastapi import FastAPI, Header, HTTPException, Request
 
-from ascore.verify.header import HEADER_NAME, verify_agent_passport
-from ascore.verify.sdk import (
+from agenttic.verifier.header import HEADER_NAME, verify_agent_passport
+from agenttic.verifier.sdk import (
     ExpiredError,
     RevokedError,
     TamperedError,

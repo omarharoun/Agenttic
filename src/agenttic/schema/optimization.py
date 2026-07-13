@@ -1,5 +1,5 @@
 """Prompt-optimization schema — the artifact of a self-improving system-prompt
-loop (see :mod:`ascore.optimizer`).
+loop (see :mod:`agenttic.optimizer`).
 
 The optimizer keeps the **model frozen** and treats the suite's pass rate as the
 reward, iteratively editing the agent's SYSTEM PROMPT to fix the criteria it
@@ -35,7 +35,7 @@ class CandidateResult(BaseModel):
     """One proposed prompt evaluated against the current best on the train split.
 
     The decision uses the same paired stats the A/B engine produces
-    (:func:`ascore.ab.compare_scorecards`): ``success_delta`` is the net pass-rate
+    (:func:`agenttic.ab.compare_scorecards`): ``success_delta`` is the net pass-rate
     change, and ``regressions`` lists any criterion the edit significantly broke."""
     index: int                   # candidate index within its round
     system_prompt: str

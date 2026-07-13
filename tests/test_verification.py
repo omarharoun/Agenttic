@@ -5,10 +5,10 @@ from datetime import datetime, timedelta, timezone
 
 from sqlmodel import Session, select
 
-from ascore.registry.sqlite_store import EmailTokenRow, Registry
-from ascore.server.mailer import Mailer
-from ascore.server.users import UserStore
-from ascore.server.verification import VerificationStore
+from agenttic.registry.sqlite_store import EmailTokenRow, Registry
+from agenttic.server.mailer import Mailer
+from agenttic.server.users import UserStore
+from agenttic.server.verification import VerificationStore
 
 
 def _setup(tmp_path):
@@ -84,7 +84,7 @@ class TestResendProvider:
         assert Mailer({"email": {"provider": "auto"}}).settings.provider == "resend"
 
     def test_resend_posts_to_https_api(self, monkeypatch):
-        import ascore.server.mailer as mod
+        import agenttic.server.mailer as mod
         monkeypatch.setenv("RESEND_API_KEY", "re_test_123")
         captured = {}
 
@@ -102,7 +102,7 @@ class TestResendProvider:
         assert captured["payload"]["subject"] == "Hi"
 
     def test_resend_failure_returns_false_no_raise(self, monkeypatch):
-        import ascore.server.mailer as mod
+        import agenttic.server.mailer as mod
         monkeypatch.setenv("RESEND_API_KEY", "re_test_123")
         monkeypatch.setattr(mod, "_http_post_json",
                             lambda *a, **k: (422, '{"error":"bad domain"}'))

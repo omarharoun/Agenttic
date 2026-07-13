@@ -12,8 +12,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.server.auth import require_operator
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.server.auth import require_operator
 
 # public (unauthenticated) — JWKS + status URL
 public_router = APIRouter(tags=["passport-public"])
@@ -31,7 +31,7 @@ def jwks(request: Request):
 def passport_status(passport_id: str, request: Request):
     """The status URL — the authority on revocation (checked separately from the
     signature, Hard Rule 28). Public."""
-    from ascore.passport.issuer import passport_status_view
+    from agenttic.passport.issuer import passport_status_view
     reg = request.app.state.reg
     try:
         return passport_status_view(reg, passport_id)
@@ -45,7 +45,7 @@ class IssueRequest(BaseModel):
 
 @router.post("/passport/issue", dependencies=[Depends(require_operator)])
 def issue_passport(body: IssueRequest, request: Request):
-    from ascore.passport.issuer import PassportIssuer
+    from agenttic.passport.issuer import PassportIssuer
     issuer = PassportIssuer(request.state.reg, request.state.cfg,
                             request.app.state.passport_keys)
     try:
@@ -59,7 +59,7 @@ def issue_passport(body: IssueRequest, request: Request):
 
 @router.post("/passport/renew", dependencies=[Depends(require_operator)])
 def renew_passport(body: IssueRequest, request: Request):
-    from ascore.passport.issuer import PassportIssuer
+    from agenttic.passport.issuer import PassportIssuer
     issuer = PassportIssuer(request.state.reg, request.state.cfg,
                             request.app.state.passport_keys)
     try:
@@ -72,7 +72,7 @@ def renew_passport(body: IssueRequest, request: Request):
 @router.post("/passport/{passport_id}/revoke",
              dependencies=[Depends(require_operator)])
 def revoke_passport(passport_id: str, request: Request):
-    from ascore.passport.issuer import PassportIssuer
+    from agenttic.passport.issuer import PassportIssuer
     issuer = PassportIssuer(request.state.reg, request.state.cfg,
                             request.app.state.passport_keys)
     try:
@@ -84,7 +84,7 @@ def revoke_passport(passport_id: str, request: Request):
 
 @router.get("/passport/{passport_id}/verify")
 def verify_passport(passport_id: str, request: Request):
-    from ascore.passport.issuer import PassportIssuer
+    from agenttic.passport.issuer import PassportIssuer
     issuer = PassportIssuer(request.state.reg, request.state.cfg,
                             request.app.state.passport_keys)
     try:

@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.schema.release import stage_rank, stages_from_config
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.schema.release import stage_rank, stages_from_config
 
 STAGE_GATE_ORIGIN = "stage_gate"
 

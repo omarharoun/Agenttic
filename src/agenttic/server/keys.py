@@ -1,7 +1,7 @@
 """Per-tenant Anthropic API keys: encrypted storage + run-client wiring.
 
 Each tenant supplies its OWN Anthropic key. It is encrypted at rest (see
-:mod:`ascore.server.crypto`), never logged, and never returned by the API — only
+:mod:`agenttic.server.crypto`), never logged, and never returned by the API — only
 a masked ``sk-ant-…last4`` is surfaced. Every Anthropic call made for a tenant's
 run is built from that tenant's key; the platform/global key is never used for a
 tenant run.
@@ -13,8 +13,8 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
-from ascore.registry.sqlite_store import ApiKeyRow
-from ascore.server.crypto import decrypt, encrypt
+from agenttic.registry.sqlite_store import ApiKeyRow
+from agenttic.server.crypto import decrypt, encrypt
 
 
 def _now() -> datetime:

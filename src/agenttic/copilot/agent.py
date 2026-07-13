@@ -1,5 +1,5 @@
 """The Copilot agent loop — Claude Sonnet 4.6 in a streaming, tool-using loop
-where the TOOLS are the real Agenttic API (see :mod:`ascore.copilot.tools`).
+where the TOOLS are the real Agenttic API (see :mod:`agenttic.copilot.tools`).
 
 The loop is the standard Anthropic tool-use cycle — model → tool_use → execute →
 tool_result → model → … → final answer — with the platform's safety model built
@@ -32,14 +32,14 @@ import uuid
 from collections.abc import Iterator
 from datetime import datetime, timezone
 
-from ascore.assistant.guard import guard_untrusted, redact_secrets
-from ascore.copilot.credits import check_credits, record_action
-from ascore.copilot.errors import classify
-from ascore.copilot.tools import (
+from agenttic.assistant.guard import guard_untrusted, redact_secrets
+from agenttic.copilot.credits import check_credits, record_action
+from agenttic.copilot.errors import classify
+from agenttic.copilot.tools import (
     ToolContext, confirmation_for, get_tool, is_write, tool_schemas,
 )
 
-log = logging.getLogger("ascore.copilot.agent")
+log = logging.getLogger("agenttic.copilot.agent")
 
 STATUS_READY = "ready"
 STATUS_AWAITING_APPROVAL = "awaiting_approval"
@@ -300,7 +300,7 @@ class CopilotAgent:
 
 
 def _system_prompt() -> str:
-    from ascore.copilot.skill import build_system_prompt
+    from agenttic.copilot.skill import build_system_prompt
     return build_system_prompt()
 
 

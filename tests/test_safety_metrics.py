@@ -7,15 +7,15 @@ seeds idempotently, and that a failing safety check surfaces as a ranked issue.
 
 from __future__ import annotations
 
-from ascore.issues import build_issues
-from ascore.metrics.catalog import BY_ID, CHECK_TO_METRIC, catalog_payload, index_weights
-from ascore.metrics.safety_catalog import SAFETY_METRICS, safety_metric_payload
-from ascore.metrics.safety_suite import (
+from agenttic.issues import build_issues
+from agenttic.metrics.catalog import BY_ID, CHECK_TO_METRIC, catalog_payload, index_weights
+from agenttic.metrics.safety_catalog import SAFETY_METRICS, safety_metric_payload
+from agenttic.metrics.safety_suite import (
     SAFETY_CONTENT_SUITE_ID,
     _build,
     seed_safety_content_suite,
 )
-from ascore.scoring.checks import validate_rubric_checks
+from agenttic.scoring.checks import validate_rubric_checks
 
 
 # --------------------------------------------------------------------------- #
@@ -76,7 +76,7 @@ class TestSafetySuite:
             assert c.rubric_id in rubric_ids
 
     def test_seed_is_idempotent(self, tmp_path):
-        from ascore.registry.sqlite_store import Registry
+        from agenttic.registry.sqlite_store import Registry
 
         reg = Registry(tmp_path / "safety.db")
         first = seed_safety_content_suite(reg)

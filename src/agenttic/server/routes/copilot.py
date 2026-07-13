@@ -1,8 +1,8 @@
 """HTTP/SSE surface for the Agenttic Copilot — an AGENTIC in-app assistant.
 
 The Copilot is a Claude Sonnet 4.6 agent whose tools are the platform's own API,
-scoped to the signed-in user (see :mod:`ascore.copilot.tools`,
-:mod:`ascore.copilot.agent`). It reads freely and PROPOSES write/cost actions,
+scoped to the signed-in user (see :mod:`agenttic.copilot.tools`,
+:mod:`agenttic.copilot.agent`). It reads freely and PROPOSES write/cost actions,
 which the user must confirm before they run.
 
 Endpoints (auth + tenant scoped like the rest of ``/api``):
@@ -32,19 +32,19 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from ascore.copilot.agent import CopilotAgent, new_session
-from ascore.copilot.credits import check_credits, check_daily_cap, record_usage
-from ascore.copilot.errors import (
+from agenttic.copilot.agent import CopilotAgent, new_session
+from agenttic.copilot.credits import check_credits, check_daily_cap, record_usage
+from agenttic.copilot.errors import (
     DAILY_LIMIT, NOT_CONFIGURED, OUT_OF_CREDITS, RATE_LIMITED, with_message,
 )
-from ascore.copilot.service import (
+from agenttic.copilot.service import (
     CopilotConfig, CopilotNotConfigured, is_configured, resolve_client,
 )
-from ascore.copilot.store import CopilotStore
-from ascore.copilot.tools import ToolContext
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.secrets import known_secret_values
-from ascore.server.ratelimit import InMemoryRateLimiter
+from agenttic.copilot.store import CopilotStore
+from agenttic.copilot.tools import ToolContext
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.secrets import known_secret_values
+from agenttic.server.ratelimit import InMemoryRateLimiter
 
 router = APIRouter(tags=["copilot"], prefix="/copilot")
 

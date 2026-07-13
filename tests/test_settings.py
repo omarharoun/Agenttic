@@ -3,9 +3,9 @@
 These use create_app WITHOUT injected LLM clients, so the per-tenant key path
 is exercised (the rest of the suite injects clients and bypasses it)."""
 
-import ascore.server.keys as keys
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
+import agenttic.server.keys as keys
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
 from fastapi.testclient import TestClient
 
 CONFIG = """\
@@ -91,7 +91,7 @@ def test_run_allowed_once_key_set(tmp_path, monkeypatch):
     # with a key set, the gate passes and the run starts (build clients stubbed
     # so no network); we only assert the gate no longer blocks.
     monkeypatch.setattr(keys, "validate_anthropic_key", lambda k: (True, ""))
-    monkeypatch.setattr("ascore.server.keys.build_tenant_clients",
+    monkeypatch.setattr("agenttic.server.keys.build_tenant_clients",
                         lambda key: {"agent": object()})
     with _client(tmp_path) as c:
         _signup(c)

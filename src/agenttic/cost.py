@@ -1,7 +1,7 @@
 """Pre-run cost estimation.
 
 Projects the spend of running a suite against an agent *before* it executes, so
-operators see expected cost up front and the budget gate (``ascore.budget``) can
+operators see expected cost up front and the budget gate (``agenttic.budget``) can
 warn/abort. The estimate is a prior built from config (`cost.*`) refined by the
 actual case count and average input size; it is deliberately a rough upper-ish
 bound, not a promise. Actual cost is measured during the run and reported
@@ -16,9 +16,9 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field
 
-from ascore.pricing import token_cost
-from ascore.registry.sqlite_store import NotFoundError, Registry
-from ascore.scoring.engine import applicable_criteria
+from agenttic.pricing import token_cost
+from agenttic.registry.sqlite_store import NotFoundError, Registry
+from agenttic.scoring.engine import applicable_criteria
 
 _CHARS_PER_TOKEN = 4
 
@@ -108,7 +108,7 @@ def _resolve_agent(cfg: dict, reg: Registry, agent_id: str | None,
                    agent_model: str | None) -> tuple[str, str | None, str, float]:
     """(variant, model, visibility, bb_call_cost) for an agent_id — from the
     declared catalog if present, else a reference agent on the default model."""
-    from ascore.ops import blackbox_call_cost
+    from agenttic.ops import blackbox_call_cost
     variant, visibility, bb_cost = "reference", "glass_box", 0.0
     model = agent_model or cfg["models"]["agent_default"]
     if agent_id:
@@ -168,7 +168,7 @@ def estimate_for_suite(cfg: dict, reg: Registry, suite_id: str, *,
 
 def estimate_for_workflow(cfg: dict, reg: Registry, wf) -> CostEstimate:
     """Estimate a workflow by finding its agent + run-suite + score nodes."""
-    from ascore.ops import blackbox_call_cost
+    from agenttic.ops import blackbox_call_cost
     nodes = {n.type: n for n in wf.nodes}
     agent_node = nodes.get("agent")
     suite_id = None

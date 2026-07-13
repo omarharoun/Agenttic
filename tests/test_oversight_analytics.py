@@ -8,13 +8,13 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
-from ascore.config import load_config
-from ascore.enforce.approvals import ApprovalManager
-from ascore.enforce.gateway import Session
-from ascore.oversight.analytics import approval_analytics
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.enforcement import Decision, EnforcementPolicy
-from ascore.server.app import create_app
+from agenttic.config import load_config
+from agenttic.enforce.approvals import ApprovalManager
+from agenttic.enforce.gateway import Session
+from agenttic.oversight.analytics import approval_analytics
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.enforcement import Decision, EnforcementPolicy
+from agenttic.server.app import create_app
 
 CFG = load_config("config.yaml")
 NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -82,8 +82,8 @@ oversight: {{reflexive_under_seconds: 3, rubber_stamp_threshold: 0.6, posture_to
 
 
 def test_rubber_stamp_drives_posture_only_under_toggle():
-    from ascore.enforce.compiler import compile_policy, posture_summary
-    from ascore.schema.certification import Attestation, Dossier, TierDecision
+    from agenttic.enforce.compiler import compile_policy, posture_summary
+    from agenttic.schema.certification import Attestation, Dossier, TierDecision
     d = Dossier(dossier_id="d", agent_id="a", agent_config_hash="h",
                 profile_id="p", profile_version=1,
                 tier_decision=TierDecision(tier="A", evidence_refs=["e"]),

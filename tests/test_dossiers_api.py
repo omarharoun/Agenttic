@@ -6,11 +6,11 @@ import time
 
 from fastapi.testclient import TestClient
 
-from ascore import ops
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.scorecard import CriterionScore, RunScore
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.server.app import create_app
+from agenttic import ops
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.scorecard import CriterionScore, RunScore
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.server.app import create_app
 from datetime import datetime, timezone
 from types import SimpleNamespace
 

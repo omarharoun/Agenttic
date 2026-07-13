@@ -16,7 +16,7 @@ fabricated.
 
 from __future__ import annotations
 
-from ascore.schema.agent_card import AgentCard, FieldValue
+from agenttic.schema.agent_card import AgentCard, FieldValue
 
 # canonical field keys (from cards.fields.generate_field_registry)
 K_MODEL = "technical_capabilities_system_architecture.model_specifications"
@@ -116,7 +116,7 @@ def _certification_field(reg, agent_id):
         d = reg.latest_dossier(agent_id)
     except Exception:  # noqa: BLE001
         return None
-    from ascore.certification.staleness import status
+    from agenttic.certification.staleness import status
     value = {"tier": d.tier_decision.tier, "status": status(reg, d)}
     return FieldValue.measured(K_CERT, value, [f"dossier:{d.dossier_id}"])
 

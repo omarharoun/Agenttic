@@ -15,10 +15,10 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from ascore.ingest import ingest_otlp_payload, ingest_spans, parse_otlp
-from ascore.ingest.otel import load_span_dump
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
+from agenttic.ingest import ingest_otlp_payload, ingest_spans, parse_otlp
+from agenttic.ingest.otel import load_span_dump
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
 
 _FIX = Path(__file__).resolve().parent / "fixtures/ingest/otel_genai_spans.json"
 

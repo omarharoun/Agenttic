@@ -6,7 +6,7 @@ run + scored + aggregated through the very same ops (``run_and_score_op``) the
 single-agent flow uses, so the harness, scoring, judge separation, registry,
 checkpoint/resume and BYO-key plumbing all apply unchanged. The only new work
 is the *paired comparison* of the two resulting scorecards (see
-:func:`compare_scorecards`) and the significance tests in :mod:`ascore.stats`.
+:func:`compare_scorecards`) and the significance tests in :mod:`agenttic.stats`.
 
 Pairing is by ``test_id``: a case counts toward the comparison only when **both**
 variants scored it (neither errored). Cases that errored in either variant are
@@ -19,16 +19,16 @@ from __future__ import annotations
 import uuid
 from typing import Callable
 
-from ascore import ops
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.ab import (
+from agenttic import ops
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.ab import (
     ABComparison,
     ABVariant,
     CriterionComparison,
     FlippedCase,
 )
-from ascore.schema.scorecard import Scorecard
-from ascore.stats import mcnemar, paired_bootstrap
+from agenttic.schema.scorecard import Scorecard
+from agenttic.stats import mcnemar, paired_bootstrap
 
 ProgressFn = Callable[[str, dict], None]
 

@@ -392,9 +392,9 @@ def date_present_score(text: str) -> float:
 # (checks.py imports canonical_checks, which is a sibling module; keeping
 # registrations at the bottom keeps the pure-function block importable standalone).
 
-from ascore.scoring.checks import _need, check  # noqa: E402
-from ascore.schema.trace import Trace  # noqa: E402
-from ascore.schema.testcase import TestCase  # noqa: E402
+from agenttic.scoring.checks import _need, check  # noqa: E402
+from agenttic.schema.trace import Trace  # noqa: E402
+from agenttic.schema.testcase import TestCase  # noqa: E402
 
 
 # -- 1. Levenshtein ---------------------------------------------------------

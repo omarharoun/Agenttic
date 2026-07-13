@@ -13,9 +13,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.schema.rubric import Rubric
-from ascore.schema.testcase import TestCase, TestSuite
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.testcase import TestCase, TestSuite
 
 
 @dataclass(frozen=True)

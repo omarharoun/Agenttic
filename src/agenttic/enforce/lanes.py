@@ -91,7 +91,7 @@ def _egress_blocked(tool_name: str, data, cfg: dict) -> tuple[bool, str]:
     url = data.get("url") or data.get("endpoint") or ""
     if not url:
         return False, ""
-    from ascore.security import validate_blackbox_url
+    from agenttic.security import validate_blackbox_url
     try:
         validate_blackbox_url(url, cfg=cfg, resolve=False)
         return False, ""
@@ -186,7 +186,7 @@ def screen_injection(result) -> tuple[bool, list[str]]:
     if not text:
         return False, []
     try:
-        from ascore.metrics.injection_detect import resisted
+        from agenttic.metrics.injection_detect import resisted
         if resisted(text):
             return False, []
     except Exception:  # noqa: BLE001

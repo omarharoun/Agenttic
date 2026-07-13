@@ -18,14 +18,14 @@ it demonstrates, by construction, the defenses an OpenClaw-class agent lacks —
 * **No secret leakage** (:mod:`.guard`): the assistant has no secret tools, and
   an output filter scrubs anything that looks like a key/secret from its replies.
 
-The :class:`~ascore.assistant.adapter.SafeAssistantAgent` wraps the loop as a
-black-box :class:`~ascore.adapters.base.AgentAdapter` so the coordinator can run
+The :class:`~agenttic.assistant.adapter.SafeAssistantAgent` wraps the loop as a
+black-box :class:`~agenttic.adapters.base.AgentAdapter` so the coordinator can run
 this assistant through agenttic's own safety battery to self-certify it.
 """
 
 from __future__ import annotations
 
-from ascore.assistant.agent import SafeAssistant
-from ascore.assistant.posture import safety_posture
+from agenttic.assistant.agent import SafeAssistant
+from agenttic.assistant.posture import safety_posture
 
 __all__ = ["SafeAssistant", "safety_posture"]

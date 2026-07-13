@@ -5,15 +5,15 @@ from __future__ import annotations
 
 import tempfile
 
-from ascore.ingest.doctor import (
+from agenttic.ingest.doctor import (
     diagnose_payload,
     probe_payload,
     probe_target,
 )
-from ascore.ingest.emit import SpanEmitter
-from ascore.ingest.mapping import ingest_otlp_payload
-from ascore.ingest.otel import otlp_success_response
-from ascore.registry.sqlite_store import Registry
+from agenttic.ingest.emit import SpanEmitter
+from agenttic.ingest.mapping import ingest_otlp_payload
+from agenttic.ingest.otel import otlp_success_response
+from agenttic.registry.sqlite_store import Registry
 
 
 def _good_payload() -> dict:

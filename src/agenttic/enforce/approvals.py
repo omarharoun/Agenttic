@@ -13,7 +13,7 @@ import json
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from ascore.schema.enforcement import ApprovalRequest, EnforcementEvent
+from agenttic.schema.enforcement import ApprovalRequest, EnforcementEvent
 
 
 def _now() -> datetime:

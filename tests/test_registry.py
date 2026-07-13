@@ -9,14 +9,14 @@ from datetime import datetime, timezone
 
 import pytest
 
-from ascore.registry.sqlite_store import (
+from agenttic.registry.sqlite_store import (
     DuplicateVersionError, NotFoundError, Registry,
 )
-from ascore.schema.agent import DeclaredAgent
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
-from ascore.schema.testcase import TestCase, TestSuite
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.schema.agent import DeclaredAgent
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 NOW = datetime(2026, 6, 11, tzinfo=timezone.utc)
 

@@ -10,11 +10,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from ascore.live.monitor import LiveMonitor
-from ascore.registry.sqlite_store import NotFoundError
-from ascore.schema.trace import Trace
-from ascore.scoring.judge import LLMJudge
-from ascore.server.auth import require_operator
+from agenttic.live.monitor import LiveMonitor
+from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.schema.trace import Trace
+from agenttic.scoring.judge import LLMJudge
+from agenttic.server.auth import require_operator
 
 router = APIRouter(tags=["live"])
 
@@ -40,14 +40,14 @@ class TransitionRequest(BaseModel):
 @router.get("/incidents")
 def list_incidents(request: Request, agent_id: str | None = None):
     """Incidents with computed state + SLA due clock + overdue flag."""
-    from ascore.live.incidents import IncidentManager
+    from agenttic.live.incidents import IncidentManager
     state = request.state
     return IncidentManager(state.reg).list_with_sla(state.cfg, agent_id=agent_id)
 
 
 @router.post("/incidents", dependencies=[Depends(require_operator)])
 def open_incident(body: OpenIncidentRequest, request: Request):
-    from ascore.live.incidents import open_manual
+    from agenttic.live.incidents import open_manual
     inc = open_manual(request.state.reg, agent_id=body.agent_id,
                       severity=body.severity, title=body.title,
                       summary=body.summary, trace_refs=body.trace_refs)
@@ -58,7 +58,7 @@ def open_incident(body: OpenIncidentRequest, request: Request):
              dependencies=[Depends(require_operator)])
 def transition_incident(incident_id: str, body: TransitionRequest,
                         request: Request):
-    from ascore.live.incidents import IllegalTransitionError, IncidentManager
+    from agenttic.live.incidents import IllegalTransitionError, IncidentManager
     try:
         inc = IncidentManager(request.state.reg).transition(
             incident_id, body.to_state,
@@ -73,7 +73,7 @@ def transition_incident(incident_id: str, body: TransitionRequest,
 
 @router.get("/incidents/{incident_id}/export")
 def export_incident(incident_id: str, request: Request):
-    from ascore.live.incidents import IncidentManager
+    from agenttic.live.incidents import IncidentManager
     try:
         inc = IncidentManager(request.state.reg).get(incident_id)
     except NotFoundError:
@@ -129,7 +129,7 @@ def live_status(agent_id: str, request: Request, rubric_id: str,
     monitor = _monitor(state, rubric_id, agent_id)
     status = monitor.status(agent_id, baseline)
     # drift escalation → auto-open an S3 incident (SPEC-2 T16.2/T16.3).
-    from ascore.live.incidents import escalate_drift
+    from agenttic.live.incidents import escalate_drift
     incident = escalate_drift(state.reg, state.cfg, status)
     return {
         "agent_id": agent_id, "window": status.window,

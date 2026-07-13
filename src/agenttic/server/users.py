@@ -11,8 +11,8 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, func, select
 
-from ascore.registry.sqlite_store import UserRow
-from ascore.server.passwords import hash_password, verify_password
+from agenttic.registry.sqlite_store import UserRow
+from agenttic.server.passwords import hash_password, verify_password
 
 ROLES = {"viewer", "evaluator", "operator", "admin"}
 

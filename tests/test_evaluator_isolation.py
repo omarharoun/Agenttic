@@ -10,10 +10,10 @@ from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.server.app import create_app
-from ascore.server.pats import PatStore
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.server.app import create_app
+from agenttic.server.pats import PatStore
 
 NOW = datetime(2026, 6, 21, tzinfo=timezone.utc)
 

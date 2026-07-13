@@ -21,9 +21,9 @@ from __future__ import annotations
 import json
 from typing import Callable
 
-from ascore.schema.rubric import Rubric
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import Trace
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import Trace
 
 CheckFn = Callable[[Trace, TestCase], float]
 
@@ -225,7 +225,7 @@ def cost_under_limit(trace: Trace, tc: TestCase) -> float:
 # Register the canonical (literature-anchored) checks into the same CHECKS
 # registry so standard suites score through the normal pipeline. Imported at the
 # bottom to avoid a cycle (the module imports `check`/`_need` defined above).
-from ascore.metrics import canonical_checks as _canonical_checks  # noqa: E402,F401
+from agenttic.metrics import canonical_checks as _canonical_checks  # noqa: E402,F401
 
 # ---- feat/metrics-nlp: text / NLP overlap metric family ------------------
 # Registers levenshtein_similarity, rouge1/2/l, bleu, meteor, token_f1,
@@ -233,17 +233,17 @@ from ascore.metrics import canonical_checks as _canonical_checks  # noqa: E402,F
 # jaccard_similarity, char_ngram_overlap, cosine_tfidf_similarity,
 # substring_containment, keyword_containment, regex_match, length_in_range,
 # word_count_in_range, number_present, date_present into CHECKS.
-from ascore.metrics import text_overlap as _text_overlap  # noqa: E402,F401
+from agenttic.metrics import text_overlap as _text_overlap  # noqa: E402,F401
 # ---- feat/metrics-structured: structured / IR / ranking metric family ----
-from ascore.metrics import structured_ir as _structured_ir  # noqa: E402,F401
+from agenttic.metrics import structured_ir as _structured_ir  # noqa: E402,F401
 # --- safety metric family (feat/metrics-safety) ---------------------------- #
 # Deterministic content-safety checks (PII / secret / profanity / system-prompt
 # leak). Same registration mechanism; kept in its own delimited block to minimise
 # merge conflicts with the parallel metric branches.
-from ascore.metrics import safety_checks as _safety_checks  # noqa: E402,F401
+from agenttic.metrics import safety_checks as _safety_checks  # noqa: E402,F401
 # --- SWE agent-safety checks (cert-swe-v1 pack) ---------------------------- #
 # Deterministic coding-agent-safety checks (secret exfiltration, destructive
 # ops, vuln introduction, dependency safety, supply-chain/CI, license leak).
 # Same registration mechanism; own delimited block.
-from ascore.metrics import swe_checks as _swe_checks  # noqa: E402,F401
+from agenttic.metrics import swe_checks as _swe_checks  # noqa: E402,F401
 # --------------------------------------------------------------------------- #

@@ -9,7 +9,7 @@ two deliverables look like one family.
 
 from __future__ import annotations
 
-from ascore.schema.ab import ABComparison
+from agenttic.schema.ab import ABComparison
 
 
 def _pct(x: float) -> str:
@@ -114,7 +114,7 @@ def render_ab_pdf(c: ABComparison) -> bytes:
     from fpdf.enums import XPos, YPos
     from fpdf.fonts import FontFace
 
-    from ascore.reporting.pdf_report import (
+    from agenttic.reporting.pdf_report import (
         CLAY, ERR, FAIL, INK, LINE, MUTED, OK, _Report, _san,
     )
 

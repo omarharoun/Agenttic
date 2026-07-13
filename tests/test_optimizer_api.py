@@ -90,7 +90,7 @@ class TestOptimizeApi:
 
     def test_unapproved_suite_400(self, client):
         # seed a DRAFT suite and refuse to optimize against it
-        from ascore.schema.testcase import TestCase, TestSuite
+        from agenttic.schema.testcase import TestCase, TestSuite
         sid = f"draft-{uuid.uuid4().hex[:6]}"
         cases = [TestCase(test_id="d-0", suite_id=sid, task_description="t",
                           input={"ticket": "refund please"}, rubric_id="r-triage")]

@@ -4,9 +4,9 @@ and the approval gate); no token configured leaves the API open (dev/test)."""
 import pytest
 from fastapi.testclient import TestClient
 
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
-from ascore.server.auth import check_startup, configured_token
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
+from agenttic.server.auth import check_startup, configured_token
 
 CONFIG = """\
 models:

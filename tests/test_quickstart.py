@@ -7,10 +7,10 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from ascore.registry.sqlite_store import Registry
-from ascore.server.app import create_app
-from ascore.server.routes.quickstart import FromRequirementBody, _build_workflow
-from ascore.server.workflow_schema import validate_workflow
+from agenttic.registry.sqlite_store import Registry
+from agenttic.server.app import create_app
+from agenttic.server.routes.quickstart import FromRequirementBody, _build_workflow
+from agenttic.server.workflow_schema import validate_workflow
 
 
 def test_build_workflow_is_valid_canonical_graph():

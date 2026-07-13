@@ -8,10 +8,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from ascore.schema.rubric import Criterion, Rubric
-from ascore.schema.testcase import TestCase
-from ascore.schema.trace import SCHEMA_VERSION, Span, Trace
-from ascore.scoring.checks import (
+from agenttic.schema.rubric import Criterion, Rubric
+from agenttic.schema.testcase import TestCase
+from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
+from agenttic.scoring.checks import (
     CHECKS,
     CheckConfigError,
     UnknownCheckError,

@@ -5,19 +5,19 @@ from __future__ import annotations
 import json
 import tempfile
 
-from ascore.certification.dossier import assemble
-from ascore.config import load_config
-from ascore.enforce.compiler import recompile_for_agent
-from ascore.feeds.risk_api import FEED_VERSION, risk_feed
-from ascore.feeds.webhooks import (
+from agenttic.certification.dossier import assemble
+from agenttic.config import load_config
+from agenttic.enforce.compiler import recompile_for_agent
+from agenttic.feeds.risk_api import FEED_VERSION, risk_feed
+from agenttic.feeds.webhooks import (
     deliver_pending,
     enqueue_webhook,
     pending_webhooks,
 )
-from ascore.passport.issuer import PassportIssuer
-from ascore.passport.keys import PassportKeyManager, generate_key
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.certification import (
+from agenttic.passport.issuer import PassportIssuer
+from agenttic.passport.keys import PassportKeyManager, generate_key
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.certification import (
     Attestation,
     CertificationProfile,
     TierDecision,
@@ -63,7 +63,7 @@ def test_feed_leaks_no_traces_or_pii():
 
 
 def test_feed_passport_validity_agrees_with_sdk():
-    from ascore.verify import RevokedError, verify_passport
+    from agenttic.verifier import RevokedError, verify_passport
     reg = _reg()
     km = PassportKeyManager(CFG, private_key=generate_key())
     issuer = PassportIssuer(reg, CFG, km)

@@ -10,7 +10,7 @@ reproduced number would be meaningless.
 
 from __future__ import annotations
 
-from ascore.metrics.bfcl_ast_official import (
+from agenttic.metrics.bfcl_ast_official import (
     simple_function_correct,
     standardize_string,
 )
@@ -118,7 +118,7 @@ class TestRejectsWrongAnswers:  # anti-gaming: these MUST fail
 
 class TestOracleAndScorerIntegration:
     def test_oracle_scores_100_percent_official(self):
-        from ascore.metrics.bfcl_reproduce import (
+        from agenttic.metrics.bfcl_reproduce import (
             load_simple_python_v4,
             validate_official_scorer,
         )
@@ -129,7 +129,7 @@ class TestOracleAndScorerIntegration:
 
     def test_official_scorer_rejects_a_broken_prediction(self):
         # swap in a wrong function name for one case -> that case must fail
-        from ascore.metrics.bfcl_reproduce import (
+        from agenttic.metrics.bfcl_reproduce import (
             load_simple_python_v4,
             official_oracle_predictions,
             score_cases_official,

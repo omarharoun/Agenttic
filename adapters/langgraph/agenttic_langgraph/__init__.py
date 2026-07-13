@@ -9,7 +9,7 @@ Two lines for the user::
 ``trace`` returns a transparent wrapper around the compiled graph. On each
 ``invoke``/``stream`` it attaches a LangChain **public** callback handler
 (``langchain_core.callbacks.BaseCallbackHandler``) that observes LLM and tool
-events and emits OTel-GenAI spans via :class:`ascore.ingest.emit.SpanEmitter`.
+events and emits OTel-GenAI spans via :class:`agenttic.ingest.emit.SpanEmitter`.
 
 Guarantees (SPEC-7 Step 36, Hard Rules 31–32):
 
@@ -21,13 +21,13 @@ Guarantees (SPEC-7 Step 36, Hard Rules 31–32):
 * **Observe by default** — spans are emitted; nothing is blocked. The optional
   ``enforce=`` argument routes tool calls through the SPEC-4 gateway at the
   ramp's non-blocking default posture, and fails loudly if no compiled policy
-  exists (see :func:`ascore.enforce.adapter_guard.build_enforce_guard`).
+  exists (see :func:`agenttic.enforce.adapter_guard.build_enforce_guard`).
 """
 from __future__ import annotations
 
 from typing import Any
 
-from ascore.ingest.emit import SpanEmitter
+from agenttic.ingest.emit import SpanEmitter
 
 try:  # public LangChain callback base; optional at import time
     from langchain_core.callbacks import BaseCallbackHandler as _HandlerBase
@@ -214,7 +214,7 @@ def trace(graph, *, agent_id: str = "langgraph-agent", agent_config_hash: str = 
     a missing compiled policy fails loudly (T36.3)."""
     guard = None
     if enforce:
-        from ascore.enforce.adapter_guard import build_enforce_guard
+        from agenttic.enforce.adapter_guard import build_enforce_guard
         guard = build_enforce_guard(agent_id, enforce, reg=reg, cfg=cfg)
     return _TracedGraph(graph, agent_id=agent_id,
                         agent_config_hash=agent_config_hash, endpoint=endpoint,

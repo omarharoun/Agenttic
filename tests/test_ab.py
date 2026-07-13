@@ -16,12 +16,12 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from ascore.ab import compare_scorecards, effective_agent_ids, run_ab_op
-from ascore.registry.sqlite_store import Registry
-from ascore.schema.ab import ABVariant
-from ascore.schema.rubric import Rubric
-from ascore.schema.scorecard import CriterionScore, RunScore, Scorecard
-from ascore.schema.testcase import TestCase, TestSuite
+from agenttic.ab import compare_scorecards, effective_agent_ids, run_ab_op
+from agenttic.registry.sqlite_store import Registry
+from agenttic.schema.ab import ABVariant
+from agenttic.schema.rubric import Rubric
+from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
+from agenttic.schema.testcase import TestCase, TestSuite
 from tests.test_e2e_pipeline import ProfessionalToneJudgeClient
 
 PILOT = Path(__file__).parent.parent / "examples" / "pilot_support_triage"
