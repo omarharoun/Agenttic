@@ -139,7 +139,8 @@ def make_transport(cfg: dict, loop: asyncio.AbstractEventLoop):
     import os
     ev = cfg.get("events", {}) or {}
     backend = str(ev.get("backend", "memory")).lower()
-    url = os.environ.get("ASCORE_REDIS_URL") or ev.get("redis_url", "")
+    from agenttic._env import get_env
+    url = get_env("ASCORE_REDIS_URL") or ev.get("redis_url", "")
     if backend == "redis" and url:
         return RedisTransport(url)
     return InMemoryTransport(loop)

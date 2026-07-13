@@ -38,7 +38,8 @@ from agenttic.server.store import UIStore
 # UI_DIST: env override (ASCORE_UI_DIST) for installed/container layouts where
 # the package lives in site-packages; falls back to the repo-relative path for
 # local/dev runs.
-UI_DIST = Path(os.environ.get("ASCORE_UI_DIST")
+from agenttic._env import get_env as _get_env
+UI_DIST = Path(_get_env("ASCORE_UI_DIST")
                or Path(__file__).resolve().parents[3] / "ui" / "dist")
 
 _TENANT_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -88,7 +89,7 @@ class Workspaces:
         self._default_registry = default_registry
         self.loop = loop  # captured at startup so per-tenant EventBus works
         self._ws: dict[str, Workspace] = {}             # even off the event loop
-        self._db_url = (os.environ.get("ASCORE_DB")
+        self._db_url = (_get_env("ASCORE_DB")
                         or (cfg.get("database", {}) or {}).get("url") or "")
         self._postgres = bool(self._db_url) and not self._db_url.startswith("sqlite")
         self._shared_engine = None  # one engine shared across tenants (Postgres)
@@ -207,7 +208,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         from agenttic.server.health import HealthChecker
         app.state.health = HealthChecker()
         # first-admin bootstrap (env-driven, idempotent)
-        admin_email = os.environ.get("ASCORE_ADMIN_EMAIL")
+        admin_email = _get_env("ASCORE_ADMIN_EMAIL")
         from agenttic.secrets import get_secret
         admin_pw = get_secret("ASCORE_ADMIN_PASSWORD")
         if admin_email and admin_pw:
