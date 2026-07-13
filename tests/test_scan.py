@@ -301,3 +301,57 @@ class TestScanHttp:
 
     def test_scan_poll_unknown_404(self, ctx):
         assert ctx.get("/api/scan/scan_nope", headers=_adm()).status_code == 404
+
+
+# --------------------------------------------------------------------------- #
+# The scan rate-limiter must refuse with JSON, never an HTML body. A non-JSON
+# 429 was a prime suspect for the "Unexpected Application Error! JSON.parse" the
+# funnel showed — so pin it: the HTTP layer returns application/json with the
+# structured {detail:{code,message,action}} envelope the client renders.
+# --------------------------------------------------------------------------- #
+
+CONFIG_YAML_RL = """\
+models: {agent_default: agent-model, judge_executor: judge-x, judge_strong: judge-model, judge_light: judge-light, generator: gen}
+harness: {timeout_seconds: 10, max_parallel: 5, transport_retries: 1, max_steps: 10}
+scoring: {calibration_threshold: 0.8}
+security: {blackbox_block_private: false}
+paths: {registry_db: %(db)s, review_dir: %(r)s, calibration_dir: %(c)s}
+auth: {token: "adm", required: true, allow_signup: true, signup_role: operator, session_secret: testsecret}
+abuse: {scan: {per_ip_per_minute: 1}}
+"""
+
+
+@pytest.fixture
+def ctx_rl(tmp_path):
+    from agenttic.server.abuse import reset_abuse
+    reset_abuse()  # counters are process-global; start clean
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(CONFIG_YAML_RL % {"db": tmp_path / "a.db", "r": tmp_path / "r",
+                                     "c": tmp_path / "c"})
+    reg = Registry(tmp_path / "a.db")
+    clients = {"agent": _SafeAgentClient(), "judge": _SafeAgentClient()}
+    with TestClient(create_app(str(cfg), registry=reg, clients=clients)) as c:
+        yield c
+    reset_abuse()
+
+
+class TestScanRateLimitIsJson:
+    def test_rate_limited_scan_returns_json_not_html(self, ctx_rl):
+        # first demo scan is allowed (fills the per-IP/min budget of 1)
+        first = ctx_rl.post("/api/scan", json={"target": "demo",
+                                               "agent_name": "bot"}, headers=_adm())
+        assert first.status_code == 200, first.text
+
+        # second, same minute → refused
+        r = ctx_rl.post("/api/scan", json={"target": "demo",
+                                           "agent_name": "bot"}, headers=_adm())
+        assert r.status_code == 429, r.text
+        # THE POINT: it's JSON, not an HTML error page the client would choke on
+        assert "application/json" in r.headers["content-type"]
+        assert not r.text.lstrip().startswith("<")
+        body = r.json()  # would raise if the body were HTML
+        # structured envelope the funnel's friendlyError() renders as a sentence
+        assert body["detail"]["code"] == "rate_limited"
+        assert "too fast" in body["detail"]["message"].lower()
+        assert body["detail"]["action"] == "retry"
+        assert r.headers.get("Retry-After")  # tells the client when to try again
