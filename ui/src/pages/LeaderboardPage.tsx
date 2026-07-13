@@ -96,7 +96,7 @@ function StandardBenchmarks() {
           {agents.length > 0 && <span className="pill-count">{agents.length} agent{agents.length === 1 ? "" : "s"} ranked</span>}
         </h2>
         <p style={{ color: "var(--muted)", margin: "6px 0 0", maxWidth: 760 }}>
-          Canonical, literature-anchored metrics on agenttic's own seed data,
+          Canonical, literature-anchored metrics on Agenttic's own seed data,
           normalized into one Agenttic Index — components always shown. Each Index
           carries its sample size <span className="mono">n</span> and a{" "}
           <b><Term name="wilson">Wilson 95% interval</Term></b> (<span className="mono">*</span> = the composite

@@ -49,10 +49,10 @@ const PROCEDURE: { pk: string; h: string; p: string; code: string }[] = [
     code: "graph = trace(graph)   # or --url" },
   { pk: "02 · TEST", h: "Run the battery",
     p: "Real safety and capability suites, many runs per case, with an elicitation probe that catches agents behaving differently when they sense a test.",
-    code: "ascore certify -p cert-agent-safety-v1" },
+    code: "agenttic certify -p cert-agent-safety-v1" },
   { pk: "03 · STAMP", h: "Grade & sign",
     p: "A grade, a coverage table, and a content-hashed, signed dossier — verifiable by anyone, tied to that agent version.",
-    code: "ascore dossier verify ./dossier.json" },
+    code: "agenttic dossier verify ./dossier.json" },
 ];
 
 /** The seven-row spec sheet: metric · method · weight. */
