@@ -12,8 +12,10 @@ FROM python:3.12-slim AS app
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 WORKDIR /app
 
-# install the package (deps resolved from pyproject)
-COPY pyproject.toml README.md ./
+# install the package (deps resolved from pyproject). PYPI_README.md is the
+# `readme` in pyproject.toml (the PyPI long description) — it must be present or
+# hatchling's metadata generation fails the build.
+COPY pyproject.toml README.md PYPI_README.md ./
 COPY src/ ./src/
 RUN pip install --no-cache-dir ".[postgres,redis]"
 
