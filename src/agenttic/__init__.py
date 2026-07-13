@@ -43,7 +43,7 @@ from typing import Any as _Any
 # folded in during the rename), so the version lives here directly. The
 # distribution `version` in pyproject.toml is kept in lock-step (asserted by a
 # test).
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 # Certification surface — re-exported directly (core, no framework SDKs).
 from agenttic.certification.certify import certify as certify

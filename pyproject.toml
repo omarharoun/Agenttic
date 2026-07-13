@@ -6,9 +6,11 @@
 # One distribution, one version, defined in agenttic/__init__.py and kept in
 # lock-step with the `version` below (asserted by a test).
 name = "agenttic"
-version = "1.0.0"
+version = "1.0.1"
 description = "Agenttic — certify, trace and enforce AI agents. One install, one import, a signed safety grade."
-readme = "README.md"                    # rendered as the PyPI long description
+# A dedicated, concise package landing page — NOT the internal repo README, which
+# is a full dev/architecture doc unsuitable for a PyPI project page.
+readme = "PYPI_README.md"               # rendered as the PyPI long description
 requires-python = ">=3.12"   # uses 3.12-only syntax (PEP 701 f-strings); CI runs 3.12
 dependencies = [
     "pydantic>=2.7",
@@ -60,6 +62,11 @@ all = ["agenttic[langgraph]", "agenttic[openai]", "agenttic[otel]"]
 # alias: same Typer app, but it prints a one-line deprecation nudge to stderr.
 agenttic = "agenttic.cli:app"
 ascore = "agenttic.cli:_ascore_alias"
+
+[project.urls]
+Homepage = "https://agenttic.io"
+Documentation = "https://agenttic.io"
+Source = "https://github.com/omarharoun/Agenttic"
 
 [build-system]
 requires = ["hatchling"]
