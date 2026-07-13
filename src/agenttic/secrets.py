@@ -19,24 +19,53 @@ import logging
 import os
 from pathlib import Path
 
-# Secrets that may be supplied via env or <NAME>_FILE.
+# Secrets that may be supplied via env or <NAME>_FILE. The rename-shimmed names
+# are listed under BOTH the new ``AGENTTIC_*`` and legacy ``ASCORE_*`` spellings
+# so a file-mounted secret hydrates regardless of which name the operator used
+# (the new name wins; plain env vars are never overwritten).
 SECRET_ENV_NAMES = [
-    "ANTHROPIC_API_KEY", "COPILOT_ANTHROPIC_KEY", "ASCORE_API_TOKEN",
+    "ANTHROPIC_API_KEY", "COPILOT_ANTHROPIC_KEY",
     "FI_API_KEY", "FI_SECRET_KEY",
-    "ASCORE_DB", "ASCORE_REDIS_URL",
-    "ASCORE_SESSION_SECRET", "ASCORE_ADMIN_PASSWORD",
+    "AGENTTIC_API_TOKEN", "ASCORE_API_TOKEN",
+    "AGENTTIC_DB", "ASCORE_DB",
+    "AGENTTIC_REDIS_URL", "ASCORE_REDIS_URL",
+    "AGENTTIC_SESSION_SECRET", "ASCORE_SESSION_SECRET",
+    "AGENTTIC_ADMIN_PASSWORD", "ASCORE_ADMIN_PASSWORD",
 ]
 
 
-def get_secret(name: str) -> str:
-    """Value of ``name`` — from ``<name>_FILE`` if set (and readable), else the
-    plain env var. Returns "" when unset."""
+def _read_one(name: str) -> str | None:
+    """Value of a single env var honoring its ``<name>_FILE`` companion; ``None``
+    if neither is set/non-empty."""
     file_path = os.environ.get(f"{name}_FILE")
     if file_path:
         p = Path(file_path)
         if p.is_file():
             return p.read_text().strip()
-    return os.environ.get(name, "").strip()
+    v = os.environ.get(name)
+    return v.strip() if v else None
+
+
+def get_secret(name: str) -> str:
+    """Value of ``name`` — from ``<name>_FILE`` if set (and readable), else the
+    plain env var. Returns "" when unset.
+
+    Rename back-compat: for an ``ASCORE_*`` secret, the ``AGENTTIC_*`` name (and
+    its ``*_FILE`` companion) wins; the legacy ``ASCORE_*`` name is still read
+    as a fallback, emitting a ``DeprecationWarning``. Non-shimmed names
+    (``ANTHROPIC_API_KEY`` …) are read verbatim. See :mod:`agenttic._env`."""
+    from agenttic._env import candidate_names, warn_legacy
+
+    new, old = candidate_names(name)
+    v = _read_one(new)
+    if v is not None:
+        return v
+    if old is not None:
+        v = _read_one(old)
+        if v is not None:
+            warn_legacy(old, new)
+            return v
+    return ""
 
 
 def hydrate_env_secrets() -> None:

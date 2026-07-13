@@ -71,7 +71,10 @@ def load_private_from_seed(seed_b64: str) -> Ed25519PrivateKey:
 
 
 def _load_from_env() -> Ed25519PrivateKey | None:
-    material = os.environ.get(_ENV_KEY)
+    # Rename back-compat: AGENTTIC_PASSPORT_SIGNING_KEY wins, legacy
+    # ASCORE_PASSPORT_SIGNING_KEY still honored (node1's prod key). See _env.
+    from agenttic._env import get_env
+    material = get_env(_ENV_KEY)
     if not material:
         return None
     return load_private_from_seed(material.strip())

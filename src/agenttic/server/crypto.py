@@ -20,7 +20,8 @@ from cryptography.fernet import Fernet, InvalidToken
 
 
 def _derive_key(cfg: dict) -> bytes:
-    secret = os.environ.get("ASCORE_SECRET_KEY")
+    from agenttic._env import get_env
+    secret = get_env("ASCORE_SECRET_KEY")
     if not secret:
         from agenttic.server.sessions import session_secret
         try:

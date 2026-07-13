@@ -308,8 +308,8 @@ def is_production(cfg: dict | None = None) -> bool:
     """Whether this process is running in production, where certificate issuance
     must fail closed if no real signing key is configured. Driven by
     ``ASCORE_ENV`` / ``ASCORE_ENVIRONMENT`` (or ``env`` in config)."""
-    env = (os.environ.get("ASCORE_ENV") or os.environ.get("ASCORE_ENVIRONMENT")
-           or "")
+    from agenttic._env import get_env
+    env = (get_env("ASCORE_ENV") or get_env("ASCORE_ENVIRONMENT") or "")
     if not env and cfg:
         env = str((cfg or {}).get("env")
                   or ((cfg or {}).get("server", {}) or {}).get("env") or "")
@@ -341,8 +341,11 @@ def _load_public_from_material(material: str) -> Ed25519PublicKey:
 
 
 def _configured_signing_material(cfg: dict | None) -> str:
+    # get_secret already applies the AGENTTIC_*→ASCORE_* shim (+ *_FILE). The
+    # env_get tail keeps the redundant direct read shim-aware too.
+    from agenttic._env import get_env
     from agenttic.secrets import get_secret
-    m = get_secret(SIGNING_KEY_ENV) or os.environ.get(SIGNING_KEY_ENV, "")
+    m = get_secret(SIGNING_KEY_ENV) or get_env(SIGNING_KEY_ENV, "")
     if not m and cfg:
         m = str((cfg.get("certification", {}) or {}).get("signing_key") or "")
     return m.strip()
@@ -350,7 +353,8 @@ def _configured_signing_material(cfg: dict | None) -> str:
 
 def _configured_public_materials(cfg: dict | None) -> list[str]:
     out: list[str] = []
-    env = os.environ.get(PUBLIC_KEYS_ENV, "")
+    from agenttic._env import get_env
+    env = get_env(PUBLIC_KEYS_ENV, "")
     for chunk in env.replace("\n", ",").split(","):
         if chunk.strip():
             out.append(chunk.strip())
@@ -480,8 +484,9 @@ def signing_secret(cfg: dict | None = None) -> str:
     """The legacy HMAC secret: ``ASCORE_SECRET_KEY`` (env / *_FILE) if set, else
     the session secret, else ``""``. There is **no** insecure hard-coded fallback
     any more — an unset secret makes legacy HMAC verification fail closed."""
+    from agenttic._env import get_env
     from agenttic.secrets import get_secret
-    secret = get_secret("ASCORE_SECRET_KEY") or os.environ.get("ASCORE_SECRET_KEY", "")
+    secret = get_secret("ASCORE_SECRET_KEY") or get_env("ASCORE_SECRET_KEY", "")
     if not secret and cfg is not None:
         try:
             from agenttic.server.sessions import session_secret

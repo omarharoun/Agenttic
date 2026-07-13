@@ -84,7 +84,8 @@ def check_startup(cfg: dict) -> None:
         return
     has_token = bool(configured_token(cfg) or _role_tokens(cfg))
     from agenttic.secrets import get_secret
-    has_admin_bootstrap = bool(os.environ.get("ASCORE_ADMIN_EMAIL")
+    from agenttic._env import get_env
+    has_admin_bootstrap = bool(get_env("ASCORE_ADMIN_EMAIL")
                                and get_secret("ASCORE_ADMIN_PASSWORD"))
     allow_signup = bool((cfg.get("auth", {}) or {}).get("allow_signup", False))
     if not (has_token or has_admin_bootstrap or allow_signup):
