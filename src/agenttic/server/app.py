@@ -381,6 +381,15 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
 
         @app.get("/{path:path}", include_in_schema=False)
         async def spa(path: str):  # SPA fallback: any non-API route -> index
+            # An unmatched API request must NOT fall through to the HTML SPA
+            # shell. The frontend calls res.json() on these paths; a 200
+            # text/html body (index.html) blows up as "JSON.parse: unexpected
+            # character at line 1 column 1" and crashes the app. Keep the API
+            # surface always-JSON: a real 404 with a JSON body.
+            if path == "api" or path.startswith("api/") \
+                    or path == "v1" or path.startswith("v1/"):
+                from fastapi.responses import JSONResponse
+                return JSONResponse({"detail": "Not Found"}, status_code=404)
             target = safe_static_path(UI_DIST, path) if path else None
             if target is not None:
                 return FileResponse(target)

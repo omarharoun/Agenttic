@@ -547,3 +547,55 @@ class TestDeclaredAgentCatalogApi:
         row = next(r for r in board["agents"]
                    if r["agent_id"] == "discovered-agent")
         assert row["agent_type"] == "reference"
+
+
+class TestApiNeverFallsThroughToSpaHtml:
+    """Regression for the intermittent "Unexpected Application Error!
+    JSON.parse: unexpected character at line 1 column 1" crash: an unmatched
+    ``/api/*`` (or ``/v1/*``) GET must return a JSON 404 — NOT the HTML SPA
+    shell. When the UI is built and mounted, the catch-all route used to serve
+    ``index.html`` (200 text/html) for any unmatched path, so the frontend's
+    ``res.json()`` choked on ``<!DOCTYPE html>`` and crashed the whole app."""
+
+    def _spa_client(self, tmp_path, monkeypatch):
+        # A built UI so the SPA catch-all actually mounts (it's gated on
+        # UI_DIST.is_dir()). index.html is the exact body that used to leak.
+        ui_dist = tmp_path / "uidist"
+        (ui_dist / "assets").mkdir(parents=True)
+        (ui_dist / "index.html").write_text(
+            "<!DOCTYPE html><html><head><title>Agenttic</title></head>"
+            "<body><div id=root></div></body></html>")
+        import agenttic.server.app as appmod
+        monkeypatch.setattr(appmod, "UI_DIST", ui_dist)
+
+        cfg_path = tmp_path / "config.yaml"
+        cfg_path.write_text(CONFIG_TEMPLATE.format(
+            db=tmp_path / "api.db", review=tmp_path / "review",
+            calib=tmp_path / "calibration", uploads=tmp_path / "uploads"))
+        reg = Registry(tmp_path / "api.db")
+        load_pilot(reg)
+        app = create_app(str(cfg_path), registry=reg, clients={
+            "agent": RoutingFakeClient(), "judge": ProfessionalToneJudgeClient()})
+        return TestClient(app)
+
+    def test_unmatched_api_get_is_json_404_not_html(self, tmp_path, monkeypatch):
+        with self._spa_client(tmp_path, monkeypatch) as c:
+            r = c.get("/api/does-not-exist-xyz")
+            assert r.status_code == 404
+            assert "application/json" in r.headers["content-type"]
+            assert not r.text.lstrip().startswith("<")  # never HTML
+            r.json()  # body parses as JSON (would raise if it were HTML)
+            assert r.json()["detail"]
+
+            # /v1 (OTLP ingest surface) is guarded the same way
+            v = c.get("/v1/nope")
+            assert v.status_code == 404
+            assert "application/json" in v.headers["content-type"]
+
+    def test_spa_shell_still_served_for_app_routes(self, tmp_path, monkeypatch):
+        # The fix must not break the SPA: a real app route still gets index.html.
+        with self._spa_client(tmp_path, monkeypatch) as c:
+            r = c.get("/app/canvas")
+            assert r.status_code == 200
+            assert "text/html" in r.headers["content-type"]
+            assert "<!DOCTYPE html>" in r.text
