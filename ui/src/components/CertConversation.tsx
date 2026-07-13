@@ -27,6 +27,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, type ScanCheck, type ScanJob, type ScanPreview } from "../api";
 import { badgeUrl, certUrl, gradeColor } from "../cert";
+import { friendlyError } from "../scanError";
 import { Seal } from "./Seal";
 
 const STORE_KEY = "agenttic_intake_v1";
@@ -100,13 +101,6 @@ function emphasisOf(a: Answers): Set<string> {
   TOUCH.filter((o) => a.touch.includes(o.id)).forEach((o) => o.emph.forEach((c) => e.add(c)));
   FEARS.filter((f) => f.id === a.fear).forEach((f) => f.emph.forEach((c) => e.add(c)));
   return e;
-}
-
-function friendlyError(e: any): { auth: boolean; msg: string } {
-  const status = e?.status;
-  const detail = String(e?.detail ?? e?.message ?? e ?? "");
-  if (status === 401) return { auth: true, msg: "" };
-  return { auth: false, msg: detail.replace(/^\d+\s*—?\s*/, "") || "Something went wrong. Please try again." };
 }
 
 /* ---- the profile panel (composes, then becomes the readout) -------------- */
