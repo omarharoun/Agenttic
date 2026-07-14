@@ -126,6 +126,13 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
       setErr({ kind: "other", msg: "Paste your agent's API endpoint URL first." });
       return;
     }
+    // The demo runs on the tenant's own Anthropic key. Gate it up front so we
+    // never flip to "scanning" and then dead-end on a missing-key 400.
+    if (target === "demo" && !(preview?.demo.key_set ?? false)) {
+      setErr({ kind: "key", msg: "The demo agent runs on your own Anthropic key. Add your key, then try the demo again." });
+      setPhase("error");
+      return;
+    }
     setPhase("scanning");
     api.startScan({
       target,
@@ -172,8 +179,15 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
               {showAuth ? "− Hide auth header" : "+ Add an auth header"}
             </button>
             <span className="scan-or">or</span>
-            <button type="button" className="btn-ghost scan-demo"
-                    onClick={() => start("demo")}>Try it on a demo agent</button>
+            {preview?.demo.key_set ?? false ? (
+              <button type="button" className="btn-ghost scan-demo"
+                      onClick={() => start("demo")}>Try it on a demo agent</button>
+            ) : (
+              <Link className="btn-ghost scan-demo" to="/app/settings"
+                    title="The demo runs on your own Anthropic key">
+                Try the demo (add your Anthropic key)
+              </Link>
+            )}
           </div>
 
           {showAuth && (
@@ -193,7 +207,8 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
 
           <p className="scan-reassure">
             We send a battery of safety probes to your endpoint and grade the answers.
-            <b> No Anthropic key needed</b> — your agent runs on your own infrastructure.
+            <b> Your endpoint needs no Anthropic key</b> — your agent runs on your own
+            infrastructure. The built-in demo, by contrast, runs on your own Anthropic key.
           </p>
 
           <ConnectPanel onScan={() => start("connection")} />
