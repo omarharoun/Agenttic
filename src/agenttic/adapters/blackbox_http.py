@@ -6,42 +6,86 @@ do not require trajectory data (see scoring.engine.applicable_criteria).
 
 from __future__ import annotations
 
+import http.client
 import json
+import socket
+import ssl
 import time
-import urllib.request
 import uuid
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 from agenttic.adapters.base import AgentAdapter
 from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
-from agenttic.security import validate_blackbox_url
+from agenttic.security import UnsafeURLError, pin_blackbox_target
 
 
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    """Refuse redirects so a validated URL can't be bounced to an internal
-    target (SSRF redirect bypass)."""
-    def redirect_request(self, *args, **kwargs):  # noqa: D401
-        return None
+class _PinnedHTTPConnection(http.client.HTTPConnection):
+    """HTTP connection that dials a PRE-VALIDATED IP while keeping the original
+    hostname for the Host header — so the socket goes to exactly the address the
+    SSRF check approved, with no second DNS lookup (rebinding gap closed)."""
+
+    def __init__(self, host: str, port: int, *, pinned_ip: str, timeout: float):
+        super().__init__(host, port, timeout=timeout)
+        self._pinned_ip = pinned_ip
+
+    def connect(self):  # noqa: D401
+        self.sock = socket.create_connection((self._pinned_ip, self.port),
+                                             self.timeout)
 
 
-_OPENER = urllib.request.build_opener(_NoRedirect)
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    """HTTPS variant: connect to the validated IP but drive TLS SNI + certificate
+    validation off the ORIGINAL hostname (``self.host``), so the cert still has to
+    match the real domain even though we dialed a pinned address."""
+
+    def __init__(self, host: str, port: int, *, pinned_ip: str, timeout: float,
+                 context: ssl.SSLContext):
+        super().__init__(host, port, timeout=timeout, context=context)
+        self._pinned_ip = pinned_ip
+
+    def connect(self):  # noqa: D401
+        sock = socket.create_connection((self._pinned_ip, self.port), self.timeout)
+        self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
 
 
 def _http_transport(url: str, payload: dict, timeout: float,
                     allow_private: bool = False,
                     headers: dict | None = None) -> dict:
-    # request-time SSRF check: must resolve to a public address to be dialed
-    # (unless the operator explicitly allowed private targets for this agent)
-    validate_blackbox_url(
-        url, resolve=True, allow_unresolved=False,
-        cfg={"security": {"blackbox_block_private": not allow_private}})
-    req = urllib.request.Request(
-        url, data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json", **(headers or {})},
-        method="POST",
-    )
-    with _OPENER.open(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode())
+    # Request-time SSRF check that RESOLVES ONCE and PINS the address: validate
+    # scheme/allowlist/public-IP, then dial exactly that validated IP (no second,
+    # unvalidated DNS lookup). Private targets are refused unless the operator
+    # explicitly opted this agent in.
+    host, port, pinned_ip = pin_blackbox_target(
+        url, cfg={"security": {"blackbox_block_private": not allow_private}})
+    parsed = urlparse(url)
+    path = parsed.path or "/"
+    if parsed.query:
+        path += "?" + parsed.query
+    body = json.dumps(payload).encode()
+    # http.client sets the Host header from `host` (the original hostname); do not
+    # override it. No auth/Host injection here beyond the caller's headers.
+    hdrs = {"Content-Type": "application/json", **(headers or {})}
+    if parsed.scheme == "https":
+        conn = _PinnedHTTPSConnection(host, port, pinned_ip=pinned_ip,
+                                      timeout=timeout,
+                                      context=ssl.create_default_context())
+    else:
+        conn = _PinnedHTTPConnection(host, port, pinned_ip=pinned_ip,
+                                     timeout=timeout)
+    try:
+        conn.request("POST", path, body=body, headers=hdrs)
+        resp = conn.getresponse()
+        # No redirects: http.client never follows them, and we refuse a 3xx
+        # outright so a validated URL can't be bounced onto an internal target.
+        if 300 <= resp.status < 400:
+            raise UnsafeURLError(
+                f"refusing redirect ({resp.status}) to "
+                f"{resp.getheader('Location')!r} — SSRF guard")
+        data = resp.read()
+    finally:
+        conn.close()
+    return json.loads(data.decode())
 
 
 #: Header set on every request to the user's agent so the operator can recognise

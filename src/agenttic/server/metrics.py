@@ -19,6 +19,9 @@ _HELP = {
     "ascore_runs_total": "Completed scoring runs (scorecards), by outcome.",
     "ascore_llm_cost_usd_total": "Total LLM spend recorded (execution + scoring).",
     "ascore_llm_tokens_total": "LLM tokens used, by component (agent/judge) and kind.",
+    "ascore_judge_injection_attempts_total":
+        "Agent outputs that tried to inject a judge verdict (e.g. a literal "
+        "{\"score\":…}); counted and NOT trusted.",
 }
 
 
@@ -65,6 +68,12 @@ def record_tokens(component: str, tokens_in: int | None,
     if tokens_out:
         inc_counter("ascore_llm_tokens_total",
                     {"component": component, "kind": "output"}, tokens_out)
+
+
+def record_judge_injection() -> None:
+    """One agent output attempted to inject a judge verdict — surfaced as a
+    telemetry signal (it is evidence of gaming, never trusted as a score)."""
+    inc_counter("ascore_judge_injection_attempts_total")
 
 
 def reset() -> None:  # tests
