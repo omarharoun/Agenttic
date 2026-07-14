@@ -224,6 +224,11 @@ export function CertConversation() {
   const [headerName, setHeaderName] = useState("Authorization");
   const [headerValue, setHeaderValue] = useState("");
   const [dims, setDims] = useState(FALLBACK_DIMS);
+  // The demo agent runs on the tenant's own Anthropic key. We learn from the
+  // preview whether a key is set; until we know, treat it as unset so we never
+  // start a demo scan that would dead-end with a "add your key" error after
+  // already promising the run. (Defaults closed = honest.)
+  const [demoKeySet, setDemoKeySet] = useState(false);
   const [job, setJob] = useState<ScanJob | null>(null);
   const [needAuth, setNeedAuth] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -251,7 +256,10 @@ export function CertConversation() {
   // landing-page pre-answer (?does=support) so the funnel has no repeated step.
   useEffect(() => {
     if (booted.current) return; booted.current = true;
-    api.scanPreview().then((p) => p.dimensions.length && setDims(p.dimensions)).catch(() => {});
+    api.scanPreview().then((p) => {
+      if (p.dimensions.length) setDims(p.dimensions);
+      setDemoKeySet(!!p.demo?.key_set);
+    }).catch(() => {});
 
     let saved: SavedIntake | null = null;
     try { const raw = sessionStorage.getItem(STORE_KEY); if (raw) saved = JSON.parse(raw); } catch { /* ignore */ }
@@ -353,6 +361,14 @@ export function CertConversation() {
   const startScan = (target: "endpoint" | "demo", restored?: SavedIntake) => {
     const theUrl = (restored?.url ?? text).trim();
     if (target === "endpoint" && !theUrl) { setErr("Paste your agent's endpoint URL first."); return; }
+    // Backstop the honest gate (covers the restore-after-auth autostart path):
+    // never echo "Running the battery…" for a demo run we know will 400 for a
+    // missing key — route the user to add their key instead.
+    if (target === "demo" && !demoKeySet) {
+      setStep("target");
+      setErr("The demo runs on your own Anthropic key — add it in Settings, then run the demo.");
+      return;
+    }
     setErr(""); setNeedAuth(false); setJob(null);
     you(target === "demo" ? "Run it on the demo agent." : theUrl);
     setStep("run");
@@ -411,7 +427,9 @@ export function CertConversation() {
     hint = "↑↓ select · enter answer";
   } else if (step === "target" && !needAuth) {
     opts = [
-      { key: "demo", label: "Use the demo agent" },
+      { key: "demo", label: demoKeySet
+          ? "Use the demo agent · runs on your Anthropic key"
+          : "Use the demo agent — add your Anthropic key first" },
       { key: "auth", label: showAuth ? "Hide the auth header" : "Add an auth header", on: showAuth },
     ];
     placeholder = "https://your-agent.com/chat";
@@ -439,7 +457,9 @@ export function CertConversation() {
     else if (step === "touch") { toggleTouch(o.key); setSel(i); }
     else if (step === "fear") pickFear(FEARS[i]);
     else if (step === "target" && !needAuth) {
-      if (o.key === "demo") startScan("demo");
+      // The demo runs on the tenant's own Anthropic key. If none is set, send
+      // them to Settings to add one instead of starting a run that dead-ends.
+      if (o.key === "demo") { if (demoKeySet) startScan("demo"); else nav("/app/settings"); }
       else setShowAuth((s) => !s);
     }
     else if (step === "target" && needAuth) nav(o.key === "signup" ? "/signup?next=/scan" : "/login?next=/scan");
@@ -530,7 +550,7 @@ export function CertConversation() {
             <div className="cvp-hint">
               <span>{hint}</span>
               {step === "target" && !needAuth && (
-                <span className="cvp-fine">~14 probes · no Anthropic key needed</span>
+                <span className="cvp-fine">~14 probes · endpoint needs no key · demo runs on your Anthropic key</span>
               )}
               {step === "done" && crt && (
                 <span className="cvp-fine">quick scan — a fast screen, not a full audit</span>
