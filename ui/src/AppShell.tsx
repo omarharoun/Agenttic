@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { api, auth, type Me } from "./api";
 import { AccountMenu } from "./components/AccountMenu";
+import { EmptyState } from "./components/ui";
 import { useRunNotifications } from "./notify";
 import { useExecutionEvents } from "./sse";
 import { useFlowStore } from "./store";
@@ -106,6 +107,20 @@ const NAV_GROUPS: { title: string; items: { to: string; icon: string; label: str
     { to: "/app/settings", icon: "⚙", label: "Settings" },
   ]},
 ];
+
+/** Honest in-app 404 for unknown /app/* routes — a blank screen would read as a
+ *  broken page; this names the mistake and routes back to solid ground. */
+function NotFoundPage() {
+  const loc = useLocation();
+  return (
+    <div className="page">
+      <EmptyState icon="🧭" title="Page not found"
+        hint={<>No console page matches <code>{loc.pathname}</code>. It may have
+          moved or the link may be mistyped.</>}
+        action={<Link className="btn" to="/app">Back to dashboard</Link>} />
+    </div>
+  );
+}
 
 /** The authenticated console: sidebar + top bar + routed pages. Guards on
  * /api/me — a 401 bounces to /login. */
@@ -232,6 +247,7 @@ export function AppShell() {
             <Route path="resources" element={<ResourcesPage />} />
             <Route path="billing" element={<BillingPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </div>
       </div>
