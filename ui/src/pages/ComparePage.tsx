@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, downloadBlob } from "../api";
-import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
 import { Term } from "../components/Term";
 import { money, ms } from "../stats";
 
@@ -141,8 +141,10 @@ function Comparison({ c, id }: { c: any; id: string }) {
           <tbody>
             <tr>
               <td><b>Success (paired, n={c.n_paired})</b></td>
-              <td className="num">{pct(c.success_rate_a)}</td>
-              <td className="num">{pct(c.success_rate_b)}</td>
+              <td className="num">{pct(c.success_rate_a)}
+                <div className="cell-ci"><Uncertainty rate={c.success_rate_a} n={c.n_paired} /></div></td>
+              <td className="num">{pct(c.success_rate_b)}
+                <div className="cell-ci"><Uncertainty rate={c.success_rate_b} n={c.n_paired} /></div></td>
               <td className="num" style={{ color: c.success_delta > 0 ? "var(--ok)"
                 : c.success_delta < 0 ? "var(--fail)" : "var(--muted)" }}>
                 {signedPct(c.success_delta)}</td>
