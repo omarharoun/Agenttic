@@ -104,7 +104,11 @@ def test_breaker_kept_and_survivor_discarded(descriptor, target):
     by_id = {r.test_id: r for r in results}
 
     # The three DIRECT probes trip the target's shallow guard -> survive.
-    for kind in KINDS:
+    # (Iterate the kinds the template author actually generated — the honeypot
+    # kind is authored separately, see tests/test_redteam_honeypot.py.)
+    generated_kinds = {r.probe.spec.kind for r in results}
+    for kind in generated_kinds:
+        assert kind in KINDS
         survivor = next(r for r in results
                         if r.probe.spec.kind == kind
                         and r.probe.spec.technique == "direct")
