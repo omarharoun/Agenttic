@@ -18,12 +18,22 @@ import sys
 import pytest
 
 from agenttic.evaluators.base import AgentTarget, Capabilities
+from agenttic.evaluators.inspect_adapter import inspect_available
 from agenttic.schema.eval_result import (
     DIMENSION_VOCAB_VERSION,
     DIMENSIONS,
     EvalResult,
     EvalResultError,
 )
+
+# The genuine two-source ASSESSED union needs the Inspect SDK: absent the
+# `agenttic[inspect]` extra, the inspect source is honestly `not_assessed`
+# (never an assumed pass), so no assessed inspect row can exist to union. Tests
+# that assert an *assessed* inspect source are gated on the extra; the honest
+# base-install behavior (not_assessed + single-source passport) is covered by a
+# test that runs unconditionally. See TestEndToEnd below.
+requires_inspect = pytest.mark.skipif(
+    not inspect_available(), reason="requires agenttic[inspect] extra (inspect_ai)")
 
 
 # --------------------------------------------------------------------------- #
@@ -422,6 +432,38 @@ class TestBaseImportHygiene:
 
 
 class TestEndToEnd:
+    def test_base_install_single_source_passport_signs_and_verifies(self, monkeypatch):
+        """Honest base-install path (no `agenttic[inspect]` extra): the inspect
+        source is stamped `not_assessed` — never an assumed pass — and a
+        single-source (agenttic-gen only) union passport still signs+verifies.
+
+        Runs UNCONDITIONALLY: when the extra is present we force the SDK absent
+        so base CI's honest degraded behavior is always exercised, not skipped.
+        """
+        import agenttic.evaluators.inspect_adapter as ia
+        from agenttic.evaluators.orchestrator import discover_adapters, run_evaluation
+        from agenttic.evaluators.passport import build_union_passport
+
+        monkeypatch.setattr(ia, "_INSPECT_AVAILABLE", False)
+
+        target = AgentTarget.reference()
+        report = run_evaluation(target, discover_adapters(),
+                                deployment_mode="self_hosted")
+        by_source = {sr.source: sr for sr in report.per_source}
+
+        # agenttic-gen carries the union alone...
+        assert by_source["agenttic-gen"].assessed_dimensions
+        # ...and inspect is honestly not_assessed, never a fabricated pass.
+        assert by_source["inspect_ai"].assessed_dimensions == []
+        insp_cov = [c["status"] for c in report.coverage
+                    if c.get("source") == "inspect_ai"]
+        assert insp_cov and all(s == "not_assessed" for s in insp_cov)
+
+        # A single assessed source still produces a valid signed passport.
+        pp = build_union_passport(report, cfg={})
+        assert pp.verify(cfg={}) is True
+
+    @requires_inspect
     def test_union_of_two_sources_signs_and_verifies(self):
         from agenttic.evaluators.orchestrator import discover_adapters, run_evaluation
         from agenttic.evaluators.passport import build_union_passport
