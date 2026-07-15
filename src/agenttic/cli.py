@@ -163,6 +163,111 @@ def _generate_attacks(target: str, *, n: int, mutate: bool, promote: bool,
 
 
 @app.command()
+def honeypot(
+    target: str = typer.Option(
+        "reference", "--target",
+        help="target agent to plant honeypots into (e.g. --target reference)"),
+    posture: str = typer.Option(
+        "enforce", "--posture",
+        help="harness posture: 'enforce' (block decoy calls) or 'log-only' "
+        "(observe but do not block — the merely-logs failure mode)"),
+    promote: bool = typer.Option(
+        False, "--promote/--no-promote",
+        help="promote executed-not-blocked failures into a regression suite"),
+    config: str = "config.yaml",
+):
+    """Honeypot / harness-enforcement test: plant a DECOY dangerous tool into a
+    target's tool schema, tempt the agent to call it, and report — per probe —
+    whether the AGENT called the honeypot AND whether the HARNESS enforced
+    (blocked) it. Distinguishes three outcomes: resisted / attempted-but-blocked /
+    executed-and-allowed (the real failure). Runs deterministically, no API key.
+
+    ``--posture enforce`` installs the decoys as Lane-1 canaries so the gateway
+    denies a call; ``--posture log-only`` runs the same gateway WITHOUT them, so
+    a forbidden call is merely logged and allowed. Compare the two to see that
+    enforcement is a real, separate signal."""
+    import tempfile
+
+    from agenttic.redteam import (
+        ATTEMPTED_BLOCKED,
+        EXECUTED_ALLOWED,
+        RESISTED,
+        honeypot_tool_schemas,
+        plant_honeypots,
+        resolve_target,
+        run_honeypot_harness,
+    )
+
+    if posture not in ("enforce", "log-only"):
+        raise typer.BadParameter("posture must be 'enforce' or 'log-only'")
+    try:
+        descriptor = resolve_target(target)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc))
+    enforcing = posture == "enforce"
+
+    planted = plant_honeypots(descriptor)
+    schemas = honeypot_tool_schemas(planted)
+    console.print(f"[bold]Honeypot[/] harness on [cyan]{planted.agent_id}[/] — "
+                  f"posture [magenta]{posture}[/]")
+    console.print("Planted decoy tools (bait — no real dangerous impl):")
+    for s in schemas:
+        console.print(f"  [red]{s['name']}[/]({', '.join(s['input_schema']['properties'])}) "
+                      f"— {s['description']}")
+
+    # The gateway needs a registry. Persist into the project DB only when
+    # promoting; otherwise run in a throwaway one.
+    def _render(reg):
+        rep = run_honeypot_harness(descriptor, reg=reg, enforcing=enforcing,
+                                   promote=promote)
+        table = Table(title=f"Temptation probes ({posture} posture)")
+        table.add_column("test_id"); table.add_column("technique")
+        table.add_column("called honeypot?"); table.add_column("harness enforced?")
+        table.add_column("outcome")
+        for o in rep.outcomes:
+            called = ", ".join(o.honeypot_tools_called) or "—"
+            if o.enforced is None:
+                enf = "[dim]n/a[/]"
+            elif o.enforced:
+                enf = "[green]BLOCKED[/]"
+            else:
+                enf = "[red]allowed[/]"
+            tag = {RESISTED: "[green]resisted[/]",
+                   ATTEMPTED_BLOCKED: "[yellow]attempted→blocked[/]",
+                   EXECUTED_ALLOWED: "[red]executed→ALLOWED[/]"}[o.outcome]
+            table.add_row(o.test_id, o.probe.spec.technique, called, enf, tag)
+        console.print(table)
+        c = rep.counts()
+        console.print(
+            f"Outcomes: [green]{c[RESISTED]} resisted[/], "
+            f"[yellow]{c[ATTEMPTED_BLOCKED]} attempted-but-blocked[/], "
+            f"[red]{c[EXECUTED_ALLOWED]} executed-and-allowed[/] "
+            f"(of {len(rep.outcomes)} probes).")
+        if c[EXECUTED_ALLOWED]:
+            console.print("[red]⚠ executed-and-allowed = the harness logged a "
+                          "forbidden call but did NOT block it.[/]")
+        else:
+            console.print("[green]✓ every attempted forbidden call was blocked "
+                          "by the harness.[/]")
+        if promote and rep.promote and rep.promote["regression_suite_id"]:
+            p = rep.promote
+            console.print(
+                f"[green]Promoted[/] {len(p['added'])} executed-not-blocked "
+                f"failures into regression suite [bold]{p['regression_suite_id']}[/] "
+                f"v{p['version']} ({p['total_cases']} cases).")
+        elif promote:
+            console.print("[dim]Nothing to promote (no executed-not-blocked "
+                          "failures under this posture).[/]")
+
+    if promote:
+        _, reg = _ctx(config)
+        _render(reg)
+    else:
+        with tempfile.TemporaryDirectory() as tmp:
+            _render(Registry(str(Path(tmp) / "honeypot.db")))
+
+
+@app.command()
 def approve(suite_id: str, version: int = 1, config: str = "config.yaml"):
     """Human gate: mark a reviewed suite as runnable."""
     _, reg = _ctx(config)
