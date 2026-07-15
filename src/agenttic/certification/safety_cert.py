@@ -577,6 +577,91 @@ def expiry_from(issued_at: datetime, days: int = DEFAULT_EXPIRY_DAYS) -> datetim
     return issued_at + timedelta(days=max(1, int(days)))
 
 
+# --------------------------------------------------------------------------- #
+# Multi-source (union) certificate payload — ADDITIVE, backward-compatible.
+#
+# A single signed passport can attest to the UNION of several evaluator sources
+# (Agenttic's own generator + Inspect + third-party adapters). This builder adds
+# the union fields to a *new* payload shape; it does NOT touch the single-source
+# builder above, and the signing/verification path (sign_certificate /
+# verify_certificate) is unchanged — a new field in a new payload cannot affect
+# how an OLD payload verifies, and the signing key/kid are untouched. So old
+# dossiers still verify, and the honest new claim carries every source's
+# provenance, the coverage table, and the license attribution it was built from.
+# --------------------------------------------------------------------------- #
+
+# Bumped when the union payload's SHAPE changes (fields added/removed/renamed),
+# independently of the single-source rubric's METHODOLOGY_VERSION.
+UNION_METHODOLOGY_VERSION = "agenttic-multi-source-cert/v1"
+
+
+def build_multi_source_certificate_payload(
+    *, cert_id: str, agent_id: str, agent_name: str, agent_version: str,
+    config_hash: str, issued_at: datetime, expires_at: datetime,
+    sources: list[dict], coverage: list[dict], per_source_index: dict,
+    overall_index: float | None, attribution: list[dict],
+    deployment_mode: str, gate_decisions: list[dict],
+    dimension_vocab_version: str,
+) -> dict:
+    """Assemble the canonical (to-be-signed) UNION certificate payload.
+
+    Everything the passport claims travels *inside the signed bytes*: the pinned
+    ``config_hash`` AND ``agent_version``, every ``source`` with its
+    ``source_version`` + ``source_license`` (never optional), the coverage table
+    (assessed vs not_assessed per dimension per source), the per-source index
+    decomposition (there is no lone blended number — ``overall_index`` is
+    accompanied by ``per_source_index`` and ``coverage``), the license attribution
+    table, and the license-gate decisions that admitted each source.
+
+    Raises :class:`CertificationError` if any source is missing required
+    provenance — a union passport with an anonymous source is not signable.
+    """
+    norm_sources: list[dict] = []
+    for s in sources:
+        for key in ("source", "source_version", "source_license"):
+            if not str(s.get(key) or "").strip():
+                raise CertificationError(
+                    f"union certificate source is missing required provenance "
+                    f"{key!r}: {s!r}")
+        norm_sources.append({
+            "source": s["source"],
+            "source_version": s["source_version"],
+            "source_license": s["source_license"],
+        })
+    # Sort for a canonical, stable payload (signature is order-independent of
+    # how the caller happened to collect the sources).
+    norm_sources.sort(key=lambda s: s["source"])
+    coverage_sorted = sorted(
+        ({"dimension": c["dimension"], "source": c["source"],
+          "status": c["status"]} for c in coverage),
+        key=lambda c: (c["source"], c["dimension"]))
+    attribution_sorted = sorted(
+        ({"source": a["source"], "license": a["license"]} for a in attribution),
+        key=lambda a: a["source"])
+
+    return {
+        "cert_id": cert_id,
+        "methodology_version": UNION_METHODOLOGY_VERSION,
+        "dimension_vocab_version": dimension_vocab_version,
+        "agent_id": agent_id,
+        "agent_name": agent_name or agent_id,
+        "agent_version": agent_version,
+        "config_hash": config_hash,
+        "sources": norm_sources,
+        "coverage": coverage_sorted,
+        "index": {
+            "overall": overall_index,
+            "per_source": per_source_index,
+        },
+        "attribution": attribution_sorted,
+        "deployment_mode": deployment_mode,
+        "gate_decisions": sorted(
+            gate_decisions, key=lambda g: str(g.get("source", ""))),
+        "issued_at": issued_at.isoformat(),
+        "expires_at": expires_at.isoformat(),
+    }
+
+
 def certificate_status(payload: dict, revoked_at: datetime | None,
                        *, now: datetime | None = None) -> str:
     """Lifecycle status of a certificate: ``revoked`` > ``expired`` > ``valid``."""
