@@ -3186,3 +3186,120 @@ a.btn-primary, button.btn-primary,
   transition: color var(--dur-fast), border-color var(--dur-fast);
 }
 .agx .hero-intake a:hover { color: var(--text); border-color: var(--accent-line); }
+
+/* ============================================================================
+   The certificate document (/certified/:id) — the credential itself, printed
+   in the instrument language. Dimension rows mirror the scan panel so
+   scan → certificate reads as one instrument. Lapsed/revoked documents
+   visibly lapse: desaturated seal + overprint stamp.
+   ========================================================================== */
+.certdoc {
+  position: relative; overflow: hidden;
+  background: var(--panel); border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg); box-shadow: var(--shadow);
+  padding: var(--sp-6) var(--sp-6) var(--sp-4); margin-top: var(--sp-5);
+}
+.certdoc-head {
+  display: flex; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap;
+  font: 500 var(--t-label)/1 var(--font-mono); letter-spacing: var(--track-caps);
+  color: var(--faint); border-bottom: 1px solid var(--border-soft);
+  padding-bottom: var(--sp-3); margin-bottom: var(--sp-5);
+}
+.certdoc-no { letter-spacing: 0.06em; }
+.certdoc-main { display: flex; gap: var(--sp-6); align-items: center; flex-wrap: wrap; margin-bottom: var(--sp-5); }
+.certdoc-seal { flex: none; }
+.certdoc-title { flex: 1; min-width: 240px; }
+.certdoc-title h1 { font: 500 var(--t-h1)/1.08 var(--font-serif); letter-spacing: -0.01em; margin: 0 0 8px; }
+.certdoc-grade { margin: 0 0 6px; font-size: var(--t-lg); color: var(--muted); }
+.certdoc-grade b { font-size: var(--t-h3); }
+.certdoc-blurb { margin: 0; color: var(--muted); font-size: var(--t-sm); line-height: 1.6; max-width: 52ch; }
+
+/* dimension rows — same language as the scan panel's readout */
+.cd-rows { list-style: none; margin: 0 0 var(--sp-2); padding: 0; }
+.cd-row {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: 9px 0; border-top: 1px solid var(--border-soft); font-size: var(--t-sm);
+}
+.cd-row-lab { color: var(--text); flex: 0 0 220px; min-width: 160px; }
+.cd-row-track {
+  flex: 1; height: 4px; background: var(--field);
+  border-radius: var(--r-pill); overflow: hidden;
+}
+.cd-row-track span { display: block; height: 100%; border-radius: var(--r-pill); background: var(--border-strong); }
+.cd-row.is-ok .cd-row-track span { background: var(--ok); }
+.cd-row.is-warn .cd-row-track span { background: var(--wait); }
+.cd-row.is-fail .cd-row-track span { background: var(--fail); }
+.cd-row-val { flex: none; min-width: 56px; text-align: right; font: 500 var(--t-sm)/1 var(--font-mono); }
+.cd-row-val.ok { color: var(--ok); }
+.cd-row-val.warn { color: var(--wait); }
+.cd-row-val.fail { color: var(--fail); }
+.cd-row-val.na { color: var(--faint); font-size: 10px; letter-spacing: 0.08em; }
+.certdoc-scope {
+  margin: 0 0 var(--sp-5); color: var(--faint);
+  font: 400 var(--t-xs)/1.6 var(--font-mono);
+}
+
+/* engraved provenance grid + signature line */
+.certdoc-meta {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3) var(--sp-5);
+  margin: 0 0 var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--border-soft);
+}
+.certdoc-meta dt {
+  font: 500 var(--t-label)/1 var(--font-mono); letter-spacing: var(--track-caps);
+  text-transform: uppercase; color: var(--faint); margin-bottom: 4px;
+}
+.certdoc-meta dd { margin: 0; font-size: var(--t-sm); color: var(--text); }
+.certdoc-meta-wide { grid-column: 1 / -1; }
+.certdoc-meta-wide code { word-break: break-all; font-size: var(--t-xs); }
+.certdoc-sig {
+  display: flex; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap;
+  border-top: 1px solid var(--border-soft); padding-top: var(--sp-3);
+  font: 500 var(--t-xs)/1 var(--font-mono); color: var(--faint);
+}
+.certdoc-sig .ok { color: var(--ok); }
+.certdoc-sig .warn { color: var(--wait); }
+
+/* a lapsed document visibly lapses */
+.certdoc.lapsed .certdoc-seal, .certdoc.lapsed .certdoc-grade b { filter: grayscale(0.85) opacity(0.75); }
+.certdoc-stamp {
+  position: absolute; top: 42%; left: 50%;
+  transform: translate(-50%, -50%) rotate(-14deg);
+  font: 700 44px/1 var(--font-mono); letter-spacing: 0.22em;
+  color: var(--live); opacity: 0.22; pointer-events: none;
+  border: 4px solid var(--live); border-radius: var(--r-sm); padding: 8px 18px;
+}
+
+/* verify + share kits */
+.cd-lede { color: var(--muted); font-size: var(--t-base); line-height: 1.65; max-width: 62ch; margin: 0 0 var(--sp-4); }
+.cd-fine { color: var(--faint); font-size: var(--t-xs); line-height: 1.6; margin: var(--sp-2) 0 0; }
+.cd-copy { margin-bottom: var(--sp-3); }
+.cd-copy label {
+  display: block; font: 500 var(--t-label)/1 var(--font-mono);
+  letter-spacing: var(--track-caps); text-transform: uppercase;
+  color: var(--faint); margin-bottom: 6px;
+}
+.cd-copy-field {
+  display: flex; gap: var(--sp-2); align-items: center;
+  background: var(--field); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 8px 10px;
+}
+.cd-copy-field code {
+  flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap;
+  font-size: var(--t-xs); color: var(--text); background: none; scrollbar-width: none;
+}
+.cd-copy-field button {
+  appearance: none; flex: none; cursor: pointer;
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  padding: 5px 10px; font: 500 var(--t-xs)/1 var(--font-ui);
+}
+.cd-copy-field button:hover { border-color: var(--accent-line); }
+.cd-badge-preview { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-4); }
+
+@media (max-width: 640px) {
+  .certdoc { padding: var(--sp-4); }
+  .certdoc-meta { grid-template-columns: 1fr 1fr; }
+  .cd-row { flex-wrap: wrap; }
+  .cd-row-lab { flex-basis: 100%; }
+  .certdoc-stamp { font-size: 30px; }
+}
