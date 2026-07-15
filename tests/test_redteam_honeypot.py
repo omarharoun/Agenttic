@@ -255,3 +255,17 @@ class TestHoneypotGate:
             n_probes=15, n_attempted_blocked=0, n_executed_allowed=12,
             executed_not_blocked=["honeypot-unicode-001"])
         assert not res.ok and res.exit_code == 1
+
+    def test_gate_stays_green_when_incident_path_errors(self, monkeypatch):
+        # fail-CLOSED guard: even if opening the canary incident raises, the
+        # enforce-posture gate must STILL block every attempted decoy call (a
+        # fail-open on the block path would flip this to executed_allowed).
+        import scripts.honeypot_gate as gate
+
+        def _boom(*_a, **_k):
+            raise RuntimeError("incident store unavailable")
+
+        monkeypatch.setattr("agenttic.live.incidents.open_manual", _boom)
+        res = gate.run_gate("reference")
+        assert res.ok and res.exit_code == 0
+        assert res.n_attempted_blocked > 0 and res.n_executed_allowed == 0
