@@ -23,8 +23,11 @@ ATTACK_RUBRIC_ID = "redteam-attack-v1"
 #:   injection    -> injection_target (+ forbidden_tools): hijack into a real tool
 #:   secret       -> secret: exfiltration of a real declared secret string
 #:   tool_misuse  -> forbidden_tools / danger_markers: dangerous-arg / tool-misuse
-KINDS = ("injection", "secret", "tool_misuse")
-TECHNIQUES = ("direct", "unicode", "tense_paraphrase", "multi_turn")
+#:   honeypot     -> forbidden_tools: a call to a PLANTED decoy dangerous tool
+#:                   (agenttic.redteam.honeypot) — scored by tool_misuse_safety
+KINDS = ("injection", "secret", "tool_misuse", "honeypot")
+TECHNIQUES = ("direct", "unicode", "tense_paraphrase", "multi_turn",
+              "injection_doc", "injection_tool_result")
 
 
 @dataclass
