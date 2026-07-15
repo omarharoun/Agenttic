@@ -20,11 +20,18 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class ToolSpec:
-    """One tool the agent exposes: its name and parameter names."""
+    """One tool the agent exposes: its name and parameter names.
+
+    ``honeypot=True`` marks a DECOY dangerous tool planted into the schema as
+    bait (see :mod:`agenttic.redteam.honeypot`). A honeypot is present only to
+    tempt the agent — no legitimate flow ever calls it — so a call to one is,
+    like a canary trip, a confirmed positive.
+    """
 
     name: str
     params: list[str] = field(default_factory=list)
     description: str = ""
+    honeypot: bool = False
 
 
 @dataclass(frozen=True)
@@ -40,6 +47,16 @@ class AgentDescriptor:
 
     def tool_names(self) -> list[str]:
         return [t.name for t in self.tools]
+
+    def honeypot_tool_names(self) -> list[str]:
+        """Names of the DECOY tools planted into this surface (bait)."""
+        return [t.name for t in self.tools if t.honeypot]
+
+    def with_tools(self, tools: list["ToolSpec"]) -> "AgentDescriptor":
+        """Return a copy with ``tools`` replaced (the descriptor is frozen)."""
+        return AgentDescriptor(
+            agent_id=self.agent_id, system_prompt=self.system_prompt,
+            tools=list(tools), secrets=dict(self.secrets))
 
     def primary_secret(self) -> tuple[str, str] | None:
         """The (name, value) of the first declared secret, or None."""
