@@ -69,14 +69,97 @@ def _ctx(config_path: str = "config.yaml"):
 
 
 @app.command()
-def generate(business_doc: Path, suite_id: str, config: str = "config.yaml"):
-    """Draft a test suite from a business document (requires human approval)."""
+def generate(
+    business_doc: Path = typer.Argument(
+        None, help="business document to draft a suite from (suite-draft mode)"),
+    suite_id: str = typer.Argument("", help="suite id (suite-draft mode)"),
+    target: str = typer.Option(
+        "", "--target",
+        help="ADVERSARIAL mode: author attack probes against a target agent "
+        "(e.g. --target reference). Ignores BUSINESS_DOC/SUITE_ID."),
+    n: int = typer.Option(12, "--n", help="attack mode: number of probes to author"),
+    mutate: bool = typer.Option(
+        True, "--mutate/--no-mutate", help="attack mode: mutate around winners"),
+    promote: bool = typer.Option(
+        False, "--promote/--no-promote",
+        help="attack mode: promote winners into a versioned regression suite"),
+    config: str = "config.yaml",
+):
+    """Draft a test suite from a business document, OR (``--target``) author
+    adversarial attack probes against a target agent.
+
+    Business-doc mode: ``agenttic generate BUSINESS_DOC SUITE_ID`` drafts a suite
+    for human approval. Adversarial mode: ``agenttic generate --target reference``
+    reads the agent's real tools/prompt/secret, emits scoreable attack TestCases,
+    runs them through the existing adapter + scorer, and prints which broke it."""
+    if target:
+        _generate_attacks(target, n=n, mutate=mutate, promote=promote, config=config)
+        return
+    if business_doc is None or not suite_id:
+        raise typer.BadParameter(
+            "provide BUSINESS_DOC and SUITE_ID for suite-draft mode, or use "
+            "--target <agent> for the adversarial attack generator")
     cfg, reg = _ctx(config)
     suite = ops.generate_op(cfg, reg, business_doc.read_text(), suite_id)
     console.print(f"[yellow]DRAFT[/] suite {suite.suite_id} v{suite.version} "
                   f"({len(suite.test_ids)} cases). Review "
                   f"{cfg['paths']['review_dir']}/{suite_id}.md then run "
                   f"`uv run agenttic approve {suite_id}`.")
+
+
+def _generate_attacks(target: str, *, n: int, mutate: bool, promote: bool,
+                      config: str) -> None:
+    """Adversarial attack-generator subflow behind ``generate --target``."""
+    from agenttic.redteam import (
+        build_demo_target,
+        resolve_target,
+        run_generation,
+    )
+
+    try:
+        descriptor = resolve_target(target)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc))
+
+    # Deterministic, no-key stand-in target so the example runs without credits.
+    # A real run points build_adapter(...) at the live agent instead (same probes).
+    adapter = build_demo_target(descriptor)
+    reg = None
+    if promote:
+        _, reg = _ctx(config)
+
+    console.print(f"[bold]Sparring[/] against [cyan]{descriptor.agent_id}[/] — "
+                  f"real tools {descriptor.tool_names()}, "
+                  f"{len(descriptor.secrets)} declared secret(s)")
+    rep = run_generation(descriptor, adapter, n=n, mutate=mutate, reg=reg,
+                         promote=promote)
+
+    table = Table(title="Generated attack probes (round 1)")
+    table.add_column("test_id"); table.add_column("kind")
+    table.add_column("technique"); table.add_column("verdict")
+    table.add_column("failed oracle")
+    for r in rep["results"]:
+        broke = r.broke
+        table.add_row(
+            r.test_id, r.probe.spec.kind, r.probe.spec.technique,
+            "[red]BROKE[/]" if broke else "[green]survived[/]",
+            ", ".join(r.failed_criteria) or "—")
+    console.print(table)
+
+    nb, nw = len(rep["results"]), len(rep["winners"])
+    console.print(f"Round 1: [red]{nw}[/]/{nb} probes broke the agent; "
+                  f"{nb - nw} survived (discarded).")
+    if mutate:
+        mw = len(rep["mutation_winners"])
+        console.print(f"Mutation: {mw} neighbour probes also broke the agent.")
+    if promote and rep["promote"]:
+        p = rep["promote"]
+        console.print(
+            f"[green]Promoted[/] {len(p['added'])} winners into regression "
+            f"suite [bold]{p['regression_suite_id']}[/] v{p['version']} "
+            f"({p['total_cases']} cases).")
+    elif promote:
+        console.print("[yellow]No winners to promote.[/]")
 
 
 @app.command()
