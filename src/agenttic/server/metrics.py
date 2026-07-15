@@ -22,6 +22,10 @@ _HELP = {
     "ascore_judge_injection_attempts_total":
         "Agent outputs that tried to inject a judge verdict (e.g. a literal "
         "{\"score\":…}); counted and NOT trusted.",
+    "ascore_enforcement_fail_closed_total":
+        "Enforcement decisions that FAILED CLOSED (denied) because handling a "
+        "confirmed block raised, by origin (canary/stage_gate). Non-zero means "
+        "the block path is erroring — the call was still denied, not allowed.",
 }
 
 
@@ -74,6 +78,14 @@ def record_judge_injection() -> None:
     """One agent output attempted to inject a judge verdict — surfaced as a
     telemetry signal (it is evidence of gaming, never trusted as a score)."""
     inc_counter("ascore_judge_injection_attempts_total")
+
+
+def record_enforcement_fail_closed(origin: str) -> None:
+    """A confirmed enforcement block (canary trip / stage-gate violation) hit an
+    error while opening its incident or logging its decision, and the gateway
+    FAILED CLOSED (denied) instead of falling through to allow. Surfaced as a
+    telemetry signal so an erroring block path is visible, never silent."""
+    inc_counter("ascore_enforcement_fail_closed_total", {"origin": origin})
 
 
 def reset() -> None:  # tests

@@ -18,6 +18,7 @@ usable standalone).
 
 from __future__ import annotations
 
+import logging
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -28,6 +29,8 @@ from agenttic.schema.enforcement import (
     EnforcementEvent,
     EnforcementPolicy,
 )
+
+log = logging.getLogger("agenttic.enforce.gateway")
 
 
 class PolicyIntegrityError(RuntimeError):
@@ -132,15 +135,26 @@ class EnforcementGateway:
 
         # stage gate (T28.2): a caller above the agent's promoted stage is denied.
         if caller_cohort is not None:
+            gate = None
+            origin = "stage_gate"
             try:
                 from agenttic.release.ladder import STAGE_GATE_ORIGIN, stage_gate
+                origin = STAGE_GATE_ORIGIN
                 gate = stage_gate(self.reg, session.agent_id, caller_cohort)
-                if not gate.allowed:
-                    return self._gated_deny(session, phase, tool_name, t0, [
-                        f"{STAGE_GATE_ORIGIN}:cohort={caller_cohort}:"
-                        f"{gate.caller_stage}>{gate.agent_stage}"])
-            except Exception:  # noqa: BLE001 — release ladder optional
-                pass
+            except Exception as exc:  # noqa: BLE001 — release ladder is optional:
+                # if the gate cannot be COMPUTED we never established a violation,
+                # so we proceed to the normal lanes rather than blanket-denying an
+                # unrelated call. The error is surfaced, not silently swallowed.
+                self._surface_enforcement_error(
+                    "stage_gate_detect", session, phase, tool_name, exc)
+                gate = None
+            if gate is not None and not gate.allowed:
+                # A CONFIRMED gate violation → deny. The deny is returned OUTSIDE
+                # the detection try above so that a failure while building/logging
+                # the deny can never fall through to allow (fail CLOSED).
+                return self._gated_deny(session, phase, tool_name, t0, [
+                    f"{origin}:cohort={caller_cohort}:"
+                    f"{gate.caller_stage}>{gate.agent_stage}"])
 
         from agenttic.enforce.lanes import (
             action_class_of, lane1_evaluate, lane2_evaluate,
@@ -149,18 +163,38 @@ class EnforcementGateway:
 
         # honeypot canaries (T29.1): a trip is a confirmed positive → deny +
         # incident at severity_on_trip, detected in Lane 1.
+        #
+        # Fail-CLOSED contract: DETECTION (``check``) is optional — if we cannot
+        # even check, we could not confirm a trip, so we proceed to the lanes (a
+        # detection error must never be upgraded into a forced deny of an
+        # unrelated call). But once a trip IS confirmed, the call MUST be denied:
+        # opening the incident is best-effort and its failure fails CLOSED (deny
+        # anyway, error surfaced) — it must NEVER fall through to allow.
+        cm = None
+        trip = None
         try:
             from agenttic.enforce.canaries import CanaryManager
             cm = CanaryManager(self.reg, self.cfg)
             trip = cm.check(session.agent_id, phase, tool_name, data)
-            if trip is not None:
+        except Exception as exc:  # noqa: BLE001 — canary DETECTION optional
+            self._surface_enforcement_error(
+                "canary_detect", session, phase, tool_name, exc)
+            trip = None
+        if trip is not None:
+            evidence = [f"canary:{trip.canary_id}", trip.call_ref]
+            try:
                 incident_id = cm.trip(session, trip)
-                return self._gated_deny(
-                    session, phase, tool_name, t0,
-                    [f"canary:{trip.canary_id}", trip.call_ref,
-                     f"incident:{incident_id}"], origin="canary")
-        except Exception:  # noqa: BLE001 — canaries optional
-            pass
+                evidence.append(f"incident:{incident_id}")
+            except Exception as exc:  # noqa: BLE001 — FAIL CLOSED on the block
+                # path: a confirmed decoy call is denied even if the incident
+                # store errors; the failure is surfaced, not swallowed into allow.
+                evidence += ["incident:unavailable",
+                             f"canary_handler_error:{type(exc).__name__}"]
+                self._surface_enforcement_error(
+                    "canary_trip", session, phase, tool_name, exc,
+                    fail_closed=True)
+            return self._gated_deny(session, phase, tool_name, t0, evidence,
+                                    origin="canary")
 
         # Lane 1 — deterministic (T24.1). Errors here apply the fail policy.
         try:
@@ -237,21 +271,60 @@ class EnforcementGateway:
 
     def _gated_deny(self, session, phase, tool_name, t0, evidence,
                     origin: str = "stage_gate") -> Decision:
-        """A deterministic Lane-1 deny (stage gate / canary), fully logged."""
+        """A deterministic Lane-1 deny (stage gate / canary), fully logged.
+
+        The deny :class:`Decision` is built *before* logging and returned even if
+        the append fails: a logging error on a confirmed block must never
+        downgrade a deny into an allow (Hard Rule 19 is honoured best-effort, but
+        the safe direction on error is CLOSED). A log failure is surfaced
+        out-of-band rather than swallowed."""
         latency_ms = (time.perf_counter() - t0) * 1000.0
         decision = Decision(
             decision_id=_new_id("dec"), session_id=session.session_id,
             agent_id=session.agent_id, phase=phase, action="deny", lane="lane1",
             tool_name=tool_name, latency_ms=latency_ms, evidence=evidence,
             policy_hash=session.policy.content_hash)
-        self._log(EnforcementEvent(
-            event_id=_new_id("evt"), session_id=session.session_id,
-            agent_id=session.agent_id, kind="decision", action="deny",
-            actor="gateway", decision_ref=decision.ref(),
-            policy_hash=session.policy.content_hash,
-            detail={"phase": phase, "tool": tool_name, "lane": "lane1",
-                    "evidence": evidence, "origin": origin}))
+        try:
+            self._log(EnforcementEvent(
+                event_id=_new_id("evt"), session_id=session.session_id,
+                agent_id=session.agent_id, kind="decision", action="deny",
+                actor="gateway", decision_ref=decision.ref(),
+                policy_hash=session.policy.content_hash,
+                detail={"phase": phase, "tool": tool_name, "lane": "lane1",
+                        "evidence": evidence, "origin": origin}))
+        except Exception as exc:  # noqa: BLE001 — never downgrade a deny to allow
+            self._surface_enforcement_error(
+                f"{origin}_deny_log", session, phase, tool_name, exc,
+                fail_closed=True)
         return decision
+
+    def _surface_enforcement_error(self, stage: str, session, phase: str,
+                                   tool_name: str, exc: Exception, *,
+                                   fail_closed: bool = False) -> None:
+        """Surface (never swallow) an error hit on the enforcement path: a
+        structured stdlib log, a telemetry counter, and a best-effort append-only
+        event. This function itself never raises — it is called from the block
+        path where a secondary failure must not derail the deny."""
+        log.warning(
+            "enforcement error on %s: agent=%s session=%s phase=%s tool=%s "
+            "err=%s fail_closed=%s", stage, session.agent_id,
+            session.session_id, phase, tool_name, exc, fail_closed)
+        try:
+            from agenttic.server.metrics import record_enforcement_fail_closed
+            if fail_closed:
+                record_enforcement_fail_closed(stage.split("_")[0])
+        except Exception:  # noqa: BLE001 — telemetry is best-effort
+            pass
+        try:
+            self._log(EnforcementEvent(
+                event_id=_new_id("evt"), session_id=session.session_id,
+                agent_id=session.agent_id, kind="admin", actor="gateway",
+                detail={"enforcement_error": stage, "phase": phase,
+                        "tool": tool_name, "error": f"{type(exc).__name__}: {exc}",
+                        "fail_closed": fail_closed}))
+        except Exception:  # noqa: BLE001 — the append-only store may be the very
+            # thing that failed; the stdlib log + counter above already surfaced it.
+            pass
 
     def _fail_policy(self, action_class: str):
         """Per-action-class fail policy: write ⇒ closed (deny); read ⇒ open
