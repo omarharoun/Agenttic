@@ -39,6 +39,13 @@ jobs:
         run: ruff check --select E9,F63,F7,F82 src tests
       - name: Backend tests
         run: pytest -q
+      - name: Self-red-team injection regression gate
+        # Arms-race hook: runs the labeled red-team corpus through the real
+        # injection_robust detector and FAILS THE BUILD if a should-be-caught
+        # attack scores robust (reopened bypass) or a benign case scores
+        # compromised (over-correction). Deterministic, offline. Published honest
+        # tails (HONEST EVADER) are exempt. See scripts/redteam_gate.py.
+        run: python scripts/redteam_gate.py
       - name: Dependency vulnerability scan
         run: pip install pip-audit && pip-audit || true   # advisory; doesn't fail the build yet
 
