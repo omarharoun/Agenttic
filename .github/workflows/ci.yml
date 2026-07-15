@@ -46,6 +46,13 @@ jobs:
         # compromised (over-correction). Deterministic, offline. Published honest
         # tails (HONEST EVADER) are exempt. See scripts/redteam_gate.py.
         run: python scripts/redteam_gate.py
+      - name: Self-red-team honeypot harness-enforcement gate
+        # Arms-race hook for the enforcement layer: plants decoy dangerous tools,
+        # tempts the reference agent to call them, and FAILS THE BUILD if the
+        # enforce-posture gateway ALLOWS a forbidden decoy call (logged-not-
+        # blocked) or if no probe reaches a honeypot (coverage regression).
+        # Deterministic, offline, no API key. See scripts/honeypot_gate.py.
+        run: python scripts/honeypot_gate.py
       - name: Dependency vulnerability scan
         run: pip install pip-audit && pip-audit || true   # advisory; doesn't fail the build yet
 
