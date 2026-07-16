@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, downloadBlob } from "../api";
 import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
+import { Markdown } from "../components/Markdown";
 import { money } from "../stats";
 
 interface Row {
@@ -131,7 +132,7 @@ export function ResultsHistoryPage() {
               <button className="ghost-sm" style={{ marginLeft: 8 }}
                       onClick={() => setReport(null)}>close</button>
             </div>
-            <pre className="report-md" style={{ whiteSpace: "pre-wrap" }}>{report.text}</pre>
+            <Markdown>{report.text}</Markdown>
           </div>
         )}
       </div>

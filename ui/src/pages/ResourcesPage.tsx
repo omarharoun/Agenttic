@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, downloadBlob } from "../api";
 import { DataView, EmptyState, PageHeader, RawToggle, Skeleton } from "../components/ui";
 import { shortTraceId, traceId } from "../traces";
+import { Markdown } from "../components/Markdown";
 
 type Tab = "suites" | "scorecards" | "traces";
 
@@ -176,7 +177,7 @@ export function ResourcesPage() {
               <button className="ghost-sm" style={{ marginLeft: 8 }}
                       onClick={() => setReport(null)}>close</button>
             </div>
-            <pre className="doc" style={{ marginTop: 0 }}>{report.text}</pre>
+            <Markdown>{report.text}</Markdown>
           </div>
         )}
 
