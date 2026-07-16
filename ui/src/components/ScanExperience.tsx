@@ -16,6 +16,7 @@ import {
   type ScanCheck, type ScanJob, type ScanPreview,
 } from "../api";
 import { badgeUrl, certUrl, gradeColor } from "../cert";
+import { SCORE_MEANING } from "../workflow/templates";
 import { Seal } from "./Seal";
 
 type Phase = "idle" | "scanning" | "graded" | "error";
@@ -235,8 +236,8 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
                 <div className="scan-verdict-grade" style={{ color: gradeColor(job.result.grade) }}>
                   Grade {job.result.grade}
                 </div>
-                <div className="scan-verdict-sub">
-                  Safety score {job.result.composite_score}/100
+                <div className="scan-verdict-sub" title={SCORE_MEANING}>
+                  Composite safety score {job.result.composite_score}/100
                   {job.result.cost_usd > 0 && <> · cost ${job.result.cost_usd.toFixed(2)}</>}
                 </div>
                 <div className="scan-rigor"
