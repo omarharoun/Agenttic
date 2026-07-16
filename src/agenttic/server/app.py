@@ -21,7 +21,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
@@ -57,6 +57,69 @@ def safe_static_path(base: Path, rel: str) -> Path | None:
     if target == base or base not in target.parents:
         return None
     return target if target.is_file() else None
+
+
+def prerendered_page(base: Path, path: str) -> Path | None:
+    """Map a request path to its prerendered ``<route>.html`` in the build, if
+    one exists. ``""`` -> ``index.html`` (the landing), ``"pricing"`` (or
+    ``"pricing/"``) -> ``pricing.html``. Only top-level page files are eligible
+    — a nested/dynamic path like ``certified/<id>`` or ``app/build`` has no
+    matching file and returns None (caller serves the clean shell). This is what
+    keeps client hydration matching the served markup: /pricing gets pricing's
+    prerendered HTML, not the landing's."""
+    rel = path.strip("/")
+    if "/" in rel or rel == ".." or rel.startswith("../"):
+        return None  # nested / traversal — never a top-level prerendered page
+    name = "index.html" if rel == "" else f"{rel}.html"
+    target = safe_static_path(base, name)
+    return target if (target is not None and target.name == name) else None
+
+
+_SHELL_CACHE: dict[str, str] = {}
+
+
+def _empty_root_div(html: str) -> str:
+    """Return ``html`` with the contents of ``<div id="root">…</div>`` removed,
+    leaving an empty mount. Uses a balanced ``<div>`` scan so arbitrarily nested
+    prerendered markup is stripped correctly (a regex can't match balanced
+    tags)."""
+    m = re.search(r'<div id="root"[^>]*>', html)
+    if not m:
+        return html
+    start = m.end()
+    depth = 1
+    for tok in re.finditer(r"<div\b|</div\s*>", html[start:]):
+        if tok.group(0).startswith("</"):
+            depth -= 1
+            if depth == 0:
+                return html[:start] + html[start + tok.start():]
+        else:
+            depth += 1
+    return html  # unbalanced (shouldn't happen) — leave as-is
+
+
+def clean_shell(base: Path) -> str | None:
+    """A bare, NON-prerendered SPA shell derived from ``index.html``: identical
+    <head> and built asset/script tags, but with the ``data-server-rendered``
+    marker removed and ``#root`` emptied. Because no ``[data-server-rendered=
+    true]`` element is present, vite-react-ssg's client entry calls
+    ``createRoot()`` (a fresh client render) instead of ``hydrateRoot()`` — so
+    there is no server markup to mismatch, and React #418/#423 hydration errors
+    can't occur on dynamic routes. Cached per build (keyed by index.html mtime).
+    Returns None if the build isn't present."""
+    idx = base / "index.html"
+    try:
+        key = f"{idx.resolve()}::{idx.stat().st_mtime_ns}"
+    except OSError:
+        return None
+    cached = _SHELL_CACHE.get(key)
+    if cached is not None:
+        return cached
+    html = idx.read_text(encoding="utf-8")
+    html = html.replace(' data-server-rendered="true"', "")
+    html = _empty_root_div(html)
+    _SHELL_CACHE[key] = html
+    return html
 
 
 class Workspace:
@@ -380,7 +443,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
                   name="assets")
 
         @app.get("/{path:path}", include_in_schema=False)
-        async def spa(path: str):  # SPA fallback: any non-API route -> index
+        async def spa(path: str):  # SPA fallback for any non-API route
             # An unmatched API request must NOT fall through to the HTML SPA
             # shell. The frontend calls res.json() on these paths; a 200
             # text/html body (index.html) blows up as "JSON.parse: unexpected
@@ -390,9 +453,22 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
                     or path == "v1" or path.startswith("v1/"):
                 from fastapi.responses import JSONResponse
                 return JSONResponse({"detail": "Not Found"}, status_code=404)
+            # A real built file (favicon.ico, robots.txt, fonts/…) — serve it.
             target = safe_static_path(UI_DIST, path) if path else None
             if target is not None:
                 return FileResponse(target)
+            # A prerendered route (/, /pricing, /methodology, …) — serve ITS own
+            # prerendered HTML so client hydration matches the served markup.
+            page = prerendered_page(UI_DIST, path)
+            if page is not None:
+                return FileResponse(page)
+            # A dynamic / non-prerendered route (/scan, /certified/<id>, /app/*,
+            # /login, …) — serve the bare shell (empty #root, no SSR marker) so
+            # React client-renders fresh with ZERO hydration mismatch. Serving
+            # the prerendered LANDING here is exactly what caused React #418/#423.
+            shell = clean_shell(UI_DIST)
+            if shell is not None:
+                return HTMLResponse(shell)
             return FileResponse(UI_DIST / "index.html")
 
     return app

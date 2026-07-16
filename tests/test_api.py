@@ -559,12 +559,28 @@ class TestApiNeverFallsThroughToSpaHtml:
 
     def _spa_client(self, tmp_path, monkeypatch):
         # A built UI so the SPA catch-all actually mounts (it's gated on
-        # UI_DIST.is_dir()). index.html is the exact body that used to leak.
+        # UI_DIST.is_dir()). index.html mimics a real vite-react-ssg build: the
+        # prerendered LANDING page, with the ``data-server-rendered`` hydration
+        # marker and nested hero markup baked into #root — the exact body that
+        # used to leak onto every route and cause React #418/#423.
         ui_dist = tmp_path / "uidist"
         (ui_dist / "assets").mkdir(parents=True)
         (ui_dist / "index.html").write_text(
-            "<!DOCTYPE html><html><head><title>Agenttic</title></head>"
-            "<body><div id=root></div></body></html>")
+            "<!DOCTYPE html><html lang=en data-theme=dark><head>"
+            "<title>Agenttic</title>"
+            '<script type="module" src="/assets/app-abc.js"></script></head>'
+            '<body><div id="root" data-server-rendered="true">'
+            '<div class="agx"><header class="hero"><h1>LANDING_HERO — '
+            "Measure what your agent <em>actually does.</em></h1></header>"
+            "</div></div>"
+            "<script>window.__VITE_REACT_SSG_HASH__ = 'abc'</script>"
+            "</body></html>")
+        # A second prerendered page — /pricing gets its OWN html, not landing.
+        (ui_dist / "pricing.html").write_text(
+            "<!DOCTYPE html><html lang=en><head><title>Pricing</title></head>"
+            '<body><div id="root" data-server-rendered="true">'
+            '<div class="pricing">PRICING_PAGE_BODY</div></div></body></html>')
+        (ui_dist / "favicon.ico").write_bytes(b"\x00icon")
         import agenttic.server.app as appmod
         monkeypatch.setattr(appmod, "UI_DIST", ui_dist)
 
@@ -593,9 +609,86 @@ class TestApiNeverFallsThroughToSpaHtml:
             assert "application/json" in v.headers["content-type"]
 
     def test_spa_shell_still_served_for_app_routes(self, tmp_path, monkeypatch):
-        # The fix must not break the SPA: a real app route still gets index.html.
+        # The fix must not break the SPA: a real app route still gets an HTML
+        # shell — but the CLEAN shell (empty #root, no SSR marker), not landing.
         with self._spa_client(tmp_path, monkeypatch) as c:
             r = c.get("/app/canvas")
             assert r.status_code == 200
             assert "text/html" in r.headers["content-type"]
             assert "<!DOCTYPE html>" in r.text
+            assert 'data-server-rendered="true"' not in r.text
+            assert "LANDING_HERO" not in r.text
+
+
+class TestSpaHydrationFallback:
+    """Regression for React #418/#423 hydration errors: the catch-all used to
+    serve the prerendered LANDING ``index.html`` for EVERY unmatched route, so
+    hydrating /scan (etc.) against landing markup mismatched and forced a
+    from-scratch re-render (first-click flakiness). The fix: prerendered routes
+    get their own prerendered HTML; everything else gets a clean, un-prerendered
+    shell (empty #root, no ``data-server-rendered`` marker) that the client
+    fresh-renders with zero hydration mismatch."""
+
+    _spa_client = TestApiNeverFallsThroughToSpaHtml._spa_client
+
+    def test_landing_root_still_serves_prerendered_landing(
+            self, tmp_path, monkeypatch):
+        # No regression: / must still serve the real prerendered landing so it
+        # hydrates (marker present, hero body present).
+        with self._spa_client(tmp_path, monkeypatch) as c:
+            r = c.get("/")
+            assert r.status_code == 200
+            assert "LANDING_HERO" in r.text
+            assert 'data-server-rendered="true"' in r.text
+
+    def test_scan_serves_clean_shell_not_landing(self, tmp_path, monkeypatch):
+        # /scan is NOT prerendered — it must get the clean shell, NEVER the
+        # landing hero (that markup mismatch is the #418/#423 source).
+        with self._spa_client(tmp_path, monkeypatch) as c:
+            r = c.get("/scan")
+            assert r.status_code == 200
+            assert "text/html" in r.headers["content-type"]
+            assert "LANDING_HERO" not in r.text            # not landing markup
+            assert 'data-server-rendered="true"' not in r.text  # → client render
+            assert 'id="root"></div>' in r.text            # empty mount
+            # asset/script tags from the build are preserved for the client
+            assert "/assets/app-abc.js" in r.text
+
+    def test_prerendered_route_serves_its_own_html(
+            self, tmp_path, monkeypatch):
+        # /pricing gets pricing.html (so hydration matches), not the landing.
+        with self._spa_client(tmp_path, monkeypatch) as c:
+            r = c.get("/pricing")
+            assert r.status_code == 200
+            assert "PRICING_PAGE_BODY" in r.text
+            assert "LANDING_HERO" not in r.text
+            # trailing slash resolves to the same prerendered page
+            assert "PRICING_PAGE_BODY" in c.get("/pricing/").text
+
+    def test_dynamic_routes_serve_clean_shell(self, tmp_path, monkeypatch):
+        # /certified/<id> and /app/* are dynamic — no matching prerendered file,
+        # so they get the clean shell (empty root, no marker, no landing).
+        with self._spa_client(tmp_path, monkeypatch) as c:
+            for path in ("/certified/abc123", "/app", "/app/build", "/login"):
+                r = c.get(path)
+                assert r.status_code == 200, path
+                assert "LANDING_HERO" not in r.text, path
+                assert 'data-server-rendered="true"' not in r.text, path
+                assert 'id="root"></div>' in r.text, path
+
+    def test_real_static_files_still_served(self, tmp_path, monkeypatch):
+        # A real built file (favicon) is still served verbatim, not the shell.
+        with self._spa_client(tmp_path, monkeypatch) as c:
+            r = c.get("/favicon.ico")
+            assert r.status_code == 200
+            assert r.content == b"\x00icon"
+
+    def test_nested_prerendered_name_is_not_traversable(
+            self, tmp_path, monkeypatch):
+        # A dynamic path that merely shares a prefix must not resolve to a
+        # top-level page file; it falls to the clean shell.
+        with self._spa_client(tmp_path, monkeypatch) as c:
+            r = c.get("/pricing/extra/deep")
+            assert r.status_code == 200
+            assert "PRICING_PAGE_BODY" not in r.text
+            assert 'id="root"></div>' in r.text
