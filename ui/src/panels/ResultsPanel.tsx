@@ -3,6 +3,7 @@ import { api, downloadBlob } from "../api";
 import { Uncertainty } from "../components/ui";
 import { money, ms } from "../stats";
 import { PASS_MEANING, PASS_THRESHOLD } from "../workflow/templates";
+import { Markdown } from "../components/Markdown";
 
 /** Post-run scoreboard: scorecard summary + one row per test case showing
  * the agent's prediction vs expected, expandable to per-criterion scores
@@ -109,7 +110,11 @@ export function ResultsPanel({ results }: { results: any }) {
         </div>
         );
       })}
-      {report && <pre className="doc" style={{ margin: "8px 0" }}>{report}</pre>}
+      {report && (
+        <div style={{ margin: "8px 0" }}>
+          <Markdown>{report}</Markdown>
+        </div>
+      )}
       {cases.map((c: any) => (
         <div key={`${c.node_id}-${c.test_id}`} className="case-row">
           <div className="case-head"
