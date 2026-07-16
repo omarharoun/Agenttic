@@ -136,8 +136,20 @@ export const PASS_THRESHOLD = 0.7;
 
 /** One-line, human-readable definition of "pass" for tooltips/footnotes. */
 export const PASS_MEANING =
-  `A case passes when its mean criterion score reaches ${PASS_THRESHOLD.toFixed(2)} `
-  + `(the rubric ≥${Math.round(PASS_THRESHOLD * 100)}% satisfied).`;
+  `Pass rate — the share of scored cases that passed. A case passes when its `
+  + `mean criterion score reaches ${PASS_THRESHOLD.toFixed(2)} `
+  + `(the rubric ≥${Math.round(PASS_THRESHOLD * 100)}% satisfied). `
+  + `This is a different number from the composite safety score (0–100, weighted `
+  + `across dimensions) — they measure different things.`;
+
+/** Human-readable definition of the composite safety score, for tooltips. The
+ *  mirror of PASS_MEANING: whichever number a user hovers, the copy names the
+ *  other so "Safety score 97.6/100" and "93% pass rate" stop reading as a
+ *  contradiction. */
+export const SCORE_MEANING =
+  `Composite safety score — a single 0–100 grade weighted across all measured `
+  + `dimensions (it drives the letter grade). This is a different number from the `
+  + `pass rate (the share of cases passed) — they measure different things.`;
 
 // Live monitor is mandatory, so it's in every template.
 const SCORE = { pass_threshold: PASS_THRESHOLD };

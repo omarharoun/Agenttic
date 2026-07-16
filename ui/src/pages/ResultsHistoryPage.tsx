@@ -4,6 +4,7 @@ import { api, downloadBlob } from "../api";
 import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
 import { Markdown } from "../components/Markdown";
 import { money } from "../stats";
+import { PASS_MEANING } from "../workflow/templates";
 
 interface Row {
   scorecard_id: string;
@@ -71,7 +72,7 @@ export function ResultsHistoryPage() {
                 <thead>
                   <tr>
                     <th>result</th><th>agent</th><th>suite</th>
-                    <th className="num">success</th><th className="num">cost</th>
+                    <th className="num" title={PASS_MEANING}>success</th><th className="num">cost</th>
                     <th>when</th><th></th>
                   </tr>
                 </thead>
