@@ -28,6 +28,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, type ScanCheck, type ScanJob, type ScanPreview } from "../api";
 import { badgeUrl, certUrl, gradeColor } from "../cert";
 import { friendlyError } from "../scanError";
+import { SCORE_MEANING } from "../workflow/templates";
 import { Seal } from "./Seal";
 
 const STORE_KEY = "agenttic_intake_v1";
@@ -152,7 +153,9 @@ function ProfilePanel({ dims, answers, job, phase }: {
           {graded && (
             <div className="cv-verdict">
               <b style={{ color: gradeColor(job!.result!.grade) }}>Grade {job!.result!.grade}</b>
-              <span>Safety score {job!.result!.composite_score}/100</span>
+              <span title={SCORE_MEANING}>
+                Composite safety score {job!.result!.composite_score}/100
+              </span>
             </div>
           )}
           {phase === "run" && (
@@ -350,7 +353,8 @@ export function CertConversation() {
       } else {
         setStep("done");
         const g = j.result?.grade ?? "?";
-        say(`Done. Grade ${g} — safety score ${j.result?.composite_score ?? "?"}/100. ` +
+        say(`Done. Grade ${g} — composite safety score ${j.result?.composite_score ?? "?"}/100 ` +
+            `(weighted across dimensions; not the same as a pass rate). ` +
             (j.result?.grade_capped && j.result.cap_reason
               ? `Why not higher? ${j.result.cap_reason}`
               : "The panel has the dimension-by-dimension readout."));
