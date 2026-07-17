@@ -16,39 +16,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   api, copilotApprove, copilotChat,
-  type CopilotApproval, type CopilotErrorInfo, type CopilotHandlers,
-  type CopilotToolEvent,
+  type CopilotErrorInfo, type CopilotHandlers, type CopilotToolEvent,
 } from "../api";
-import { Markdown } from "./markdown";
-import { HexMark } from "../components/Icons";
-
-interface ToolAct { tool: string; ok?: boolean; kind?: string; summary?: string; }
-
-interface Msg {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-  streaming?: boolean;
-  error?: CopilotErrorInfo | null;   // set → render the styled error card
-  retryText?: string;                // the user message to resend on "Try again"
-  tools?: ToolAct[];
-  approval?: CopilotApproval | null;
-}
+import { ChatThread, type ChatMsg as Msg } from "./chatThread";
 
 /** Where "Upgrade or add credits" sends the user. The pricing/billing surface
  *  ships alongside real billing; until then this is a forward-compatible link. */
 const BILLING_URL = "/pricing";
-
-/** Per-code presentation for the error card (title + glyph + tone). The honest
- *  body copy comes from the server so the two stay in sync. */
-const ERROR_UI: Record<string, { title: string; icon: string; tone: string }> = {
-  unavailable:    { title: "Copilot unavailable",    icon: "⚠", tone: "warn" },
-  rate_limited:   { title: "One moment",             icon: "◔", tone: "warn" },
-  out_of_credits: { title: "Out of credits",         icon: "◈", tone: "credits" },
-  daily_limit:    { title: "Daily limit reached",    icon: "◷", tone: "warn" },
-  not_configured: { title: "Copilot not configured", icon: "⚙", tone: "warn" },
-  generic:        { title: "Something went wrong",   icon: "⚠", tone: "warn" },
-};
 
 let _seq = 0;
 const uid = (p: string) => `${p}_${Date.now().toString(36)}_${_seq++}`;
@@ -59,24 +33,6 @@ const SUGGESTIONS = [
   "Is the platform healthy right now?",
   "What does “NOT ASSESSED” mean?",
 ];
-
-/** Human-readable label for a tool while it runs / after it's done. */
-function toolLabel(t: ToolAct): string {
-  const names: Record<string, string> = {
-    platform_status: "Checking platform status",
-    list_agents: "Listing your agents",
-    list_certification_profiles: "Listing certification profiles",
-    get_certification_profile: "Fetching profile",
-    list_dossiers: "Listing dossiers",
-    get_dossier: "Fetching dossier",
-    verify_dossier: "Verifying dossier",
-    get_certification_job: "Checking certification job",
-    anthropic_key_status: "Checking API-key status",
-    start_certification: "Running certification",
-    revoke_certification: "Revoking certificate",
-  };
-  return names[t.tool] ?? t.tool;
-}
 
 export default function CopilotPanel({ open, onClose }: {
   open: boolean; onClose: () => void;
@@ -220,49 +176,10 @@ export default function CopilotPanel({ open, onClose }: {
               </div>
             </div>
           ) : (
-            messages.map((m) => (
-              <div key={m.id} className={`cp-msg ${m.role}`}>
-                {m.role === "assistant" && <span className="cp-av" aria-hidden><HexMark size={13} /></span>}
-                <div className="cp-msg-body">
-                  {/* live tool activity */}
-                  {m.role === "assistant" && m.tools && m.tools.length > 0 && (
-                    <ul className="cp-tools" aria-label="What the Copilot did">
-                      {m.tools.map((t, i) => (
-                        <li key={i} className={`cp-tool ${t.ok === false ? "bad" : "ok"} ${t.kind === "write" ? "write" : ""}`}>
-                          <span className="cp-tool-ic" aria-hidden>{t.ok === false ? "✕" : "✓"}</span>
-                          <span className="cp-tool-lbl">{toolLabel(t)}</span>
-                          {t.summary && <span className="cp-tool-sum">{t.summary}</span>}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {/* running indicator while streaming with no text yet */}
-                  {m.role === "assistant" && m.streaming && !m.text && !m.approval && !m.error && (
-                    <span className="cp-typing" aria-label="Copilot is working"><span /><span /><span /></span>
-                  )}
-                  {/* the message text */}
-                  {m.text && (
-                    <div className={`cp-bubble ${m.role}`}>
-                      {m.role === "assistant"
-                        ? <Markdown text={m.text} onNavigate={onClose} />
-                        : m.text}
-                      {m.streaming && m.text && <span className="cp-caret" aria-hidden />}
-                    </div>
-                  )}
-                  {/* styled inline error card — honest, per-case, with an affordance */}
-                  {m.role === "assistant" && m.error && (
-                    <ErrorCard info={m.error} busy={busy}
-                               onRetry={m.retryText ? () => send(m.retryText!) : undefined}
-                               onUpgrade={() => { onClose(); window.location.assign(BILLING_URL); }} />
-                  )}
-                  {/* inline approval card for a proposed write/cost action */}
-                  {m.role === "assistant" && m.approval && (
-                    <ApprovalCard a={m.approval} busy={busy}
-                                  onDecide={(ok) => decide(m.id, ok)} />
-                  )}
-                </div>
-              </div>
-            ))
+            <ChatThread messages={messages} busy={busy}
+                        onRetry={(t) => send(t)}
+                        onUpgrade={() => { onClose(); window.location.assign(BILLING_URL); }}
+                        onDecide={decide} onNavigate={onClose} />
           )}
           <div ref={threadEnd} />
         </div>
@@ -289,66 +206,5 @@ export default function CopilotPanel({ open, onClose }: {
         </form>
       </aside>
     </>
-  );
-}
-
-/** A styled, honest error state for the drawer: an icon, a per-case title, the
- *  server's safe message, and the right affordance (retry the turn, or upgrade).
- *  Uses the Chronometer tokens so it reads as part of the panel, light + dark. */
-function ErrorCard({ info, busy, onRetry, onUpgrade }: {
-  info: CopilotErrorInfo; busy: boolean;
-  onRetry?: () => void; onUpgrade: () => void;
-}) {
-  const ui = ERROR_UI[info.code] ?? ERROR_UI.generic;
-  const action = info.action ?? "retry";
-  return (
-    <div className={`cp-error ${ui.tone}`} role="alert">
-      <span className="cp-error-ic" aria-hidden>{ui.icon}</span>
-      <div className="cp-error-body">
-        <p className="cp-error-title">{ui.title}</p>
-        <p className="cp-error-msg">{info.message}</p>
-        {action === "upgrade" ? (
-          <button type="button" className="cp-error-btn primary" onClick={onUpgrade}>
-            Upgrade or add credits
-          </button>
-        ) : action === "retry" && onRetry ? (
-          <button type="button" className="cp-error-btn" disabled={busy} onClick={onRetry}>
-            Try again
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-/** The confirmation card for a proposed write/cost action. Blocks the turn until
- *  the user decides; keyboard-focusable. */
-function ApprovalCard({ a, busy, onDecide }: {
-  a: CopilotApproval; busy: boolean; onDecide: (approved: boolean) => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => { ref.current?.focus(); }, []);
-  const risk = a.card.risk ?? "medium";
-  return (
-    <div className={`cp-approval risk-${risk}`} role="group" tabIndex={-1} ref={ref}
-         aria-label="Action needs your confirmation">
-      <div className="cp-approval-head">
-        <span className="cp-approval-ic" aria-hidden>🔐</span>
-        <span className="cp-approval-tag">Confirm before running</span>
-        <span className={`cp-approval-risk risk-${risk}`}>{risk} risk</span>
-      </div>
-      <h3 className="cp-approval-title">{a.card.title ?? `Run ${a.tool}?`}</h3>
-      {a.card.detail && <p className="cp-approval-detail">{a.card.detail}</p>}
-      {a.card.cost_note && (
-        <p className="cp-approval-cost"><span aria-hidden>💳</span> {a.card.cost_note}</p>
-      )}
-      <p className="cp-approval-reassure">Nothing happens until you choose.</p>
-      <div className="cp-approval-actions">
-        <button type="button" className="cp-btn-confirm" disabled={busy}
-                onClick={() => onDecide(true)}>Confirm &amp; run</button>
-        <button type="button" className="cp-btn-deny" disabled={busy}
-                onClick={() => onDecide(false)}>Cancel</button>
-      </div>
-    </div>
   );
 }

@@ -17,6 +17,7 @@ import {
 } from "../api";
 import { badgeUrl, certUrl, gradeColor } from "../cert";
 import { SCORE_MEANING } from "../workflow/templates";
+import { ScanReport } from "./ScanReport";
 import { Seal } from "./Seal";
 import { HexMark } from "./Icons";
 
@@ -38,7 +39,7 @@ function explainError(e: any): { kind: "auth" | "key" | "other"; msg: string } {
     return { kind: "auth", msg: "Create a free account to run your scan — it takes about ten seconds." };
   }
   if (detail.toLowerCase().includes("anthropic api key")) {
-    return { kind: "key", msg: "The demo agent runs on your own Anthropic key. Add your key, then try the demo again." };
+    return { kind: "key", msg: "This scan needs an Anthropic key configured. Add your key in settings, then try again." };
   }
   return { kind: "other", msg: detail.replace(/^\d+\s*—?\s*/, "") || "Something went wrong. Please try again." };
 }
@@ -93,13 +94,23 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
   const [headerName, setHeaderName] = useState("Authorization");
   const [headerValue, setHeaderValue] = useState("");
   const [job, setJob] = useState<ScanJob | null>(null);
+  // whether the current run went through the public demo flow (its findings
+  // live on the unauthenticated /api/public/demo-scan/… routes)
+  const [demoRun, setDemoRun] = useState(false);
   const [err, setErr] = useState<ReturnType<typeof explainError> | null>(null);
   const [preview, setPreview] = useState<ScanPreview | null>(null);
+  // The open demo needs no account and no visitor key — it runs on the server's
+  // own key via /api/public/demo-scan. null = availability still loading.
+  const [demoAvail, setDemoAvail] = useState<boolean | null>(null);
+  const [demoDims, setDemoDims] = useState<ScanPreview["dimensions"] | null>(null);
   const timer = useRef<number | undefined>(undefined);
 
   // restore a scan intent saved before a sign-in bounce (so the URL survives)
   useEffect(() => {
     api.scanPreview().then(setPreview).catch(() => {});
+    api.publicDemoPreview()
+      .then((d) => { setDemoAvail(d.available); setDemoDims(d.dimensions); })
+      .catch(() => setDemoAvail(false));
     try {
       const saved = sessionStorage.getItem(INTENT_KEY);
       if (saved) { setUrl(JSON.parse(saved).url || ""); sessionStorage.removeItem(INTENT_KEY); }
@@ -107,11 +118,11 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
     return () => { if (timer.current) window.clearTimeout(timer.current); };
   }, []);
 
-  const poll = (scanId: string) => {
-    api.scanStatus(scanId).then((j) => {
+  const poll = (scanId: string, isDemo = false) => {
+    (isDemo ? api.publicDemoStatus(scanId) : api.scanStatus(scanId)).then((j) => {
       setJob(j);
       if (j.status === "running") {
-        timer.current = window.setTimeout(() => poll(scanId), POLL_MS);
+        timer.current = window.setTimeout(() => poll(scanId, isDemo), POLL_MS);
       } else if (j.status === "error") {
         setErr({ kind: "other", msg: j.error || "The scan failed. Please try again." });
         setPhase("error");
@@ -122,16 +133,17 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
   };
 
   const start = (target: "endpoint" | "demo" | "connection") => {
-    setErr(null); setJob(null);
+    setErr(null); setJob(null); setDemoRun(target === "demo");
     if (target === "endpoint" && !url.trim()) {
       setErr({ kind: "other", msg: "Paste your agent's API endpoint URL first." });
       return;
     }
-    // The demo runs on the tenant's own Anthropic key. Gate it up front so we
-    // never flip to "scanning" and then dead-end on a missing-key 400.
-    if (target === "demo" && !(preview?.demo.key_set ?? false)) {
-      setErr({ kind: "key", msg: "The demo agent runs on your own Anthropic key. Add your key, then try the demo again." });
-      setPhase("error");
+    if (target === "demo") {
+      // No account, no key: live run on the server's key, fresh every time.
+      setPhase("scanning");
+      api.startPublicDemo(agentName.trim())
+        .then((r) => poll(r.scan_id, true))
+        .catch((e) => { setErr(explainError(e)); setPhase("error"); });
       return;
     }
     setPhase("scanning");
@@ -161,7 +173,7 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
 
   // ---- render -------------------------------------------------------------
   const checks: ScanCheck[] = job?.checks
-    ?? preview?.dimensions.map((d) => ({
+    ?? (preview?.dimensions ?? demoDims)?.map((d) => ({
       criterion_id: d.criterion_id, label: d.label, status: "pending" as const,
       passed: null, detail: "", critical: d.critical,
     })) ?? [];
@@ -184,14 +196,10 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
               {showAuth ? "− Hide auth header" : "+ Add an auth header"}
             </button>
             <span className="scan-or">or</span>
-            {preview?.demo.key_set ?? false ? (
+            {demoAvail !== false && (
               <button type="button" className="btn-ghost scan-demo"
+                      title="No account or API key needed — a live run, fresh every time"
                       onClick={() => start("demo")}>Try it on a demo agent</button>
-            ) : (
-              <Link className="btn-ghost scan-demo" to="/app/settings"
-                    title="The demo runs on your own Anthropic key">
-                Try the demo (add your Anthropic key)
-              </Link>
             )}
           </div>
 
@@ -213,7 +221,8 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
           <p className="scan-reassure">
             We send a battery of safety probes to your endpoint and grade the answers.
             <b> Your endpoint needs no Anthropic key</b> — your agent runs on your own
-            infrastructure. The built-in demo, by contrast, runs on your own Anthropic key.
+            infrastructure. The built-in demo runs live on our server's key — no account
+            or key needed.
           </p>
 
           <ConnectPanel onScan={() => start("connection")} />
@@ -245,7 +254,7 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
                   {job.result.cost_usd > 0 && <> · cost ${job.result.cost_usd.toFixed(2)}</>}
                 </div>
                 <div className="scan-rigor"
-                     title="A quick scan sends ~14 short safety probes and scores the replies with lexical refusal / target-token checks — a fast screen, not a full canonical suite run (k=3, against the real attack environments). Treat it as a first look, not an exhaustive audit.">
+                     title="A quick scan sends ~14 short safety probes and scores the replies with lexical refusal / target-token checks — a fast screen, not a full canonical suite run (k=3, against the real test environments). Treat it as a first look, not an exhaustive audit.">
                   ⚡ Quick scan · ~14 probes · lexical screen
                 </div>
               </div>
@@ -258,6 +267,10 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
 
           {phase === "graded" && job?.result?.grade_capped && job.result.cap_reason && (
             <p className="scan-cap"><b>Why not higher?</b> {job.result.cap_reason}</p>
+          )}
+
+          {phase === "graded" && job?.scan_id && (
+            <ScanReport scanId={job.scan_id} isDemo={demoRun} />
           )}
 
           {phase === "graded" && job && <GradedActions job={job} onReset={reset} />}

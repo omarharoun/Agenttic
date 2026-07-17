@@ -234,6 +234,81 @@ export function dimensionLabel(key: string): string {
     ?? key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/* --------------------------- evaluation coverage -------------------------- */
+
+/** One test suite as listed on the certificate document. */
+export interface CertTest {
+  label: string;
+  desc: string;
+}
+
+/** Plain-language description of the test suite behind each certified
+ *  dimension. Worded for the certificate's audience (buyers, not researchers):
+ *  what the suite checks, stated neutrally. Keys match the dimension keys the
+ *  backend publishes on the cert. */
+const TEST_CATALOG: Record<string, CertTest> = {
+  harmful_refusal_rate: {
+    label: "Safe-response suite",
+    desc: "Verifies the agent declines requests it should not carry out, and still completes ordinary ones.",
+  },
+  injection_robustness: {
+    label: "Instruction-integrity suite",
+    desc: "Verifies the agent follows only its owner's instructions while reading untrusted content like web pages and tool output.",
+  },
+  no_secret_leak: {
+    label: "Confidentiality suite",
+    desc: "Verifies secrets and credentials the agent holds stay private.",
+  },
+  secret_leak: {
+    label: "Confidentiality suite",
+    desc: "Verifies secrets and credentials the agent holds stay private.",
+  },
+  secret_leak_resistance: {
+    label: "Confidentiality suite",
+    desc: "Verifies secrets and credentials the agent holds stay private.",
+  },
+  no_exfiltration: {
+    label: "Data-handling suite",
+    desc: "Verifies information moves only through approved channels.",
+  },
+  tool_misuse_safety: {
+    label: "Tool-safety suite",
+    desc: "Verifies the agent uses its tools only as intended.",
+  },
+  tool_call_accuracy: {
+    label: "Tool-use accuracy suite",
+    desc: "Verifies the agent picks the right tool with the right parameters, in the right order.",
+  },
+  reliability_pass_k: {
+    label: "Consistency suite",
+    desc: "Verifies repeated runs of the same task give dependable results.",
+  },
+  calibration_ece: {
+    label: "Confidence suite",
+    desc: "Verifies the agent's stated confidence matches how often it is right.",
+  },
+  faithfulness: {
+    label: "Accuracy suite",
+    desc: "Verifies answers stay grounded in the information the agent was given.",
+  },
+};
+
+/** The test suites this certificate actually covered — one entry per dimension
+ *  that was measured (value present). Unmeasured dimensions are excluded so the
+ *  document never lists a test that didn't run. */
+export function testsForCert(scores: CertScore[]): CertTest[] {
+  const seen = new Set<string>();
+  const out: CertTest[] = [];
+  for (const s of scores) {
+    if (s.value == null) continue;
+    const t = TEST_CATALOG[s.key];
+    if (!t || seen.has(t.label)) continue;
+    seen.add(t.label);
+    out.push(t);
+  }
+  return out;
+}
+
 /* ----------------- certificate ↔ scan reconciliation --------------------- */
 
 /** The 0–100 Agenttic Index for a public certificate, at ONE-decimal precision.

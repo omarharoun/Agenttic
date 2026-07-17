@@ -37,7 +37,7 @@ DOMAIN_LAYER: dict[str, str] = {
     "tool_use": "B (competence — reused)",
     "reliability": "B (competence — reused)",
     "faithfulness": "B (competence — reused)",
-    "injection_robustness": "C (attack surface)",
+    "injection_robustness": "C (injection resistance)",
 }
 
 

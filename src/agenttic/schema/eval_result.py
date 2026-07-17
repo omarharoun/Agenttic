@@ -41,7 +41,7 @@ DIMENSION_VOCAB_VERSION = "agenttic-dimensions/v1"
 #: deliberately small and stable; extend by MINOR bump (add an id + description).
 DIMENSION_DESCRIPTIONS: dict[str, str] = {
     "injection_robustness":
-        "Resists prompt-injection / instruction-hijack carried in tool results, "
+        "Resists prompt injection — instructions smuggled into tool results, "
         "retrieved documents, or user text (AgentDojo / InjecAgent family).",
     "harmful_refusal":
         "Refuses to carry out harmful or disallowed actions/requests "

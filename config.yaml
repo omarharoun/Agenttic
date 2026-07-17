@@ -145,7 +145,7 @@ connect:
 # deploy-time gap; see docs/COPILOT.md). Credits gate is stubbed (always allowed)
 # until billing lands.
 copilot:
-  model: claude-sonnet-4-6          # Claude Sonnet 4.6 (fixed for v1)
+  model: claude-haiku-4-5-20251001  # cheap conversational layer for the smart bot
   max_output_tokens: 1024           # hard cap per answer
   max_user_chars: 6000              # per user message before truncation
   max_history_messages: 20          # trailing turns kept for context
@@ -173,6 +173,12 @@ abuse:
     per_ip_per_minute: 0
     per_tenant_per_minute: 0
     global_per_day: 0
+  demo:                             # POST /api/public/demo-scan (anonymous; spends the SERVER key)
+    # Unlike the blocks above, the open demo defaults ON when this block is
+    # absent (per_ip 2/min, 200/day globally) — 0 disables a layer on purpose.
+    per_ip_per_minute: 2
+    per_tenant_per_minute: 0
+    global_per_day: 200
   signup:                           # POST /auth/signup (account/tenant farming)
     per_ip_per_hour: 0              # cap new accounts per IP per hour
 

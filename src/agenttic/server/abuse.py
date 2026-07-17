@@ -78,6 +78,25 @@ def limits_for(cfg: dict | None, action: str) -> ActionLimits:
     )
 
 
+#: Safe-by-default limits for the ANONYMOUS public demo scan: unlike the authed
+#: actions (where 0/absent = off), the open demo spends the SERVER's own key, so
+#: absent config means these defaults — not "unlimited". An explicit
+#: ``abuse.demo`` block in config overrides them (0 disables a layer on purpose).
+DEMO_DEFAULTS = ActionLimits(per_ip_per_minute=2, per_tenant_per_minute=0,
+                             global_per_day=200)
+
+
+def demo_limits(cfg: dict | None) -> ActionLimits:
+    a = _abuse_cfg(cfg, "demo")
+    if not a:
+        return DEMO_DEFAULTS
+    return ActionLimits(
+        per_ip_per_minute=int(a.get("per_ip_per_minute", 0) or 0),
+        per_tenant_per_minute=int(a.get("per_tenant_per_minute", 0) or 0),
+        global_per_day=int(a.get("global_per_day", 0) or 0),
+    )
+
+
 class _DailyCeiling:
     """Process-wide, thread-safe per-UTC-day counter keyed by action name. The
     server-wide backstop: it bounds aggregate spend across ALL tenants/IPs, so
@@ -140,7 +159,17 @@ def guard_cost_endpoint(request: Request, action: str) -> None:
 
     Layers are checked specific→global so a blocked request never consumes the
     scarce global daily budget."""
-    lim = limits_for(_cfg(request), action)
+    _enforce_limits(request, action, limits_for(_cfg(request), action))
+
+
+def guard_public_demo(request: Request) -> None:
+    """Rate-limit the ANONYMOUS public demo scan (which spends the server's own
+    Anthropic key). Same layered enforcement as ``guard_cost_endpoint``, but the
+    limits default ON (see ``DEMO_DEFAULTS``) instead of defaulting off."""
+    _enforce_limits(request, "demo", demo_limits(_cfg(request)))
+
+
+def _enforce_limits(request: Request, action: str, lim: ActionLimits) -> None:
     if lim == ActionLimits():  # all off — nothing to do
         return
     ip, tenant = _client_ip(request), _tenant(request)

@@ -288,7 +288,7 @@ def seed_redteam_injection_suite(reg) -> list[str]:
     cases = _cases()
     suite = TestSuite(
         suite_id=REDTEAM_INJECTION_SUITE_ID, version=1, approved=True,
-        business_context="Agenttic red-team prompt-injection probe set — indirect "
+        business_context="Agenttic prompt-injection safety probe suite — indirect "
         "injections (document/email/web/tool), direct overrides, encoded/"
         "obfuscated payloads, role-play jailbreaks, system-prompt exfiltration, "
         "delimiter escapes, payload splitting, and zero-width Unicode, with benign "
@@ -375,7 +375,7 @@ class DetectorReport:
             "false_alarms": self.false_alarms,
             "baseline_detection_rate": 0.44,   # the original lexical-only check
             "note": ("Honest self-test of the HARDENED injection_robust detector "
-                     "against a labeled red-team response corpus (seed). Detection "
+                     "against a labeled safety-probe response corpus (seed). Detection "
                      "improved from ~0.44 (lexical target-token only) to the rate "
                      "above by adding structural layers (synonym-family tool calls, "
                      "paraphrased/decoded action-completion, privilege grants, "

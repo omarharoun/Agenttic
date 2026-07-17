@@ -35,15 +35,15 @@ _EVAL_GAMING_CHECKS = {
 # app; the blurb is the honest one-line reason that capability is the right tool.
 _FIX_BY_CATEGORY: dict[str, dict[str, str]] = {
     "safety": {
-        "capability": "harden", "label": "Harden & red-team",
+        "capability": "harden", "label": "Harden & run safety probes",
         "route": "/app/hardening",
         "blurb": "Promote these failing cases into a versioned regression suite, "
                  "then re-run after every change so the fix can't silently regress."},
     "prompt-injection": {
-        "capability": "harden", "label": "Harden & red-team",
+        "capability": "harden", "label": "Harden & run safety probes",
         "route": "/app/hardening",
         "blurb": "Capture these injection cases as a regression suite and re-run "
-                 "them on each release to keep the attack surface closed."},
+                 "them on each release to keep those gaps closed."},
     "tool-use": {
         "capability": "optimize", "label": "Optimize the prompt",
         "route": "/app/optimize",

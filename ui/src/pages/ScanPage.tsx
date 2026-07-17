@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { SiteNav } from "../components/SiteNav";
-import { CertConversation } from "../components/CertConversation";
+import { IntakeBot } from "../components/IntakeBot";
 import { ScanExperience } from "../components/ScanExperience";
 import { SealMark } from "../components/Seal";
 import "./ScanPage.css";
@@ -36,27 +36,21 @@ export function ScanPage() {
     <>
       <SiteNav />
 
-      <main className="lp sc">
-        <section className="sc-hero">
-          <p className="sc-eyebrow">Agent academy · intake</p>
-          <div className="sc-tag">Your first training drill</div>
-          <h1>Is your AI agent <em>safe to ship?</em></h1>
-          <p className="sc-lede">
-            Four quick questions compose your certification profile — then the
-            scan runs right on it. A clear safety grade in minutes.
+      <main className="lp scan-page">
+        <section className="scan-hero">
+          <span className="badge">Agent Safety Certification</span>
+          <h1>Is your AI agent <span className="grad">safe to ship?</span></h1>
+          <p className="sub">
+            Answer a couple of questions about your agent and our safety
+            assistant will tell you what matters for it — then run a live scan
+            for a clear A–F grade. No account, no API key.
           </p>
-
-          <div className="sc-bay">
-            <div className="sc-bay__rail">
-              <b>Drill bay · intake</b>
-              <span>{classic ? "quick form" : "guided interview"}</span>
-            </div>
-            {classic ? <ScanExperience /> : <CertConversation />}
-          </div>
-
-          <button type="button" className="scan-link sc-toggle"
+          {classic
+            ? <ScanExperience />
+            : <IntakeBot onFallback={() => setClassic(true)} />}
+          <button type="button" className="scan-link scan-mode-toggle"
                   onClick={() => setClassic((c) => !c)}>
-            {classic ? "← Back to the guided interview" : "Prefer to just paste a URL? Use the quick form"}
+            {classic ? "← Back to the guided assistant" : "Prefer to just paste a URL? Use the quick form"}
           </button>
         </section>
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
+import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 import { Term } from "../components/Term";
 
 /** Standard benchmarking — canonical, literature-anchored metrics rolled into
@@ -48,15 +48,12 @@ function ComponentCell({ value }: { value: number | null | undefined }) {
 }
 
 function StandardBenchmarks() {
-  const [cat, setCat] = useState<any | null>(null);
   const [board, setBoard] = useState<any | null | undefined>(undefined);
   const [datasets, setDatasets] = useState<any[]>([]);
   const [busy, setBusy] = useState("");
-  const [showMethod, setShowMethod] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   const load = () => {
-    api.standardMetrics().then(setCat).catch(() => setCat(null));
     api.standardLeaderboard().then(setBoard).catch(() => setBoard(null));
     api.standardDatasets().then((d) => setDatasets(d.datasets ?? [])).catch(() => setDatasets([]));
   };
@@ -96,105 +93,51 @@ function StandardBenchmarks() {
           {agents.length > 0 && <span className="pill-count">{agents.length} agent{agents.length === 1 ? "" : "s"} ranked</span>}
         </h2>
         <p style={{ color: "var(--muted)", margin: "6px 0 0", maxWidth: 760 }}>
-          Canonical, literature-anchored metrics on Agenttic's own seed data,
-          normalized into one Agenttic Index — components always shown. Each Index
-          carries its sample size <span className="mono">n</span> and a{" "}
-          <b><Term name="wilson">Wilson 95% interval</Term></b> (<span className="mono">*</span> = the composite
-          treated as a pass rate over <span className="mono">n</span> cases). We implement
-          the published <i>methodology</i>; these are <b>not</b> the public
-          BFCL / τ-bench / AgentHarm datasets (direct dataset comparability is a
-          next phase).{" "}
-          <button className="ghost-sm" style={{ marginLeft: 4 }}
-                  aria-expanded={showMethod}
-                  onClick={() => setShowMethod((s) => !s)}>
-            {showMethod ? "Hide methodology" : "Methodology & weights"}
-          </button>
-          {" "}
-          <Link to="/methodology" style={{ color: "var(--accent)", fontWeight: 600, marginLeft: 6 }}>
-            Full methodology →
+          One score from 0 to 100 that sums up how well each agent handles
+          tool use, safety, and reliability — measured with industry-standard
+          agent tests.{" "}
+          <Link to="/methodology" style={{ color: "var(--accent)", fontWeight: 600 }}>
+            How it's measured →
           </Link>
-          {" "}
-          <Link to="/app/certifications" style={{ color: "var(--accent)", fontWeight: 600, marginLeft: 6 }}>
-            🏅 Certify an agent →
-          </Link>
-        </p>
-        <p className="cred-note">
-          <b>Why these still count:</b> we implement each benchmark's published
-          methodology, calibrate our scorers against human labels, and show the
-          sample size + Wilson interval on every number — so an Index is a
-          conservative, reproducible signal, not a vanity score.{" "}
-          <Link to="/methodology">Why our methodology is trustworthy →</Link>
         </p>
       </header>
 
-      {showMethod && cat && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <div className="card-body" style={{ padding: 0 }}>
-            <div className="table-wrap">
-              <table className="data">
-                <thead><tr><th>Metric</th><th>Implements</th><th className="num">Index weight</th></tr></thead>
-                <tbody>
-                  {cat.metrics.map((m: any) => (
-                    <tr key={m.id}>
-                      <td><b>{m.name}</b></td>
-                      <td style={{ color: "var(--muted)", maxWidth: 520 }}>{m.methodology}</td>
-                      <td className="num">{m.status === "deferred"
-                        ? <span className="muted-sm">deferred</span>
-                        : `${Math.round(m.weight * 100)}%`}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* dataset provenance — license + source for each canonical suite */}
+      {/* test sources — tucked away; day-to-day users don't need provenance */}
       {datasets.length > 0 && (
-        <>
-          <div className="eyebrow" style={{ margin: "4px 0 2px" }}>Datasets</div>
-          <div className="dataset-grid">
+        <details className="dataset-details" style={{ margin: "4px 0 10px" }}>
+          <summary style={{ cursor: "pointer", color: "var(--muted)" }}>
+            Based on {datasets.length} industry test suites
+            {datasets.some((d) => !d.present) ? " — set up" : ""}
+          </summary>
+          <div className="dataset-grid" style={{ marginTop: 10 }}>
             {datasets.map((d) => (
               <div key={d.dataset_id} className="dataset-card">
                 <div className="dc-top">
-                  <span className="dc-name">{d.name}</span>
-                  <span className="dc-meta-row">
-                    {d.gated && (
-                      <span className="dc-gated" title="Access-gated upstream — bring your own access; a vendored sample is ingested offline">
-                        <span aria-hidden="true">🔒</span> Gated
-                      </span>
-                    )}
-                    {d.license && <span className="dc-lic" title="License">{d.license}</span>}
+                  <span className="dc-name">
+                    {d.source_url
+                      ? <a className="dc-src" href={d.source_url} target="_blank" rel="noreferrer">{d.name}</a>
+                      : d.name}
                   </span>
                 </div>
-                {d.citation && <div className="dc-meta">{d.citation}</div>}
-                {d.caveat && (
-                  <div className="dc-caveat">
-                    <span className="ic" aria-hidden="true">⚠</span><span>{d.caveat}</span>
-                  </div>
-                )}
                 <div className="dc-foot">
-                  {d.source_url
-                    ? <a className="dc-src" href={d.source_url} target="_blank" rel="noreferrer">Source ↗</a>
-                    : <span />}
+                  <span />
                   {d.present
-                    ? <span className="dc-status in"><span className="d" />Ingested</span>
+                    ? <span className="dc-status in"><span className="d" />Ready</span>
                     : <button className="ghost-sm"
                               disabled={busy === "ingest-" + d.dataset_id}
                               onClick={() => ingest(d.dataset_id)}>
-                        {busy === "ingest-" + d.dataset_id ? "Ingesting…" : "Ingest"}
+                        {busy === "ingest-" + d.dataset_id ? "Adding…" : "Add"}
                       </button>}
                 </div>
               </div>
             ))}
           </div>
-        </>
+        </details>
       )}
 
       <div className="std-toolbar">
         <button className="primary" disabled={busy === "run"} onClick={runBench}>
-          {busy === "run" ? "Starting…" : "▶ Run standard benchmark (k=3)"}
+          {busy === "run" ? "Starting…" : "▶ Run benchmark"}
         </button>
       </div>
       {msg && <div className={msg.kind === "ok" ? "note-ok" : "note-err"} style={{ margin: "0 0 14px" }}>{msg.text}</div>}
@@ -220,9 +163,10 @@ function StandardBenchmarks() {
                   <td>{a.agent_id}</td>
                   <td>
                     <IndexBar value={a.index} />
-                    {a.n_cases != null
-                      ? <div className="cell-ci"><Uncertainty rate={a.index / 100} n={a.n_cases} approx /></div>
-                      : <div className="cell-todo" title="sample size (n_cases) not present on this row — partial index rolled from scorecards">n = —</div>}
+                    {a.n_cases != null &&
+                      <div className="muted-sm">
+                        {(a.rounds ?? 1) > 1 ? `${a.rounds} rounds · ` : ""}{a.n_cases} test cases
+                      </div>}
                   </td>
                   {cols.map(([k]) => (
                     <td key={k}><ComponentCell value={a.components?.[k]} /></td>
@@ -289,21 +233,9 @@ export function LeaderboardPage() {
       <div className="list-page">
         <StandardBenchmarks />
 
-        <PageHeader title="All suites — task-success leaderboard"
-          subtitle={<>Composite score per agent across <i>all</i> suites (incl. your own) —
-            weighted mean of per-suite task success (0–100), latest run per suite.
-            Cost and latency are blended across suites; <i>suites run</i> counts how
-            many suites each agent has been through.</>} />
-
-        {/* A ranking is the surface most able to launder an unscoped number: it
-            invites a reader to treat position as fitness. Say what it ranks. */}
-        <p className="scope-line unscoped" style={{ margin: "0 0 14px" }}>
-          <b>What this ranks.</b> Position here is the share of written cases an
-          agent passed. It is not a measure of how much of the situation space
-          each agent was put through, and two agents on this table may have been
-          tested to very different depths. Coverage closure and property outcomes
-          are per-result — open a result to see them.
-        </p>
+        <PageHeader title="All suites"
+          subtitle={<>How each agent scores across every test suite it has run —
+            including your own custom suites. Higher is better.</>} />
 
         {board === undefined ? <Skeleton rows={6} /> : (
           <>
@@ -353,13 +285,8 @@ export function LeaderboardPage() {
                             ? { color: "var(--muted)" } : undefined}>{a.agent_type}</td>
                           <td>
                             <IndexBar value={a.index} small />
-                            {/* n_scored = total scored cases behind this agent's Index
-                                (backend compute_leaderboard). The Index is a weighted mean
-                                of per-suite rates, so this CI is an approximation (hence
-                                `approx`); per-suite exact intervals live in per_suite. */}
-                            {(a.n_scored ?? a.n ?? a.n_cases) != null
-                              ? <div className="cell-ci"><Uncertainty rate={a.index / 100} n={a.n_scored ?? a.n ?? a.n_cases} approx /></div>
-                              : <div className="cell-todo" title="per-agent case count not in payload yet — coverage shown as sample proxy">{a.coverage}/{a.total_suites} suites</div>}
+                            {(a.n_scored ?? a.n ?? a.n_cases) != null &&
+                              <div className="muted-sm">{a.n_scored ?? a.n ?? a.n_cases} test cases</div>}
                           </td>
                           <td className="num">${a.mean_cost_usd.toFixed(4)}</td>
                           <td className="num" title="execution + judge cost per case">

@@ -250,13 +250,81 @@ def _poll(client, scan_id, tries=200):
     raise AssertionError(f"scan did not finish: {body}")
 
 
+class TestPublicDemoHttp:
+    """The OPEN demo: no account, no visitor key, live results, no certificate."""
+
+    def test_preview_is_unauthenticated(self, ctx):
+        r = ctx.get("/api/public/demo-scan/preview")   # no auth header
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert isinstance(body["available"], bool)
+        assert len(body["dimensions"]) == 4
+
+    def test_public_demo_runs_without_auth_and_mints_no_cert(self, ctx):
+        r = ctx.post("/api/public/demo-scan", json={})  # no auth header
+        assert r.status_code == 200, r.text
+        scan_id = r.json()["scan_id"]
+        body = None
+        for _ in range(200):                            # unauthenticated poll
+            body = ctx.get(f"/api/public/demo-scan/{scan_id}").json()
+            if body["status"] != "running":
+                break
+            time.sleep(0.03)
+        assert body and body["status"] == "done", body
+        assert body["result"]["grade"] == "A"
+        # anonymous demo runs never mint a certificate (and say so honestly)
+        assert body["certificate"] is None
+        assert "certificate" in (body["cert_note"] or "")
+        # tenant isolation: invisible through the authed poll surface
+        assert ctx.get(f"/api/scan/{scan_id}",
+                       headers=_adm()).status_code == 404
+
+    def test_public_demo_findings_report(self, ctx):
+        """The per-probe Safety Scan Report: real per-case evidence joined from
+        the persisted scorecard + traces, in the same shape as the authed route."""
+        r = ctx.post("/api/public/demo-scan", json={})  # no auth header
+        assert r.status_code == 200, r.text
+        scan_id = r.json()["scan_id"]
+        for _ in range(200):
+            body = ctx.get(f"/api/public/demo-scan/{scan_id}").json()
+            if body["status"] != "running":
+                break
+            time.sleep(0.03)
+        assert body["status"] == "done", body
+
+        f = ctx.get(f"/api/public/demo-scan/{scan_id}/findings")
+        assert f.status_code == 200, f.text
+        doc = f.json()
+        assert doc["available"] is True
+        assert doc["scan_id"] == scan_id
+        assert doc["n_probes"] == len(doc["findings"]) == 14
+        # the safe fake agent passes everything — no gaps, no fabrication
+        assert doc["n_gaps"] == 0 and doc["n_errored"] == 0
+        for fd in doc["findings"]:
+            assert fd["verdict"] in ("passed", "refused", "gap", "error")
+            assert fd["passed"] is True
+            # the agent's ACTUAL answer is quoted back, truncated server-side
+            assert REFUSAL.split(" ")[0] in fd["agent_output"]
+            assert len(fd["agent_output"]) <= 300
+            assert fd["category"]  # plain-language dimension label
+            assert fd["scoring"] == "deterministic code check"
+        # refusal probes render the stronger "refused" verdict
+        assert any(fd["verdict"] == "refused" for fd in doc["findings"])
+        # tenant isolation: a public scan's findings are invisible on the
+        # authed surface, and unknown ids 404
+        assert ctx.get(f"/api/scan/{scan_id}/findings",
+                       headers=_adm()).status_code == 404
+        assert ctx.get("/api/public/demo-scan/nope/findings").status_code == 404
+
+
 class TestScanHttp:
     def test_preview_surfaces_dimensions_and_key_path(self, ctx):
         r = ctx.get("/api/scan/preview", headers=_adm())
         assert r.status_code == 200, r.text
         body = r.json()
         assert body["endpoint"]["needs_key"] is False
-        assert body["demo"]["needs_key"] is True
+        # the demo now runs on the SERVER's key — visitors never add one
+        assert body["demo"]["needs_key"] is False
         assert len(body["dimensions"]) == 4
 
     def test_demo_scan_runs_and_certifies(self, ctx):
@@ -278,6 +346,24 @@ class TestScanHttp:
         # and it's publicly verifiable (no auth) by id
         pub = ctx.get(f"/api/public/certifications/{crt['cert_id']}")
         assert pub.status_code == 200 and pub.json()["grade"] == "A"
+
+    def test_scan_findings_authed(self, ctx):
+        """The authed findings route serves the same per-probe report,
+        tenant-checked like the poll route."""
+        r = ctx.post("/api/scan", json={"target": "demo"}, headers=_adm())
+        assert r.status_code == 200, r.text
+        scan_id = r.json()["scan_id"]
+        done = _poll(ctx, scan_id)
+        assert done["status"] == "done", done
+        f = ctx.get(f"/api/scan/{scan_id}/findings", headers=_adm())
+        assert f.status_code == 200, f.text
+        doc = f.json()
+        assert doc["available"] is True
+        assert doc["scorecard_id"] == done["result"]["scorecard_id"]
+        assert doc["n_probes"] == 14 and doc["n_gaps"] == 0
+        # findings are invisible on the public demo surface
+        assert ctx.get(
+            f"/api/public/demo-scan/{scan_id}/findings").status_code == 404
 
     def test_endpoint_scan_requires_url(self, ctx):
         r = ctx.post("/api/scan", json={"target": "endpoint"}, headers=_adm())

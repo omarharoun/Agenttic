@@ -85,6 +85,44 @@ export interface ScanPreview {
   demo: { needs_key: boolean; key_set: boolean; note: string };
 }
 
+/** One per-probe finding in the Safety Scan Report (…/findings). */
+export interface ScanFinding {
+  test_id: string;
+  criterion_id: string | null;
+  category: string;
+  description: string;
+  probe_input: string;
+  injected_content: string;
+  agent_output: string;
+  tool_calls: { name: string; input: string }[];
+  passed: boolean | null;
+  verdict: "passed" | "refused" | "gap" | "error";
+  detail: string;
+  tags: string[];
+  source: string;
+  scoring: string;
+}
+
+/** The per-probe findings document behind a completed scan. */
+export interface ScanFindingsDoc {
+  scan_id: string;
+  agent_name: string;
+  target: string;
+  status: string;
+  available: boolean;
+  note?: string;
+  scorecard_id?: string;
+  suite_id?: string;
+  agent_id?: string;
+  agent_config_hash?: string | null;
+  visibility?: string;
+  n_probes?: number;
+  n_gaps?: number;
+  n_passed?: number;
+  n_errored?: number;
+  findings: ScanFinding[];
+}
+
 /** The saved "Connect your agent" config (masked — never carries the secret). */
 export interface ConnectionStatus {
   connected: boolean;
@@ -623,6 +661,25 @@ export const api = {
     }).then((r) => json<{ scan_id: string; target: string; n_dimensions: number }>(r)),
   scanStatus: (scanId: string) =>
     afetch(`/api/scan/${encodeURIComponent(scanId)}`).then((r) => json<ScanJob>(r)),
+  scanFindings: (scanId: string) =>
+    afetch(`/api/scan/${encodeURIComponent(scanId)}/findings`)
+      .then((r) => json<ScanFindingsDoc>(r)),
+  // Open demo — UNAUTHENTICATED (plain fetch, no auth header): runs the
+  // reference agent live on the server's key, fresh results every run.
+  publicDemoPreview: () =>
+    fetch("/api/public/demo-scan/preview")
+      .then((r) => json<{ available: boolean; dimensions: ScanPreview["dimensions"] }>(r)),
+  startPublicDemo: (agentName = "") =>
+    fetch("/api/public/demo-scan", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agent_name: agentName }),
+    }).then((r) => json<{ scan_id: string; target: string; n_dimensions: number }>(r)),
+  publicDemoStatus: (scanId: string) =>
+    fetch(`/api/public/demo-scan/${encodeURIComponent(scanId)}`)
+      .then((r) => json<ScanJob>(r)),
+  publicDemoFindings: (scanId: string) =>
+    fetch(`/api/public/demo-scan/${encodeURIComponent(scanId)}/findings`)
+      .then((r) => json<ScanFindingsDoc>(r)),
 
   // --- "Connect your agent" — the reusable, safe webhook connection ------
   getConnection: () =>
@@ -939,8 +996,9 @@ function unescapeSse(s: string): string {
 
 async function streamCopilot(
   path: string, body: unknown, handlers: CopilotHandlers, signal?: AbortSignal,
+  fetcher: (url: string, opts: RequestInit) => Promise<Response> = afetch,
 ): Promise<void> {
-  const res = await afetch(path, {
+  const res = await fetcher(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -1016,4 +1074,44 @@ export function copilotApprove(
 ): Promise<void> {
   return streamCopilot("/api/copilot/approve",
     { session_id: sessionId, approved }, handlers, signal);
+}
+
+/* ------------------------------------------------------------------------ *
+   Public (anonymous) Copilot streaming client — the /scan intake bot.
+
+   Same SSE protocol and event parsing as the authed Copilot, but hitting the
+   UNAUTHENTICATED /api/public/copilot/* routes with a PLAIN fetch: no bearer
+   header, no session cookie, no CSRF. The public bot runs on the server's own
+   key in the public-demo tenant with a strict 4-tool allowlist (preview_scan,
+   start_demo_scan, get_scan_status, get_scan_findings). Pre-flight refusals
+   (429/402/503/404) carry the same {code,message,action} detail as the authed
+   client, so the same error cards render either way.
+ * ------------------------------------------------------------------------ */
+
+/** Is the public intake bot available on this server? available=false → the
+ *  caller should fall back to the quick form and say the assistant is offline. */
+export function publicCopilotStatus(): Promise<{ available: boolean; model: string }> {
+  return fetch("/api/public/copilot/status").then((r) =>
+    json<{ available: boolean; model: string }>(r));
+}
+
+/** Send a message to the public intake bot and stream its answer, tool activity,
+ *  and any approval request. Omit/null sessionId to start a new anonymous
+ *  session; pass the returned session_id to continue. No auth, no cookies. */
+export function publicCopilotChat(
+  message: string, sessionId: string | null, handlers: CopilotHandlers,
+  signal?: AbortSignal,
+): Promise<void> {
+  return streamCopilot("/api/public/copilot/chat",
+    { message, session_id: sessionId ?? undefined }, handlers, signal, fetch);
+}
+
+/** Confirm (approved=true) or decline the public bot's pending demo scan; streams
+ *  the resumed turn. Plain fetch — no auth. */
+export function publicCopilotApprove(
+  sessionId: string, approved: boolean, handlers: CopilotHandlers,
+  signal?: AbortSignal,
+): Promise<void> {
+  return streamCopilot("/api/public/copilot/approve",
+    { session_id: sessionId, approved }, handlers, signal, fetch);
 }

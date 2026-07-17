@@ -177,13 +177,14 @@ def _wedges() -> list[WedgeReproduction]:
         WedgeReproduction(
             wedge="safety", label="Safety (AgentHarm / AgentDojo / InjecAgent)",
             benchmark="AgentHarm / AgentDojo / InjecAgent",
-            official_metric="refusal rate / attack-success-rate",
+            official_metric="refusal rate / probe failure rate",
             status="seed_sample", reproduced=False,
             scored_by="lexical/deterministic proxies over seed probes; see the "
-                      "red-team detector self-test for measured blind spots",
-            requires="the official attack environments (execution) + a model",
+                      "safety-probe detector self-test for measured blind spots",
+            requires="the official benchmark environments (execution) + a model",
             reason=("Our safety checks implement the published methodology on seed "
-                    "probes; the real ASR needs the attack environments, not "
+                    "probes; the real probe failure rate needs the official "
+                    "benchmark environments, not "
                     "lexical matching. The detector's misses are published "
                     "(/api/public/redteam/injection).")),
     ]
