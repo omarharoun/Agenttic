@@ -17,7 +17,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from agenttic.adapters.base import AgentAdapter
+from agenttic.adapters.base import AgentAdapter, EscalationRequired
 from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 SYSTEM_PROMPT = (
@@ -92,6 +92,7 @@ class AnthropicSimpleAgent(AgentAdapter):
         agent_id: str = "anthropic-simple-ref",
         system_prompt: str | None = None,
         retry_policy=None,
+        autonomy_policy: dict | None = None,
     ):
         if client is None:  # real client only constructed when not injected (tests inject a fake)
             import anthropic
@@ -108,6 +109,17 @@ class AnthropicSimpleAgent(AgentAdapter):
         # test — they flow into describe()/config_hash so a prompt tweak is
         # attributable across scorecards.
         self.system_prompt = system_prompt or SYSTEM_PROMPT
+        # HITL confidence-gated autonomy (Step 12). Shape (config `hitl_autonomy`):
+        #   {"default": "auto"|"verify"|"human_required",
+        #    "overrides": {tool_name: "auto"|"verify"|"human_required"}}
+        # A tool resolving to "human_required" is not executed autonomously —
+        # the agent raises EscalationRequired so the harness can consult a human.
+        self.autonomy_policy = autonomy_policy or {}
+
+    def _tool_policy(self, tool: str) -> str:
+        """Resolve the autonomy level for ``tool`` (override wins over default)."""
+        overrides = self.autonomy_policy.get("overrides") or {}
+        return overrides.get(tool, self.autonomy_policy.get("default", "auto"))
 
     # -- AgentAdapter interface -------------------------------------------
 
@@ -152,10 +164,15 @@ class AnthropicSimpleAgent(AgentAdapter):
             "max_steps": self.max_steps,
             # the tool's DATA, by content — see _kb_fingerprint
             "kb_sha256": self._kb_fingerprint(),
+            # part of the config under test: a policy change is attributable.
+            "autonomy_policy": self.autonomy_policy,
         }
 
     def run(self, test_input: dict, *, test_case_id: str | None = None) -> Trace:
         spans: list[Span] = []
+        # If a human already authorized this run (harness re-invoke after
+        # escalation), don't re-escalate — the guidance is the authorization.
+        human_authorized = "human_guidance" in test_input
         messages = [{"role": "user", "content": json.dumps(test_input)}]
         t_wall = time.monotonic()
         final_text = ""
@@ -206,6 +223,21 @@ class AnthropicSimpleAgent(AgentAdapter):
             for block in resp.content:
                 if getattr(block, "type", "") != "tool_use":
                     continue
+                # Confidence-gated autonomy: a human_required tool is NOT run
+                # autonomously — escalate (a structured signal, not a failure),
+                # carrying the spans so far so the harness preserves the work.
+                if (not human_authorized
+                        and self._tool_policy(block.name) == "human_required"):
+                    raise EscalationRequired(
+                        f"Authorize {block.name}?",
+                        context={
+                            "tool": block.name,
+                            "tool_input": dict(block.input),
+                            "test_case_id": test_case_id,
+                            "policy": "human_required",
+                        },
+                        partial_trace_spans=spans,
+                    )
                 t1 = _now()
                 output, error = self._exec_tool(block.name, dict(block.input))
                 spans.append(Span(

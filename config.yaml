@@ -24,6 +24,13 @@ harness:
   # tested it. NOT MEASURED is the verdict for a battery that RAN and never
   # reached the enforcement path; "we did not run one" is a sign-off question.
   honeypot_battery: false
+# SPEC-2 Step 12 — HITL confidence-gated autonomy for the reference agent.
+# Distinct from the `autonomy`/`cards.autonomy` governance blocks below.
+# level: auto (act) | verify | human_required (escalate to a human before acting).
+hitl_autonomy:
+  default: auto            # auto | verify | human_required
+  overrides:
+    issue_refund: human_required
 scoring:
   max_parallel: 5            # cases scored concurrently (judge calls)
   calibration_threshold: 0.8

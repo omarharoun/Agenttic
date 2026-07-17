@@ -23,7 +23,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-SCHEMA_VERSION = "0.4.0"  # 0.4.0: + optional Trace.session_id (MINOR)
+SCHEMA_VERSION = "0.5.0"  # 0.5.0: + escalation SpanKind & Trace.escalated (HITL, MINOR)
 #
 # 0.3.0 added the ``user_turn``/``env_step`` span kinds. Why both kinds landed in
 # ONE bump: a new ``SpanKind`` member is MINOR by the rule above, and every stored
@@ -42,6 +42,13 @@ SCHEMA_VERSION = "0.4.0"  # 0.4.0: + optional Trace.session_id (MINOR)
 # ``grep -rn '0\.3\.0' tests/ src/`` returns only this module and one prose
 # reference in verification/builtins.py — no fixture, JSON or YAML anywhere in
 # the tree pins a version string.
+#
+# 0.5.0 adds the ``escalation`` span kind and ``Trace.escalated`` (HITL, Step 12).
+# The local line issued these as 0.3.0 before this history was reconciled; that
+# number was already spent on the ``user_turn``/``env_step`` bump above, and two
+# schemas sharing a version is exactly what the rule at the top forbids. Both
+# additions are MINOR — a new ``SpanKind`` member and an optional field — so this
+# lands as one bump past 0.4.0 rather than reopening a spent one.
 
 SpanKind = Literal[
     "llm_call",
@@ -75,6 +82,7 @@ SpanKind = Literal[
     # environment — a fault the harness injected must never be readable as
     # something the agent did.
     "env_step",
+    "escalation",
 ]
 
 
@@ -137,6 +145,10 @@ class Trace(BaseModel):
     # Ingested traces are additionally stored as mode="live" so they can never
     # enter batch certification scorecards (SPEC-1 Step 9 invariant).
     source: str = "native"
+    # HITL (SPEC-2 Step 12): True when this run was escalated to a human — either
+    # resolved with human guidance and completed, or persisted unresolved
+    # (final_output=="ESCALATED_UNRESOLVED") when no human channel was available.
+    escalated: bool = False
     schema_version: str = SCHEMA_VERSION
 
     @model_validator(mode="after")
