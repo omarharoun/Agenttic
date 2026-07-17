@@ -356,6 +356,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     from agenttic.server.routes.optimize import router as optimize_router
     from agenttic.server.routes.quickstart import router as quickstart_router
     from agenttic.server.routes.resources import router as resources_router
+    from agenttic.server.routes.scan import public_router as scan_public_router
     from agenttic.server.routes.scan import router as scan_router
     from agenttic.server.routes.settings import router as settings_router
     from agenttic.server.routes.standard import router as standard_router
@@ -376,6 +377,20 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     # Aggregate-only; no auth so uptime is visible even during an incident.
     from agenttic.server.routes.status import public_router as status_public_router
     app.include_router(status_public_router, prefix="/api")
+
+    # Public, UNAUTHENTICATED demo scan (try Agenttic without an account). Runs
+    # the reference agent live on the SERVER's key; rate-limited by default
+    # (abuse.DEMO_DEFAULTS) and never mints a certificate.
+    app.include_router(scan_public_router, prefix="/api")
+
+    # Public, UNAUTHENTICATED intake bot (the landing "Is your AI agent safe to
+    # ship?" assistant). Same CopilotAgent loop + SSE machinery as the authed
+    # Copilot, but on the server key, the public-demo tenant, the public intake
+    # persona, and a STRICT demo-only tool allowlist — never any tenant/platform/
+    # certification tool. Rate-limited like the public demo scan. Mounted before
+    # the auth-protected copilot router so it stays open.
+    from agenttic.server.routes.copilot import public_router as copilot_public_router
+    app.include_router(copilot_public_router, prefix="/api")
 
     # Public billing surfaces (UNAUTHENTICATED): the pricing catalog for the
     # landing/pricing page, and the Stripe + PayPal webhooks (signature-verified,

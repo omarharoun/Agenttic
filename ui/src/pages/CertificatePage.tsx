@@ -5,6 +5,7 @@ import { api } from "../api";
 import {
   badgeUrl, bandForIndex, type Certification, type CertScore, embedSnippets,
   gradeColor, indexFromCert, normalizeScores, siteOrigin, statusView,
+  testsForCert,
 } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
 import { Skeleton } from "../components/ui";
@@ -196,6 +197,19 @@ export function CertBody({ cert, id }: { cert: Certification; id: string }) {
           not a full canonical certification.
         </p>
 
+        {/* the test suites this certificate covered — one line per measured
+            dimension, in plain language (see TEST_CATALOG in cert.ts) */}
+        {testsForCert(cert.scores).length > 0 && (
+          <div className="certdoc-tests" aria-label="Test suites included in this certification">
+            <span className="certdoc-tests-cap">Evaluated with</span>
+            <ul>
+              {testsForCert(cert.scores).map((t) => (
+                <li key={t.label}><b>{t.label}</b> — {t.desc}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <dl className="certdoc-meta">
           <div><dt>Issued</dt><dd>{pretty(cert.issued_at)}</dd></div>
           <div><dt>Expires</dt><dd>{cert.expires_at ? pretty(cert.expires_at) : "No expiry"}</dd></div>
@@ -242,7 +256,7 @@ export function CertBody({ cert, id }: { cert: Certification; id: string }) {
           document. It is a fast screen, not an exhaustive audit. Domains outside
           it — truthfulness, tool-call capability, reliability across runs,
           calibration — are <b>NOT ASSESSED</b> here; they are covered by the
-          full certification track (seven canonical metrics, real attack
+          full certification track (seven canonical metrics, real benchmark
           environments, k runs per case). <Link to="/methodology">How grading
           works ↗</Link>
         </p>

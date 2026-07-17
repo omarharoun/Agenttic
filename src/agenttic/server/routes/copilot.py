@@ -39,9 +39,13 @@ from agenttic.copilot.errors import (
 )
 from agenttic.copilot.service import (
     CopilotConfig, CopilotNotConfigured, is_configured, resolve_client,
+    server_side_key,
 )
+from agenttic.copilot.skill import build_public_system_prompt
 from agenttic.copilot.store import CopilotStore
-from agenttic.copilot.tools import ToolContext
+from agenttic.copilot.tools import (
+    ToolContext, is_public_safe, public_tool_schemas,
+)
 from agenttic.registry.sqlite_store import NotFoundError
 from agenttic.secrets import known_secret_values
 from agenttic.server.ratelimit import InMemoryRateLimiter
@@ -140,12 +144,22 @@ def _guards(request: Request):
     return agent, ToolContext(request), cfg
 
 
-def _stream(request: Request, session: dict, events):
+def _stream(request: Request, session: dict, events, *,
+            store: CopilotStore | None = None, tenant: str | None = None,
+            model: str | None = None):
     """Turn agent events into an SSE response, recording usage and persisting the
-    session (incl. any pending approval) when the stream ends."""
-    store = _store(request)
-    tenant = getattr(request.state, "tenant", "default")
-    model = _copilot_cfg(request).model
+    session (incl. any pending approval) when the stream ends.
+
+    The authed route resolves ``store``/``tenant``/``model`` from the tenant-scoped
+    ``request.state``; the PUBLIC route passes them explicitly (public-demo tenant
+    + ``app.state`` store) since a signed-out request carries no ``request.state``
+    binding. The SSE event protocol + escaping are IDENTICAL on both surfaces."""
+    if store is None:
+        store = _store(request)
+    if tenant is None:
+        tenant = getattr(request.state, "tenant", "default")
+    if model is None:
+        model = _copilot_cfg(request).model
 
     def gen():
         yield _sse("session", json.dumps(
@@ -221,3 +235,167 @@ def copilot_approve(body: ApproveBody, request: Request):
         raise HTTPException(404, "copilot session not found")
     events = agent.resume(session, ctx, approved=body.approved)
     return _stream(request, session, events)
+
+
+# --------------------------------------------------------------------------- #
+# PUBLIC, UNAUTHENTICATED intake bot — the scan-intake persona on the landing
+# page ("Is your AI agent safe to ship?").
+#
+# It reuses the EXACT same CopilotAgent loop + SSE machinery above (never a
+# second loop), parameterized for the anonymous surface:
+#   * client   — the server-side key (never a visitor key), like the demo scan;
+#   * model    — the copilot (Haiku) model;
+#   * tenant   — the public-demo tenant (job-isolated from real workspaces);
+#   * prompt   — the PUBLIC intake persona (build_public_system_prompt);
+#   * tools    — the STRICT public allowlist (public_tool_schemas), and dispatch
+#                is hard-gated by is_public_safe so a model can NEVER reach a
+#                tenant/platform/certification tool here;
+#   * ctx      — ToolContext(request, public=True): demo tools force the demo
+#                tenant + read app.state, and start_scan refuses.
+#
+# Chat turns are rate-limited generously (the Copilot per-minute limiter, default
+# 20/min) + daily-capped; the tight demo-scan ceiling (abuse.DEMO_DEFAULTS: per-IP
+# /min + global/day) lives on the start_demo_scan action itself. All refusals fail
+# closed with the SAME 429/402 error-card shape the authed route uses. Sessions are
+# anonymous, keyed by a returned session_id in the public-demo tenant's copilot
+# session store; no auth, no cookies.
+# --------------------------------------------------------------------------- #
+
+from agenttic.server.routes.scan import PUBLIC_DEMO_TENANT  # noqa: E402
+
+public_router = APIRouter(tags=["copilot-public"], prefix="/public/copilot")
+
+
+def _public_cfg(request: Request) -> CopilotConfig:
+    """Copilot config from app.state (no per-request tenant binding on the public
+    surface)."""
+    return CopilotConfig.from_cfg(getattr(request.app.state, "cfg", None) or {})
+
+
+def _public_injected(request: Request) -> dict:
+    """Injected test/dev clients live on app.state for the signed-out surface
+    (the authed route copies them onto request.state; the public route can't)."""
+    return getattr(request.app.state, "clients", None) or {}
+
+
+def _public_store(request: Request) -> CopilotStore:
+    """Anonymous session store, isolated to the public-demo tenant."""
+    return CopilotStore(request.app.state.reg.engine, PUBLIC_DEMO_TENANT)
+
+
+def _public_demo_key(request: Request) -> str | None:
+    """The key the public intake bot runs on — resolved EXACTLY like the open
+    demo scan it drives (``scan._server_demo_key``: env ANTHROPIC_API_KEY, else
+    the default workspace's stored key), so the bot is available precisely when
+    the demo is. Never a visitor key. Unlike the authed Copilot (env-only), the
+    public surface accepts the stored default key so single-owner installs get a
+    working bot without setting an extra env var."""
+    from agenttic.server.routes.scan import _server_demo_key
+    return _server_demo_key(request.app.state.cfg, request.app.state.reg)
+
+
+def _public_available(request: Request) -> bool:
+    """The public bot runs on the SERVER-SIDE key (or an injected client) — never
+    a visitor key. Available when either is present."""
+    if is_configured(_public_injected(request)):
+        return True
+    return bool(_public_demo_key(request))
+
+
+def _public_client(request: Request):
+    """Anthropic client for the public bot: an injected test/dev client if
+    present, else one built from the demo key (env or stored default)."""
+    injected = _public_injected(request)
+    if injected and (injected.get("copilot") or injected.get("anthropic")):
+        return resolve_client(injected)
+    key = _public_demo_key(request)
+    if not key:
+        raise CopilotNotConfigured(
+            "The assistant isn't configured on this server yet.")
+    import anthropic
+    return anthropic.Anthropic(api_key=key)
+
+
+def _public_guards(request: Request):
+    """Pre-flight for the public chat/approve: rate-limit + daily cap (fail closed
+    with the authed 429/402 card shape) → server-key-required (503) → build the
+    PUBLIC agent + a public ToolContext. Returns (agent, ctx, cfg)."""
+    # CHAT-appropriate rate limit — a chat turn is one cheap Haiku call, so it
+    # uses the SAME per-minute limiter as the authed Copilot (default 20/min),
+    # NOT the tight 2/min demo-scan ceiling. The expensive demo *scan* keeps its
+    # own per-IP + daily ceiling, applied where the scan actually starts (the
+    # start_demo_scan tool), so chatting stays fluid while scan spend stays
+    # bounded. Keyed per-IP for the anonymous surface.
+    _ip = request.client.host if request.client else "unknown"
+    # Read the chat limit from app.state.cfg — the public surface has no auth /
+    # workspace middleware, so request.state.cfg (what _rl_limit reads) is unset.
+    _app_cfg = (getattr(request.app.state, "cfg", None) or {}).get("copilot", {}) or {}
+    _rlpm = int(_app_cfg.get("rate_limit_per_minute", 20))
+    if not _RL.allow(f"pubcop:ip:{_ip}", _rlpm, _RL_WINDOW):
+        raise _refuse(429, with_message(
+            RATE_LIMITED, "You're sending messages a bit fast — give it a few "
+            "seconds and try again."))
+    cfg = _public_cfg(request)
+    cap = check_daily_cap(PUBLIC_DEMO_TENANT, cfg.daily_cap_per_user,
+                          cfg.daily_cap_global)
+    if not cap.allowed:
+        raise _refuse(402, with_message(DAILY_LIMIT, cap.reason or None))
+    try:
+        client = _public_client(request)
+    except CopilotNotConfigured as exc:
+        raise _refuse(503, with_message(NOT_CONFIGURED, str(exc)))
+    agent = CopilotAgent(
+        client, cfg.model, max_tokens=cfg.max_output_tokens,
+        extra_secrets=known_secret_values(
+            getattr(request.app.state, "cfg", None) or {}),
+        system_prompt=build_public_system_prompt(),
+        tools=public_tool_schemas(),
+        tool_filter=is_public_safe)
+    return agent, ToolContext(request, public=True), cfg
+
+
+def _public_stream(request: Request, session: dict, events):
+    return _stream(request, session, events,
+                   store=_public_store(request), tenant=PUBLIC_DEMO_TENANT,
+                   model=_public_cfg(request).model)
+
+
+@public_router.get("/status")
+def public_copilot_status(request: Request):
+    """Is the public intake bot available on this server? Available when a
+    server-side Copilot key (or an injected client) is present. No auth."""
+    cfg = _public_cfg(request)
+    return {"available": _public_available(request), "model": cfg.model}
+
+
+@public_router.post("/chat")
+def public_copilot_chat(body: ChatBody, request: Request):
+    """Anonymous intake chat turn → SSE stream. Same event protocol/escaping as
+    the authed /api/copilot/chat. Runs on the server key + the public tool
+    allowlist, forced onto the public-demo tenant. No auth, no cookies — pass the
+    returned session_id back to continue the conversation."""
+    agent, ctx, _cfg = _public_guards(request)
+    store = _public_store(request)
+    if body.session_id:
+        try:
+            session = store.get(body.session_id)
+        except NotFoundError:
+            raise HTTPException(404, "copilot session not found")
+    else:
+        session = new_session()
+    events = agent.start_turn(session, ctx, body.message)
+    return _public_stream(request, session, events)
+
+
+@public_router.post("/approve")
+def public_copilot_approve(body: ApproveBody, request: Request):
+    """Resume an anonymous turn after the visitor confirms/declines a proposed
+    action (the free demo scan). Same SSE protocol as the authed approve route."""
+    agent, ctx, _cfg = _public_guards(request)
+    store = _public_store(request)
+    try:
+        session = store.get(body.session_id)
+    except NotFoundError:
+        raise HTTPException(404, "copilot session not found")
+    events = agent.resume(session, ctx, approved=body.approved)
+    return _public_stream(request, session, events)

@@ -38,7 +38,7 @@ const TOOL_REQUIREMENT =
 
 const GENERIC_REQUIREMENT =
   "Describe the agent's job and the rules it must follow. We'll turn this into " +
-  "a benchmark of realistic and adversarial test cases.";
+  "a benchmark of realistic and challenging test cases.";
 
 export interface StepDef {
   id: string;        // stable node_id
@@ -58,7 +58,7 @@ export const STEPS: StepDef[] = [
     cta: "Add a business requirement" },
   { id: "generator", ntype: "generator", num: 2, icon: "⚗",
     title: "Generate tests",
-    blurb: "We turn the requirement into realistic and adversarial test cases.",
+    blurb: "We turn the requirement into realistic and challenging test cases.",
     note: "No setup needed — the number and mix of cases are chosen for you." },
   { id: "human_gate", ntype: "human_gate", num: 3, icon: "⊘",
     title: "Review & approve",
@@ -183,7 +183,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     key: "red-team-tools",
-    name: "Red-team tool-calling",
+    name: "Tool-calling safety probes",
     tagline: "Stress-test an agent's tool use: right tools, safe arguments, and refusal of dangerous calls.",
     icon: "🧰",
     stepIds: GENERATE,

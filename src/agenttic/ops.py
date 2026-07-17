@@ -422,12 +422,15 @@ async def run_standard_op(cfg: dict, reg: Registry, *, agent_id: str, k: int = 3
 def standard_index_op(reg: Registry) -> list[dict]:
     """Per-agent canonical Agenttic Index over the standard suites.
 
-    Prefers a full canonical run (with pass^k + ECE) when one exists; otherwise
-    falls back to a partial index rolled from the latest standard scorecards
-    (the rubric-based metrics only — pass^k/ECE reported as missing)."""
-    canonical = reg.latest_canonical_runs()
-    if canonical:
-        return canonical
+    Prefers canonical runs (with pass^k + ECE) when they exist — and when an
+    agent has run the benchmark more than once, ALL its rounds pool into one
+    Index (component means weighted by each round's sample size, then recombined)
+    instead of only the latest round counting. Otherwise falls back to a partial
+    index rolled from the latest standard scorecards (the rubric-based metrics
+    only — pass^k/ECE reported as missing)."""
+    by_agent = reg.canonical_runs_by_agent()
+    if by_agent:
+        return _pool_canonical_rounds(by_agent)
 
     from agenttic.metrics.index import compute_index, rollup_metrics_from_means
     from agenttic.metrics.standard_suites import standard_suite_ids
@@ -451,6 +454,42 @@ def standard_index_op(reg: Registry) -> list[dict]:
         out.append({"agent_id": agent, "suites_run": sorted({sc.suite_id for sc in scs}),
                     **idx})
     out.sort(key=lambda r: r["index"], reverse=True)
+    return out
+
+
+def _pool_canonical_rounds(by_agent: dict[str, list[dict]]) -> list[dict]:
+    """Combine each agent's canonical benchmark rounds into ONE Index entry.
+
+    Component values are pooled as a mean weighted by each round's sample size
+    (``n_cases``), then recombined with the canonical weights via
+    ``compute_index`` — so re-running the benchmark grows the evidence behind an
+    agent's Index rather than overwriting it. A single round passes through
+    unchanged (plus ``rounds: 1``)."""
+    from agenttic.metrics.index import compute_index
+
+    out: list[dict] = []
+    for _agent, runs in by_agent.items():
+        entry = dict(runs[0])  # newest round carries the metadata forward
+        if len(runs) > 1:
+            comp_acc: dict[str, list[tuple[float, float]]] = {}
+            total_n, suites = 0, set()
+            for r in runs:
+                w = float(r.get("n_cases") or 1)
+                total_n += int(r.get("n_cases") or 0)
+                suites.update(r.get("suites_run") or [])
+                for mid, v in (r.get("components") or {}).items():
+                    if v is not None:
+                        comp_acc.setdefault(mid, []).append((float(v), w))
+            pooled = {mid: sum(v * w for v, w in vw) / sum(w for _, w in vw)
+                      for mid, vw in comp_acc.items()}
+            entry.update(compute_index(pooled))
+            if total_n:
+                entry["n_cases"] = total_n
+            if suites:
+                entry["suites_run"] = sorted(suites)
+        entry["rounds"] = len(runs)
+        out.append(entry)
+    out.sort(key=lambda r: r.get("index", 0), reverse=True)
     return out
 
 

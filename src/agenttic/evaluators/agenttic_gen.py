@@ -72,7 +72,7 @@ class AgenttixGenAdapter:
             oracle="deterministic",
             requires_network=False,
             notes={"mapping_version": MAPPING_VERSION,
-                   "author": "template (deterministic); LLM red-teamer optional"},
+                   "author": "template (deterministic); LLM probe author optional"},
         )
 
     def run(self, target: AgentTarget,

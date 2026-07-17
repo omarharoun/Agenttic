@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { api, auth, type Me } from "../api";
+import { AccountMenu } from "./AccountMenu";
 import { HexMark } from "./Icons";
 
 /* The single, canonical top navigation for every PUBLIC surface — landing,
@@ -8,6 +10,11 @@ import { HexMark } from "./Icons";
    ("Scan an agent"), so the header never shifts from page to page. The
    authenticated /app console keeps its own workspace sidebar (that IS its nav);
    this component is only the public marketing header.
+
+   Auth-aware: when a session exists the "Log in" link is replaced by a
+   Console link + the same account menu (email · settings · logout) the app
+   console uses. `api.me()` runs client-side after hydration, so prerendered
+   HTML stays the logged-out shell and upgrades in place.
 
    Styling lives in theme.css under `.site-nav*` and uses only Chronometer
    tokens, so it themes light/dark automatically. Mobile collapses the links
@@ -22,7 +29,20 @@ const NAV_ITEMS: { label: string; to: string }[] = [
 
 export function SiteNav() {
   const [open, setOpen] = useState(false);
+  // undefined = unknown (prerender/loading) → render the logged-out shell
+  const [me, setMe] = useState<Me | null | undefined>(undefined);
   const close = () => setOpen(false);
+
+  useEffect(() => {
+    api.me().then(setMe).catch(() => setMe(null));
+  }, []);
+
+  const logout = async () => {
+    try { await api.logout(); } catch { /* ignore */ }
+    auth.set("");
+    setMe(null);
+  };
+
   return (
     <header className="site-nav">
       <div className="site-nav-in">
@@ -49,9 +69,18 @@ export function SiteNav() {
               {it.label}
             </Link>
           ))}
-          <Link className="site-nav-link site-nav-login" to="/login" onClick={close}>
-            Log in
-          </Link>
+          {me ? (
+            <>
+              <Link className="site-nav-link" to="/app" onClick={close}>
+                Console
+              </Link>
+              <AccountMenu me={me} onLogout={logout} />
+            </>
+          ) : (
+            <Link className="site-nav-link site-nav-login" to="/login" onClick={close}>
+              Log in
+            </Link>
+          )}
           <Link className="site-nav-cta" to="/scan" onClick={close}>
             Scan an agent
           </Link>

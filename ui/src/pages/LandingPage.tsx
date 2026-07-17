@@ -1,6 +1,7 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { gradeColor } from "../cert";
+import { api } from "../api";
+import { gradeColor, indexFromCert, normalizeScores } from "../cert";
 import { IcoRail, IcoBus, IcoShield } from "../components/Icons";
 import { SiteNav } from "../components/SiteNav";
 
@@ -16,23 +17,51 @@ import { SiteNav } from "../components/SiteNav";
    enhancement when motion is allowed.
    ========================================================================== */
 
-/** The seven metrics behind the Agenttic Index, in trace order. Each x/y is a
- *  point on the 0–340 × 0–132 ruled field (y inverted: lower y = higher score).
- *  Values are an ILLUSTRATIVE sample profile (not a real measurement), matching
- *  the hero aria-label; the hero is badged "ILLUSTRATIVE EXAMPLE" on screen. */
-const METRICS: { key: string; label: string; value: number; x: number; y: number }[] = [
-  { key: "tool-call", label: "tool-call", value: 93, x: 24, y: 32 },
-  { key: "reliability", label: "reliability", value: 88, x: 72, y: 44 },
-  { key: "faithful", label: "faithful", value: 90, x: 120, y: 37 },
-  { key: "refusal", label: "refusal", value: 99, x: 168, y: 9 },
-  { key: "injection", label: "injection", value: 95, x: 216, y: 21 },
-  { key: "calibration", label: "calibration", value: 86, x: 264, y: 50 },
-  { key: "cost", label: "cost", value: 78, x: 312, y: 68 },
-];
+/** Short legend labels for the certified dimensions (keyed on the backend's
+ *  dimension keys); anything unknown falls back to the first word of its label. */
+const METRIC_SHORT: Record<string, string> = {
+  tool_call_accuracy: "tool-call",
+  reliability_pass_k: "reliability",
+  faithfulness: "faithful",
+  harmful_refusal_rate: "refusal",
+  injection_robustness: "injection",
+  calibration_ece: "calibration",
+  no_secret_leak: "secrets",
+  secret_leak: "secrets",
+  secret_leak_resistance: "secrets",
+  no_exfiltration: "data",
+  tool_misuse_safety: "tool safety",
+};
 
-const TRACE = METRICS.map((m) => `${m.x},${m.y}`).join(" L");
-const AREA = `M${TRACE} L312,124 L24,124 Z`;
-const LINE = `M${TRACE}`;
+/** A live metric point on the 0–340 × 0–132 ruled field (y inverted: lower y =
+ *  higher score). Built from the featured certificate's REAL dimension scores. */
+interface MetricPoint { key: string; label: string; value: number; x: number; y: number }
+
+function toPoints(scores: { key: string; label: string; value: number | null }[]): MetricPoint[] {
+  const measured = scores.filter((s) => s.value != null);
+  const n = measured.length;
+  if (n === 0) return [];
+  return measured.map((s, i) => {
+    const value = Math.round((s.value as number) * 100);
+    const x = n === 1 ? 168 : Math.round(24 + (i * 288) / (n - 1));
+    const y = Math.round(124 - (value / 100) * 115);   // 100 → 9, 0 → 124
+    return {
+      key: s.key,
+      label: METRIC_SHORT[s.key] ?? s.label.split(/[\s(]/)[0].toLowerCase(),
+      value, x, y,
+    };
+  });
+}
+
+/** The featured REAL certification shown in the hero instrument. */
+interface LiveCert {
+  certId: string;
+  agentName: string;
+  grade: string;
+  index: number | null;
+  methodology: string;
+  points: MetricPoint[];
+}
 
 /** Published methodologies referenced across the suites. Every one has a real
  *  dataset adapter in the engine (src/ascore/metrics/datasets/*); several run
@@ -66,7 +95,7 @@ const SPEC: { m: string; s: ReactNode; w: string }[] = [
   { m: "Harmful-refusal rate", w: "0.14",
     s: <>AgentHarm — declines harmful requests, doesn’t fire forbidden tools</> },
   { m: "Injection robustness", w: "0.14",
-    s: <>AgentDojo / InjecAgent — 1 − attack-success-rate</> },
+    s: <>AgentDojo / InjecAgent — 1 − probe failure rate</> },
   { m: "Calibration (ECE)", w: "0.08",
     s: <>Guo et al. 2017, with abstention</> },
   { m: "Cost & latency", w: "—",
@@ -83,13 +112,13 @@ const DEPLOY: { icon: ReactNode; h: string; p: string; tag: string }[] = [
     p: "Self-hosted and air-gapped modes. A boot-time check refuses to start if any path would call out. A statement of what stays where, for your security team." },
 ];
 
-/** Draw the metric trace on mount as a progressive enhancement. Without JS the
- *  trace is already fully visible (CSS default); this only animates it in. */
-function useTraceDraw() {
+/** Draw the metric trace once real data lands, as a progressive enhancement.
+ *  Without JS the trace is already fully visible (CSS default). */
+function useTraceDraw(ready: boolean) {
   const ref = useRef<SVGPathElement | null>(null);
   useEffect(() => {
     const tr = ref.current;
-    if (!tr || typeof tr.getTotalLength !== "function") return;
+    if (!ready || !tr || typeof tr.getTotalLength !== "function") return;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     const len = tr.getTotalLength();
     tr.style.strokeDasharray = String(len);
@@ -101,25 +130,91 @@ function useTraceDraw() {
         tr.style.strokeDashoffset = "0";
       }));
     return () => cancelAnimationFrame(id);
-  }, []);
+  }, [ready]);
   return ref;
 }
 
+/** The hero instrument, fed by REAL data: the Safe Reference Assistant's latest
+ *  valid certificate (the same endpoint that backs the public assistant seal —
+ *  it never returns a placeholder). While loading, and when no certificate has
+ *  been issued yet, the instrument states that honestly instead of showing a
+ *  sample profile. */
 function Instrument() {
-  const traceRef = useTraceDraw();
-  const gradeCol = gradeColor("A");
+  // undefined = loading · null = no valid certificate to feature
+  const [live, setLive] = useState<LiveCert | null | undefined>(undefined);
+  useEffect(() => {
+    api.assistantCertification()
+      .then((a: any) => {
+        if (!a?.gradeable || !a.cert_id) { setLive(null); return; }
+        return api.publicCertification(a.cert_id).then((c: any) => setLive({
+          certId: a.cert_id,
+          agentName: c.agent_name ?? a.agent_id,
+          grade: c.grade ?? a.grade,
+          index: indexFromCert(c),
+          methodology: c.methodology_version || "current",
+          points: toPoints(normalizeScores(c)),
+        }));
+      })
+      .catch(() => setLive(null));
+  }, []);
+
+  const traceRef = useTraceDraw(!!live && live.points.length > 0);
+
+  if (!live) {
+    return (
+      <div className="inst" aria-label={live === undefined
+          ? "Loading the live safety report"
+          : "No certified agent to feature yet"}>
+        <div className="inst-top">
+          <span>SAFETY REPORT</span>
+          <span className="demo">{live === undefined ? "LOADING" : "AWAITING CERTIFICATION"}</span>
+        </div>
+        <div className="inst-body">
+          <div className="grade-cell">
+            <span className="lbl">Grade</span>
+            <span className="g" style={{ color: "var(--faint)" }}>—</span>
+            <span className="idx">Agenttic Index <b>—</b></span>
+          </div>
+          <div className="field">
+            <div className="cap"><span>Metric profile</span><span>0 — 100</span></div>
+            <svg className="trace-svg" viewBox="0 0 340 132" preserveAspectRatio="none" aria-hidden="true">
+              <g stroke="var(--lp-grid)" strokeWidth="1">
+                <line x1="0" y1="16" x2="340" y2="16" />
+                <line x1="0" y1="49" x2="340" y2="49" />
+                <line x1="0" y1="82" x2="340" y2="82" />
+                <line x1="0" y1="115" x2="340" y2="115" />
+              </g>
+            </svg>
+          </div>
+        </div>
+        <div className="inst-foot">
+          <span>{live === undefined
+            ? "fetching the live measurement…"
+            : "this panel shows a real certificate — none is published yet"}</span>
+          <Link className="sig" to="/scan">run a scan →</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const trace = live.points.map((m) => `${m.x},${m.y}`).join(" L");
+  const area = `M${trace} L${live.points[live.points.length - 1].x},124 L${live.points[0].x},124 Z`;
+  const gradeCol = gradeColor(live.grade);
   return (
     <div className="inst" role="img"
-         aria-label="Illustrative example of a safety report (a sample agent, not a real measurement): grade A, Agenttic Index 91. Seven sample metrics plotted — tool-call 93, reliability 88, faithfulness 90, harmful-refusal 99, injection 95, calibration 86, cost 78.">
+         aria-label={`Live safety report for ${live.agentName}: grade ${live.grade}`
+           + (live.index != null ? `, Agenttic Index ${live.index}` : "")
+           + `. Measured dimensions — `
+           + live.points.map((m) => `${m.label} ${m.value}`).join(", ") + "."}>
       <div className="inst-top">
-        <span>EXAMPLE REPORT · SAMPLE AGENT</span>
-        <span className="demo">ILLUSTRATIVE EXAMPLE</span>
+        <span>SAFETY REPORT · {live.agentName.toUpperCase()}</span>
+        <span className="demo">LIVE · VERIFIED</span>
       </div>
       <div className="inst-body">
         <div className="grade-cell">
           <span className="lbl">Grade</span>
-          <span className="g" style={{ color: gradeCol }}>A</span>
-          <span className="idx">Agenttic Index <b>91</b></span>
+          <span className="g" style={{ color: gradeCol }}>{live.grade}</span>
+          <span className="idx">Agenttic Index <b>{live.index ?? "—"}</b></span>
         </div>
         <div className="field">
           <div className="cap"><span>Metric profile</span><span>0 — 100</span></div>
@@ -131,25 +226,27 @@ function Instrument() {
               <line x1="0" y1="115" x2="340" y2="115" />
             </g>
             <g stroke="var(--lp-hair)" strokeWidth="1">
-              {METRICS.map((m) => <line key={m.key} x1={m.x} y1="8" x2={m.x} y2="124" />)}
+              {live.points.map((m) => <line key={m.key} x1={m.x} y1="8" x2={m.x} y2="124" />)}
             </g>
-            <path d={AREA} fill="var(--accent-soft)" />
-            <path ref={traceRef} className="tr-draw" d={LINE} fill="none"
+            <path d={area} fill="var(--accent-soft)" />
+            <path ref={traceRef} className="tr-draw" d={`M${trace}`} fill="none"
                   stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
             <g fill="var(--panel)" stroke="var(--accent-hover)" strokeWidth="2">
-              {METRICS.map((m) => <circle key={m.key} cx={m.x} cy={m.y} r="3" />)}
+              {live.points.map((m) => <circle key={m.key} cx={m.x} cy={m.y} r="3" />)}
             </g>
           </svg>
         </div>
       </div>
       <div className="legend">
-        {METRICS.map((m) => (
+        {live.points.map((m) => (
           <span key={m.key}><i>{m.label}</i> <b>{m.value}</b></span>
         ))}
       </div>
       <div className="inst-foot">
-        <span>profile cert-agent-safety-v1</span>
-        <span className="sig">example signature — illustrative, not verifiable</span>
+        <span>profile {live.methodology}</span>
+        <Link className="sig" to={`/certified/${live.certId}`}>
+          Ed25519 signed — verify →
+        </Link>
       </div>
     </div>
   );
@@ -288,7 +385,7 @@ export function LandingPage() {
               or tools and it lapses — so a passing grade always means <em>this</em>{" "}
               agent, as measured.
             </p>
-            <p className="hash">example dossier · Ed25519 · verify a real one at /.well-known/agenttic-cert-keys.json</p>
+            <p className="hash">Ed25519 signed · public keys at /.well-known/agenttic-cert-keys.json</p>
           </div>
         </div>
       </section>

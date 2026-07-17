@@ -77,12 +77,30 @@ def _serialize_block(block) -> dict:
 
 class CopilotAgent:
     def __init__(self, client, model: str, *, max_iters: int = 8,
-                 max_tokens: int = 1024, extra_secrets: set[str] | None = None):
+                 max_tokens: int = 1024, extra_secrets: set[str] | None = None,
+                 system_prompt: str | None = None,
+                 tools: list[dict] | None = None,
+                 tool_filter=None):
         self.client = client
         self.model = model
         self.max_iters = max_iters
         self.max_tokens = max_tokens
         self.extra_secrets = extra_secrets or set()
+        # Optional dispatch allowlist predicate (name -> bool). On the PUBLIC
+        # surface this is is_public_safe: a hard gate so that even if the model
+        # names a tool outside the public schema list, dispatch default-denies it
+        # (never a tenant/platform/certification tool). None = allow all
+        # registered tools (the authed surface).
+        self._tool_filter = tool_filter
+        # Per-surface parameterization: the AUTHED Copilot uses the full persona
+        # + full tool registry (defaults below); the PUBLIC intake surface passes
+        # the public persona + the restricted public_tool_schemas() allowlist so a
+        # single agent loop drives both without forking. The tool DISPATCH is
+        # still gated by get_tool()/is_write() plus (on the public surface) the
+        # is_public_safe() filter in _resolve_call.
+        self._system_prompt = system_prompt if system_prompt is not None \
+            else _system_prompt()
+        self._tools = tools if tools is not None else tool_schemas()
 
     # -- public API --------------------------------------------------------- #
 
@@ -151,6 +169,28 @@ class CopilotAgent:
 
             calls = [b for b in blocks if b["type"] == "tool_use"]
 
+            # Surface allowlist (public bot): if the model named ANY tool that
+            # isn't on the allowlist, refuse the WHOLE turn's calls BEFORE the
+            # write-approval gate — so a non-public WRITE tool (e.g.
+            # start_certification) can never even be PROPOSED here, let alone run.
+            # The API needs a result for every tool_use block in a turn, so we
+            # return a refusal tool_result for each call (via _resolve_call, which
+            # default-denies the disallowed name) and continue the loop; the model
+            # re-plans with only its public tools on the next iteration. In the
+            # normal case the model is only given public tools, so this triggers
+            # only as defense-in-depth against a hallucinated tool name.
+            if self._tool_filter is not None and \
+                    any(not self._tool_filter(c["name"]) for c in calls):
+                results = []
+                for c in calls:
+                    block, event = self._resolve_call(
+                        session, ctx, c, approved=False)
+                    if event:
+                        yield event
+                    results.append(block)
+                session["messages"].append({"role": "user", "content": results})
+                continue
+
             # Human-in-the-loop: any WRITE tool pauses the whole turn.
             if any(is_write(c["name"]) for c in calls):
                 session["pending"] = {"calls": calls}
@@ -188,7 +228,7 @@ class CopilotAgent:
         pending = ""
         with self.client.messages.stream(
             model=self.model, max_tokens=self.max_tokens,
-            system=_system_prompt(), tools=tool_schemas(),
+            system=self._system_prompt, tools=self._tools,
             messages=list(session["messages"]),
         ) as stream:
             for delta in stream.text_stream:
@@ -220,6 +260,17 @@ class CopilotAgent:
         of the result."""
         name, args, tuid = call["name"], call.get("input", {}), call.get("id", "")
         tool = get_tool(name)
+
+        # Surface allowlist (public bot): a tool the model named that isn't on the
+        # public allowlist is refused at dispatch — the model can NEVER reach a
+        # tenant/platform/certification tool on the anonymous surface, even if it
+        # somehow names one outside its restricted schema list.
+        if self._tool_filter is not None and not self._tool_filter(name):
+            err = f"tool {name!r} is not available on this surface (refused)"
+            self._log(session, {"type": "tool_result", "tool": name, "ok": False})
+            return self._result_block(tuid, err, is_error=True), \
+                {"type": "tool", "tool": name, "phase": "done", "ok": False,
+                 "summary": "refused (not available here)"}
 
         if tool is None:
             err = f"tool {name!r} is not available and was refused (default-deny)"
@@ -280,6 +331,14 @@ class CopilotAgent:
     @staticmethod
     def _summarize(name: str, output) -> str:
         if isinstance(output, dict):
+            # A scan_id, when present, lets the UI follow the live scan itself
+            # (checklist + findings). It's not a secret — it names an in-process
+            # demo job — so surface it in the human summary.
+            if output.get("scan_id"):
+                extra = ""
+                if output.get("status"):
+                    extra = f" status={output['status']}"
+                return f"{name}: scan_id={output['scan_id']}{extra}"
             for k in ("count", "job_id", "tier", "status", "valid",
                       "anthropic_key_set", "started", "revoked"):
                 if k in output:

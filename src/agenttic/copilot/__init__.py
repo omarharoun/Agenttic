@@ -20,13 +20,16 @@ from agenttic.copilot.service import (
     CopilotConfig, CopilotNotConfigured, CopilotService, is_configured,
     resolve_client,
 )
-from agenttic.copilot.skill import build_system_prompt, load_knowledge
+from agenttic.copilot.skill import (
+    build_public_system_prompt, build_system_prompt, load_knowledge,
+)
 from agenttic.copilot.store import CopilotStore
 from agenttic.copilot.tools import ToolContext, all_tools, tool_schemas
 
 __all__ = [
     "CopilotConfig", "CopilotNotConfigured", "CopilotService", "is_configured",
-    "resolve_client", "build_system_prompt", "load_knowledge",
+    "resolve_client", "build_system_prompt", "build_public_system_prompt",
+    "load_knowledge",
     "CreditDecision", "check_credits", "record_usage", "record_action",
     "get_provider", "CopilotAgent", "new_session", "CopilotStore",
     "ToolContext", "all_tools", "tool_schemas",

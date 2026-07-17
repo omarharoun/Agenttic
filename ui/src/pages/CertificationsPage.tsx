@@ -76,6 +76,67 @@ function CertEmbed({ cert, id }: { cert: any; id: string }) {
   );
 }
 
+/** GitHub Actions workflow that re-certifies the agent on every PR. Shown as a
+ *  copy-paste snippet — the action itself ships with Agenttic. */
+const CI_WORKFLOW = `name: Agent Safety
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Agenttic safety gate
+        uses: agenttic/agent-safety@v1
+        with:
+          agent-url: https://your-agent.example.com/chat   # ← your agent endpoint
+          # agent-auth-header: \${{ secrets.AGENT_AUTH }}
+          profile: cert-agent-safety-v1
+          fail-under: "B"        # block the merge if the grade drops below B
+          comment-on-pr: "true"
+`;
+
+function ContinuousCertification() {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard?.writeText(CI_WORKFLOW).then(
+      () => { setCopied(true); setTimeout(() => setCopied(false), 1400); },
+      () => { /* clipboard blocked — the block is selectable as a fallback */ },
+    );
+  };
+  return (
+    <div className="card" style={{ marginBottom: 22 }}>
+      <div className="card-head"><h2>Continuous certification</h2>
+        <p>Certify on every pull request — a GitHub Action runs the same safety
+          battery in CI, posts the grade on the PR, and can block the merge if
+          the grade drops.</p>
+      </div>
+      <div className="card-body">
+        <details>
+          <summary style={{ cursor: "pointer" }}>
+            Set up the GitHub Action
+          </summary>
+          <p className="muted-sm" style={{ margin: "10px 0 8px" }}>
+            Save this as <code>.github/workflows/agent-safety.yml</code> in the
+            repo that builds your agent, point <code>agent-url</code> at your
+            agent, and open a pull request.
+          </p>
+          <div className="embed-field" style={{ alignItems: "flex-start" }}>
+            <pre style={{ margin: 0, overflowX: "auto", flex: 1 }}><code>{CI_WORKFLOW}</code></pre>
+            <button className="ghost-sm" onClick={copy}>{copied ? "Copied ✓" : "Copy"}</button>
+          </div>
+        </details>
+      </div>
+    </div>
+  );
+}
+
 export function CertificationsPage() {
   const [params, setParams] = useSearchParams();
   const [certs, setCerts] = useState<any[] | null>(null);
@@ -180,6 +241,8 @@ export function CertificationsPage() {
                          style={{ marginTop: 12 }}>{msg.text}</div>}
           </div>
         </div>
+
+        <ContinuousCertification />
 
         {/* existing certs */}
         {certs === null ? <Skeleton rows={3} /> : certs.length === 0 ? (

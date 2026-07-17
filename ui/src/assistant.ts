@@ -103,7 +103,7 @@ export const EXAMPLE_PROMPTS: { label: string; text: string }[] = [
   { label: "Look something up", text: "Look up today's top technology headline and summarize it for me." },
   { label: "Do some math", text: "If I save $45 a week, how much will I have in a year?" },
   { label: "Plan my day", text: "Help me plan a focused 3-hour study block this afternoon." },
-  { label: "Explain simply", text: "Explain what a prompt injection attack is, like I'm new to this." },
+  { label: "Explain simply", text: "Explain what prompt injection is, like I'm new to this." },
 ];
 
 /* ------------------------------- labelling ------------------------------- */

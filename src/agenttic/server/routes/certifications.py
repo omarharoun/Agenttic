@@ -133,8 +133,8 @@ def public_reproduction(request: Request):
 
 @public_router.get("/public/redteam/injection")
 def public_redteam_injection(request: Request):
-    """The red-team prompt-injection probe set + an HONEST self-test of the
-    lexical injection detector: technique coverage, and how many real hijacks the
+    """The prompt-injection safety probe suite + an HONEST self-test of the
+    lexical injection detector: technique coverage, and how many real injection attempts the
     heuristic catches vs misses (the evasion tail). Lets the UI stop pretending
     the safety check is airtight. No auth."""
     from agenttic.metrics.redteam import (
