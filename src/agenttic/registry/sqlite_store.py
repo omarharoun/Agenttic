@@ -174,6 +174,20 @@ class ReEvalRow(SQLModel, table=True):
     created_at: datetime
 
 
+class FeedbackRow(SQLModel, table=True):
+    """Append-only human feedback on a trace (SPEC-2 Step 11). ``processed`` is
+    flipped by the feedback→tests miner (Step 13) so each item is mined once."""
+    __table_args__ = (UniqueConstraint("tenant_id", "feedback_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    feedback_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    trace_id: str = Field(index=True)
+    processed: bool = Field(default=False, index=True)
+    created_at: datetime
+    payload: str
+
+
 class SpendRow(SQLModel, table=True):
     """Append-only ledger of LLM spend, for the daily budget cap."""
     id: int | None = Field(default=None, primary_key=True)
@@ -904,6 +918,65 @@ class Registry:
             rows = s.exec(q.order_by(ScorecardRow.created_at)).all()
             return [Scorecard.model_validate_json(r.payload) for r in rows]
 
+    # -- human feedback (SPEC-2 Step 11) --------------------------------------
+
+    def save_feedback(self, feedback) -> None:
+        """Persist one HumanFeedback (append-only). Raises on a duplicate
+        feedback_id within the tenant (the unique constraint)."""
+        with Session(self.engine) as s:
+            s.add(FeedbackRow(
+                tenant_id=self.tenant, feedback_id=feedback.feedback_id,
+                agent_id=feedback.agent_id, trace_id=feedback.trace_id,
+                processed=False, created_at=feedback.created_at,
+                payload=feedback.model_dump_json()))
+            s.commit()
+
+    def feedback_for(self, agent_id: str) -> list["HumanFeedback"]:
+        """All feedback for an agent, oldest-first."""
+        from agenttic.schema.feedback import HumanFeedback
+        with Session(self.engine) as s:
+            rows = s.exec(select(FeedbackRow).where(
+                FeedbackRow.tenant_id == self.tenant,
+                FeedbackRow.agent_id == agent_id
+            ).order_by(FeedbackRow.created_at)).all()
+            return [HumanFeedback.model_validate_json(r.payload) for r in rows]
+
+    def feedback_for_trace(self, trace_id: str) -> list["HumanFeedback"]:
+        """All feedback attached to a single trace, oldest-first."""
+        from agenttic.schema.feedback import HumanFeedback
+        with Session(self.engine) as s:
+            rows = s.exec(select(FeedbackRow).where(
+                FeedbackRow.tenant_id == self.tenant,
+                FeedbackRow.trace_id == trace_id
+            ).order_by(FeedbackRow.created_at)).all()
+            return [HumanFeedback.model_validate_json(r.payload) for r in rows]
+
+    def unprocessed_feedback(self, agent_id: str | None = None
+                             ) -> list["HumanFeedback"]:
+        """Feedback not yet mined into tests/labels (Step 13), oldest-first."""
+        from agenttic.schema.feedback import HumanFeedback
+        with Session(self.engine) as s:
+            q = select(FeedbackRow).where(
+                FeedbackRow.tenant_id == self.tenant,
+                FeedbackRow.processed == False)  # noqa: E712 (SQLModel needs ==)
+            if agent_id is not None:
+                q = q.where(FeedbackRow.agent_id == agent_id)
+            rows = s.exec(q.order_by(FeedbackRow.created_at)).all()
+            return [HumanFeedback.model_validate_json(r.payload) for r in rows]
+
+    def mark_feedback_processed(self, feedback_id: str) -> None:
+        """Flip a feedback item's processed flag (set by the miner after it has
+        written the draft suite/labels). 404 if it isn't this tenant's."""
+        with Session(self.engine) as s:
+            row = s.exec(select(FeedbackRow).where(
+                FeedbackRow.tenant_id == self.tenant,
+                FeedbackRow.feedback_id == feedback_id)).first()
+            if row is None:
+                raise NotFoundError(f"feedback {feedback_id}")
+            row.processed = True
+            s.add(row)
+            s.commit()
+
     def scorecards_in(self, suite_ids) -> list["Scorecard"]:
         """All scorecards (any agent) for the given suites, oldest-first."""
         ids = list(suite_ids)
@@ -969,18 +1042,25 @@ class Registry:
 
     def latest_canonical_runs(self) -> list[dict]:
         """Latest canonical run per agent (newest first), as parsed payloads."""
+        latest = {agent: runs[0] for agent, runs in
+                  self.canonical_runs_by_agent().items()}
+        return sorted(latest.values(), key=lambda d: d.get("index", 0), reverse=True)
+
+    def canonical_runs_by_agent(self) -> dict[str, list[dict]]:
+        """ALL canonical runs per agent (each agent's list newest-first), as
+        parsed payloads — so multiple benchmark rounds can pool into one Index."""
         import json as _json
         with Session(self.engine) as s:
             rows = s.exec(select(CanonicalRunRow).where(
                 CanonicalRunRow.tenant_id == self.tenant
-            ).order_by(CanonicalRunRow.created_at)).all()
-        latest: dict[str, dict] = {}
-        for r in rows:  # oldest-first => last write per agent wins
+            ).order_by(CanonicalRunRow.created_at.desc())).all()  # type: ignore[attr-defined]
+        grouped: dict[str, list[dict]] = {}
+        for r in rows:  # newest-first
             try:
-                latest[r.agent_id] = _json.loads(r.payload)
+                grouped.setdefault(r.agent_id, []).append(_json.loads(r.payload))
             except Exception:  # noqa: BLE001
                 continue
-        return sorted(latest.values(), key=lambda d: d.get("index", 0), reverse=True)
+        return grouped
 
     def suites_scored_for(self, agent_id: str) -> list[str]:
         with Session(self.engine) as s:

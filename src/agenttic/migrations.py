@@ -252,6 +252,15 @@ def _copilot_sessions_table(conn) -> None:
     CopilotSessionRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _feedback_table(conn) -> None:
+    """v24 — human feedback on traces (SPEC-2 Step 11). Append-only; the
+    ``processed`` flag lets the feedback→tests miner (Step 13) mine each item
+    exactly once."""
+    import agenttic.registry.sqlite_store  # noqa: F401
+    from agenttic.registry.sqlite_store import FeedbackRow
+    FeedbackRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -277,6 +286,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (21, "canary_sets_table", _canary_sets_table),
     (22, "passport_tables", _passport_tables),
     (23, "copilot_sessions_table", _copilot_sessions_table),
+    (24, "feedback_table", _feedback_table),
 ]
 
 
