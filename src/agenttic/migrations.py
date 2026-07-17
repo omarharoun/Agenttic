@@ -296,8 +296,25 @@ def _feedback_table(conn) -> None:
     FeedbackRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _agent_config_table(conn) -> None:
+    """v25 — the agent-config promotion ledger (SPEC-2 Step 14, Hard Rule 10):
+    every candidate the learning optimizer produced (promoted / rejected /
+    pending human approval), chained to its parent so the config family tree is
+    auditable."""
+    import agenttic.registry.sqlite_store  # noqa: F401
+    from agenttic.registry.sqlite_store import AgentConfigRow
+    AgentConfigRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
+    # 24-29 were BURNED while the code that created them could not be found. It
+    # has been found: they are the local line (backup/local-jul21-pre-merge,
+    # archived as archive/local-line-jul21), and they are landing here at the
+    # numbers they were always issued under. node1's production database has
+    # exactly these six, under exactly these names, stamped 2026-07-19 — so
+    # reclaiming the numbers makes that database correct rather than merely
+    # unexplained. The number is an identity; this restores the rightful holder.
     (1, "baseline_schema", _baseline),
     (2, "add_tenant_id", _add_tenant_id),
     (3, "users_table", _users_table),
@@ -321,14 +338,8 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (21, "canary_sets_table", _canary_sets_table),
     (22, "passport_tables", _passport_tables),
     (23, "copilot_sessions_table", _copilot_sessions_table),
-    # 24-29 were BURNED while the code that created them could not be found. It
-    # has been found: they are the local line (backup/local-jul21-pre-merge,
-    # archived as archive/local-line-jul21), and they are landing here at the
-    # numbers they were always issued under. node1's production database has
-    # exactly these six, under exactly these names, stamped 2026-07-19 — so
-    # reclaiming the numbers makes that database correct rather than merely
-    # unexplained. The number is an identity; this restores the rightful holder.
     (24, "feedback_table", _feedback_table),
+    (25, "agent_config_table", _agent_config_table),
     (30, "verification_evidence_tables", _verification_evidence_tables),
     (31, "gaming_reports_table", _gaming_reports_table),
 ]

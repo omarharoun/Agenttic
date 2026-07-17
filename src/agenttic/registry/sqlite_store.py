@@ -238,6 +238,29 @@ class FeedbackRow(SQLModel, table=True):
     payload: str
 
 
+class AgentConfigRow(SQLModel, table=True):
+    """The promotion ledger for the learning optimizer (SPEC-2 Step 14, Hard
+    Rule 10). One row per candidate agent-config the optimizer produced —
+    promoted, rejected, or pending human approval — each chained to its parent by
+    ``parent_hash`` so the config family tree (baseline→latest) is reconstructable
+    and every rejection carries its auditable ``reason``. Append-only; the only
+    in-place mutation is flipping ``pending_approval``→``promoted`` via
+    ``mark_agent_config_approved`` (the high-severity human gate)."""
+    __table_args__ = (UniqueConstraint("tenant_id", "agent_config_hash"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    agent_id: str = Field(index=True)
+    agent_config_hash: str = Field(index=True)
+    parent_hash: str = ""                      # "" for the baseline
+    diff_summary: str = ""                      # human-readable changelog entry
+    scorecard_ids: str = "[]"                   # JSON list of scorecard ids
+    status: str = Field(default="promoted", index=True)  # promoted|rejected|pending_approval
+    reason: str = ""                            # accept/reject/pending rationale
+    approved_by: str = ""                       # who cleared a pending_approval
+    created_at: datetime
+    payload: str = "{}"                         # the config/changelog JSON
+
+
 class SpendRow(SQLModel, table=True):
     """Append-only ledger of LLM spend, for the daily budget cap."""
     id: int | None = Field(default=None, primary_key=True)
@@ -1623,6 +1646,113 @@ class Registry:
             row.processed = True
             s.add(row)
             s.commit()
+
+    # -- agent-config promotion ledger (SPEC-2 Step 14) -----------------------
+
+    def save_agent_config(self, config) -> None:
+        """Persist one agent-config ledger entry (append-only). ``config`` is an
+        :class:`agenttic.learning.optimizer.AgentConfig`. Raises on a duplicate
+        agent_config_hash within the tenant (the unique constraint) so a hash is
+        recorded exactly once — its status is later mutated in place, not
+        re-inserted."""
+        import json as _json
+        with Session(self.engine) as s:
+            s.add(AgentConfigRow(
+                tenant_id=self.tenant, agent_id=config.agent_id,
+                agent_config_hash=config.agent_config_hash,
+                parent_hash=config.parent_hash or "",
+                diff_summary=config.diff_summary or "",
+                scorecard_ids=_json.dumps(list(config.scorecard_ids or [])),
+                status=config.status, reason=config.reason or "",
+                approved_by=config.approved_by or "",
+                created_at=config.created_at,
+                payload=_json.dumps(config.payload or {})))
+            s.commit()
+
+    def _agent_config_from_row(self, row):
+        import json as _json
+        from agenttic.learning.optimizer import AgentConfig
+        return AgentConfig(
+            agent_id=row.agent_id, agent_config_hash=row.agent_config_hash,
+            parent_hash=row.parent_hash or "", diff_summary=row.diff_summary or "",
+            scorecard_ids=_json.loads(row.scorecard_ids or "[]"),
+            status=row.status, reason=row.reason or "",
+            approved_by=row.approved_by or "", created_at=row.created_at,
+            payload=_json.loads(row.payload or "{}"))
+
+    def get_agent_config(self, agent_config_hash: str):
+        """One ledger entry by hash (404 if it isn't this tenant's)."""
+        with Session(self.engine) as s:
+            row = s.exec(select(AgentConfigRow).where(
+                AgentConfigRow.tenant_id == self.tenant,
+                AgentConfigRow.agent_config_hash == agent_config_hash)).first()
+        if row is None:
+            raise NotFoundError(f"agent config {agent_config_hash}")
+        return self._agent_config_from_row(row)
+
+    def agent_config_lineage(self, agent_id: str) -> list:
+        """The config family tree for an agent, ordered baseline→latest.
+
+        Rows are chained by ``parent_hash``: the root (empty parent) comes first,
+        then each child following its parent; entries not reachable from the root
+        (or forming a cycle) are appended in creation order so nothing is lost."""
+        with Session(self.engine) as s:
+            rows = s.exec(select(AgentConfigRow).where(
+                AgentConfigRow.tenant_id == self.tenant,
+                AgentConfigRow.agent_id == agent_id
+            ).order_by(AgentConfigRow.created_at, AgentConfigRow.id)).all()
+        configs = [self._agent_config_from_row(r) for r in rows]
+        by_parent: dict[str, list] = {}
+        for c in configs:
+            by_parent.setdefault(c.parent_hash or "", []).append(c)
+        ordered: list = []
+        seen: set[str] = set()
+
+        def _walk(parent_hash: str) -> None:
+            for child in by_parent.get(parent_hash, []):
+                if child.agent_config_hash in seen:
+                    continue
+                seen.add(child.agent_config_hash)
+                ordered.append(child)
+                _walk(child.agent_config_hash)
+
+        _walk("")                                   # start from the baseline(s)
+        for c in configs:                           # append any orphans/cycles
+            if c.agent_config_hash not in seen:
+                seen.add(c.agent_config_hash)
+                ordered.append(c)
+        return ordered
+
+    def pending_agent_configs(self, agent_id: str | None = None) -> list:
+        """Configs awaiting the high-severity human gate, oldest-first."""
+        with Session(self.engine) as s:
+            q = select(AgentConfigRow).where(
+                AgentConfigRow.tenant_id == self.tenant,
+                AgentConfigRow.status == "pending_approval")
+            if agent_id is not None:
+                q = q.where(AgentConfigRow.agent_id == agent_id)
+            rows = s.exec(q.order_by(AgentConfigRow.created_at)).all()
+        return [self._agent_config_from_row(r) for r in rows]
+
+    def mark_agent_config_approved(self, agent_config_hash: str,
+                                   approved_by: str):
+        """Clear a ``pending_approval`` config: flip it to ``promoted`` and record
+        who approved it. 404 if it isn't this tenant's; no-op-safe on an
+        already-promoted row (idempotent). Returns the updated config."""
+        with Session(self.engine) as s:
+            row = s.exec(select(AgentConfigRow).where(
+                AgentConfigRow.tenant_id == self.tenant,
+                AgentConfigRow.agent_config_hash == agent_config_hash)).first()
+            if row is None:
+                raise NotFoundError(f"agent config {agent_config_hash}")
+            if row.status == "pending_approval":
+                row.status = "promoted"
+                row.reason = (row.reason + " | approved by "
+                              f"{approved_by}").strip(" |")
+            row.approved_by = approved_by
+            s.add(row)
+            s.commit()
+            return self._agent_config_from_row(row)
 
     def scorecards_in(self, suite_ids) -> list["Scorecard"]:
         """All scorecards (any agent) for the given suites, oldest-first."""
