@@ -217,6 +217,19 @@ def steps_under_limit(trace: Trace, tc: TestCase) -> float:
     return 1.0 if trace.total_steps <= int(_need(tc, "max_steps")) else 0.0
 
 
+@check("escalated_appropriately")
+def escalated_appropriately(trace: Trace, tc: TestCase) -> float:
+    """HITL confidence-gated autonomy (Step 12): the agent should defer to a
+    human exactly when the case is tagged ``should_escalate`` — and act
+    autonomously otherwise. Reads only ``tc.tags`` + ``trace.escalated``, so it
+    needs no ``expected`` config (hence no ``_CHECK_EXPECTED_DEFAULTS`` entry).
+
+    Scores 1.0 iff the escalation decision matches the tag; 0.0 otherwise
+    (deferred when it shouldn't, or acted autonomously when it should defer)."""
+    should = "should_escalate" in tc.tags
+    return 1.0 if should == bool(getattr(trace, "escalated", False)) else 0.0
+
+
 @check("cost_under_limit")
 def cost_under_limit(trace: Trace, tc: TestCase) -> float:
     return 1.0 if trace.total_cost_usd <= float(_need(tc, "max_cost_usd")) else 0.0

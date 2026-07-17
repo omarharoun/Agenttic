@@ -13,6 +13,13 @@ harness:
   max_parallel: 5
   transport_retries: 2
   # resume (reuse successful persisted traces on re-run) is always on — not a toggle
+# SPEC-2 Step 12 — HITL confidence-gated autonomy for the reference agent.
+# Distinct from the `autonomy`/`cards.autonomy` governance blocks below.
+# level: auto (act) | verify | human_required (escalate to a human before acting).
+hitl_autonomy:
+  default: auto            # auto | verify | human_required
+  overrides:
+    issue_refund: human_required
 scoring:
   calibration_threshold: 0.8
   advisor_max_tokens: 2048   # per-consult cap on advisor output (API minimum 1024)

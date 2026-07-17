@@ -102,7 +102,9 @@ def build_adapter(
                                 max_steps=cfg["harness"]["max_steps"],
                                 pricing_per_mtok=model_price(cfg, resolved_model),
                                 system_prompt=system_prompt or None,
-                                retry_policy=retry_policy, **kw)
+                                retry_policy=retry_policy,
+                                autonomy_policy=cfg.get("hitl_autonomy") or {},
+                                **kw)
 
 
 def blackbox_call_cost(cfg: dict, *, cost_per_call_usd: float = 0.0,

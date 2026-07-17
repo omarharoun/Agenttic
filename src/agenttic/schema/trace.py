@@ -23,7 +23,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-SCHEMA_VERSION = "0.2.0"  # 0.2.0: + optional Trace.source provenance (MINOR)
+SCHEMA_VERSION = "0.3.0"  # 0.3.0: + escalation SpanKind & Trace.escalated (HITL, MINOR)
 
 SpanKind = Literal[
     "llm_call",
@@ -32,6 +32,7 @@ SpanKind = Literal[
     "agent_decision",
     "error",
     "final_output",
+    "escalation",
 ]
 
 
@@ -79,6 +80,10 @@ class Trace(BaseModel):
     # Ingested traces are additionally stored as mode="live" so they can never
     # enter batch certification scorecards (SPEC-1 Step 9 invariant).
     source: str = "native"
+    # HITL (SPEC-2 Step 12): True when this run was escalated to a human — either
+    # resolved with human guidance and completed, or persisted unresolved
+    # (final_output=="ESCALATED_UNRESOLVED") when no human channel was available.
+    escalated: bool = False
     schema_version: str = SCHEMA_VERSION
 
     @model_validator(mode="after")
