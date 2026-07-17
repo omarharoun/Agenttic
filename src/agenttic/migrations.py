@@ -261,6 +261,16 @@ def _feedback_table(conn) -> None:
     FeedbackRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _agent_config_table(conn) -> None:
+    """v25 — the agent-config promotion ledger (SPEC-2 Step 14, Hard Rule 10):
+    every candidate the learning optimizer produced (promoted / rejected /
+    pending human approval), chained to its parent so the config family tree is
+    auditable."""
+    import agenttic.registry.sqlite_store  # noqa: F401
+    from agenttic.registry.sqlite_store import AgentConfigRow
+    AgentConfigRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -287,6 +297,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (22, "passport_tables", _passport_tables),
     (23, "copilot_sessions_table", _copilot_sessions_table),
     (24, "feedback_table", _feedback_table),
+    (25, "agent_config_table", _agent_config_table),
 ]
 
 

@@ -1672,5 +1672,126 @@ def ingest_otel(
         console.print(f"  live trace {tid}")
 
 
+# -- learning optimizer (SPEC-2 Step 14) -------------------------------------
+
+learn_app = typer.Typer(help="Learning optimizer: turn feedback + scores into a "
+                             "better agent config (the springboard).")
+app.add_typer(learn_app, name="learn")
+
+
+@learn_app.callback(invoke_without_command=True)
+def _learn(
+    ctx: typer.Context,
+    agent: str = typer.Option("", "--agent", "-a", help="agent id (label)"),
+    suite: str = typer.Option("", "--suite", "-s", help="suite id to optimize on"),
+    rounds: int = typer.Option(1, "--rounds", help="optimization rounds"),
+    system_prompt: str = typer.Option("", "--system-prompt",
+                                      help="baseline system prompt"),
+    model: str = typer.Option("", "--model", help="agent model override"),
+    config: str = "config.yaml",
+):
+    """Run the learning loop: ``agenttic learn --agent X --suite Y [--rounds N]``.
+
+    Proposes candidate configs against the failure dossier, gates them with the
+    regression + cost/latency budgets, and promotes the survivors into the config
+    ledger (high-severity domains land pending until ``learn approve``)."""
+    if ctx.invoked_subcommand is not None:
+        return
+    if not agent or not suite:
+        raise typer.BadParameter("provide --agent and --suite")
+    import asyncio
+
+    from agenttic.learning.optimizer import run_learning
+    cfg, reg = _ctx(config)
+    summary = asyncio.run(run_learning(
+        reg, cfg, agent, suite, rounds=rounds, baseline_prompt=system_prompt,
+        model=model))
+    console.print(f"[bold]Learning run[/] {summary['run_id']} — {rounds} round(s) "
+                  f"on {suite}")
+    console.print(f"baseline config: {summary['baseline_hash']}")
+    for ac in summary["promoted"]:
+        console.print(f"[green]PROMOTED[/] {ac.agent_config_hash} — "
+                      f"{ac.diff_summary}")
+    for ac in summary["pending"]:
+        console.print(f"[yellow]PENDING APPROVAL[/] {ac.agent_config_hash} — "
+                      f"{ac.diff_summary} (run `agenttic learn approve "
+                      f"{ac.agent_config_hash}`)")
+    for ac in summary["rejected"]:
+        console.print(f"[dim]rejected[/] {ac.agent_config_hash} — {ac.reason}")
+    if not (summary["promoted"] or summary["pending"]):
+        console.print("[dim]no candidate promoted this run[/]")
+
+
+@learn_app.command("approve")
+def learn_approve(
+    candidate_hash: str = typer.Argument(..., help="agent_config_hash to approve"),
+    config: str = "config.yaml",
+):
+    """Human gate: clear a high-severity ``pending_approval`` config so it is
+    promoted (records who approved)."""
+    from agenttic._env import get_env
+    from agenttic.registry.sqlite_store import NotFoundError
+    _cfg, reg = _ctx(config)
+    who = get_env("USER") or "cli"
+    try:
+        ac = reg.mark_agent_config_approved(candidate_hash, who)
+    except NotFoundError:
+        raise typer.BadParameter(f"no agent config {candidate_hash}")
+    console.print(f"[green]Approved[/] {ac.agent_config_hash} "
+                  f"(status={ac.status}, by {ac.approved_by}).")
+
+
+@app.command()
+def lineage(
+    agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)"),
+    config: str = "config.yaml",
+):
+    """Print the agent-config family tree (baseline→latest) with score deltas."""
+    _cfg, reg = _ctx(config)
+    chain = reg.agent_config_lineage(agent)
+    if not chain:
+        console.print(f"[dim]no config lineage for {agent}[/]")
+        return
+
+    def _rate(ac):
+        if not ac.scorecard_ids:
+            return None
+        try:
+            return reg.get_scorecard(ac.scorecard_ids[0]).task_success_rate
+        except Exception:
+            return None
+
+    table = Table("hash", "parent", "status", "rate", "Δ vs parent", "summary")
+    rate_by_hash = {ac.agent_config_hash: _rate(ac) for ac in chain}
+    for ac in chain:
+        rate = rate_by_hash.get(ac.agent_config_hash)
+        prate = rate_by_hash.get(ac.parent_hash)
+        delta = (f"{(rate - prate):+.0%}"
+                 if rate is not None and prate is not None else "-")
+        table.add_row(ac.agent_config_hash, ac.parent_hash or "(baseline)",
+                      ac.status, f"{rate:.0%}" if rate is not None else "-",
+                      delta, (ac.diff_summary or "")[:40])
+    console.print(table)
+
+
+@app.command(name="export-preferences")
+def export_preferences_cmd(
+    agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)"),
+    suite: str = typer.Option("", "--suite", "-s", help="restrict to one suite"),
+    out: str = typer.Option("preferences.jsonl", "--out", help="output JSONL path"),
+    config: str = "config.yaml",
+):
+    """Export (trace, score) preference pairs grouped by test case as JSONL —
+    ready for offline preference tuning (builds the export, not the training)."""
+    from agenttic.learning.optimizer import (
+        export_preferences,
+        write_preferences_jsonl,
+    )
+    _cfg, reg = _ctx(config)
+    pairs = export_preferences(reg, agent, suite_id=suite or None)
+    n = write_preferences_jsonl(pairs, out)
+    console.print(f"[green]Wrote[/] {n} preference pair(s) to {out}.")
+
+
 if __name__ == "__main__":
     app()

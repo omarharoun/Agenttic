@@ -20,6 +20,14 @@ hitl_autonomy:
   default: auto            # auto | verify | human_required
   overrides:
     issue_refund: human_required
+# SPEC-2 Step 14 — learning optimizer (the springboard). Turns feedback + scores
+# into a better agent config, gated by a regression + cost/latency budget.
+learning:
+  epsilon: 0.02                # max per-criterion mean drop tolerated on promote
+  max_cost_multiplier: 2.0     # candidate mean cost must be <= Nx baseline
+  max_latency_multiplier: 2.0  # candidate p95 latency must be <= Nx baseline
+  high_severity_domains: []    # suite-domain tokens whose promotions need
+                               # `agenttic learn approve` (e.g. [refunds, payments])
 scoring:
   calibration_threshold: 0.8
   advisor_max_tokens: 2048   # per-consult cap on advisor output (API minimum 1024)
