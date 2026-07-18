@@ -1711,3 +1711,17 @@ export interface EscalationRespondResult {
   resolved: ResolvedEscalation;
   pending_count: number;
 }
+
+/** GET /api/live/{agent}/windows — raw rolling-window scores per criterion for
+ *  the drift strip-chart (SPEC-5 23.4). window_scores are newest-first. */
+export interface LiveWindowCriterion {
+  criterion_id: string;
+  baseline_mean: number;
+  window_scores: number[];
+}
+export interface LiveWindows {
+  agent_id: string;
+  window: number;
+  drift_threshold: number;
+  criteria: LiveWindowCriterion[];
+}

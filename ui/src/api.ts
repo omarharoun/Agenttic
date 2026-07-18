@@ -42,7 +42,7 @@ import type {
   CopilotHandlers, CopilotErrorInfo,
   // moat — lineage, calibration, escalations (SPEC-4 Step 20)
   AgentLineage, JudgeLineage, CalibrationReport, NextUnlabeled, LabelResult,
-  EscalationInbox, EscalationRespondResult,
+  EscalationInbox, EscalationRespondResult, LiveWindows,
   // dynamic values
   JsonObject, JsonValue,
 } from "./api/types";
@@ -483,6 +483,11 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then((r) => json<HardeningSuiteRef>(r)),
+  // SPEC-5 23.4: raw rolling-window live scores per criterion for the drift strip.
+  getLiveWindows: (agentId: string, baselineScorecardId: string, window = 50) =>
+    afetch(`/api/live/${encodeURIComponent(agentId)}/windows` +
+      `?baseline_scorecard_id=${encodeURIComponent(baselineScorecardId)}&window=${window}`
+    ).then((r) => json<LiveWindows>(r)),
   // live-monitor catches: below-threshold sampled production traces, promotable
   // into a needs-review regression suite (distinct from scorecard candidates).
   hardeningLiveCandidates: (agentId?: string) =>

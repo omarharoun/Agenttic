@@ -1,0 +1,36 @@
+/* SPEC-5 23.4 — live drift strip-chart. Tokens only; static SVG (no motion). */
+
+.drift-monitor { display: grid; gap: var(--sp-4, 20px); }
+.dm-strip {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: var(--sp-3, 14px);
+  background: var(--panel);
+}
+.dm-strip-head {
+  display: flex; align-items: baseline; gap: var(--sp-3, 14px); flex-wrap: wrap;
+  margin-bottom: var(--sp-2, 8px);
+}
+.dm-crit { font-weight: 600; }
+.dm-mean { color: var(--muted); font-size: 0.85em; font-family: var(--font-mono, monospace); }
+.dm-mean.is-fired { color: var(--fail); }
+.dm-flag {
+  margin-left: auto; font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border);
+}
+.dm-flag.is-ok { color: var(--ok); border-color: var(--ok); }
+.dm-flag.is-fired { color: #fff; background: #c0392b; border-color: #c0392b; }
+
+.dm-svg { width: 100%; height: auto; display: block; }
+.dm-band { fill: var(--ok); opacity: 0.12; }
+.dm-threshold { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; }
+.dm-meanline { stroke: var(--accent); stroke-width: 2; }
+.dm-meanline.is-fired { stroke: var(--fail); }
+.dm-dot-ok { fill: var(--ok); }
+.dm-dot-bad { fill: var(--fail); }
+
+.dm-reeval {
+  margin: var(--sp-2, 8px) 0 0; font-size: 0.8em; color: var(--fail);
+  font-family: var(--font-mono, monospace);
+}
+.dm-error { color: var(--fail); }
