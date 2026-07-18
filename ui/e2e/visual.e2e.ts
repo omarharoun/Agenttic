@@ -3,8 +3,8 @@ import { mockApi, seedSession } from "./mock-api";
 
 /* SPEC-4 Step 21 — visual-regression baselines.
  *
- * toHaveScreenshot() snapshots of the styleguide + the five core console
- * screens. Runs under BOTH theme projects (chromium-dark / chromium-light), so
+ * toHaveScreenshot() snapshots of the five core console screens. Runs under
+ * BOTH theme projects (chromium-dark / chromium-light), so
  * each screen gets a light and a dark baseline stored per-project (see
  * snapshotPathTemplate in playwright.config.ts).
  *
@@ -12,7 +12,6 @@ import { mockApi, seedSession } from "./mock-api";
  * CI then fails on any pixel drift beyond the configured tolerance. */
 
 const SCREENS: [string, string][] = [
-  ["styleguide", "/app/styleguide"],
   ["dashboard", "/app"],
   ["runs", "/app/executions"],
   ["results", "/app/results"],
