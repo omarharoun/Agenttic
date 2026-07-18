@@ -1,0 +1,46 @@
+/* SPEC-5 23.1 — run pipeline lane diagram. Motion encodes the running stage;
+   disabled under reduced-motion (state stays legible via colour + text). */
+
+.pf {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: var(--sp-2, 8px);
+  margin-bottom: var(--sp-3, 14px);
+}
+.pf-stage-wrap { display: flex; align-items: center; gap: var(--sp-2, 8px); }
+.pf-stage {
+  min-width: 108px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--sp-2, 8px) var(--sp-3, 14px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.pf-stage-name { font-size: 0.85em; font-weight: 600; }
+.pf-stage-count { font-family: var(--font-mono, monospace); font-size: 0.78em; color: var(--muted); }
+.pf-arrow { color: var(--faint); }
+
+.pf-tokens { display: flex; flex-wrap: wrap; gap: 2px; max-width: 120px; }
+.pf-token { width: 5px; height: 5px; border-radius: 50%; background: var(--border); }
+.pf-token.is-done { background: currentColor; }
+
+/* state colours */
+.pf-state-pending { color: var(--muted); }
+.pf-state-running { border-color: var(--accent); color: var(--accent); }
+.pf-state-waiting { border-color: var(--wait); color: var(--wait); }
+.pf-state-succeeded { border-color: var(--ok); color: var(--ok); }
+.pf-state-failed { border-color: var(--fail); color: var(--fail); }
+.pf-state-skipped { color: var(--faint); opacity: 0.7; }
+
+/* the active stage pulses — motion encodes "running now" */
+.pf-state-running { animation: pf-pulse 1.4s ease-in-out infinite; }
+@keyframes pf-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-soft); }
+  50% { box-shadow: 0 0 0 4px var(--accent-soft); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf-state-running { animation: none; }
+}
