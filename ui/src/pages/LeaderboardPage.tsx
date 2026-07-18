@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 import { Term } from "../components/Term";
+import { IconLeaderboard, IconPlay } from "../icons";
 
 /** Standard benchmarking — canonical, literature-anchored metrics rolled into
  *  the normalized Agenttic Index (the "Artificial Analysis for agents" spine). */
@@ -137,7 +138,7 @@ function StandardBenchmarks() {
 
       <div className="std-toolbar">
         <button className="primary" disabled={busy === "run"} onClick={runBench}>
-          {busy === "run" ? "Starting…" : "▶ Run benchmark"}
+          {busy === "run" ? "Starting…" : <><IconPlay /> Run benchmark</>}
         </button>
       </div>
       {msg && <div className={msg.kind === "ok" ? "note-ok" : "note-err"} style={{ margin: "0 0 14px" }}>{msg.text}</div>}
@@ -251,7 +252,7 @@ export function LeaderboardPage() {
             )}
 
             {agents.length === 0 ? (
-              <EmptyState icon="🏆" title="No scorecards yet"
+              <EmptyState icon={<IconLeaderboard />} title="No scorecards yet"
                 hint="Run a workflow or a standard benchmark — agents appear here once they have a scored run." />
             ) : (
               <>

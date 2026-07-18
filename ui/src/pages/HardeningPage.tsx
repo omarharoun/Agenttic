@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 import { Term } from "../components/Term";
+import { IconCheck, IconWarning, IconLive, IconShield, IconArrowRight, IconArrowLeft } from "../icons";
 
 const pct = (x: number | null | undefined) =>
   x == null ? "—" : `${Math.round(x * 100)}%`;
@@ -107,7 +108,7 @@ function RerunForm({ suiteId, onStarted }: {
         <button className="primary" disabled={busy} onClick={run}>
           {busy ? "Starting…" : "Re-run regression suite"}
         </button>
-        {err && <span role="alert" style={{ color: "var(--fail)", fontSize: 12 }}>⚠ {err}</span>}
+        {err && <span role="alert" style={{ color: "var(--fail)", fontSize: 12 }}><IconWarning size={13} /> {err}</span>}
       </div>
     </div>
   );
@@ -143,7 +144,7 @@ function SuiteDetail({ suiteId, onBack }: { suiteId: string; onBack: () => void 
   const runs = d.history?.length ?? 0;
   return (
     <div style={{ marginBottom: 20 }}>
-      <button className="ghost-sm" onClick={onBack}>← back to suites</button>
+      <button className="ghost-sm" onClick={onBack}><IconArrowLeft size={14} /> back to suites</button>
       <h2 className="mono" style={{ marginTop: 8 }}>{d.regression_suite_id}</h2>
       <p style={{ color: "var(--muted)", marginTop: -4 }}>
         agent <b className="mono">{d.agent_id}</b> · hardened from{" "}
@@ -256,7 +257,7 @@ function SuiteDetail({ suiteId, onBack }: { suiteId: string; onBack: () => void 
  * needs-review suite — we never fabricate the ground truth a live trace lacks,
  * so each promoted case wants a human's eyes (verify input + attach a rubric).
  * Deliberately distinct from the scorecard candidates below. */
-function LiveCatches({ onPromoted }: { onPromoted: (msg: string) => void }) {
+function LiveCatches({ onPromoted }: { onPromoted: (note: { ok: boolean; text: string }) => void }) {
   const [catches, setCatches] = useState<any[] | null>(null);
   const [rubric, setRubric] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -272,12 +273,12 @@ function LiveCatches({ onPromoted }: { onPromoted: (msg: string) => void }) {
         agent_id: c.agent_id, trace_ids: [c.trace_id], rubric_id: rubric,
       });
       const added = res.added?.length ?? 0;
-      onPromoted(added
+      onPromoted({ ok: true, text: added
         ? `Promoted live catch into ${res.regression_suite_id} (v${res.version}) — needs review before re-run.`
-        : `Already promoted — no new live case added.`);
+        : `Already promoted — no new live case added.` });
       load();
     } catch (e: any) {
-      onPromoted(`⚠ ${String(e.message ?? e)}`);
+      onPromoted({ ok: false, text: String(e.message ?? e) });
     } finally { setBusy(null); }
   };
 
@@ -298,7 +299,7 @@ function LiveCatches({ onPromoted }: { onPromoted: (msg: string) => void }) {
                style={{ maxWidth: 320 }} />
       </div>
       {catches === null ? <Skeleton rows={3} /> : catches.length === 0 ? (
-        <EmptyState icon="📡" title="No live catches"
+        <EmptyState icon={<IconLive />} title="No live catches"
           hint={<>When live monitoring scores a sampled production trace below the{" "}
             <Term name="drift">drift threshold</Term>, it shows up here as promotable.</>} />
       ) : (
@@ -320,7 +321,7 @@ function LiveCatches({ onPromoted }: { onPromoted: (msg: string) => void }) {
                     {c.created_at ? new Date(c.created_at).toLocaleString() : "—"}</td>
                   <td>
                     {c.already_promoted ? (
-                      <span style={{ fontSize: 12, color: "var(--muted)" }}>promoted ✓</span>
+                      <span style={{ fontSize: 12, color: "var(--muted)" }}>promoted <IconCheck size={12} /></span>
                     ) : (
                       <button disabled={busy === c.trace_id}
                               aria-label={`Promote live catch ${c.trace_id}`}
@@ -396,23 +397,23 @@ export function HardeningPage() {
 
         <div className="harden-flow" aria-hidden="true">
           <span className="hf-step"><span className="ic">①</span> Catch a failure</span>
-          <span className="hf-arrow">→</span>
+          <span className="hf-arrow"><IconArrowRight size={16} /></span>
           <span className="hf-step"><span className="ic">②</span> Promote to a regression suite</span>
-          <span className="hf-arrow">→</span>
+          <span className="hf-arrow"><IconArrowRight size={16} /></span>
           <span className="hf-step"><span className="ic">③</span> Re-run &amp; prove the fix held</span>
         </div>
 
         <div role="status" aria-live="polite">
           {note && (
             <div className={note.ok ? "note-ok" : "note-err"} style={{ marginBottom: 14 }}>
-              {note.ok ? "✓ " : "⚠ "}{note.text}
+              {note.ok ? <IconCheck size={13} /> : <IconWarning size={13} />} {note.text}
             </div>
           )}
         </div>
 
         <h3>Regression suites</h3>
         {suites === null ? <Skeleton rows={3} /> : suites.length === 0 ? (
-          <EmptyState icon="🛡" title="No regression suites yet"
+          <EmptyState icon={<IconShield />} title="No regression suites yet"
             hint="Promote a scorecard's failing cases below to create one." />
         ) : (
           <div className="table-wrap">
@@ -429,7 +430,7 @@ export function HardeningPage() {
                     <td className="mono" style={{ fontSize: 12 }}>
                       {s.source === "live" ? (
                         <span title="reconstructed from live production catches — needs review"
-                              style={{ color: "var(--wait)" }}>📡 live</span>
+                              style={{ color: "var(--wait)" }}><IconLive size={12} /> live</span>
                       ) : s.source_suite_id}</td>
                     <td className="num">{s.n_cases}</td>
                     <td className="num">{s.runs}</td>
@@ -485,8 +486,8 @@ export function HardeningPage() {
           </div>
         )}
 
-        <LiveCatches onPromoted={(text) => {
-          setNote({ ok: !text.startsWith("⚠"), text: text.replace(/^⚠ /, "") });
+        <LiveCatches onPromoted={(n) => {
+          setNote(n);
           refresh();
         }} />
       </div>

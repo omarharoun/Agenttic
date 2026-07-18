@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HexMark } from "../components/Icons";
+import { HexMark, IconLock, IconWarning, IconExternal, StatusIcon } from "../icons";
 import { SiteNav } from "../components/SiteNav";
 import { Link } from "react-router-dom";
 import { api } from "../api";
@@ -356,7 +356,7 @@ export function MethodologyPage() {
                   <span className="dc-meta-row">
                     {d.gated && (
                       <span className="dc-gated" title="Access-gated upstream — accept the dataset's terms / bring your own access token">
-                        <span aria-hidden="true">🔒</span> Gated
+                        <IconLock size={13} /> Gated
                       </span>
                     )}
                     <span className="dc-lic">{d.license}</span>
@@ -365,7 +365,7 @@ export function MethodologyPage() {
                 <div className="dc-meta">{d.citation}</div>
                 {d.caveat && (
                   <div className="dc-caveat">
-                    <span className="ic" aria-hidden="true">⚠</span>
+                    <span className="ic" aria-hidden="true"><IconWarning size={14} /></span>
                     <span>{d.caveat}</span>
                   </div>
                 )}
@@ -375,7 +375,7 @@ export function MethodologyPage() {
                   </code>
                   {d.source_url && (
                     <a className="dc-src" href={d.source_url} target="_blank" rel="noreferrer">
-                      Source ↗
+                      Source <IconExternal size={13} />
                     </a>
                   )}
                 </div>
@@ -454,8 +454,9 @@ export function MethodologyPage() {
               <code>/certified/&#123;id&#125;</code> page were issued by Agenttic
               and are unaltered: fetch the public key, then check the certificate's{" "}
               <code>signature</code> over its <code>signed_payload</code>. Each page
-              also carries a clear status — ✓&nbsp;Valid, ⚠&nbsp;Expired, or
-              ⛔&nbsp;Revoked. (The earlier scheme used a symmetric secret only
+              also carries a clear status — <StatusIcon tone="ok" size={13} />&nbsp;Valid,{" "}
+              <StatusIcon tone="wait" size={13} />&nbsp;Expired, or{" "}
+              <StatusIcon tone="fail" size={13} />&nbsp;Revoked. (The earlier scheme used a symmetric secret only
               Agenttic could check; this replaces it with true public
               verifiability.)
             </li>

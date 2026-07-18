@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Me } from "../api";
+import { IconSettings, IconKey, IconLogout, IconChevronDown } from "../icons";
 
 /** Top-bar account dropdown: identity (email · role · tenant) + Settings +
  *  logout. Mirrors a SaaS console's profile menu. */
@@ -23,7 +24,7 @@ export function AccountMenu({ me, onLogout }: { me: Me | null; onLogout: () => v
       <button className="acct-btn" onClick={() => setOpen((o) => !o)} title={email}>
         <span className="acct-avatar">{initial}</span>
         <span className="acct-email">{email}</span>
-        <span className="acct-caret">▾</span>
+        <span className="acct-caret"><IconChevronDown size={14} /></span>
       </button>
       {open && (
         <div className="acct-menu" role="menu">
@@ -36,14 +37,14 @@ export function AccountMenu({ me, onLogout }: { me: Me | null; onLogout: () => v
           </div>
           <div className="acct-sep" />
           <Link className="acct-item" to="/app/settings" onClick={() => setOpen(false)}>
-            <span className="ic">⚙</span> Settings
+            <span className="ic"><IconSettings size={16} /></span> Settings
           </Link>
           <Link className="acct-item" to="/app/settings?section=api-keys" onClick={() => setOpen(false)}>
-            <span className="ic">🔑</span> API keys
+            <span className="ic"><IconKey size={16} /></span> API keys
           </Link>
           <div className="acct-sep" />
           <button className="acct-item danger" onClick={() => { setOpen(false); onLogout(); }}>
-            <span className="ic">⎋</span> Log out
+            <span className="ic"><IconLogout size={16} /></span> Log out
           </button>
         </div>
       )}

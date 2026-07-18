@@ -482,6 +482,23 @@ table.data th,
 }
 .icon-btn:hover { color: var(--accent); border-color: var(--accent-line); }
 
+/* ---- icon system (SPEC-4 17.1) ------------------------------------------- */
+/* Stroke icons inherit color from currentColor and sit on the text baseline.
+   `.icon` is the neutral inline helper; component-scoped rules (.ic, .empty-ico,
+   status glyphs) size their own SVGs. */
+.icon { display: inline-flex; vertical-align: -0.15em; flex-shrink: 0; }
+.ic > svg, .icon > svg { display: block; }
+/* nav icons keep their 20px grid; the old font-size rule no longer applies */
+.app-nav a .ic { filter: none; opacity: 1; }
+.app-nav a .ic svg { width: 18px; height: 18px; }
+.app-nav .logo .ic svg { width: 18px; height: 18px; }
+.acct-item .ic svg, .settings-nav button .ic svg { width: 16px; height: 16px; }
+/* inline status glyphs that used to be emoji */
+.ic-status { display: inline-flex; vertical-align: -0.15em; }
+.ic-ok { color: var(--ok); }
+.ic-fail { color: var(--fail); }
+.ic-wait { color: var(--wait); }
+
 button {
   background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
   border-radius: var(--r-sm); padding: 7px var(--sp-4); cursor: pointer;
@@ -1243,7 +1260,8 @@ th.sortable:hover { color: var(--accent); }
 .skel-bar { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--panel-2), var(--border), var(--panel-2)); background-size: 200% 100%; animation: shimmer 1.3s infinite; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
-.empty-ico { font-size: 30px; color: var(--faint); margin-bottom: 10px; }
+.empty-ico { color: var(--faint); margin-bottom: 10px; display: flex; justify-content: center; }
+.empty-ico svg { width: 32px; height: 32px; }
 .empty-title { font: 500 var(--t-title)/1.2 var(--font-serif); color: var(--text); }
 .empty-hint { font-size: 13.5px; margin-top: 6px; }
 .empty-action { margin-top: 14px; }
@@ -3609,3 +3627,27 @@ a.btn-primary, button.btn-primary,
   .scanreport { padding: var(--sp-4); }
   .scanreport-card { padding: var(--sp-3); }
 }
+
+/* ---- style guide (SPEC-4 17.1) ------------------------------------------- */
+.styleguide .sg-section { margin-top: var(--sp-8); }
+.styleguide .sg-h2 { font: 500 var(--t-title)/1.2 var(--font-serif); color: var(--text); margin: 0 0 6px; }
+.styleguide .sg-lede { color: var(--muted); font-size: var(--t-sm); max-width: 640px; margin: 0 0 var(--sp-4); }
+.sg-icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.sg-icon-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 16px 8px; border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--panel-2);
+}
+.sg-icon-glyph { color: var(--text); display: flex; }
+.sg-icon-name { font-size: 11px; color: var(--muted); text-align: center; word-break: break-word; }
+.sg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.sg-status { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--t-sm); }
+.sg-token-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.sg-token {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--panel-2);
+}
+.sg-swatch { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border); flex-shrink: 0; }
+.sg-token-name { font-size: var(--t-sm); color: var(--text); }
+.sg-token-var { font-size: 11px; color: var(--muted); margin-left: auto; }
+.styleguide button { display: inline-flex; align-items: center; gap: 6px; }

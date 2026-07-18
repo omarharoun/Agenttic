@@ -4,6 +4,7 @@ import { api } from "../api";
 import { certIdOf, embedSnippets, gradeColor, isValidCertId, statusView } from "../cert";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 import { Seal } from "../components/Seal";
+import { IconCheck, IconExternal, IconResults, IconCertificate, IconInfo, StatusIcon } from "../icons";
 
 /* ============================================================================
    In-app Certifications — /app/certifications.
@@ -42,7 +43,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
           const sel = window.getSelection();
           sel?.removeAllRanges(); sel?.addRange(r);
         }}>{value}</code>
-        <button className="ghost-sm" onClick={copy}>{copied ? "Copied ✓" : "Copy"}</button>
+        <button className="ghost-sm" onClick={copy}>{copied ? <><IconCheck size={13} /> Copied</> : "Copy"}</button>
       </div>
     </div>
   );
@@ -61,7 +62,7 @@ function CertEmbed({ cert, id }: { cert: any; id: string }) {
             Grade {cert.grade ?? "—"}
           </div>
           <a className="embed-link" href={snip.link} target="_blank" rel="noreferrer">
-            View public certificate ↗
+            View public certificate <IconExternal size={13} />
           </a>
         </div>
       </div>
@@ -129,7 +130,7 @@ function ContinuousCertification() {
           </p>
           <div className="embed-field" style={{ alignItems: "flex-start" }}>
             <pre style={{ margin: 0, overflowX: "auto", flex: 1 }}><code>{CI_WORKFLOW}</code></pre>
-            <button className="ghost-sm" onClick={copy}>{copied ? "Copied ✓" : "Copy"}</button>
+            <button className="ghost-sm" onClick={copy}>{copied ? <><IconCheck size={13} /> Copied</> : "Copy"}</button>
           </div>
         </details>
       </div>
@@ -211,7 +212,7 @@ export function CertificationsPage() {
           </div>
           <div className="card-body">
             {scorecards === null ? <Skeleton rows={2} /> : scorecards.length === 0 ? (
-              <EmptyState icon="📊" title="No scorecards to certify yet"
+              <EmptyState icon={<IconResults />} title="No scorecards to certify yet"
                 hint={<>Run a safety scorecard first — from the guided flow or the{" "}
                   <Link to="/app/leaderboard">standard benchmarks</Link>.</>} />
             ) : (
@@ -233,7 +234,7 @@ export function CertificationsPage() {
                          onChange={(e) => setAgentName(e.target.value)} />
                 </div>
                 <button className="primary" disabled={!picked || busy} onClick={issue}>
-                  {busy ? "Issuing…" : "🏅 Certify this agent"}
+                  {busy ? "Issuing…" : <><IconCertificate size={15} /> Certify this agent</>}
                 </button>
               </div>
             )}
@@ -246,7 +247,7 @@ export function CertificationsPage() {
 
         {/* existing certs */}
         {certs === null ? <Skeleton rows={3} /> : certs.length === 0 ? (
-          <EmptyState icon="🏅" title="No certificates issued yet"
+          <EmptyState icon={<IconCertificate />} title="No certificates issued yet"
             hint="Certify a scorecard above to mint your first certificate and get its embed badge." />
         ) : (
           <div className="cert-list">
@@ -274,7 +275,7 @@ export function CertificationsPage() {
                       <div className="muted-sm">
                         <span className="mono">{id || "—"}</span> · grade{" "}
                         <b style={{ color: gradeColor(c.grade ?? "") }}>{c.grade ?? "—"}</b>{" "}
-                        · <span className={`cert-inline-status ${sv.tone}`}>{sv.icon} {sv.label}</span>
+                        · <span className={`cert-inline-status ${sv.tone}`}><StatusIcon tone={sv.tone} size={13} /> {sv.label}</span>
                         {version && <>
                           {" "}· <span className="cert-ver mono"
                             title="The exact agent version (config_hash) this grade is pinned to">
@@ -285,7 +286,7 @@ export function CertificationsPage() {
                     <span style={{ flex: 1 }} />
                     {hasId && (
                       <a className="ghost-sm" href={`/certified/${id}`} target="_blank"
-                         rel="noreferrer" style={{ marginRight: 6 }}>Public page ↗</a>
+                         rel="noreferrer" style={{ marginRight: 6 }}>Public page <IconExternal size={13} /></a>
                     )}
                     {hasId && (c.status ?? "valid") !== "revoked" && (
                       <button className="ghost-sm" onClick={() => revoke(id)}>Revoke</button>
@@ -293,7 +294,7 @@ export function CertificationsPage() {
                   </div>
                   {hasId && superseded && (
                     <p className="muted-sm" style={{ margin: "0 16px 4px" }}>
-                      ⓘ A newer certificate exists for this agent version — publish
+                      <IconInfo size={13} /> A newer certificate exists for this agent version — publish
                       the current one instead of this superseded grade.
                     </p>
                   )}

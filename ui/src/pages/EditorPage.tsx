@@ -14,6 +14,7 @@ import {
 } from "../store";
 import { GuidedFlow } from "../workflow/GuidedFlow";
 import { buildDoc, type Template } from "../workflow/templates";
+import { IconClose, IconDownload, IconHand, IconKey, IconPlay, IconPlus, IconTrash, IconWarning } from "../icons";
 
 /** Free-form starter graph, kept for the advanced canvas. */
 const STARTER = {
@@ -245,7 +246,7 @@ export function EditorPage() {
             <option key={w.workflow_id} value={w.workflow_id}>{w.name} · {w.n_nodes} nodes</option>
           ))}
         </select>
-        <button onClick={newWorkflow} title="New benchmark">＋</button>
+        <button onClick={newWorkflow} title="New benchmark" aria-label="New benchmark"><IconPlus /></button>
         {mode === "guided" && hasNodes && (
           <button title="Choose a different template"
                   onClick={() => load({ ...EMPTY, workflow_id: uniqueId("new-benchmark") })}>
@@ -259,12 +260,12 @@ export function EditorPage() {
           </button>
         )}
         {mode === "advanced" && (
-          <button onClick={exportWorkflow} title="Export this workflow as JSON">⤓</button>
+          <button onClick={exportWorkflow} title="Export this workflow as JSON" aria-label="Export this workflow as JSON"><IconDownload /></button>
         )}
         {mode === "advanced" && (
           <button onClick={() => fileInput.current?.click()} title="Import a workflow JSON file">⤒</button>
         )}
-        <button onClick={deleteWorkflow} title="Delete workflow">🗑</button>
+        <button onClick={deleteWorkflow} title="Delete workflow" aria-label="Delete workflow"><IconTrash size={15} /></button>
         <input ref={fileInput} type="file" accept=".json,application/json"
                style={{ display: "none" }}
                onChange={(e) => { const f = e.target.files?.[0]; if (f) importWorkflow(f); e.target.value = ""; }} />
@@ -282,7 +283,7 @@ export function EditorPage() {
           <span className={`status-chip ${store.exec.status}`}>{store.exec.status.replace("_", " ")}</span>
         )}
         {store.exec.status === "waiting_approval" && store.exec.executionId && (
-          <button className="approve" onClick={() => api.approve(store.exec.executionId!)}>✋ Approve</button>
+          <button className="approve" onClick={() => api.approve(store.exec.executionId!)}><IconHand size={15} /> Approve</button>
         )}
         {estimate?.estimate && (() => {
           const e = estimate.estimate, b = estimate.budget || {};
@@ -292,8 +293,8 @@ export function EditorPage() {
             <span style={{ fontSize: 12, color: over ? "var(--fail)" : "var(--muted)" }}
                   title={`projected: agent $${e.projected_agent_usd}, judge ` +
                          `$${e.projected_judge_usd} over ${e.n_cases} cases` +
-                         (over ? "\n⚠ exceeds budget cap" : "") + note}>
-              ~${e.projected_usd.toFixed(4)}{over ? " ⚠ over budget" : ""}
+                         (over ? "\nexceeds budget cap" : "") + note}>
+              ~${e.projected_usd.toFixed(4)}{over && <> <IconWarning size={12} /> over budget</>}
             </span>
           );
         })()}
@@ -301,7 +302,7 @@ export function EditorPage() {
         {running ? (
           <button onClick={() => store.exec.executionId && api.cancel(store.exec.executionId)}>Stop</button>
         ) : (
-          <button className="primary" onClick={run} disabled={!hasNodes}>▶ Run</button>
+          <button className="primary" onClick={run} disabled={!hasNodes}><IconPlay /> Run</button>
         )}
       </div>
 
@@ -309,7 +310,7 @@ export function EditorPage() {
 
       {keySet === false && (
         <div className="key-required-banner">
-          <span className="krb-ico">🔑</span>
+          <span className="krb-ico"><IconKey size={20} /></span>
           <div className="krb-body">
             <b>You'll need an Anthropic API key to run this evaluation.</b> Agenttic
             runs your agents with your own key (encrypted at rest, never shared).
@@ -369,7 +370,7 @@ function CostSummary({ estimate }: { estimate: any }) {
       </div>
       {over && (
         <div className="cost-warn">
-          ⚠ This run would exceed your budget cap{b.warn_only ? " (warning only)" : " — it may be blocked"}.
+          <IconWarning size={14} /> This run would exceed your budget cap{b.warn_only ? " (warning only)" : " — it may be blocked"}.
         </div>
       )}
     </div>
@@ -384,7 +385,7 @@ function RunProblems({ problems, onDismiss }: { problems: string[]; onDismiss: (
   const needsKey = problems.some((p) => /Anthropic API key/i.test(p));
   return (
     <div className="run-problems">
-      <span className="rp-ico">⚠</span>
+      <span className="rp-ico"><IconWarning size={20} /></span>
       <div className="rp-body">
         <div className="rp-title">{needsKey ? "Can't run yet" : `Couldn't run — ${problems.length} problem${problems.length > 1 ? "s" : ""}`}</div>
         <ul className="rp-list">
@@ -396,7 +397,7 @@ function RunProblems({ problems, onDismiss }: { problems: string[]; onDismiss: (
           </Link>
         )}
       </div>
-      <button className="rp-x" onClick={onDismiss} title="Dismiss">✕</button>
+      <button className="rp-x" onClick={onDismiss} title="Dismiss" aria-label="Dismiss"><IconClose size={14} /></button>
     </div>
   );
 }

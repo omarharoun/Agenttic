@@ -13,9 +13,12 @@
    never touches auth and is safe on the public bundle.
    ========================================================================== */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { CopilotApproval, CopilotErrorInfo } from "../api";
 import { Markdown } from "./markdown";
+import {
+  HexMark, IconWarning, IconSettings, IconClose, IconCheck, IconApproval, IconBilling, IconWaiting,
+} from "../icons";
 
 export interface ToolAct { tool: string; ok?: boolean; kind?: string; summary?: string; }
 
@@ -32,13 +35,13 @@ export interface ChatMsg {
 
 /** Per-code presentation for the error card (title + glyph + tone). The honest
  *  body copy comes from the server so the two stay in sync. */
-const ERROR_UI: Record<string, { title: string; icon: string; tone: string }> = {
-  unavailable:    { title: "Assistant unavailable",   icon: "⚠", tone: "warn" },
-  rate_limited:   { title: "One moment",              icon: "◔", tone: "warn" },
-  out_of_credits: { title: "Out of credits",          icon: "⬡", tone: "credits" },
-  daily_limit:    { title: "Daily limit reached",     icon: "◷", tone: "warn" },
-  not_configured: { title: "Assistant not configured", icon: "⚙", tone: "warn" },
-  generic:        { title: "Something went wrong",    icon: "⚠", tone: "warn" },
+const ERROR_UI: Record<string, { title: string; icon: ReactNode; tone: string }> = {
+  unavailable:    { title: "Assistant unavailable",   icon: <IconWarning size={16} />, tone: "warn" },
+  rate_limited:   { title: "One moment",              icon: <IconWaiting size={16} />, tone: "warn" },
+  out_of_credits: { title: "Out of credits",          icon: <HexMark size={16} />, tone: "credits" },
+  daily_limit:    { title: "Daily limit reached",     icon: <IconWaiting size={16} />, tone: "warn" },
+  not_configured: { title: "Assistant not configured", icon: <IconSettings size={16} />, tone: "warn" },
+  generic:        { title: "Something went wrong",    icon: <IconWarning size={16} />, tone: "warn" },
 };
 
 /** Human-readable label for a tool while it runs / after it's done. Covers both
@@ -78,13 +81,13 @@ function ChatTurn({ m, busy, onRetry, onUpgrade, onDecide, onNavigate }: {
 }) {
   return (
     <div className={`cp-msg ${m.role}`}>
-      {m.role === "assistant" && <span className="cp-av" aria-hidden>⬡</span>}
+      {m.role === "assistant" && <span className="cp-av" aria-hidden><HexMark size={16} /></span>}
       <div className="cp-msg-body">
         {m.role === "assistant" && m.tools && m.tools.length > 0 && (
           <ul className="cp-tools" aria-label="What the assistant did">
             {m.tools.map((t, i) => (
               <li key={i} className={`cp-tool ${t.ok === false ? "bad" : "ok"} ${t.kind === "write" ? "write" : ""}`}>
-                <span className="cp-tool-ic" aria-hidden>{t.ok === false ? "✕" : "✓"}</span>
+                <span className="cp-tool-ic" aria-hidden>{t.ok === false ? <IconClose size={13} /> : <IconCheck size={13} />}</span>
                 <span className="cp-tool-lbl">{toolLabel(t)}</span>
               </li>
             ))}
@@ -173,14 +176,14 @@ export function ApprovalCard({ a, busy, onDecide }: {
     <div className={`cp-approval risk-${risk}`} role="group" tabIndex={-1} ref={ref}
          aria-label="Action needs your confirmation">
       <div className="cp-approval-head">
-        <span className="cp-approval-ic" aria-hidden>🔐</span>
+        <span className="cp-approval-ic" aria-hidden><IconApproval size={16} /></span>
         <span className="cp-approval-tag">Confirm before running</span>
         <span className={`cp-approval-risk risk-${risk}`}>{risk} risk</span>
       </div>
       <h3 className="cp-approval-title">{a.card.title ?? `Run ${a.tool}?`}</h3>
       {a.card.detail && <p className="cp-approval-detail">{a.card.detail}</p>}
       {a.card.cost_note && (
-        <p className="cp-approval-cost"><span aria-hidden>💳</span> {a.card.cost_note}</p>
+        <p className="cp-approval-cost"><span aria-hidden><IconBilling size={14} /></span> {a.card.cost_note}</p>
       )}
       <p className="cp-approval-reassure">Nothing happens until you choose.</p>
       <div className="cp-approval-actions">

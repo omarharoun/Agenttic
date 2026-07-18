@@ -23,6 +23,10 @@ import {
 } from "../assistant";
 import { Seal } from "./Seal";
 import { type AssistantCert, useAssistantCert } from "../useAssistantCert";
+import {
+  HexMark, IconPen, IconCheck, IconSettings, IconApproval, IconShield,
+  IconFolder, IconKey, IconHand, IconExternal,
+} from "../icons";
 
 const POLL_MS = 800;
 
@@ -31,9 +35,9 @@ const POLL_MS = 800;
 function StepRow({ s }: { s: AssistantStep }) {
   const ic =
     s.status === "running" ? <span className="asst-step-spin" aria-hidden /> :
-    s.kind === "thought" ? <span className="asst-step-ic think" aria-hidden>✎</span> :
-    s.kind === "tool_result" ? <span className="asst-step-ic ok" aria-hidden>✓</span> :
-    <span className="asst-step-ic tool" aria-hidden>⚙</span>;
+    s.kind === "thought" ? <span className="asst-step-ic think" aria-hidden><IconPen size={14} /></span> :
+    s.kind === "tool_result" ? <span className="asst-step-ic ok" aria-hidden><IconCheck size={14} /></span> :
+    <span className="asst-step-ic tool" aria-hidden><IconSettings size={14} /></span>;
   return (
     <li className="asst-step">
       {ic}
@@ -56,7 +60,7 @@ function ApprovalCard({ p, onDecide, busy }: {
     <div className={`asst-approval ${tone}`} role="alertdialog" aria-modal="false"
          aria-labelledby="asst-approval-title" tabIndex={-1} ref={ref}>
       <div className="asst-approval-head">
-        <span className="asst-approval-ic" aria-hidden>🔐</span>
+        <span className="asst-approval-ic" aria-hidden><IconApproval size={16} /></span>
         <span className="asst-approval-tag">Your approval needed</span>
         <span className={`asst-approval-risk ${tone}`}>{p.risk ?? "low"} risk</span>
       </div>
@@ -85,7 +89,7 @@ function MessageBubble({ m, onDecide, decideBusy }: {
   const thinking = !isUser && m.status === "streaming" && !m.text;
   return (
     <div className={`asst-msg ${isUser ? "user" : "assistant"}`}>
-      {!isUser && <span className="asst-avatar" aria-hidden>⬡</span>}
+      {!isUser && <span className="asst-avatar" aria-hidden><HexMark size={16} /></span>}
       <div className="asst-msg-body">
         {/* transparent tool-use trail */}
         {!isUser && m.steps && m.steps.length > 0 && (
@@ -129,7 +133,7 @@ function SafetyRail({ posture, cert }: { posture: SafetyPosture; cert: Assistant
             <div className="asst-rail-cert">
               <b>Agenttic Safety Certified — Grade {cert!.grade}</b>
               <Link to={`/certified/${cert!.cert_id}`} className="asst-cert-link">
-                View certificate ↗</Link>
+                View certificate <IconExternal size={13} /></Link>
             </div>
           </>
         ) : (
@@ -137,20 +141,20 @@ function SafetyRail({ posture, cert }: { posture: SafetyPosture; cert: Assistant
             <Seal size={104} />
             <div className="asst-rail-cert">
               <b>Safety certification pending</b>
-              <Link to="/methodology" className="asst-cert-link">How grading works ↗</Link>
+              <Link to="/methodology" className="asst-cert-link">How grading works <IconExternal size={13} /></Link>
             </div>
           </>
         )}
       </div>
 
       <ul className="asst-posture">
-        <li className="ok"><span className="ap-ic" aria-hidden>🛡</span>
+        <li className="ok"><span className="ap-ic" aria-hidden><IconShield size={16} /></span>
           <span>{posture.sandboxed ? "Runs in a sandbox" : "Sandbox status unknown"}</span></li>
-        <li className="ok"><span className="ap-ic" aria-hidden>📁</span>
+        <li className="ok"><span className="ap-ic" aria-hidden><IconFolder size={16} /></span>
           <span>{posture.file_access ? "Can read files" : "Can't touch your files"}</span></li>
-        <li className="ok"><span className="ap-ic" aria-hidden>🔑</span>
+        <li className="ok"><span className="ap-ic" aria-hidden><IconKey size={16} /></span>
           <span>{posture.credential_access ? "Has credential access" : "No access to your secrets"}</span></li>
-        <li className="ok"><span className="ap-ic" aria-hidden>✋</span>
+        <li className="ok"><span className="ap-ic" aria-hidden><IconHand size={16} /></span>
           <span>{posture.approval_required ? "Sensitive actions need your OK" : "No approval gate"}</span></li>
       </ul>
 
@@ -172,7 +176,7 @@ function SafetyRail({ posture, cert }: { posture: SafetyPosture; cert: Assistant
           ? <> Its safety grade has been independently measured and published:{" "}
               <Link to={`/certified/${cert!.cert_id}`}>Grade {cert!.grade}</Link>.{" "}</>
           : " Its safety grade is published only once independently measured. "}
-        <Link to="/methodology">How grading works ↗</Link>
+        <Link to="/methodology">How grading works <IconExternal size={13} /></Link>
       </p>
     </aside>
   );
@@ -389,7 +393,7 @@ export function AssistantChat() {
       <div className="asst-main">
         {/* compact posture badge — the differentiator, always in view */}
         <div className="asst-posture-badge" role="note">
-          <span className="apb-ic" aria-hidden>🛡</span>
+          <span className="apb-ic" aria-hidden><IconShield size={16} /></span>
           <span className="apb-text">{postureLine(posture)}</span>
           {mode === "preview" && (
             <span className="apb-preview" title="The assistant service isn't connected in this build">

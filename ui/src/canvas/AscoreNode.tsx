@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { useFlowStore } from "../store";
+import { IconRefresh, IconHand, IconCheck, IconClose } from "../icons";
 
 const CAT_COLOR: Record<string, string> = {
   input: "var(--cat-input)",
@@ -9,12 +11,12 @@ const CAT_COLOR: Record<string, string> = {
   delivery: "var(--cat-delivery)",
 };
 
-const STATE_ICON: Record<string, string> = {
-  running: "⟳",
-  waiting: "✋",
-  succeeded: "✓",
-  failed: "✕",
-  skipped: "–",
+const STATE_ICON: Record<string, ReactNode> = {
+  running: <IconRefresh size={14} />,
+  waiting: <IconHand size={14} />,
+  succeeded: <IconCheck size={14} />,
+  failed: <IconClose size={14} />,
+  skipped: <span aria-hidden>–</span>,
 };
 
 export function AscoreNode({ id, data }: { id: string; data: any }) {

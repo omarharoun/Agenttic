@@ -4,6 +4,7 @@ import { api } from "../api";
 import { ExecutionLog } from "../panels/ExecutionLog";
 import { ResultsPanel } from "../panels/ResultsPanel";
 import { useFlowStore } from "../store";
+import { HexMark, IconWarning, IconHand } from "../icons";
 import { STEPS, type Template, TEMPLATES, isConfigurable, stepById } from "./templates";
 
 const AGENT_FIELDS = ["agent_id", "variant", "model", "system_prompt", "url",
@@ -163,13 +164,16 @@ function TemplatePicker({ onPick }: { onPick: (t: Template) => void }) {
         <p>Pick a starting point. Each lays out the steps as a simple, guided flow.</p>
       </div>
       <div className="tpl-grid">
-        {TEMPLATES.map((t) => (
-          <button key={t.key} className="tpl-card" onClick={() => onPick(t)}>
-            <div className="tpl-ico">{t.icon}</div>
-            <h3>{t.name}</h3>
-            <p>{t.tagline}</p>
-          </button>
-        ))}
+        {TEMPLATES.map((t) => {
+          const Ic = t.icon;
+          return (
+            <button key={t.key} className="tpl-card" onClick={() => onPick(t)}>
+              <div className="tpl-ico"><Ic size={26} /></div>
+              <h3>{t.name}</h3>
+              <p>{t.tagline}</p>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -196,7 +200,7 @@ function StepCard({ node }: { node: Node }) {
         <div className="step-num">{step.num}</div>
         <div className="step-title-wrap">
           <h3 className="step-title">
-            <span style={{ color: "var(--accent)" }}>{step.icon}</span>
+            <span style={{ color: "var(--accent)", display: "inline-flex" }}><step.icon size={18} /></span>
             {step.title}
           </h3>
           <p className="step-blurb">{empty ? (step.cta ?? step.blurb) : step.blurb}</p>
@@ -215,7 +219,7 @@ function StepCard({ node }: { node: Node }) {
         {state === "waiting" && exec.executionId && (
           <button className="approve" style={{ marginBottom: 6 }}
                   onClick={() => api.approve(exec.executionId!)}>
-            ✋ Approve these tests
+            <IconHand size={15} /> Approve these tests
           </button>
         )}
 
@@ -250,7 +254,7 @@ export function GuidedFlow({ results, onPickTemplate }: {
     <div className="guided">
       <div className="guided-inner">
         <div className="flow-banner">
-          <div className="step-num" style={{ width: 40, height: 40 }}>⬡</div>
+          <div className="step-num" style={{ width: 40, height: 40 }}><HexMark size={18} /></div>
           <div style={{ flex: 1 }}>
             <h2>{workflowName}</h2>
             <p>Fill in each step top to bottom, then hit Run. Steps light up as the run flows through them.</p>
@@ -258,8 +262,8 @@ export function GuidedFlow({ results, onPickTemplate }: {
         </div>
 
         {!isGuided && (
-          <p style={{ color: "var(--wait)", marginBottom: 18 }}>
-            ⚠ This workflow uses custom nodes — switch to Advanced to edit its full graph.
+          <p style={{ color: "var(--wait)", marginBottom: 18, display: "flex", alignItems: "center", gap: 6 }}>
+            <IconWarning size={15} /> This workflow uses custom nodes — switch to Advanced to edit its full graph.
           </p>
         )}
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { IconWarning, IconAgent } from "../icons";
 
 const SOURCE_COLOR: Record<string, string> = {
   scored: "var(--ok)", traced: "var(--cat-input)",
@@ -118,7 +119,7 @@ export function AgentsPage() {
             Register agent
           </button>
           {error && <span style={{ color: "var(--fail)", marginLeft: 10,
-                                   fontSize: 12 }}>⚠ {error}</span>}
+                                   fontSize: 12, display: "inline-flex", alignItems: "center", gap: 4 }}><IconWarning size={13} /> {error}</span>}
         </section>
 
         {catalog.length > 0 && (
@@ -155,10 +156,10 @@ export function AgentsPage() {
 
         <h3 style={{ color: "var(--muted)" }}>all agents (declared + discovered)</h3>
         {warning && (
-          <p style={{ color: "var(--wait)", fontSize: 12 }}>⚠ {warning}</p>
+          <p style={{ color: "var(--wait)", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}><IconWarning size={13} /> {warning}</p>
         )}
         {agents.length === 0 ? (
-          <EmptyState icon="🤖" title="No agents yet"
+          <EmptyState icon={<IconAgent />} title="No agents yet"
             hint="Register one above, or run a workflow — agents appear here automatically." />
         ) : (
           <div className="table-wrap">

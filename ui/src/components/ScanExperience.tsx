@@ -19,6 +19,7 @@ import { badgeUrl, certUrl, gradeColor } from "../cert";
 import { SCORE_MEANING } from "../workflow/templates";
 import { ScanReport } from "./ScanReport";
 import { Seal } from "./Seal";
+import { IconCheck, IconClose, IconWarning, IconKey, IconBolt, IconExternal, HexMark } from "../icons";
 
 type Phase = "idle" | "scanning" | "graded" | "error";
 
@@ -46,9 +47,9 @@ function explainError(e: any): { kind: "auth" | "key" | "other"; msg: string } {
 function CheckRow({ c }: { c: ScanCheck }) {
   const icon =
     c.status === "pending" ? <span className="scan-check-spin" aria-hidden /> :
-    c.passed ? <span className="scan-check-ic ok" aria-hidden>✓</span> :
+    c.passed ? <span className="scan-check-ic ok" aria-hidden><IconCheck size={14}/></span> :
     c.status === "warn" ? <span className="scan-check-ic wait" aria-hidden>!</span> :
-    <span className="scan-check-ic fail" aria-hidden>✗</span>;
+    <span className="scan-check-ic fail" aria-hidden><IconClose size={14}/></span>;
   const state = c.status === "pending" ? "checking…"
     : c.passed ? "Passed" : c.status === "warn" ? "Weak spot" : "Failed";
   return (
@@ -80,7 +81,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
           navigator.clipboard?.writeText(value).then(() => {
             setDone(true); setTimeout(() => setDone(false), 1400);
           });
-        }}>{done ? "Copied ✓" : "Copy"}</button>
+        }}>{done ? <><IconCheck size={13}/> Copied</> : "Copy"}</button>
       </div>
     </div>
   );
@@ -251,7 +252,7 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
                 </div>
                 <div className="scan-rigor"
                      title="A quick scan sends ~14 short safety probes and scores the replies with lexical refusal / target-token checks — a fast screen, not a full canonical suite run (k=3, against the real test environments). Treat it as a first look, not an exhaustive audit.">
-                  ⚡ Quick scan · ~14 probes · lexical screen
+                  <IconBolt size={13}/> Quick scan · ~14 probes · lexical screen
                 </div>
               </div>
             )}
@@ -275,7 +276,7 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
 
       {phase === "error" && err && (
         <div className={`scan-error ${err.kind}`}>
-          <div className="scan-error-ic">{err.kind === "auth" ? "🔑" : "⚠"}</div>
+          <div className="scan-error-ic">{err.kind === "auth" ? <IconKey size={20}/> : <IconWarning size={20}/>}</div>
           <p>{err.msg}</p>
           <div className="scan-error-actions">
             {err.kind === "auth" && (
@@ -440,7 +441,7 @@ function ConnectPanel({ onScan }: { onScan: () => void }) {
       </div>
       {test && test.ok && (
         <div className="connect-test ok">
-          <b>✓ Connected.</b> Your agent replied:
+          <b><IconCheck size={14}/> Connected.</b> Your agent replied:
           <blockquote>{test.reply.slice(0, 240) || "(empty reply)"}</blockquote>
         </div>
       )}
@@ -489,7 +490,7 @@ function GradedActions({ job, onReset }: { job: ScanJob; onReset: () => void }) 
   return (
     <div className="scan-actions">
       <div className="scan-cert-head">
-        <span className="seal-mark"><span className="sm-hex" aria-hidden>⬡</span> Tested with Agenttic</span>
+        <span className="seal-mark"><span className="sm-hex" aria-hidden><HexMark size={14} /></span> Tested with Agenttic</span>
         <span className="scan-cert-grade" style={{ color: gradeColor(grade) }}>Grade {grade}</span>
       </div>
       <p className="scan-cert-blurb">
@@ -502,7 +503,7 @@ function GradedActions({ job, onReset }: { job: ScanJob; onReset: () => void }) 
       </p>
       <div className="scan-embed-preview">
         <img src={badge} alt={`Agenttic Safety grade ${grade}`} height={28} />
-        <a href={page} target="_blank" rel="noreferrer" className="embed-link">View certificate ↗</a>
+        <a href={page} target="_blank" rel="noreferrer" className="embed-link">View certificate <IconExternal size={13}/></a>
       </div>
       <CopyField label="Badge for your README" value={md} />
       <div className="scan-actions-row">

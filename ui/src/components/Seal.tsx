@@ -5,13 +5,14 @@
    - <Seal>      a circular wax-seal-style mark ("AGENTTIC · SAFETY CERTIFIED")
                  with the hex glyph and an optional grade in the center. Used on
                  the public certificate page and the directory header.
-   - <SealMark>  a compact inline "⬡ Tested with Agenttic" lockup for nav / cards.
+   - <SealMark>  a compact inline "hexagon Tested with Agenttic" lockup for nav / cards.
 
    Pure SVG + CSS variables (Clay accent, currentColor) so it themes with the
    rest of Noor and needs no image asset.
    ========================================================================== */
 
 import { gradeColor } from "../cert";
+import { HexMark } from "../icons";
 
 /** Circular safety-certified seal. Pass a `grade` to stamp it in the middle;
  *  otherwise the hex mark sits center. */
@@ -46,26 +47,27 @@ export function Seal({ grade, size = 132, title = "Agenttic Safety Certified" }:
           SAFETY&nbsp;CERTIFIED
         </textPath>
       </text>
-      {/* center: grade, else hex mark */}
+      {/* center: grade, else hex mark (drawn as a path — no glyph font) */}
       {grade ? (
         <text x="60" y="60" className="seal-grade" fill={ring}
               textAnchor="middle" dominantBaseline="central">{grade}</text>
       ) : (
-        <text x="60" y="60" className="seal-hex" fill={ring}
-              textAnchor="middle" dominantBaseline="central">⬡</text>
+        <path className="seal-hex" transform="translate(48 48) scale(1)" fill="none"
+              stroke={ring} strokeWidth="2" strokeLinejoin="round"
+              d="M12 2l8.66 5v10L12 22l-8.66-5V7z" />
       )}
-      {/* tiny stars flanking */}
-      <text x="22" y="64" fill={ring} fontSize="9" textAnchor="middle">✦</text>
-      <text x="98" y="64" fill={ring} fontSize="9" textAnchor="middle">✦</text>
+      {/* tiny four-point stars flanking, drawn as paths */}
+      <path d="M22 60l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" fill={ring} />
+      <path d="M98 60l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" fill={ring} />
     </svg>
   );
 }
 
-/** Compact inline trust lockup — "⬡ Tested with Agenttic". */
+/** Compact inline trust lockup — "hexagon Tested with Agenttic". */
 export function SealMark({ label = "Tested with Agenttic" }: { label?: string }) {
   return (
     <span className="seal-mark" title="Agenttic Safety Certification">
-      <span className="sm-hex" aria-hidden="true">⬡</span>
+      <span className="sm-hex" aria-hidden="true"><HexMark size={14} /></span>
       <span className="sm-text">{label}</span>
     </span>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type Issue, type IssuesReport as Report } from "../api";
 import { EmptyState, Skeleton, Uncertainty } from "./ui";
+import { IconArrowRight, IconCheck, IconHalf, IconClose, IconWarning, StatusIcon } from "../icons";
 
 /** Severity → chip class + short label. Worst is loud, low is quiet. */
 const SEV: Record<Issue["severity"], { cls: string; label: string }> = {
@@ -43,7 +44,7 @@ function IssueCard({ issue }: { issue: Issue }) {
           </button>
         )}
         <Link className="issue-fix" to={fix.route} title={fix.blurb}>
-          {fix.label} →
+          {fix.label} <IconArrowRight size={13} />
         </Link>
       </div>
       {fix.blurb && <p className="issue-fixblurb">{fix.blurb}</p>}
@@ -62,7 +63,7 @@ function IssueCard({ issue }: { issue: Issue }) {
                 <code>{c.test_id}</code>
                 {c.score != null && (
                   <span className={`ev-score ${c.score >= 1 ? "ok" : c.score > 0 ? "half" : "bad"}`}>
-                    {c.score >= 1 ? "✓" : c.score > 0 ? "½" : "✕"} {c.score}
+                    {c.score >= 1 ? <IconCheck size={13} className="ic-ok" /> : c.score > 0 ? <IconHalf size={13} className="ic-wait" /> : <IconClose size={13} className="ic-fail" />} {c.score}
                   </span>
                 )}
                 {c.calibrated === false && <span className="ev-prov">provisional</span>}
@@ -112,7 +113,7 @@ export function IssuesReport({ executionId, report: injected }: {
   if (state === "error")
     return (
       <div className="issues-report">
-        <EmptyState icon="⚠" title="Couldn't load the issues report"
+        <EmptyState icon={<IconWarning />} title="Couldn't load the issues report"
                     hint="The run may not have scored any cases yet. Try again once it finishes." />
       </div>
     );
@@ -149,7 +150,7 @@ export function IssuesReport({ executionId, report: injected }: {
       </div>
 
       {s.clean ? (
-        <EmptyState icon="✓" title="No issues found"
+        <EmptyState icon={<StatusIcon tone="ok" />} title="No issues found"
                     hint="Every scored case passed, with no scoring errors or provisional scores. Nothing to fix here — re-run periodically or add harder cases to keep it honest." />
       ) : (
         <div className="issues-list">

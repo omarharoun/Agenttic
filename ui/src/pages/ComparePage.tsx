@@ -4,6 +4,7 @@ import { api, downloadBlob } from "../api";
 import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
 import { Term } from "../components/Term";
 import { money, ms } from "../stats";
+import { IconWarning, IconShield, IconCompare, IconDownload } from "../icons";
 
 /** Signed delta of two possibly-missing values; "—" when either is unknown. */
 const moneyDelta = (a?: number | null, b?: number | null) =>
@@ -221,7 +222,7 @@ function Comparison({ c, id }: { c: any; id: string }) {
 
       {c.excluded_test_ids?.length > 0 && (
         <p style={{ color: "var(--wait)", fontSize: 12, marginTop: 10 }}>
-          ⚠ {c.excluded_test_ids.length} case(s) errored in a variant and were
+          <IconWarning size={13} /> {c.excluded_test_ids.length} case(s) errored in a variant and were
           excluded from the comparison: {c.excluded_test_ids.join(", ")}
         </p>
       )}
@@ -233,18 +234,18 @@ function Comparison({ c, id }: { c: any; id: string }) {
         <button title="Download as PDF"
                 onClick={() => api.abPdf(id)
                   .then((b) => downloadBlob(b, `ab-comparison-${id}.pdf`)).catch(() => {})}>
-          ⤓ PDF
+          <IconDownload /> PDF
         </button>
         {c.scorecard_a_id && (
           <Link className="btn" to={`/app/hardening?promote=${c.scorecard_a_id}`}
                 title={`Promote ${la}'s failing cases into a regression suite`}>
-            🛡 Harden {la}'s failures
+<IconShield size={15} /> Harden {la}'s failures
           </Link>
         )}
         {c.scorecard_b_id && (
           <Link className="btn" to={`/app/hardening?promote=${c.scorecard_b_id}`}
                 title={`Promote ${lb}'s failing cases into a regression suite`}>
-            🛡 Harden {lb}'s failures
+<IconShield size={15} /> Harden {lb}'s failures
           </Link>
         )}
       </div>
@@ -337,7 +338,7 @@ export function ComparePage() {
                     title="Copy A's config into B (then tweak model/prompt)">
               clone A → B
             </button>
-            {error && <span style={{ color: "var(--fail)", fontSize: 12 }}>⚠ {error}</span>}
+            {error && <span style={{ color: "var(--fail)", fontSize: 12 }}><IconWarning size={13} /> {error}</span>}
           </div>
         </section>
 
@@ -357,7 +358,7 @@ export function ComparePage() {
               </p>
             )}
             {detail.status === "failed" && (
-              <p style={{ color: "var(--fail)" }}>⚠ {detail.error}</p>
+              <p style={{ color: "var(--fail)" }}><IconWarning size={13} /> {detail.error}</p>
             )}
             {detail.comparison && (
               <Comparison c={detail.comparison} id={detail.comparison_id} />
@@ -367,7 +368,7 @@ export function ComparePage() {
 
         <h3 style={{ color: "var(--muted)" }}>past comparisons</h3>
         {suites === null ? <Skeleton rows={4} /> : runs.length === 0 ? (
-          <EmptyState icon="⚖" title="No comparisons yet"
+          <EmptyState icon={<IconCompare />} title="No comparisons yet"
             hint="Pick a suite, configure two variants, and run a comparison." />
         ) : (
           <div className="table-wrap">

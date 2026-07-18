@@ -53,12 +53,12 @@ export function Skeleton({ rows = 5 }: { rows?: number }) {
 }
 
 /** Friendly empty state for tables/lists with nothing yet. */
-export function EmptyState({ icon = "◌", title, hint, action }: {
-  icon?: string; title: string; hint?: ReactNode; action?: ReactNode;
+export function EmptyState({ icon, title, hint, action }: {
+  icon?: ReactNode; title: string; hint?: ReactNode; action?: ReactNode;
 }) {
   return (
     <div className="empty-state">
-      <div className="empty-ico">{icon}</div>
+      {icon != null && <div className="empty-ico">{icon}</div>}
       <div className="empty-title">{title}</div>
       {hint && <div className="empty-hint">{hint}</div>}
       {action && <div className="empty-action">{action}</div>}

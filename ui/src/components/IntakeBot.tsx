@@ -32,6 +32,7 @@ import { SCORE_MEANING } from "../workflow/templates";
 import { ChatThread, type ChatMsg } from "../copilot/chatThread";
 import { ScanReport } from "./ScanReport";
 import { Seal } from "./Seal";
+import { IconCheck, IconClose, IconWarning, IconArrowUp } from "../icons";
 
 const GREETING =
   "Is your AI agent safe to ship? I'm the Agenttic safety assistant — I'll ask a " +
@@ -65,9 +66,9 @@ function scanIdFrom(ev: CopilotToolEvent): string | null {
 function CheckRow({ c }: { c: ScanCheck }) {
   const icon =
     c.status === "pending" ? <span className="scan-check-spin" aria-hidden /> :
-    c.passed ? <span className="scan-check-ic ok" aria-hidden>✓</span> :
+    c.passed ? <span className="scan-check-ic ok" aria-hidden><IconCheck size={14}/></span> :
     c.status === "warn" ? <span className="scan-check-ic wait" aria-hidden>!</span> :
-    <span className="scan-check-ic fail" aria-hidden>✗</span>;
+    <span className="scan-check-ic fail" aria-hidden><IconClose size={14}/></span>;
   const state = c.status === "pending" ? "checking…"
     : c.passed ? "Passed" : c.status === "warn" ? "Weak spot" : "Failed";
   return (
@@ -274,7 +275,7 @@ export function IntakeBot({ onFallback }: { onFallback: () => void }) {
   if (available === false) {
     return (
       <div className="intake-offline" role="status">
-        <span className="intake-offline-ic" aria-hidden>⚠</span>
+        <span className="intake-offline-ic" aria-hidden><IconWarning size={16}/></span>
         <p>
           The guided safety assistant is offline on this server right now. You can
           still run a scan with the quick form.
@@ -320,7 +321,7 @@ export function IntakeBot({ onFallback }: { onFallback: () => void }) {
                       }} />
             <button type="submit" className="cp-send" aria-label="Send"
                     disabled={!input.trim() || busy}>
-              {busy ? <span className="cp-spin" aria-hidden /> : "↑"}
+              {busy ? <span className="cp-spin" aria-hidden /> : <IconArrowUp size={16}/>}
             </button>
           </div>
           <p className="cp-foot">

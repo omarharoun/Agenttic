@@ -19,6 +19,7 @@ import {
   type CopilotErrorInfo, type CopilotHandlers, type CopilotToolEvent,
 } from "../api";
 import { ChatThread, type ChatMsg as Msg } from "./chatThread";
+import { HexMark, IconClose, IconArrowUp } from "../icons";
 
 /** Where "Upgrade or add credits" sends the user. The pricing/billing surface
  *  ships alongside real billing; until then this is a forward-compatible link. */
@@ -145,10 +146,10 @@ export default function CopilotPanel({ open, onClose }: {
       <aside className={`cp-panel ${open ? "open" : ""}`} role="complementary"
              aria-label="Agenttic Copilot" aria-hidden={!open}>
         <header className="cp-head">
-          <span className="cp-brand"><span className="cp-brand-ic" aria-hidden>⬡</span>Copilot</span>
+          <span className="cp-brand"><span className="cp-brand-ic" aria-hidden><HexMark size={16} /></span>Copilot</span>
           <span className="cp-brand-sub">Agent</span>
           <span style={{ flex: 1 }} />
-          <button className="cp-x" onClick={onClose} aria-label="Close Copilot" title="Close (Esc)">✕</button>
+          <button className="cp-x" onClick={onClose} aria-label="Close Copilot" title="Close (Esc)"><IconClose size={15} /></button>
         </header>
 
         {available === false && (
@@ -161,7 +162,7 @@ export default function CopilotPanel({ open, onClose }: {
         <div className="cp-thread" role="log" aria-live="polite" aria-label="Copilot conversation">
           {empty ? (
             <div className="cp-empty">
-              <div className="cp-empty-ic" aria-hidden>⬡</div>
+              <div className="cp-empty-ic" aria-hidden><HexMark size={26} /></div>
               <h2 className="cp-empty-title">What can I help you do?</h2>
               <p className="cp-empty-sub">
                 I can look things up and run tasks for you — list your agents, check
@@ -196,7 +197,7 @@ export default function CopilotPanel({ open, onClose }: {
                       }} />
             <button type="submit" className="cp-send" aria-label="Send"
                     disabled={!input.trim() || busy || available === false}>
-              {busy ? <span className="cp-spin" aria-hidden /> : "↑"}
+              {busy ? <span className="cp-spin" aria-hidden /> : <IconArrowUp size={16} />}
             </button>
           </div>
           <p className="cp-foot">

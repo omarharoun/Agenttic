@@ -9,6 +9,7 @@ import {
 } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
 import { Skeleton } from "../components/ui";
+import { StatusIcon, IconCheck, IconExternal } from "../icons";
 
 /* ============================================================================
    Public certificate verification page — /certified/:id (unauthenticated).
@@ -70,7 +71,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
           navigator.clipboard?.writeText(value).then(() => {
             setDone(true); setTimeout(() => setDone(false), 1400);
           });
-        }}>{done ? "Copied ✓" : "Copy"}</button>
+        }}>{done ? <><IconCheck size={13} /> Copied</> : "Copy"}</button>
       </div>
     </div>
   );
@@ -147,7 +148,7 @@ export function CertBody({ cert, id }: { cert: Certification; id: string }) {
     <>
       {/* status, stated plainly above the document (screen-reader friendly) */}
       <div className={`cert-status-banner ${sv.tone}`}>
-        <span className="csb-badge">{sv.icon} {sv.label}</span>
+        <span className="csb-badge"><StatusIcon tone={sv.tone} /> {sv.label}</span>
         <span className="csb-text">
           {cert.status === "valid"
             ? "This certification is active and verifiable."
@@ -156,7 +157,7 @@ export function CertBody({ cert, id }: { cert: Certification; id: string }) {
               : "This certification has been revoked and no longer attests to the agent's safety."}
         </span>
         <span className="csb-sig" title="Cryptographic signature on the certificate payload">
-          {cert.signature_verified ? "✓ Signature verified" : "⚠ Signature unverified"}
+          <StatusIcon tone={cert.signature_verified ? "ok" : "wait"} size={13} /> {cert.signature_verified ? "Signature verified" : "Signature unverified"}
         </span>
       </div>
 
@@ -222,7 +223,7 @@ export function CertBody({ cert, id }: { cert: Certification; id: string }) {
 
         <footer className="certdoc-sig">
           <span className={cert.signature_verified ? "ok" : "warn"}>
-            {cert.signature_verified ? "✓ Signature verified" : "⚠ Signature unverified"} · Ed25519
+            <StatusIcon tone={cert.signature_verified ? "ok" : "wait"} size={13} /> {cert.signature_verified ? "Signature verified" : "Signature unverified"} · Ed25519
           </span>
           <span>Tested with Agenttic</span>
         </footer>
@@ -258,7 +259,7 @@ export function CertBody({ cert, id }: { cert: Certification; id: string }) {
           calibration — are <b>NOT ASSESSED</b> here; they are covered by the
           full certification track (seven canonical metrics, real benchmark
           environments, k runs per case). <Link to="/methodology">How grading
-          works ↗</Link>
+          works <IconExternal size={13} /></Link>
         </p>
       </section>
 

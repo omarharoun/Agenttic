@@ -4,6 +4,7 @@ import { Uncertainty } from "../components/ui";
 import { money, ms } from "../stats";
 import { PASS_MEANING, PASS_THRESHOLD } from "../workflow/templates";
 import { Markdown } from "../components/Markdown";
+import { IconRefresh, IconWarning, IconCheck, IconHalf, IconClose, IconArrowRight, IconDownload } from "../icons";
 
 /** Post-run scoreboard: scorecard summary + one row per test case showing
  * the agent's prediction vs expected, expandable to per-criterion scores
@@ -31,7 +32,7 @@ export function ResultsPanel({ results }: { results: any }) {
         <div key={sc.scorecard_id}>
           {sc.cached && (
             <div className="note-ok" style={{ marginBottom: 8 }}>
-              ♻ Served from cache — identical to a previous run, so no agent or
+              <IconRefresh size={13} /> Served from cache — identical to a previous run, so no agent or
               judge calls were made (<b>$0</b>). Re-run with refresh to recompute.
             </div>
           )}
@@ -85,7 +86,7 @@ export function ResultsPanel({ results }: { results: any }) {
                       onClick={() => api.scorecardPdf(sc.scorecard_id)
                         .then((b) => downloadBlob(b, `scorecard-${sc.scorecard_id}.pdf`))
                         .catch(() => {})}>
-                ⤓ PDF
+                <IconDownload /> PDF
               </button>
             </div>
           </div>
@@ -124,12 +125,12 @@ export function ResultsPanel({ results }: { results: any }) {
             <span className="case-id">{c.test_id}</span>
             {c.scoring_error ? (
               <span className="want" title={c.scoring_error}>
-                ⚠ not scored: {c.scoring_error}
+                <IconWarning size={12} /> not scored: {c.scoring_error}
               </span>
             ) : (
               <>
                 <span className="pred" title={c.prediction}>
-                  → {c.prediction || "(no output)"}
+                  <IconArrowRight size={12} /> {c.prediction || "(no output)"}
                 </span>
                 {c.expected?.final_output !== undefined && !c.passed && (
                   <span className="want" title="expected">
@@ -148,7 +149,7 @@ export function ResultsPanel({ results }: { results: any }) {
               {c.criteria.map((cr: any) => (
                 <div key={cr.criterion_id} className="kv">
                   <span className={cr.score >= 1 ? "ok" : "err"}>
-                    {cr.score >= 1 ? "✓" : cr.score > 0 ? "½" : "✕"}
+                    {cr.score >= 1 ? <IconCheck size={13} /> : cr.score > 0 ? <IconHalf size={13} /> : <IconClose size={13} />}
                   </span>{" "}
                   {cr.criterion_id} <small>({cr.scorer}
                   {cr.calibrated ? "" : ", PROVISIONAL"})</small>

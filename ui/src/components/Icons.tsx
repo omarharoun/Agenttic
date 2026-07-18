@@ -4,7 +4,7 @@
    Small stroke SVGs in the Chronometer aesthetic — thin rhodium/gilt strokes,
    `currentColor` so the caller sets the metal via CSS. No emoji: these replace
    the old glyph icons on the public surfaces. `HexMark` is the brand hexagon,
-   the single source of truth for the "⬡" mark (nav, footer, favicon derive from
+   the single source of truth for the brand hexagon mark (nav, footer, favicon derive from
    the same geometry).
    ========================================================================== */
 

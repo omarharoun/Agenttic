@@ -5,6 +5,7 @@ import { api } from "../api";
 import { certIdOf, type DirectoryEntry, gradeColor, indexFromCert, statusView } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
 import { EmptyState, Skeleton } from "../components/ui";
+import { IconArrowRight, StatusIcon } from "../icons";
 
 /* ============================================================================
    Public Certified Agents directory — /certified (unauthenticated).
@@ -86,10 +87,10 @@ export function CertifiedDirectoryPage() {
                       {typeof c.index === "number" && (
                         <span className="cdc-index">Index {c.index}</span>
                       )}
-                      <span className={`cdc-status ${sv.tone}`}>{sv.icon} {sv.label}</span>
+                      <span className={`cdc-status ${sv.tone}`}><StatusIcon tone={sv.tone} size={13} /> {sv.label}</span>
                     </div>
                   </div>
-                  <span className="cdc-go" aria-hidden="true">→</span>
+                  <span className="cdc-go" aria-hidden="true"><IconArrowRight size={16} /></span>
                 </Link>
               );
             })}

@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
+import { HexMark, IconCheck, IconWarning } from "../icons";
 
 function Brand() {
   return (
     <Link to="/" className="brand" style={{ textDecoration: "none", color: "var(--text)",
       fontWeight: 600, fontSize: 19, fontFamily: "var(--font-serif)" }}>
-      <span style={{ color: "var(--accent)" }}>⬡</span> Agenttic
+      <span style={{ color: "var(--accent)", display: "inline-flex" }}><HexMark size={16} /></span> Agenttic
     </Link>
   );
 }
@@ -32,7 +33,7 @@ function CheckEmail({ email }: { email: string }) {
         </p>
         <button className="btn-primary" style={{ width: "100%", marginTop: 8 }}
                 disabled={busy || sent} onClick={resend}>
-          {sent ? "Sent ✓" : busy ? "…" : "Resend email"}
+          {sent ? <><IconCheck size={13}/> Sent</> : busy ? "…" : "Resend email"}
         </button>
         <div className="alt"><Link to="/login">Back to log in</Link></div>
       </div>
@@ -92,7 +93,7 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
                autoComplete={signup ? "new-password" : "current-password"}
                value={password} onChange={(e) => setPassword(e.target.value)} />
         {signup && <p className="muted" style={{ marginTop: 6 }}>At least 8 characters.</p>}
-        {err && <div className="err">⚠ {err}</div>}
+        {err && <div className="err"><IconWarning size={13}/> {err}</div>}
         <button className="btn-primary" type="submit" disabled={busy}
                 style={{ width: "100%", marginTop: 18 }}>
           {busy ? "…" : signup ? "Create account" : "Log in"}
@@ -135,7 +136,7 @@ export function VerifyPage() {
       <div className="auth-card" style={{ textAlign: "center" }}>
         <Brand />
         <h1 style={{ marginTop: 16 }}>
-          {state === "working" ? "Verifying…" : state === "ok" ? "Email confirmed ✓" : "Couldn't verify"}
+          {state === "working" ? "Verifying…" : state === "ok" ? <><IconCheck size={13}/> Email confirmed</> : "Couldn't verify"}
         </h1>
         <p className="muted">
           {state === "working" ? "One moment while we confirm your email."

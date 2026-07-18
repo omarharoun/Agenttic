@@ -9,6 +9,7 @@ import {
 } from "../api";
 import { money, sharePct } from "../billing";
 import { EmptyState, PageHeader, Spinner } from "../components/ui";
+import { IconInvoice } from "../icons";
 
 /* ============================================================================
    In-app Billing & subscription management (/app/billing).
@@ -221,7 +222,7 @@ export function BillingPage() {
         {/* --- invoices --- */}
         <h2 className="bill-h2">Invoices</h2>
         {invoices.length === 0 ? (
-          <EmptyState icon="🧾" title="No invoices yet"
+          <EmptyState icon={<IconInvoice />} title="No invoices yet"
                       hint="Invoices appear here after a subscription payment or a credit top-up." />
         ) : (
           <table className="data bill-invoices">

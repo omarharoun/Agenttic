@@ -6,6 +6,12 @@ import { EmptyState } from "./components/ui";
 import { useRunNotifications } from "./notify";
 import { useExecutionEvents } from "./sse";
 import { useFlowStore } from "./store";
+import {
+  IconWorkflow, IconRuns, IconResults, IconLeaderboard, IconCompare, IconIssues,
+  IconTarget, IconShield, IconOptimize, IconCertificate, IconAgent, IconResources,
+  IconBilling, IconSettings, IconHome, IconKey, IconBook, IconChat, IconCompass,
+  IconClose, HexMark, type IconProps,
+} from "./icons";
 import { AgentsPage } from "./pages/AgentsPage";
 import { BillingPage } from "./pages/BillingPage";
 import { CertificationsPage } from "./pages/CertificationsPage";
@@ -20,6 +26,7 @@ import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { OptimizePage } from "./pages/OptimizePage";
 import { ResourcesPage } from "./pages/ResourcesPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { StyleguidePage } from "./pages/StyleguidePage";
 import { TrainingCampPage } from "./pages/TrainingCampPage";
 
 /* The Copilot panel is code-split: its chunk (chat + Markdown renderer) loads
@@ -39,7 +46,7 @@ function CopilotDock() {
       <button className={`cp-launch ${open ? "hidden" : ""}`} onClick={toggle}
               aria-label="Open Agenttic Copilot" aria-expanded={open}
               title="Ask the Copilot">
-        <span className="cp-launch-ic" aria-hidden>⬡</span>
+        <span className="cp-launch-ic"><HexMark size={18} /></span>
         <span className="cp-launch-label">Copilot</span>
       </button>
       {mounted && (
@@ -60,8 +67,9 @@ function TokenControl() {
   return (
     <div style={{ position: "relative" }}>
       <button title={set ? "API token set" : "Set API token (optional)"}
+              aria-label={set ? "API token set" : "Set API token (optional)"}
               onClick={() => setOpen((o) => !o)} className="icon-btn"
-              style={{ color: set ? "var(--ok)" : "var(--muted)" }}>🔑</button>
+              style={{ color: set ? "var(--ok)" : "var(--muted)" }}><IconKey size={16} /></button>
       {open && (
         <div style={{ position: "absolute", left: 0, bottom: 42, zIndex: 20,
                       background: "var(--panel-2)", border: "1px solid var(--border)",
@@ -81,30 +89,31 @@ function TokenControl() {
  *  → Fix. Certify is demoted to a secondary group (still reachable, no longer the
  *  pitch). A benchmark authority opens on the Dashboard; the workflow builder is
  *  one demoted "New evaluation" entry, not the front door. */
-const NAV_GROUPS: { title: string; items: { to: string; icon: string; label: string }[] }[] = [
+type NavIcon = (p: IconProps) => JSX.Element;
+const NAV_GROUPS: { title: string; items: { to: string; icon: NavIcon; label: string }[] }[] = [
   { title: "Score", items: [
-    { to: "/app/build", icon: "＋", label: "New evaluation" },
-    { to: "/app/executions", icon: "▶", label: "Runs" },
-    { to: "/app/results", icon: "📊", label: "Results" },
-    { to: "/app/leaderboard", icon: "🏆", label: "Leaderboard" },
-    { to: "/app/compare", icon: "⚖", label: "Compare" },
+    { to: "/app/build", icon: IconWorkflow, label: "New evaluation" },
+    { to: "/app/executions", icon: IconRuns, label: "Runs" },
+    { to: "/app/results", icon: IconResults, label: "Results" },
+    { to: "/app/leaderboard", icon: IconLeaderboard, label: "Leaderboard" },
+    { to: "/app/compare", icon: IconCompare, label: "Compare" },
   ]},
   { title: "Issues", items: [
-    { to: "/app/issues", icon: "🔎", label: "Issues report" },
+    { to: "/app/issues", icon: IconIssues, label: "Issues report" },
   ]},
   { title: "Fix", items: [
-    { to: "/app/training-camp", icon: "🎯", label: "Training Camp" },
-    { to: "/app/hardening", icon: "🛡", label: "Hardening" },
-    { to: "/app/optimize", icon: "✨", label: "Optimize" },
+    { to: "/app/training-camp", icon: IconTarget, label: "Training Camp" },
+    { to: "/app/hardening", icon: IconShield, label: "Hardening" },
+    { to: "/app/optimize", icon: IconOptimize, label: "Optimize" },
   ]},
   { title: "Certify", items: [
-    { to: "/app/certifications", icon: "🏅", label: "Certification" },
+    { to: "/app/certifications", icon: IconCertificate, label: "Certification" },
   ]},
   { title: "Manage", items: [
-    { to: "/app/agents", icon: "🤖", label: "Agents" },
-    { to: "/app/resources", icon: "▤", label: "Resources" },
-    { to: "/app/billing", icon: "💳", label: "Billing" },
-    { to: "/app/settings", icon: "⚙", label: "Settings" },
+    { to: "/app/agents", icon: IconAgent, label: "Agents" },
+    { to: "/app/resources", icon: IconResources, label: "Resources" },
+    { to: "/app/billing", icon: IconBilling, label: "Billing" },
+    { to: "/app/settings", icon: IconSettings, label: "Settings" },
   ]},
 ];
 
@@ -114,7 +123,7 @@ function NotFoundPage() {
   const loc = useLocation();
   return (
     <div className="page">
-      <EmptyState icon="🧭" title="Page not found"
+      <EmptyState icon={<IconCompass />} title="Page not found"
         hint={<>No console page matches <code>{loc.pathname}</code>. It may have
           moved or the link may be mistyped.</>}
         action={<Link className="btn" to="/app">Back to dashboard</Link>} />
@@ -169,7 +178,7 @@ export function AppShell() {
     return (
       <div className="app-shell">
         <div className="app-loading">
-          <span className="app-loading-brand"><span className="ic">⬡</span> Agenttic</span>
+          <span className="app-loading-brand"><span className="ic"><HexMark size={18} /></span> Agenttic</span>
           <span className="spinner" />
           <span className="app-loading-note">Loading your workspace…</span>
         </div>
@@ -185,26 +194,30 @@ export function AppShell() {
     <div className="app-shell">
       <nav className="app-nav">
         <a className="logo" href="/" title="Agenttic home">
-          <span className="ic">⬡</span> Agenttic
+          <span className="ic"><HexMark size={18} /></span> Agenttic
         </a>
         <NavLink to="/app" end className="nav-home">
-          <span className="ic">▦</span> Dashboard
+          <span className="ic"><IconHome /></span> Dashboard
         </NavLink>
         {NAV_GROUPS.map((g) => (
           <div className="nav-group" key={g.title}>
             <div className="nav-group-title">{g.title}</div>
-            {g.items.map((it) => (
-              <NavLink key={it.to} to={it.to}>
-                <span className="ic">{it.icon}</span> {it.label}
-              </NavLink>
-            ))}
+            {g.items.map((it) => {
+              const Ic = it.icon;
+              return (
+                <NavLink key={it.to} to={it.to}>
+                  <span className="ic"><Ic /></span> {it.label}
+                </NavLink>
+              );
+            })}
           </div>
         ))}
         <span style={{ flex: 1 }} />
         <div className="nav-group">
           <div className="nav-group-title">More</div>
-          <Link to="/api-docs"><span className="ic">📖</span> API docs</Link>
-          <Link to="/assistant"><span className="ic">💬</span> Safe assistant</Link>
+          <Link to="/api-docs"><span className="ic"><IconBook /></span> API docs</Link>
+          <Link to="/assistant"><span className="ic"><IconChat /></span> Safe assistant</Link>
+          <NavLink to="/app/styleguide"><span className="ic"><HexMark size={18} /></span> Style guide</NavLink>
         </div>
         <div className="nav-foot"><TokenControl /></div>
       </nav>
@@ -220,14 +233,14 @@ export function AppShell() {
         </header>
         {showNudge && (
           <div className="key-nudge">
-            <span className="kn-ico">🔑</span>
+            <span className="kn-ico"><IconKey size={15} /></span>
             <span className="kn-text">
               <b>Add your Anthropic API key to start running tests.</b> Agenttic
               runs your agents with your own key — it's encrypted at rest and
               never shared.
             </span>
             <Link className="kn-cta" to="/app/settings?section=api-keys">Add key</Link>
-            <button className="kn-x" onClick={dismissNudge} title="Dismiss">✕</button>
+            <button className="kn-x" onClick={dismissNudge} title="Dismiss" aria-label="Dismiss"><IconClose size={14} /></button>
           </div>
         )}
         <div className="app-routes">
@@ -247,6 +260,7 @@ export function AppShell() {
             <Route path="resources" element={<ResourcesPage />} />
             <Route path="billing" element={<BillingPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="styleguide" element={<StyleguidePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </div>

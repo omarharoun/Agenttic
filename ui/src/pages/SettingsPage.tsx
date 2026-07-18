@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, type Me } from "../api";
 import { PageHeader, Spinner } from "../components/ui";
 import { type ThemePref, useThemePref } from "../theme";
+import { IconKey, IconLock, IconMonitor, IconMoon, IconSun } from "../icons";
 
 // Billing lives on its own page now (/app/billing) — plan, credit balance,
 // usage, upgrade/top-ups, and invoices. Settings stays account + API keys.
 type Section = "account" | "api-keys";
-const SECTIONS: { key: Section; label: string; icon: string }[] = [
+const SECTIONS: { key: Section; label: string; icon: ReactNode }[] = [
   { key: "account", label: "Account", icon: "◑" },
-  { key: "api-keys", label: "API keys", icon: "🔑" },
+  { key: "api-keys", label: "API keys", icon: <IconKey size={16} /> },
 ];
 
 export function SettingsPage() {
@@ -72,10 +73,10 @@ function AccountSection() {
   );
 }
 
-const APPEARANCE: { key: ThemePref; label: string; icon: string }[] = [
-  { key: "dark", label: "Dark", icon: "☾" },
-  { key: "light", label: "Light", icon: "☀" },
-  { key: "system", label: "System", icon: "🖥" },
+const APPEARANCE: { key: ThemePref; label: string; icon: ReactNode }[] = [
+  { key: "dark", label: "Dark", icon: <IconMoon size={16} /> },
+  { key: "light", label: "Light", icon: <IconSun size={16} /> },
+  { key: "system", label: "System", icon: <IconMonitor size={16} /> },
 ];
 
 function AppearanceCard() {
@@ -107,7 +108,7 @@ function ApiKeysSection() {
     setBusy("test"); setMsg(null);
     try {
       const r = await api.testAnthropicKey(key.trim());
-      setMsg(r.valid ? { kind: "ok", text: "Key is valid ✓" }
+      setMsg(r.valid ? { kind: "ok", text: "Key is valid" }
                      : { kind: "err", text: r.error || "Key is not valid" });
     } catch (e: any) { setMsg({ kind: "err", text: String(e.message ?? e) }); }
     finally { setBusy(""); }
@@ -117,7 +118,7 @@ function ApiKeysSection() {
     try {
       await api.setAnthropicKey(key.trim());
       setKey(""); await load();
-      setMsg({ kind: "ok", text: "Saved ✓" });
+      setMsg({ kind: "ok", text: "Saved" });
     } catch (e: any) {
       setMsg({ kind: "err", text: String(e.message ?? e).replace(/^\d+\s*/, "") });
     } finally { setBusy(""); }
@@ -150,8 +151,8 @@ function ApiKeysSection() {
       <label>{status?.set ? "Replace key" : "Add your key"}</label>
       <input type="password" value={key} placeholder="sk-ant-…"
              autoComplete="off" onChange={(e) => setKey(e.target.value)} />
-      <p className="key-safety">
-        🔒 Your API key is <b>encrypted at rest, never logged, never shared</b>, and only used to run your own tests.
+      <p className="key-safety" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <IconLock size={14} /> Your API key is <b>encrypted at rest, never logged, never shared</b>, and only used to run your own tests.
       </p>
       <div className="key-actions">
         <button disabled={!key.trim() || busy === "test"} onClick={test}>
@@ -241,8 +242,8 @@ function PersonalTokensCard() {
           ))}
         </ul>
       )}
-      <p className="muted-sm" style={{ marginTop: 12 }}>
-        🔒 Stored hashed — only shown once at creation. Revoking takes effect immediately.
+      <p className="muted-sm" style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 6 }}>
+        <IconLock size={14} /> Stored hashed — only shown once at creation. Revoking takes effect immediately.
         See the <Link to="/api-docs">API docs</Link> for the run-a-test quickstart.
       </p>
     </Card>

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api, downloadBlob } from "../api";
 import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
 import { Markdown } from "../components/Markdown";
+import { IconRefresh, IconResults, IconCertificate, IconDownload } from "../icons";
 import { money } from "../stats";
 import { PASS_MEANING } from "../workflow/templates";
 
@@ -25,7 +26,7 @@ interface Row {
 }
 
 /** Results history — every past scorecard for the tenant, re-openable without
- *  re-running. A ♻ badge marks results that are cached (an identical re-run is
+ *  re-running. A recycle badge marks results that are cached (an identical re-run is
  *  served for free). */
 export function ResultsHistoryPage() {
   const [rows, setRows] = useState<Row[] | null>(null);
@@ -39,7 +40,7 @@ export function ResultsHistoryPage() {
     api.scorecardReport(id)
       .then((text) => setReport({ id, text }))
       .catch(() => setReport({
-        id, text: "⚠ Could not load this report. Please try again.",
+        id, text: "Could not load this report. Please try again.",
       }));
 
   const total = (rows ?? []).reduce(
@@ -53,14 +54,14 @@ export function ResultsHistoryPage() {
           subtitle={
             <>Every score you've run — browse and re-open without re-running. To see
             what's wrong with a run, open its <Link to="/app/issues">Issues report</Link>.{" "}
-            <span className="mono">♻</span> marks cached results: an identical re-run
+            <IconRefresh size={13} /> marks cached results: an identical re-run
             is served for free (no agent or judge calls).</>
           }
         />
         {rows === null ? (
           <Skeleton rows={6} />
         ) : rows.length === 0 ? (
-          <EmptyState icon="📊" title="No results yet"
+          <EmptyState icon={<IconResults />} title="No results yet"
                       hint="Run a test (guided flow, quickstart, or the REST API) — results land here." />
         ) : (
           <>
@@ -88,7 +89,7 @@ export function ResultsHistoryPage() {
                           {r.scorecard_id}
                           {r.cached && (
                             <span className="pill" title="Cached — identical re-runs are free"
-                                  style={{ marginLeft: 6 }}>♻ cached</span>
+                                  style={{ marginLeft: 6, display: "inline-flex", alignItems: "center", gap: 4 }}><IconRefresh size={12} /> cached</span>
                           )}
                         </td>
                         <td>{r.agent_id}</td>
@@ -110,11 +111,11 @@ export function ResultsHistoryPage() {
                           <button style={{ marginLeft: 6 }} title="Download as PDF"
                                   onClick={() => api.scorecardPdf(r.scorecard_id)
                                     .then((b) => downloadBlob(b, `scorecard-${r.scorecard_id}.pdf`))
-                                    .catch(() => {})}>⤓ PDF</button>
+                                    .catch(() => {})}><IconDownload /> PDF</button>
                           <Link className="btn-cell" style={{ marginLeft: 6 }}
                                 title="Issue a safety certificate from this scorecard"
                                 to={`/app/certifications?scorecard=${encodeURIComponent(r.scorecard_id)}`}>
-                            🏅 Certify
+                            <IconCertificate size={14} /> Certify
                           </Link>
                         </td>
                       </tr>
