@@ -40,6 +40,9 @@ import type {
   UploadResult, ExtractResult,
   // copilot streaming
   CopilotHandlers, CopilotErrorInfo,
+  // moat — lineage, calibration, escalations (SPEC-4 Step 20)
+  AgentLineage, JudgeLineage, CalibrationReport, NextUnlabeled, LabelResult,
+  EscalationInbox, EscalationRespondResult,
   // dynamic values
   JsonObject, JsonValue,
 } from "./api/types";
@@ -570,6 +573,45 @@ export const api = {
     return afetch("/api/documents/extract", { method: "POST", body: fd }).then(
       (r) => json<ExtractResult>(r));
   },
+
+  // --- the "moat" surface (SPEC-4 Step 20) — the differentiators, made
+  //     visible: config lineage + gate receipts, judge lineage, calibration +
+  //     labeling, and the human-in-the-loop escalation inbox. ---------------
+
+  /** The agent-config family tree: baseline → promoted/rejected children, each
+   *  node carrying its FULL gate receipt verbatim. */
+  agentLineage: (agentId: string) =>
+    afetch(`/api/lineage/agents/${encodeURIComponent(agentId)}`)
+      .then((r) => json<AgentLineage>(r)),
+  /** A criterion's judge-config lineage (v1→vN) with before/after agreement. */
+  judgeLineage: (criterionId: string) =>
+    afetch(`/api/lineage/judges/${encodeURIComponent(criterionId)}`)
+      .then((r) => json<JudgeLineage>(r)),
+  /** Per-criterion calibration status + the open judge-optimization requests. */
+  calibration: (suiteId?: string) =>
+    afetch("/api/calibration" +
+      (suiteId ? `?suite_id=${encodeURIComponent(suiteId)}` : ""))
+      .then((r) => json<CalibrationReport>(r)),
+  /** The next trace awaiting a human label for a criterion (labeling workspace). */
+  nextUnlabeled: (criterionId: string, suiteId?: string) =>
+    afetch(`/api/calibration/${encodeURIComponent(criterionId)}/next-unlabeled` +
+      (suiteId ? `?suite_id=${encodeURIComponent(suiteId)}` : ""))
+      .then((r) => json<NextUnlabeled>(r)),
+  /** Append a human label on the shared {0, 0.5, 1} scale; returns updated status. */
+  addLabel: (body: { trace_id: string; criterion_id: string; score: number }) =>
+    afetch("/api/calibration/labels", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<LabelResult>(r)),
+  /** The escalation inbox: pending questions + resolved history + pending_count. */
+  escalations: () =>
+    afetch("/api/escalations").then((r) => json<EscalationInbox>(r)),
+  /** Resolve a pending escalation with the human's decision. */
+  respondEscalation: (traceId: string, response: string) =>
+    afetch(`/api/escalations/${encodeURIComponent(traceId)}/respond`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ response }),
+    }).then((r) => json<EscalationRespondResult>(r)),
 };
 
 /* ------------------------------------------------------------------------ *

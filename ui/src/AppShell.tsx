@@ -10,7 +10,7 @@ import {
   IconWorkflow, IconRuns, IconResults, IconLeaderboard, IconCompare, IconIssues,
   IconTarget, IconShield, IconOptimize, IconCertificate, IconAgent, IconResources,
   IconBilling, IconSettings, IconHome, IconKey, IconBook, IconChat, IconCompass,
-  IconClose, HexMark, type IconProps,
+  IconClose, IconBeaker, IconHand, IconArrowRight, HexMark, type IconProps,
 } from "./icons";
 import { AgentsPage } from "./pages/AgentsPage";
 import { BillingPage } from "./pages/BillingPage";
@@ -28,6 +28,9 @@ import { ResourcesPage } from "./pages/ResourcesPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { StyleguidePage } from "./pages/StyleguidePage";
 import { TrainingCampPage } from "./pages/TrainingCampPage";
+import { LineagePage } from "./pages/LineagePage";
+import { CalibrationPage } from "./pages/CalibrationPage";
+import { EscalationsPage } from "./pages/EscalationsPage";
 
 /* The Copilot panel is code-split: its chunk (chat + Markdown renderer) loads
    only when the user first opens the drawer, so it never weighs on the public
@@ -106,8 +109,11 @@ const NAV_GROUPS: { title: string; items: { to: string; icon: NavIcon; label: st
     { to: "/app/training-camp", icon: IconTarget, label: "Training Camp" },
     { to: "/app/hardening", icon: IconShield, label: "Hardening" },
     { to: "/app/optimize", icon: IconOptimize, label: "Optimize" },
+    { to: "/app/optimize/lineage", icon: IconCompass, label: "Lineage" },
   ]},
-  { title: "Certify", items: [
+  { title: "Govern", items: [
+    { to: "/app/calibration", icon: IconBeaker, label: "Calibration" },
+    { to: "/app/escalations", icon: IconHand, label: "Escalations" },
     { to: "/app/certifications", icon: IconCertificate, label: "Certification" },
   ]},
   { title: "Manage", items: [
@@ -117,6 +123,31 @@ const NAV_GROUPS: { title: string; items: { to: string; icon: NavIcon; label: st
     { to: "/app/settings", icon: IconSettings, label: "Settings" },
   ]},
 ];
+
+/** Top-bar escalation indicator: the count of pending human escalations, polled
+ *  from the HITL inbox and linked to it. Hidden when nothing is waiting so it
+ *  never adds noise. */
+function EscalationBadge() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const load = () => api.escalations()
+      .then((d) => { if (alive) setCount(d.pending_count ?? 0); })
+      .catch(() => { /* absent surface — stay silent */ });
+    load();
+    const t = setInterval(load, 15000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+  if (count <= 0) return null;
+  return (
+    <Link to="/app/escalations" className="esc-badge"
+          aria-label={`${count} escalation${count === 1 ? "" : "s"} waiting for a human`}>
+      <IconHand size={15} />
+      <span>{count} waiting</span>
+      <IconArrowRight size={13} />
+    </Link>
+  );
+}
 
 /** Honest in-app 404 for unknown /app/* routes — a blank screen would read as a
  *  broken page; this names the mistake and routes back to solid ground. */
@@ -230,6 +261,7 @@ export function AppShell() {
             <span className="topbar-ws-name mono">{me?.tenant ?? "default"}</span>
           </div>
           <span style={{ flex: 1 }} />
+          <EscalationBadge />
           <AccountMenu me={me} onLogout={logout} />
         </header>
         {showNudge && (
@@ -257,6 +289,9 @@ export function AppShell() {
             <Route path="training-camp" element={<TrainingCampPage />} />
             <Route path="hardening" element={<HardeningPage />} />
             <Route path="optimize" element={<OptimizePage />} />
+            <Route path="optimize/lineage" element={<LineagePage />} />
+            <Route path="calibration" element={<CalibrationPage />} />
+            <Route path="escalations" element={<EscalationsPage />} />
             <Route path="agents" element={<AgentsPage />} />
             <Route path="resources" element={<ResourcesPage />} />
             <Route path="billing" element={<BillingPage />} />
