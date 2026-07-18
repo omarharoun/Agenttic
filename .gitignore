@@ -9,6 +9,8 @@ ascore.db
 *.db
 *.db-shm
 *.db-wal
+ascore.db-shm
+ascore.db-wal
 ascore.*.db
 ascore.*.db-shm
 ascore.*.db-wal
