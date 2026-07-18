@@ -19,6 +19,22 @@ from agenttic.scoring.judge import LLMJudge
 
 DEFAULT_PASS_THRESHOLD = 0.7
 
+
+def overall_pass(scores: dict[str, float], weights: dict[str, float],
+                 pass_threshold: float = DEFAULT_PASS_THRESHOLD) -> tuple[float, bool]:
+    """The single source of truth for a run's ``passed``: the weighted mean of
+    the criterion scores against the pass threshold.
+
+        weighted = Σ(score·weight) / Σ(weight);   passed = weighted >= threshold
+
+    Pure and dependency-free so the console what-if instrument (SPEC-5 23.2)
+    can recompute pass/fail client-side and be proven identical to this via the
+    golden parity harness."""
+    total_weight = sum(weights[cid] for cid in scores)
+    weighted = sum(scores[cid] * weights[cid] for cid in scores) / total_weight
+    return weighted, weighted >= pass_threshold
+
+
 #: checks that inspect the trajectory; meaningless for black-box traces
 TRAJECTORY_ONLY_CHECKS = frozenset({
     "required_tool_called", "forbidden_tool_not_called", "steps_under_limit",
@@ -233,16 +249,14 @@ def score_run(
         cs.calibrated = criterion.criterion_id not in uncalibrated
         scores.append(cs)
 
-    total_weight = sum(rubric.weights[c.criterion_id] for c in criteria)
-    weighted = sum(
-        s.score * rubric.weights[s.criterion_id] for s in scores
-    ) / total_weight
+    _weighted, is_pass = overall_pass(
+        {s.criterion_id: s.score for s in scores}, rubric.weights, pass_threshold)
 
     return RunScore(
         trace_id=trace.trace_id,
         test_id=tc.test_id,
         criterion_scores=scores,
-        passed=weighted >= pass_threshold,
+        passed=is_pass,
         cost_usd=trace.total_cost_usd,
         scoring_cost_usd=sum(s.cost_usd for s in scores),
         latency_ms=trace.total_latency_ms,

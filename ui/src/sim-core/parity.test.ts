@@ -13,7 +13,7 @@ import { describe, it, expect } from "vitest";
 import {
   gate, evaluateCandidate, driftStatus, shouldEscalate,
   escalatedAppropriatelyScore, wilsonInterval, wilsonLowerBound,
-  exactMatchRate, krippendorffAlphaInterval,
+  exactMatchRate, krippendorffAlphaInterval, recomputeScorecard,
 } from "./index";
 
 function load(name: string): any {
@@ -78,6 +78,25 @@ describe("sim-core parity — escalation", () => {
         const s = escalatedAppropriatelyScore(c.input.tags, c.input.escalated);
         expect(s).toBe(c.expected.score);
       }
+    }
+  });
+});
+
+describe("sim-core parity — what-if (scorecard recompute)", () => {
+  const cases = load("whatif");
+  it(`replays ${cases.length} cases`, () => {
+    for (const c of cases) {
+      const r = recomputeScorecard(c.input.runs, c.input.weights, c.input.passThreshold);
+      expect(r.nPassed).toBe(c.expected.nPassed);
+      expect(r.nScored).toBe(c.expected.nScored);
+      close(r.successRate, c.expected.successRate);
+      close(r.wilsonLow, c.expected.wilsonLow);
+      close(r.wilsonHigh, c.expected.wilsonHigh);
+      expect(r.perCase.length).toBe(c.expected.perCase.length);
+      r.perCase.forEach((pc, i) => {
+        expect(pc.passed).toBe(c.expected.perCase[i].passed);   // server-identical
+        close(pc.weighted, c.expected.perCase[i].weighted);
+      });
     }
   });
 });

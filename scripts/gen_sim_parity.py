@@ -32,6 +32,7 @@ from agenttic.optimizer import evaluate_candidate
 from agenttic.stats import wilson_interval, wilson_lower_bound
 from agenttic.scoring.calibration import exact_match_rate, krippendorff_alpha_interval
 from agenttic.scoring.checks import escalated_appropriately
+from agenttic.scoring.engine import overall_pass
 from agenttic.adapters.anthropic_simple import AnthropicSimpleAgent
 from agenttic.live.monitor import LiveMonitor
 from agenttic.schema.rubric import Criterion
@@ -263,6 +264,40 @@ def gen_stats(rng, n=100):
 
 
 # --------------------------------------------------------------------------- #
+def gen_whatif(rng, n=120):
+    """Real engine.overall_pass over random criterion scores + weights +
+    threshold, plus a scorecard-level recompute (success rate) for 23.2."""
+    scale3 = [0.0, 0.5, 1.0]
+    cases = []
+    for _ in range(n):
+        k = rng.randint(1, 4)
+        crit_ids = rng.sample(CRITS, k)
+        weights = {c: rng.choice([1.0, 2.0, 0.5, 3.0]) for c in crit_ids}
+        threshold = rng.choice([0.5, 0.6, 0.7, 0.8])
+        m = rng.randint(1, 8)
+        runs = []
+        for j in range(m):
+            scores = {c: rng.choice(scale3) for c in crit_ids}
+            err = rng.random() < 0.15
+            runs.append({"testId": f"t{j}", "scores": scores, "scoringError": err})
+        per_case, n_passed, n_scored = [], 0, 0
+        for r in runs:
+            weighted, passed = overall_pass(r["scores"], weights, threshold)
+            per_case.append({"testId": r["testId"], "weighted": weighted, "passed": passed})
+            if not r["scoringError"]:
+                n_scored += 1
+                if passed:
+                    n_passed += 1
+        rate = (n_passed / n_scored) if n_scored else 0.0
+        low, high = wilson_interval(n_passed, n_scored)
+        cases.append({
+            "input": {"runs": runs, "weights": weights, "passThreshold": threshold},
+            "expected": {"perCase": per_case, "nPassed": n_passed, "nScored": n_scored,
+                         "successRate": rate, "wilsonLow": low, "wilsonHigh": high},
+        })
+    return cases
+
+
 def build_all(seed=20260718):
     rng = random.Random(seed)
     # fixed call order => deterministic streams per module
@@ -272,6 +307,7 @@ def build_all(seed=20260718):
         "drift": gen_drift(rng),
         "escalation": gen_escalation(rng),
         "stats": gen_stats(rng),
+        "whatif": gen_whatif(rng),
     }
 
 
