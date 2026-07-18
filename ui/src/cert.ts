@@ -130,23 +130,23 @@ export function gradeColor(grade: string): string {
 /* ------------------------------- status ---------------------------------- */
 
 export interface StatusView {
-  icon: string;
   label: string;
   tone: "ok" | "wait" | "fail";
 }
 
-/** Presentation for a certificate status (the ✓ Valid / ⚠ Expired / ⛔ Revoked
- *  trust line). */
+/** Presentation for a certificate status (the Valid / Expired / Revoked trust
+ *  line). The `tone` selects the stroke glyph at the render layer (check /
+ *  warning / no-entry) — this module stays JSX-free. */
 export function statusView(status: CertStatus): StatusView {
   switch (status) {
     case "valid":
-      return { icon: "✓", label: "Valid", tone: "ok" };
+      return { label: "Valid", tone: "ok" };
     case "expired":
-      return { icon: "⚠", label: "Expired", tone: "wait" };
+      return { label: "Expired", tone: "wait" };
     case "revoked":
-      return { icon: "⛔", label: "Revoked", tone: "fail" };
+      return { label: "Revoked", tone: "fail" };
     default:
-      return { icon: "•", label: String(status), tone: "wait" };
+      return { label: String(status), tone: "wait" };
   }
 }
 

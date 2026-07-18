@@ -190,11 +190,11 @@ function summarize(evt: SSEEvent): string {
     case "node_skipped":
       return "skipped (no input — upstream produced none)";
     case "execution_succeeded":
-      return "execution succeeded ✓";
+      return "execution succeeded";
     case "execution_failed":
       return "execution failed";
     case "execution_completed_with_errors":
-      return "completed with errors ⚠";
+      return "completed with errors";
     case "execution_cancelled":
       return "execution cancelled";
     default:

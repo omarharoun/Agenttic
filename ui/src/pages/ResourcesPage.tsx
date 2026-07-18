@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, downloadBlob } from "../api";
 import { DataView, EmptyState, PageHeader, RawToggle, Skeleton } from "../components/ui";
+import { IconDownload } from "../icons";
 import { shortTraceId, traceId } from "../traces";
 import { Markdown } from "../components/Markdown";
 
@@ -43,7 +44,7 @@ export function ResourcesPage() {
     api.scorecardReport(id)
       .then((text) => setReport({ id, text }))
       .catch(() => setReport({
-        id, text: "⚠ Could not load this report. Please try again.",
+        id, text: "Could not load this report. Please try again.",
       }));
   };
   useEffect(() => {
@@ -133,7 +134,7 @@ export function ResourcesPage() {
                                 onClick={() => api.scorecardPdf(s.scorecard_id)
                                   .then((b) => downloadBlob(b, `scorecard-${s.scorecard_id}.pdf`))
                                   .catch(() => {})}>
-                          ⤓ PDF
+                          <IconDownload /> PDF
                         </button>
                       </td>
                     </tr>

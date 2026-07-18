@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { IconCheck, IconClose, IconArrowRight } from "../icons";
 
 /* ============================================================================
    First-run guided tutorial — the full journey to TEST and TRAIN an agent.
@@ -126,7 +127,7 @@ export function Onboarding() {
       <button className="onboard-mini" onClick={() => setCollapse(false)}>
         <span className="onboard-mini-ic">◆</span>
         Getting started — {completedCount}/{STEPS.length} done
-        <span className="onboard-mini-open">Resume →</span>
+        <span className="onboard-mini-open">Resume <IconArrowRight size={13}/></span>
       </button>
     );
   }
@@ -134,10 +135,10 @@ export function Onboarding() {
   if (allDone) {
     return (
       <section className="onboard onboard-complete" aria-label="Getting started complete">
-        <button className="onboard-x" onClick={dismiss} title="Dismiss">✕</button>
+        <button className="onboard-x" onClick={dismiss} title="Dismiss" aria-label="Dismiss"><IconClose size={14}/></button>
         <div className="onboard-head">
           <span className="eyebrow">Tutorial complete</span>
-          <h2>You've run the whole loop 🎉</h2>
+          <h2>You've run the whole loop</h2>
           <p>
             You've scored an agent, read its issues, fixed them, and re-scored to
             prove it improved. That's the full Score → Issues → Fix cycle — repeat
@@ -153,7 +154,7 @@ export function Onboarding() {
 
   return (
     <section className="onboard" aria-label="Getting started tutorial">
-      <button className="onboard-x" onClick={dismiss} title="Skip the tutorial">✕</button>
+      <button className="onboard-x" onClick={dismiss} title="Skip the tutorial" aria-label="Skip the tutorial"><IconClose size={14}/></button>
       <div className="onboard-head">
         <span className="eyebrow">Getting started · tutorial</span>
         <h2>Test <i>and</i> train your first agent</h2>
@@ -178,7 +179,7 @@ export function Onboarding() {
                       aria-pressed={complete} disabled={locked}
                       title={locked ? "Detected as done from your account"
                                     : complete ? "Mark not done" : "Mark done"}>
-                {complete ? "✓" : i + 1}
+                {complete ? <IconCheck size={14}/> : i + 1}
               </button>
               <div className="onboard-item-body">
                 <h3>{s.title}</h3>

@@ -5,9 +5,8 @@ import { Button, Eyebrow, SectionHeading } from "../components/ds";
 import { api } from "../api";
 import { certIdOf, type DirectoryEntry, gradeColor, indexFromCert, statusView } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
-import { Skeleton } from "../components/ui";
-import "../landing/landing.css";
-import "./CertifiedDirectoryPage.css";
+import { EmptyState, Skeleton } from "../components/ui";
+import { IconArrowRight, StatusIcon } from "../icons";
 
 /* ============================================================================
    Public Certified Agents directory — /certified (unauthenticated).
@@ -101,6 +100,37 @@ export function CertifiedDirectoryPage() {
               Signed · scoped · dated · revocable
             </p>
           </div>
+        ) : list.length === 0 ? (
+          <EmptyState
+            title="No certified agents yet"
+            hint="Be the first. Run your agent through the safety suites and publish a grade the world can verify."
+            action={<Link className="btn-primary" to="/signup">Get your agent certified</Link>}
+          />
+        ) : (
+          <div className="cert-dir-grid">
+            {list.map((c) => {
+              const sv = statusView(c.status);
+              return (
+                <Link key={c.id} className="cert-dir-card" to={`/certified/${c.id}`}>
+                  <Seal grade={c.grade} size={72} />
+                  <div className="cdc-body">
+                    <div className="cdc-name">{c.agent_name}</div>
+                    <div className="cdc-sub">
+                      <span className="cdc-grade" style={{ color: gradeColor(c.grade) }}>
+                        Grade {c.grade}
+                      </span>
+                      {typeof c.index === "number" && (
+                        <span className="cdc-index">Index {c.index}</span>
+                      )}
+                      <span className={`cdc-status ${sv.tone}`}><StatusIcon tone={sv.tone} size={13} /> {sv.label}</span>
+                    </div>
+                  </div>
+                  <span className="cdc-go" aria-hidden="true"><IconArrowRight size={16} /></span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
 
           <figure className="cd-mark">
             <Seal size={168} />

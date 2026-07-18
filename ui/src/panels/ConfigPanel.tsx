@@ -4,6 +4,7 @@ import { useFlowStore } from "../store";
 import { ExecutionLog } from "./ExecutionLog";
 import { ResultsPanel } from "./ResultsPanel";
 import { SchemaForm } from "./SchemaForm";
+import { IconHand } from "../icons";
 
 const AGENT_FIELDS = ["agent_id", "variant", "model", "system_prompt", "url",
   "managed_agent_id", "environment_id", "cost_per_call_usd",
@@ -79,7 +80,7 @@ export function ConfigPanel({ results }: { results?: any }) {
             {nodeState === "waiting" && (
               <button className="approve" style={{ width: "100%", marginBottom: 10 }}
                       onClick={() => exec.executionId && api.approve(exec.executionId)}>
-                ✋ Review done — approve suite
+                <IconHand size={15} /> Review done — approve suite
               </button>
             )}
             <label>label</label>

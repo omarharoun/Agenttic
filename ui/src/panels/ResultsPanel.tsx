@@ -4,31 +4,7 @@ import { Uncertainty } from "../components/ui";
 import { money, ms } from "../stats";
 import { PASS_MEANING, PASS_THRESHOLD } from "../workflow/templates";
 import { Markdown } from "../components/Markdown";
-import { ProvenanceBadge, VerdictWithScope, criterionStatus } from "../components/ds";
-import type { VerdictScope } from "../components/ds";
-import {
-  CoverageWheelFor, VerificationStrip, cov, scopeNote, scopeTag,
-} from "../verification";
-
-/** Build the lead verdict+scope from a scorecard summary. The verdict
- *  (verification_status) and per-coverpoint holes are NOT in the /results
- *  payload today, so they read fail-closed ("NOT RECORDED" / "unscoped") until
- *  the endpoint carries them — never a false all-clear. See CONSOLE-DESIGN §7. */
-function verdictScope(sc: any, provisionalCriteria: number): VerdictScope {
-  const c = cov(sc);
-  const scoped = Boolean(c.model_ref);
-  const a = c.assertions;
-  return {
-    status: sc.verification_status ?? null,
-    scoped,
-    coverageHoles: 0,   // per-coverpoint holes live on the full scorecard, not this summary
-    notMeasured: 0,
-    assertionsUnexercised: a?.unexercised ?? 0,
-    provisionalCriteria,
-    closurePct: scoped && c.trace_closure != null ? Math.round(c.trace_closure * 100) : null,
-    closureTarget: c.closure_target != null ? Math.round(c.closure_target * 100) : null,
-  };
-}
+import { IconRefresh, IconWarning, IconCheck, IconHalf, IconClose, IconArrowRight, IconDownload } from "../icons";
 
 /** Post-run scoreboard: scorecard summary + one row per test case showing
  * the agent's prediction vs expected, expandable to per-criterion scores
@@ -65,7 +41,7 @@ export function ResultsPanel({ results }: { results: any }) {
         <div key={sc.scorecard_id}>
           {sc.cached && (
             <div className="note-ok" style={{ marginBottom: 8 }}>
-              ♻ Served from cache — identical to a previous run, so no agent or
+              <IconRefresh size={13} /> Served from cache — identical to a previous run, so no agent or
               judge calls were made (<b>$0</b>). Re-run with refresh to recompute.
             </div>
           )}
@@ -131,7 +107,7 @@ export function ResultsPanel({ results }: { results: any }) {
                       onClick={() => api.scorecardPdf(sc.scorecard_id)
                         .then((b) => downloadBlob(b, `scorecard-${sc.scorecard_id}.pdf`))
                         .catch(() => {})}>
-                ⤓ PDF
+                <IconDownload /> PDF
               </button>
             </div>
           </div>
@@ -171,12 +147,12 @@ export function ResultsPanel({ results }: { results: any }) {
             <span className="case-id">{c.test_id}</span>
             {c.scoring_error ? (
               <span className="want" title={c.scoring_error}>
-                ⚠ not scored: {c.scoring_error}
+                <IconWarning size={12} /> not scored: {c.scoring_error}
               </span>
             ) : (
               <>
                 <span className="pred" title={c.prediction}>
-                  → {c.prediction || "(no output)"}
+                  <IconArrowRight size={12} /> {c.prediction || "(no output)"}
                 </span>
                 {c.expected?.final_output !== undefined && !c.passed && (
                   <span className="want" title="expected">
@@ -195,7 +171,7 @@ export function ResultsPanel({ results }: { results: any }) {
               {c.criteria.map((cr: any) => (
                 <div key={cr.criterion_id} className="kv">
                   <span className={cr.score >= 1 ? "ok" : "err"}>
-                    {cr.score >= 1 ? "✓" : cr.score > 0 ? "½" : "✕"}
+                    {cr.score >= 1 ? <IconCheck size={13} /> : cr.score > 0 ? <IconHalf size={13} /> : <IconClose size={13} />}
                   </span>{" "}
                   {cr.criterion_id}{" "}
                   <ProvenanceBadge scorer={cr.scorer} calibrated={cr.calibrated} />

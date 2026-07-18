@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 import { Term } from "../components/Term";
+import { IconCheck, IconClose, IconOptimize } from "../icons";
 
 const pct = (x: number | null | undefined) =>
   x == null ? "—" : `${Math.round(x * 100)}%`;
@@ -189,7 +190,7 @@ function RunDetail({ run }: { run: any }) {
           {prog?.event === "propose" &&
             `round ${prog.round}: targeting ${(prog.failing_criteria || []).join(", ") || "—"}`}
           {prog?.event === "candidate" &&
-            `round ${prog.round} · candidate ${prog.index}: ${prog.accepted ? "✓ accepted" : "✗ rejected"} — ${prog.reason}`}
+            `round ${prog.round} · candidate ${prog.index}: ${prog.accepted ? "accepted" : "rejected"} — ${prog.reason}`}
           {prog?.event === "round_done" && `round ${prog.round} done`}
           {!prog && "starting…"}
         </p>
@@ -263,7 +264,7 @@ function RunDetail({ run }: { run: any }) {
               <div key={c.index} style={{ fontSize: 12, marginTop: 4, paddingLeft: 10,
                 borderLeft: `2px solid ${c.accepted ? "var(--ok)" : "var(--border)"}` }}>
                 <span style={{ color: c.accepted ? "var(--ok)" : "var(--muted)" }}>
-                  {c.accepted ? "✓ accepted" : "✗ rejected"}
+                  {c.accepted ? <><IconCheck size={13} /> accepted</> : <><IconClose size={13} /> rejected</>}
                 </span>{" "}
                 <span style={{ color: "var(--muted)" }}>({signedPct(c.success_delta)} train) — {c.reason}</span>
                 {c.regressions?.length > 0 && (
@@ -347,7 +348,7 @@ export function OptimizePage() {
           <StartForm suites={suites} onStarted={(id) => { setSelected(id); refreshRuns(); }} />
           <div className="policy-box">
             <div className="policy-title">runs</div>
-            {!runs.length && <EmptyState icon="✨" title="No optimization runs yet"
+            {!runs.length && <EmptyState icon={<IconOptimize />} title="No optimization runs yet"
               hint="Optimization rewrites your system prompt to lift suite score without touching the model — pick an approved suite and a baseline prompt above to start." />}
             {runs.map((r) => (
               <button key={r.run_id} onClick={() => setSelected(r.run_id)}

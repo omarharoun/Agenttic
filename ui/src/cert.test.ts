@@ -33,10 +33,10 @@ describe("grade bands", () => {
 });
 
 describe("status view", () => {
-  it("renders each status with icon + tone", () => {
-    expect(statusView("valid")).toMatchObject({ icon: "✓", tone: "ok" });
-    expect(statusView("expired")).toMatchObject({ icon: "⚠", tone: "wait" });
-    expect(statusView("revoked")).toMatchObject({ icon: "⛔", tone: "fail" });
+  it("maps each status to a label + tone (tone drives the stroke glyph)", () => {
+    expect(statusView("valid")).toMatchObject({ label: "Valid", tone: "ok" });
+    expect(statusView("expired")).toMatchObject({ label: "Expired", tone: "wait" });
+    expect(statusView("revoked")).toMatchObject({ label: "Revoked", tone: "fail" });
   });
 });
 

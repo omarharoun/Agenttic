@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, downloadBlob } from "../api";
 import { EmptyState, PageHeader, Skeleton, Spinner } from "../components/ui";
 import { Term } from "../components/Term";
+import { IconCheck, IconClose, IconTarget, IconPen, IconPackage, StatusIcon } from "../icons";
 
 const TERMINAL = new Set(["succeeded", "failed"]);
 
@@ -37,10 +38,15 @@ function pct(x: number | null | undefined): string {
   return x == null ? "—" : `${(x * 100).toFixed(1)}%`;
 }
 
-function Yes({ ok, yes = "✓ yes", no = "✗ no" }: {
+function Yes({ ok, yes = "yes", no = "no" }: {
   ok: boolean; yes?: string; no?: string;
 }) {
-  return <b style={{ color: ok ? "var(--ok)" : "var(--fail)" }}>{ok ? yes : no}</b>;
+  return (
+    <b style={{ color: ok ? "var(--ok)" : "var(--fail)" }}>
+      {ok ? <StatusIcon tone="ok" size={13} /> : <StatusIcon tone="fail" size={13} />}{" "}
+      {ok ? yes : no}
+    </b>
+  );
 }
 
 function Stat({ label, value, tone }: {
@@ -245,7 +251,7 @@ export function TrainingCampPage() {
                        style={{ width: 70 }} />
               </label>
               <button className="primary" disabled={busy} onClick={start}>
-                {busy ? "Running…" : "🎯 Run camp"}
+                {busy ? "Running…" : <><IconTarget size={15} /> Run camp</>}
               </button>
             </div>
             {msg && <div className={msg.kind === "ok" ? "note-ok" : "note-err"}
@@ -255,7 +261,7 @@ export function TrainingCampPage() {
 
         {/* runs list */}
         {runs === null ? <Skeleton rows={4} /> : runs.length === 0 ? (
-          <EmptyState icon="🎯" title="No camp runs yet"
+          <EmptyState icon={<IconTarget />} title="No camp runs yet"
             hint="Start a camp above — the baseline scores ~85% on support triage, so you can watch a 99% floor correctly block it." />
         ) : (
           <div className="table-wrap">
@@ -388,7 +394,7 @@ function CampDetail({ run, onApprove, onExport }: {
           <div style={{ display: "flex", gap: 40, flexWrap: "wrap", marginBottom: 12 }}>
             <Stat label="① Accuracy floor met" value={<Yes ok={!!g.floor_met} />} />
             <Stat label="② Human sign-off"
-                  value={<Yes ok={!!g.human_approved} yes="✓ approved" no="— pending" />} />
+                  value={<Yes ok={!!g.human_approved} yes="approved" no="pending" />} />
             <Stat label="Decision" value={<GateBadge gate={g} />} />
           </div>
           {run.approved_by && (
@@ -403,11 +409,11 @@ function CampDetail({ run, onApprove, onExport }: {
           <p className="muted-sm" style={{ marginBottom: 12 }}>{floorPromoteHint}</p>
           <button className="primary" onClick={() => onApprove(run.run_id)}
                   disabled={g.promoted}>
-            {g.promoted ? "Promoted ✓" : "🖊 Sign off as operator"}
+            {g.promoted ? <><IconCheck size={13} /> Promoted</> : <><IconPen size={15} /> Sign off as operator</>}
           </button>
           <button className="ghost-sm" style={{ marginLeft: 10 }}
                   onClick={() => onExport(run.run_id)}>
-            📦 Export distillation ({run.distillation_count ?? 0})
+            <IconPackage size={15} /> Export distillation ({run.distillation_count ?? 0})
           </button>
         </div>
       </div>
@@ -488,8 +494,8 @@ function CampDetail({ run, onApprove, onExport }: {
                   {run.episode_sample.map((ep: any) => (
                     <tr key={ep.episode_id}>
                       <td>{ep.passed
-                        ? <span style={{ color: "var(--ok)" }}>✓</span>
-                        : <span style={{ color: "var(--fail)" }}>✗</span>}</td>
+                        ? <IconCheck size={14} className="ic-ok" />
+                        : <IconClose size={14} className="ic-fail" />}</td>
                       <td>{ep.inputs?.message ?? JSON.stringify(ep.inputs)}</td>
                       <td className="mono">{ep.action?.action ?? JSON.stringify(ep.action)}</td>
                       <td>{ep.score?.toFixed?.(2) ?? ep.score}</td>

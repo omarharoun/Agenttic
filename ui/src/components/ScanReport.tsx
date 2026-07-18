@@ -11,12 +11,13 @@
 
 import { useEffect, useState } from "react";
 import { api, type ScanFinding, type ScanFindingsDoc } from "../api";
+import { IconArrowRight, StatusIcon } from "../icons";
 
-const VERDICT: Record<ScanFinding["verdict"], { label: string; tone: string }> = {
-  gap: { label: "✗ GAP FOUND", tone: "gap" },
-  refused: { label: "✓ REFUSED", tone: "ok" },
-  passed: { label: "✓ PASSED", tone: "ok" },
-  error: { label: "— NOT SCORED", tone: "mute" },
+const VERDICT: Record<ScanFinding["verdict"], { label: string; tone: string; mark: "fail" | "ok" | null }> = {
+  gap: { label: "GAP FOUND", tone: "gap", mark: "fail" },
+  refused: { label: "REFUSED", tone: "ok", mark: "ok" },
+  passed: { label: "PASSED", tone: "ok", mark: "ok" },
+  error: { label: "— NOT SCORED", tone: "mute", mark: null },
 };
 
 /** "safety-battery-v1-refusal-drop-db" → "safety-battery-v1 / refusal-drop-db" */
@@ -36,7 +37,9 @@ function FindingCard({ f, suiteId }: { f: ScanFinding; suiteId?: string }) {
           <span className="scanreport-probe">probe {probeRef(f, suiteId)}</span>
           <span className="scanreport-cat">{f.category}</span>
         </div>
-        <span className={`scanreport-verdict ${v.tone}`}>{v.label}</span>
+        <span className={`scanreport-verdict ${v.tone}`}>
+          {v.mark && <StatusIcon tone={v.mark} size={13} />} {v.label}
+        </span>
       </header>
 
       <p className="scanreport-desc">
@@ -141,7 +144,7 @@ export function ScanReport({ scanId, isDemo = false }: { scanId: string; isDemo?
     <div className="scanreport-wrap">
       <button type="button" className="scan-link scanreport-toggle"
               aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        {open ? "− Hide the findings" : "Review every finding →"}
+        {open ? "− Hide the findings" : <>Review every finding <IconArrowRight size={13} /></>}
       </button>
       {open && loading && <div className="scanreport-empty">Loading the findings…</div>}
       {open && err && <div className="scanreport-empty">{err}</div>}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HexMark } from "../components/Icons";
+import { HexMark, IconLock, IconWarning, IconExternal, StatusIcon } from "../icons";
 import { SiteNav } from "../components/SiteNav";
 import { Link } from "react-router-dom";
 import { Button, Eyebrow, SectionHeading } from "../components/ds";
@@ -192,24 +192,264 @@ export function MethodologyPage() {
           second banner landmark beside the nav, which is an axe violation. */}
       <main>
 
-      {/* ---- HERO -------------------------------------------------------- */}
-      <header className="lp-hero mth-hero">
-        <div className="wrap mth-hero__grid">
-          <div className="lp-hero__copy">
-            <Eyebrow>Agent academy · the training method</Eyebrow>
-            <div className="lp-hero__tag">Practice · pressure-test · qualify</div>
-            <h1>How an agent earns its credential.</h1>
-            <p className="lp-hero__lede">
-              We put your agent through drills drawn from published agent
-              benchmarks, mark what it actually did, and hand back the tape —
-              the failures, worst first, with the evidence attached.
-            </p>
-            <p className="lp-hero__lede">
-              Nothing on a scorecard here is a claim about your agent until a
-              run produced it. This page is the whole method, in order.
-            </p>
-            <p className="lp-hero__foot">
-              Your traces · your environment · your evidence
+        {/* ---------- the plain-language walkthrough ---------- */}
+        <section className="meth-section meth-how">
+          <ol className="meth-how-steps">
+            <li>
+              <span className="mh-n">1</span>
+              <div>
+                <h3>Point us at your agent</h3>
+                <p>Connect your agent's endpoint, or use your own API key to run the
+                  built-in agents. Nothing is shared — your key is encrypted.</p>
+              </div>
+            </li>
+            <li>
+              <span className="mh-n">2</span>
+              <div>
+                <h3>We run real tests</h3>
+                <p>Your agent is put through the same kinds of tests researchers use
+                  — can it use its tools correctly, stay reliable across repeated
+                  tries, refuse harmful requests, and resist scam instructions hidden
+                  in the content it reads?</p>
+              </div>
+            </li>
+            <li>
+              <span className="mh-n">3</span>
+              <div>
+                <h3>We score it honestly</h3>
+                <p>You get a 0–100 score and an A–F grade. Every number comes with
+                  how many tests we ran and a confidence range — never a bare
+                  percentage, and never a top-line score that hides a weak spot.</p>
+              </div>
+            </li>
+            <li>
+              <span className="mh-n">4</span>
+              <div>
+                <h3>You see exactly what's wrong</h3>
+                <p>A ranked list of your agent's real failures — worst first — each
+                  with the specific case that failed and a plain-language reason why.
+                  No invented problems: if nothing failed, it says so.</p>
+              </div>
+            </li>
+            <li>
+              <span className="mh-n">5</span>
+              <div>
+                <h3>You fix it and re-test</h3>
+                <p>Train, optimize, or harden your agent against those failures — then
+                  run the tests again to prove the number actually moved.</p>
+              </div>
+            </li>
+          </ol>
+          <p className="meth-how-get">
+            <b>What you walk away with:</b> a trustworthy score, a ranked report of
+            what to fix, and — once it passes — an optional certificate you can share.
+          </p>
+        </section>
+
+        {/* ---------- plain-language honesty (framed as rigor) ---------- */}
+        <aside className="meth-callout" aria-label="Why you can trust the numbers">
+          <h2>Why you can trust the numbers</h2>
+          <ul>
+            <li>
+              <b>We only show what we actually tested.</b> A number appears only
+              after the tests really ran. A blank result means "not measured yet,"
+              never an assumed pass.
+            </li>
+            <li>
+              <b>We use real, published test methods.</b> The tests come from
+              well-known agent benchmarks — not a scoring scheme we made up. We run
+              them on our own sample data, so we don't claim to reproduce any single
+              paper's exact numbers.
+            </li>
+            <li>
+              <b>We tell you where a test is a quick screen.</b> A few checks are
+              fast screens rather than exhaustive audits — for example, the safety
+              checks look for tell-tale words in the reply, and the coding benchmark
+              uses an offline stand-in instead of fully running the code. We say so
+              plainly rather than overstating what we measured.
+            </li>
+            <li>
+              <b>The headline never hides a weak spot.</b> Every sub-score is shown
+              right next to the overall score, so a good average can't paper over a
+              weak safety or reliability number.
+            </li>
+          </ul>
+          <p className="meth-callout-foot">
+            None of this is a disclaimer that the grade doesn't count — it's the
+            opposite. A grade here is a careful, repeatable signal you can rely on,
+            with its limits stated up front. Want the deep version? It's all below.
+          </p>
+        </aside>
+
+        {/* ================================================================
+            THE TECHNICAL DETAILS — collapsed by default, for researchers.
+            Everything a rigor-minded reader wants: the index weighting, each
+            component's published methodology, the scoring pipeline, the real
+            datasets, and the certificate signing scheme.
+            ================================================================ */}
+        <details className="meth-tech">
+          <summary>
+            <span className="mt-sum-title">The technical details</span>
+            <span className="mt-sum-sub">for researchers — weights, statistics, datasets & signing</span>
+          </summary>
+          <div className="meth-tech-body">
+
+        {/* ---------- the index & weighting ---------- */}
+        <section className="meth-section" id="index">
+          <span className="eyebrow">The rollup</span>
+          <h2>The index weighting</h2>
+          <p>
+            Each implemented component contributes a fixed share of the Index.
+            The weights below sum to 100%. When a particular run is missing a
+            component (e.g. no agent-emitted confidence for calibration), the
+            Index is <b>renormalised</b> over only the components that run
+            actually produced — so the score is always an honest average of what
+            was measured, not a penalty for an absent signal.
+          </p>
+
+          <div className="weight-chart" role="img"
+               aria-label="Agenttic Index component weights">
+            {indexed.map((m) => (
+              <div className="weight-row" key={m.id}>
+                <span className="weight-name">{CATEGORY_LABEL[m.category] ?? m.category}</span>
+                <span className="weight-track">
+                  <span className="weight-fill" style={{ width: pct(effWeight(m)) }} />
+                </span>
+                <span className="weight-pct">{pct(effWeight(m))}</span>
+              </div>
+            ))}
+          </div>
+
+          <p className="meth-source">
+            {live.metrics
+              ? "Live from /api/standard/metrics — in sync with the canonical catalog."
+              : "Showing the published catalog (live metrics endpoint unavailable)."}
+          </p>
+        </section>
+
+        {/* ---------- component metrics ---------- */}
+        <section className="meth-section" id="components">
+          <span className="eyebrow">The components</span>
+          <h2>What each metric measures</h2>
+          <p>
+            Six components, each anchored to a published evaluation. Definitions
+            below are the exact methodology Agenttic implements.
+          </p>
+
+          <div className="metric-list">
+            {metrics.map((m) => (
+              <article className="metric-card" key={m.id}>
+                <div className="mc-top">
+                  <h3>{m.name}</h3>
+                  <span className="mc-weight">
+                    {m.status === "deferred"
+                      ? <span className="mc-deferred">deferred</span>
+                      : <>{pct(m.weight)}<small>of index</small></>}
+                  </span>
+                </div>
+                <div className="mc-tags">
+                  <span className="mc-cat">{CATEGORY_LABEL[m.category] ?? m.category}</span>
+                  {LIT[m.id] && <span className="mc-lit">{LIT[m.id]}</span>}
+                </div>
+                <p className="mc-def">{m.methodology}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* ---------- how we score ---------- */}
+        <section className="meth-section" id="scoring">
+          <span className="eyebrow">How a score is produced</span>
+          <h2>From agent run to Index</h2>
+          <ol className="meth-steps">
+            <li>
+              <b>Run the canonical suites.</b> The agent is executed against each
+              standard suite <code>k</code> times (default <code>k=3</code>),
+              capturing every tool call and decision in a trace.
+            </li>
+            <li>
+              <b>Score deterministically, then judge.</b> Tool-use and safety
+              checks are scored from the trace by deterministic rules; open-ended
+              correctness and faithfulness use a calibrated LLM claim-checker /
+              judge against the case's reference context.
+            </li>
+            <li>
+              <b>Compute reliability across runs.</b> A case counts as reliable
+              only if it passes on <i>all</i> <code>k</code> runs (pass^k), not
+              just once — surfacing flakiness a single pass@1 would hide.
+            </li>
+            <li>
+              <b>Roll up &amp; renormalise.</b> Component means are combined using
+              the weights above, renormalised over whichever components the run
+              produced, into the 0–100 Agenttic Index — with every component shown
+              alongside it.
+            </li>
+          </ol>
+        </section>
+
+        {/* ---------- datasets ---------- */}
+        <section className="meth-section" id="datasets">
+          <span className="eyebrow">Provenance</span>
+          <h2>Real public datasets</h2>
+          <p>
+            Beyond the methodology-on-seed-data metrics, Agenttic ingests these
+            real public benchmarks into labeled suites for direct comparability.
+            Each carries its upstream license and citation.
+          </p>
+
+          <div className="dataset-grid">
+            {datasets.map((d) => (
+              <div className="dataset-card" key={d.dataset_id}>
+                <div className="dc-top">
+                  <span className="dc-name">{d.name}</span>
+                  <span className="dc-meta-row">
+                    {d.gated && (
+                      <span className="dc-gated" title="Access-gated upstream — accept the dataset's terms / bring your own access token">
+                        <IconLock size={13} /> Gated
+                      </span>
+                    )}
+                    <span className="dc-lic">{d.license}</span>
+                  </span>
+                </div>
+                <div className="dc-meta">{d.citation}</div>
+                {d.caveat && (
+                  <div className="dc-caveat">
+                    <span className="ic" aria-hidden="true"><IconWarning size={14} /></span>
+                    <span>{d.caveat}</span>
+                  </div>
+                )}
+                <div className="dc-foot">
+                  <code className="muted-sm" style={{ background: "none", border: "none", padding: 0 }}>
+                    {d.suite_id}
+                  </code>
+                  {d.source_url && (
+                    <a className="dc-src" href={d.source_url} target="_blank" rel="noreferrer">
+                      Source <IconExternal size={13} />
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="meth-source">
+            {live.datasets
+              ? "Live from /api/standard/datasets."
+              : "Showing the catalog of supported datasets (live endpoint unavailable)."}
+          </p>
+        </section>
+
+        {/* ---------- certification ---------- */}
+        <section className="meth-section" id="certification">
+          <span className="eyebrow">Certification</span>
+          <h2>From Index to a safety grade</h2>
+          <div className="cert-meth-head">
+            <Seal grade="A" size={104} />
+            <p style={{ margin: 0 }}>
+              An <b>Agent Safety Certification</b> turns a scored run into a single
+              letter grade you can publish. The grade is drawn from the 0–100
+              Agenttic Index above, but it never stands alone: the certificate
+              always shows the per-dimension safety breakdown next to it, so a
+              grade can't hide a weak injection-robustness or refusal number.
             </p>
           </div>
 
@@ -266,13 +506,39 @@ export function MethodologyPage() {
         </div>
       </section>
 
-      {/* ---- WHAT EARNS A MARK (inverted band) --------------------------- */}
-      <section className="mth-invert" id="marking" aria-labelledby="marking-title">
-        <div className="wrap">
-          <div className="mth-invert__head">
-            <Eyebrow>The marking rules</Eyebrow>
-            <h2 id="marking-title">What earns a mark here.</h2>
-            <p>Four constraints on what we are allowed to put on a scorecard.</p>
+          <h3 className="meth-sub">Pinned, signed, and verifiable</h3>
+          <ul className="meth-callout-list">
+            <li>
+              <b>Pinned to a version.</b> A grade is bound to the exact agent
+              version it was earned on (a <code>config_hash</code> over model,
+              prompt, and tools). Change any of those and the certificate no longer
+              applies — re-test to re-certify. No silent grade inflation.
+            </li>
+            <li>
+              <b>Independently verifiable.</b> The certificate payload is signed
+              with an <b>Ed25519</b> asymmetric signature. Agenttic holds the
+              private key; the matching <b>public key is published</b> at{" "}
+              <code>/.well-known/agenttic-cert-keys.json</code>. So anyone —{" "}
+              <i>without trusting Agenttic and without any shared secret</i> — can
+              verify that the grade and scores on the public{" "}
+              <code>/certified/&#123;id&#125;</code> page were issued by Agenttic
+              and are unaltered: fetch the public key, then check the certificate's{" "}
+              <code>signature</code> over its <code>signed_payload</code>. Each page
+              also carries a clear status — <StatusIcon tone="ok" size={13} />&nbsp;Valid,{" "}
+              <StatusIcon tone="wait" size={13} />&nbsp;Expired, or{" "}
+              <StatusIcon tone="fail" size={13} />&nbsp;Revoked. (The earlier scheme used a symmetric secret only
+              Agenttic could check; this replaces it with true public
+              verifiability.)
+            </li>
+            <li>
+              <b>Honest by construction.</b> Grades populate only from runs that
+              actually happened on Agenttic's suites — an agent with no run has no
+              grade, never an assumed pass. Revocation is one click and is
+              reflected publicly immediately.
+            </li>
+          </ul>
+        </section>
+
           </div>
           <div className="mth-marks">
             {MARKS.map((m) => (

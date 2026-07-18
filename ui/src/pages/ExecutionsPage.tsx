@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { ReplayCanvas } from "../canvas/ReplayCanvas";
 import { DataView, EmptyState, PageHeader, RawToggle, Skeleton } from "../components/ui";
+import { IconPlay } from "../icons";
 import { IssuesReport } from "../components/IssuesReport";
 import { GamingCardFor } from "../components/GamingCard";
 import { ResultsPanel } from "../panels/ResultsPanel";
@@ -43,7 +44,7 @@ export function ExecutionsPage() {
         <PageHeader title="Runs"
                     subtitle="Every run you've scored — live progress, then the issues it surfaced (worst-first) with the full scoreboard behind them." />
         {!loaded ? <Skeleton rows={6} /> : rows.length === 0 ? (
-          <EmptyState icon="▶" title="No runs yet"
+          <EmptyState icon={<IconPlay />} title="No runs yet"
                       hint="Start a New evaluation and hit Run — it'll show up here with live progress." />
         ) : (
         <div className="table-wrap">

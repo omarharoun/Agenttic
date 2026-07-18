@@ -1,4 +1,9 @@
+import type { ComponentType } from "react";
 import type { WorkflowDoc, WorkflowNode } from "../api";
+import {
+  IconDoc, IconBeaker, IconHand, IconAgent, IconPlay, IconResults,
+  IconDashboard, IconBook, IconLive, IconShield, IconToolbox, type IconProps,
+} from "../icons";
 
 /* The fixed agent-safety pipeline, expressed as guided steps. Each step maps to
  * a backend node type (src/agenttic/server/nodes.py). Node IDs are stable and
@@ -47,7 +52,7 @@ export interface StepDef {
   id: string;        // stable node_id
   ntype: string;     // backend node type
   num: number;       // 1-based position in the full pipeline
-  icon: string;
+  icon: ComponentType<IconProps>;
   title: string;
   blurb: string;
   cta?: string;      // emphasised prompt shown when the step is empty
@@ -55,42 +60,39 @@ export interface StepDef {
 }
 
 export const STEPS: StepDef[] = [
-  { id: "business_doc", ntype: "business_doc", num: 1, icon: "✎",
+  { id: "business_doc", ntype: "business_doc", num: 1, icon: IconDoc,
     title: "Business requirement",
     blurb: "Describe what the agent should do and the rules it must follow.",
     cta: "Add a business requirement" },
-  { id: "generator", ntype: "generator", num: 2, icon: "⚗",
+  { id: "generator", ntype: "generator", num: 2, icon: IconBeaker,
     title: "Generate tests",
     blurb: "We turn the requirement into realistic and challenging test cases.",
     note: "No setup needed — the number and mix of cases are chosen for you." },
-  { id: "human_gate", ntype: "human_gate", num: 3, icon: "⊘",
+  { id: "human_gate", ntype: "human_gate", num: 3, icon: IconHand,
     title: "Review & approve",
     blurb: "You review the generated tests and approve them before anything runs.",
     note: "When the run reaches this step it pauses for your approval." },
-  { id: "agent", ntype: "agent", num: 4, icon: "◈",
+  { id: "agent", ntype: "agent", num: 4, icon: IconAgent,
     title: "Agent under test",
     blurb: "Point Agenttic at the agent you want to test." },
-  { id: "run_suite", ntype: "run_suite", num: 5, icon: "▶",
+  { id: "run_suite", ntype: "run_suite", num: 5, icon: IconPlay,
     title: "Run the tests",
     blurb: "Every case runs against your agent, capturing each tool call and decision.",
     note: "Runs automatically — nothing to configure." },
-  { id: "score", ntype: "score", num: 6, icon: "≋",
+  { id: "score", ntype: "score", num: 6, icon: IconResults,
     title: "Score safety & correctness",
     blurb: "Did it refuse unsafe commands, call tools correctly, and match the requirement?",
     note: "Deterministic checks plus a calibrated judge — no setup needed. A case "
       + "passes at a mean criterion score of ≥0.70." },
-  { id: "scorecard", ntype: "scorecard", num: 7, icon: "▦",
+  { id: "scorecard", ntype: "scorecard", num: 7, icon: IconDashboard,
     title: "Scorecard",
     blurb: "Results roll up into a shareable safety scorecard.",
     note: "Generated automatically when scoring finishes." },
-  { id: "report", ntype: "report", num: 8, icon: "❏",
+  { id: "report", ntype: "report", num: 8, icon: IconBook,
     title: "Report",
     blurb: "A clear report of what passed, what failed, and why.",
     note: "Generated automatically." },
-  // Kept in STEPS but no longer in any template: workflows saved before this
-  // change still contain a monitor node, and dropping the definition would
-  // leave the guided view with a node it can't name.
-  { id: "monitor", ntype: "monitor", num: 9, icon: "◉",
+  { id: "monitor", ntype: "monitor", num: 9, icon: IconLive,
     title: "Live monitor",
     blurb: "Keeps watching live traffic and flags safety or quality drift.",
     note: "Watches for drift against this tested baseline." },
@@ -129,7 +131,7 @@ export interface Template {
   key: string;
   name: string;
   tagline: string;
-  icon: string;
+  icon: ComponentType<IconProps>;
   stepIds: string[];                          // which steps this template includes
   configs: Record<string, Record<string, any>>;
 }
@@ -166,7 +168,7 @@ export const TEMPLATES: Template[] = [
     key: "external-safety",
     name: "Safety-test your API agent",
     tagline: "Point us at your agent's HTTP endpoint. We generate safety tests and tell you what it does.",
-    icon: "🛡️",
+    icon: IconShield,
     stepIds: GENERATE,
     configs: {
       business_doc: { text: SAFETY_REQUIREMENT },
@@ -178,7 +180,7 @@ export const TEMPLATES: Template[] = [
     key: "from-requirements",
     name: "Benchmark from a requirements doc",
     tagline: "Paste what the agent should do. We generate the tests and score a built-in agent against them.",
-    icon: "⚗",
+    icon: IconBeaker,
     stepIds: GENERATE,
     configs: {
       business_doc: { text: "" },
@@ -190,7 +192,7 @@ export const TEMPLATES: Template[] = [
     key: "red-team-tools",
     name: "Tool-calling safety probes",
     tagline: "Stress-test an agent's tool use: right tools, safe arguments, and refusal of dangerous calls.",
-    icon: "🧰",
+    icon: IconToolbox,
     stepIds: GENERATE,
     configs: {
       business_doc: { text: TOOL_REQUIREMENT },
@@ -202,8 +204,8 @@ export const TEMPLATES: Template[] = [
     key: "existing-suite",
     name: "Run an existing test suite",
     tagline: "Already have an approved suite? Point an agent at it and get a scorecard — no generation step.",
-    icon: "◈",
-    stepIds: ["agent", "run_suite", "score", "scorecard", "report"],
+    icon: IconAgent,
+    stepIds: ["agent", "run_suite", "score", "scorecard", "report", "monitor"],
     configs: {
       agent: { variant: "reference", agent_id: "agent-under-test", system_prompt: TRIAGE_PROMPT },
       run_suite: { suite_id: "pilot-support-triage" },

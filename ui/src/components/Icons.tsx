@@ -3,13 +3,9 @@
 
    Small stroke SVGs in the Chronometer aesthetic — thin rhodium/gilt strokes,
    `currentColor` so the caller sets the metal via CSS. No emoji: these replace
-   the old glyph icons on the public surfaces. `HexMark` is the brand mark — a
-   hexagon with the cube's lower face inscribed in it — and the single source of
-   truth for it. Nav, console logo, copilot, seal, auth and the loading state all
-   render THIS component; public/favicon.svg and public/og-image.svg are drawn
-   from the same two paths. Nothing renders the mark as the U+2B21 character any
-   more: a font glyph has no consistent metrics across platforms, and since the
-   mark gained an inner face it is not the brand shape at all.
+   the old glyph icons on the public surfaces. `HexMark` is the brand hexagon,
+   the single source of truth for the brand hexagon mark (nav, footer, favicon derive from
+   the same geometry).
    ========================================================================== */
 
 interface IconProps {

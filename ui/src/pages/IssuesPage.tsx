@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { IssuesReport } from "../components/IssuesReport";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { IconIssues } from "../icons";
 
 /** A run that produced results, worth surfacing issues for. */
 interface Run { execution_id: string; workflow_id: string; status: string; started_at: string; }
@@ -44,7 +45,7 @@ export function IssuesPage() {
         {runs === null ? (
           <Skeleton rows={5} />
         ) : runs.length === 0 ? (
-          <EmptyState icon="🔎" title="No scored runs yet"
+          <EmptyState icon={<IconIssues />} title="No scored runs yet"
                       hint="Score an agent first (New evaluation → Run). Once a run finishes, its issues appear here." />
         ) : (
           <>

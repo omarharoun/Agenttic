@@ -4,7 +4,7 @@ import { api } from "../api";
 import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
 import { Onboarding } from "../components/Onboarding";
 import { money } from "../stats";
-import { CoverageCell, ScopeChip, cov, hasVerification } from "../verification";
+import { IconArrowRight, IconPlus, IconSearch } from "../icons";
 
 /* ============================================================================
    Dashboard — the front door of the console.
@@ -102,8 +102,8 @@ export function DashboardPage() {
             carries its sample size and a Wilson 95% interval.</>}
           actions={
             <div className="dash-cta">
-              <Link className="btn-primary" to="/app/build">＋ Build a drill</Link>
-              <Link className="btn-ghost" to="/app/issues">Review gaps</Link>
+              <Link className="btn-primary" to="/app/build"><IconPlus /> New evaluation</Link>
+              <Link className="btn-ghost" to="/app/issues"><IconSearch size={15} /> Find issues</Link>
             </div>
           }
         />
@@ -140,7 +140,7 @@ export function DashboardPage() {
               <section className="dash-card">
                 <header className="dash-card-head">
                   <h2>Agenttic Index — top agents</h2>
-                  <Link className="ghost-sm" to="/app/leaderboard">Full leaderboard →</Link>
+                  <Link className="ghost-sm" to="/app/leaderboard">Full leaderboard <IconArrowRight size={13} /></Link>
                 </header>
                 {topAgents.length === 0 ? (
                   <div className="dash-card-empty">
@@ -179,7 +179,7 @@ export function DashboardPage() {
               <section className="dash-card">
                 <header className="dash-card-head">
                   <h2>Recent results</h2>
-                  <Link className="ghost-sm" to="/app/issues">What's wrong →</Link>
+                  <Link className="ghost-sm" to="/app/issues">What's wrong <IconArrowRight size={13} /></Link>
                 </header>
                 {recent.length === 0 ? (
                   <div className="dash-card-empty">
