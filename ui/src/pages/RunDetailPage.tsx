@@ -7,6 +7,7 @@ import {
 } from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 import { PageData } from "../components/PageData";
+import { PipelineFlow } from "../components/PipelineFlow";
 import { useFlowStore, emptyExec, type NodeRunState } from "../store";
 import { useExecutionEvents } from "../sse";
 import {
@@ -299,6 +300,9 @@ export function RunDetailPage() {
             {/* -------- LIVE per-node progress -------- */}
             <section aria-label="Live node progress" className="run-section">
               <h2 className="run-h2">Progress</h2>
+              {/* SPEC-5 23.1: the pipeline as a live lane diagram, driven by the
+                  same SSE exec slice; the table below stays the source of record. */}
+              <PipelineFlow exec={exec} />
               {nodeRows.length === 0 ? (
                 <p className="run-muted">Waiting for the run to report progress…</p>
               ) : (
