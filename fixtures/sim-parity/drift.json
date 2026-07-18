@@ -1,0 +1,7030 @@
+[
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "efficiency"
+      ],
+      "liveScores": {
+        "accuracy": [
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.0
+        ],
+        "efficiency": [
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.15,
+        "efficiency": 0.55
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.5,
+        "efficiency": 0.5
+      },
+      "baselineMean": {
+        "accuracy": 0.15,
+        "efficiency": 0.55
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency"
+      ],
+      "liveScores": {
+        "efficiency": [
+          1.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.3
+      },
+      "window": 10,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.5
+      },
+      "baselineMean": {
+        "efficiency": 0.3
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone",
+        "efficiency",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "tone": [
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.5
+        ],
+        "efficiency": [
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.5
+        ],
+        "helpfulness": [
+          1.0,
+          0.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.65,
+        "efficiency": 0.25,
+        "helpfulness": 0.35
+      },
+      "window": 10,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.35,
+        "efficiency": 0.42857142857142855,
+        "helpfulness": 0.375
+      },
+      "baselineMean": {
+        "tone": 0.65,
+        "efficiency": 0.25,
+        "helpfulness": 0.35
+      },
+      "drifted": [
+        "tone"
+      ],
+      "reeval": [
+        "criterion 'tone' live mean 0.35 dropped more than 0.2 below batch baseline 0.65 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "efficiency",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "safety": [
+          0.0
+        ],
+        "efficiency": [
+          0.5,
+          0.5
+        ],
+        "helpfulness": [
+          0.5,
+          0.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.8,
+        "efficiency": 0.55,
+        "helpfulness": 0.4
+      },
+      "window": 5,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.0,
+        "efficiency": 0.5,
+        "helpfulness": 0.25
+      },
+      "baselineMean": {
+        "safety": 0.8,
+        "efficiency": 0.55,
+        "helpfulness": 0.4
+      },
+      "drifted": [
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.00 dropped more than 0.2 below batch baseline 0.80 (window=5) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency"
+      ],
+      "liveScores": {
+        "efficiency": [
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.85
+      },
+      "window": 10,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.6
+      },
+      "baselineMean": {
+        "efficiency": 0.85
+      },
+      "drifted": [
+        "efficiency"
+      ],
+      "reeval": [
+        "criterion 'efficiency' live mean 0.60 dropped more than 0.2 below batch baseline 0.85 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "efficiency": [
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "helpfulness": [
+          1.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.0,
+        "helpfulness": 0.9
+      },
+      "window": 20,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.25,
+        "helpfulness": 0.75
+      },
+      "baselineMean": {
+        "efficiency": 0.0,
+        "helpfulness": 0.9
+      },
+      "drifted": [
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'helpfulness' live mean 0.75 dropped more than 0.15 below batch baseline 0.90 (window=20) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "helpfulness",
+        "safety"
+      ],
+      "liveScores": {
+        "accuracy": [
+          0.0,
+          0.5,
+          1.0
+        ],
+        "helpfulness": [
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0
+        ],
+        "safety": [
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.3,
+        "helpfulness": 0.55,
+        "safety": 0.55
+      },
+      "window": 50,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.5,
+        "helpfulness": 0.4772727272727273,
+        "safety": 0.4594594594594595
+      },
+      "baselineMean": {
+        "accuracy": 0.3,
+        "helpfulness": 0.55,
+        "safety": 0.55
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone"
+      ],
+      "liveScores": {
+        "tone": [
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.35
+      },
+      "window": 50,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.527027027027027
+      },
+      "baselineMean": {
+        "tone": 0.35
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone"
+      ],
+      "liveScores": {
+        "tone": [
+          1.0,
+          0.5,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.95
+      },
+      "window": 5,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.6666666666666666
+      },
+      "baselineMean": {
+        "tone": 0.95
+      },
+      "drifted": [
+        "tone"
+      ],
+      "reeval": [
+        "criterion 'tone' live mean 0.67 dropped more than 0.1 below batch baseline 0.95 (window=5) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone",
+        "safety",
+        "accuracy"
+      ],
+      "liveScores": {
+        "tone": [
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "safety": [
+          1.0,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          1.0
+        ],
+        "accuracy": [
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.0,
+        "safety": 0.9,
+        "accuracy": 0.95
+      },
+      "window": 10,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.5833333333333334,
+        "safety": 0.4166666666666667,
+        "accuracy": 0.0
+      },
+      "baselineMean": {
+        "tone": 0.0,
+        "safety": 0.9,
+        "accuracy": 0.95
+      },
+      "drifted": [
+        "safety",
+        "accuracy"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.42 dropped more than 0.1 below batch baseline 0.90 (window=10) \u2014 batch re-evaluation recommended",
+        "criterion 'accuracy' live mean 0.00 dropped more than 0.1 below batch baseline 0.95 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency"
+      ],
+      "liveScores": {
+        "efficiency": [
+          0.5,
+          0.5,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.15
+      },
+      "window": 10,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.375
+      },
+      "baselineMean": {
+        "efficiency": 0.15
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "accuracy",
+        "tone"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          1.0
+        ],
+        "accuracy": [
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "tone": [
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.5,
+        "accuracy": 0.65,
+        "tone": 0.6
+      },
+      "window": 50,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.21428571428571427,
+        "accuracy": 0.5,
+        "tone": 0.58
+      },
+      "baselineMean": {
+        "helpfulness": 0.5,
+        "accuracy": 0.65,
+        "tone": 0.6
+      },
+      "drifted": [
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'helpfulness' live mean 0.21 dropped more than 0.2 below batch baseline 0.50 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "accuracy",
+        "safety"
+      ],
+      "liveScores": {
+        "efficiency": [
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5
+        ],
+        "accuracy": [
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.5
+        ],
+        "safety": [
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.95,
+        "accuracy": 1.0,
+        "safety": 0.45
+      },
+      "window": 50,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.5357142857142857,
+        "accuracy": 0.44,
+        "safety": 0.4411764705882353
+      },
+      "baselineMean": {
+        "efficiency": 0.95,
+        "accuracy": 1.0,
+        "safety": 0.45
+      },
+      "drifted": [
+        "efficiency",
+        "accuracy"
+      ],
+      "reeval": [
+        "criterion 'efficiency' live mean 0.54 dropped more than 0.2 below batch baseline 0.95 (window=50) \u2014 batch re-evaluation recommended",
+        "criterion 'accuracy' live mean 0.44 dropped more than 0.2 below batch baseline 1.00 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy"
+      ],
+      "liveScores": {
+        "accuracy": [
+          0.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.65
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.0
+      },
+      "baselineMean": {
+        "accuracy": 0.65
+      },
+      "drifted": [
+        "accuracy"
+      ],
+      "reeval": [
+        "criterion 'accuracy' live mean 0.00 dropped more than 0.15 below batch baseline 0.65 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "helpfulness",
+        "tone",
+        "accuracy"
+      ],
+      "liveScores": {
+        "efficiency": [
+          1.0,
+          0.5
+        ],
+        "helpfulness": [
+          1.0,
+          0.0,
+          0.5
+        ],
+        "tone": [
+          0.5,
+          1.0,
+          0.0,
+          0.5
+        ],
+        "accuracy": [
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.2,
+        "helpfulness": 0.35,
+        "tone": 0.5,
+        "accuracy": 0.65
+      },
+      "window": 5,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.75,
+        "helpfulness": 0.5,
+        "tone": 0.5,
+        "accuracy": 1.0
+      },
+      "baselineMean": {
+        "efficiency": 0.2,
+        "helpfulness": 0.35,
+        "tone": 0.5,
+        "accuracy": 0.65
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone",
+        "safety",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "tone": [
+          1.0,
+          0.5,
+          0.5
+        ],
+        "safety": [
+          0.5,
+          0.0
+        ],
+        "helpfulness": [
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.4,
+        "safety": 0.55,
+        "helpfulness": 0.2
+      },
+      "window": 5,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.6666666666666666,
+        "safety": 0.25,
+        "helpfulness": 0.5
+      },
+      "baselineMean": {
+        "tone": 0.4,
+        "safety": 0.55,
+        "helpfulness": 0.2
+      },
+      "drifted": [
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.25 dropped more than 0.2 below batch baseline 0.55 (window=5) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "efficiency",
+        "safety",
+        "accuracy"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          1.0,
+          0.5,
+          1.0,
+          1.0
+        ],
+        "efficiency": [
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.5
+        ],
+        "safety": [
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0
+        ],
+        "accuracy": [
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.9,
+        "efficiency": 0.3,
+        "safety": 0.9,
+        "accuracy": 0.5
+      },
+      "window": 10,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.875,
+        "efficiency": 0.4166666666666667,
+        "safety": 0.6875,
+        "accuracy": 0.6428571428571429
+      },
+      "baselineMean": {
+        "helpfulness": 0.9,
+        "efficiency": 0.3,
+        "safety": 0.9,
+        "accuracy": 0.5
+      },
+      "drifted": [
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.69 dropped more than 0.2 below batch baseline 0.90 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "tone",
+        "safety",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "accuracy": [
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5
+        ],
+        "tone": [
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          0.0
+        ],
+        "safety": [
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "helpfulness": [
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.95,
+        "tone": 0.3,
+        "safety": 0.9,
+        "helpfulness": 0.05
+      },
+      "window": 50,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.5531914893617021,
+        "tone": 0.4444444444444444,
+        "safety": 0.525,
+        "helpfulness": 1.0
+      },
+      "baselineMean": {
+        "accuracy": 0.95,
+        "tone": 0.3,
+        "safety": 0.9,
+        "helpfulness": 0.05
+      },
+      "drifted": [
+        "accuracy",
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'accuracy' live mean 0.55 dropped more than 0.15 below batch baseline 0.95 (window=50) \u2014 batch re-evaluation recommended",
+        "criterion 'safety' live mean 0.53 dropped more than 0.15 below batch baseline 0.90 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency"
+      ],
+      "liveScores": {
+        "efficiency": [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.05
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.7857142857142857
+      },
+      "baselineMean": {
+        "efficiency": 0.05
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "efficiency"
+      ],
+      "liveScores": {
+        "accuracy": [
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        "efficiency": [
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.35,
+        "efficiency": 0.75
+      },
+      "window": 50,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.625,
+        "efficiency": 0.3125
+      },
+      "baselineMean": {
+        "accuracy": 0.35,
+        "efficiency": 0.75
+      },
+      "drifted": [
+        "efficiency"
+      ],
+      "reeval": [
+        "criterion 'efficiency' live mean 0.31 dropped more than 0.2 below batch baseline 0.75 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "helpfulness",
+        "tone",
+        "efficiency"
+      ],
+      "liveScores": {
+        "safety": [
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.0
+        ],
+        "helpfulness": [
+          0.5,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "tone": [
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "efficiency": [
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.95,
+        "helpfulness": 0.95,
+        "tone": 0.2,
+        "efficiency": 0.45
+      },
+      "window": 50,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.3333333333333333,
+        "helpfulness": 0.625,
+        "tone": 0.5,
+        "efficiency": 0.46808510638297873
+      },
+      "baselineMean": {
+        "safety": 0.95,
+        "helpfulness": 0.95,
+        "tone": 0.2,
+        "efficiency": 0.45
+      },
+      "drifted": [
+        "safety",
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.33 dropped more than 0.1 below batch baseline 0.95 (window=50) \u2014 batch re-evaluation recommended",
+        "criterion 'helpfulness' live mean 0.62 dropped more than 0.1 below batch baseline 0.95 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "safety"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "safety": [
+          1.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.45,
+        "safety": 0.3
+      },
+      "window": 10,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.2,
+        "safety": 0.75
+      },
+      "baselineMean": {
+        "helpfulness": 0.45,
+        "safety": 0.3
+      },
+      "drifted": [
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'helpfulness' live mean 0.20 dropped more than 0.1 below batch baseline 0.45 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "safety",
+        "tone"
+      ],
+      "liveScores": {
+        "efficiency": [
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "safety": [
+          0.0,
+          0.5
+        ],
+        "tone": [
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.35,
+        "safety": 0.8,
+        "tone": 0.2
+      },
+      "window": 20,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.6071428571428571,
+        "safety": 0.25,
+        "tone": 0.25
+      },
+      "baselineMean": {
+        "efficiency": 0.35,
+        "safety": 0.8,
+        "tone": 0.2
+      },
+      "drifted": [
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.25 dropped more than 0.15 below batch baseline 0.80 (window=20) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone",
+        "safety",
+        "helpfulness",
+        "accuracy"
+      ],
+      "liveScores": {
+        "tone": [
+          0.5,
+          1.0,
+          0.5
+        ],
+        "safety": [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "helpfulness": [
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5
+        ],
+        "accuracy": [
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.4,
+        "safety": 0.05,
+        "helpfulness": 0.9,
+        "accuracy": 0.95
+      },
+      "window": 10,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.6666666666666666,
+        "safety": 0.5555555555555556,
+        "helpfulness": 0.6428571428571429,
+        "accuracy": 1.0
+      },
+      "baselineMean": {
+        "tone": 0.4,
+        "safety": 0.05,
+        "helpfulness": 0.9,
+        "accuracy": 0.95
+      },
+      "drifted": [
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'helpfulness' live mean 0.64 dropped more than 0.1 below batch baseline 0.90 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy"
+      ],
+      "liveScores": {
+        "accuracy": [
+          0.0,
+          0.5,
+          1.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.1
+      },
+      "window": 5,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.375
+      },
+      "baselineMean": {
+        "accuracy": 0.1
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone",
+        "safety",
+        "efficiency",
+        "accuracy"
+      ],
+      "liveScores": {
+        "tone": [
+          0.5,
+          1.0,
+          0.0
+        ],
+        "safety": [
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "efficiency": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "accuracy": [
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.2,
+        "safety": 0.65,
+        "efficiency": 0.55,
+        "accuracy": 0.95
+      },
+      "window": 10,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.5,
+        "safety": 0.6111111111111112,
+        "efficiency": 0.4,
+        "accuracy": 0.7857142857142857
+      },
+      "baselineMean": {
+        "tone": 0.2,
+        "safety": 0.65,
+        "efficiency": 0.55,
+        "accuracy": 0.95
+      },
+      "drifted": [
+        "efficiency",
+        "accuracy"
+      ],
+      "reeval": [
+        "criterion 'efficiency' live mean 0.40 dropped more than 0.1 below batch baseline 0.55 (window=10) \u2014 batch re-evaluation recommended",
+        "criterion 'accuracy' live mean 0.79 dropped more than 0.1 below batch baseline 0.95 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "tone",
+        "accuracy",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "safety": [
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "tone": [
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5
+        ],
+        "accuracy": [
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0
+        ],
+        "helpfulness": [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.95,
+        "tone": 0.65,
+        "accuracy": 0.1,
+        "helpfulness": 0.45
+      },
+      "window": 20,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.7,
+        "tone": 0.6071428571428571,
+        "accuracy": 0.5714285714285714,
+        "helpfulness": 0.25
+      },
+      "baselineMean": {
+        "safety": 0.95,
+        "tone": 0.65,
+        "accuracy": 0.1,
+        "helpfulness": 0.45
+      },
+      "drifted": [
+        "safety",
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.70 dropped more than 0.1 below batch baseline 0.95 (window=20) \u2014 batch re-evaluation recommended",
+        "criterion 'helpfulness' live mean 0.25 dropped more than 0.1 below batch baseline 0.45 (window=20) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety"
+      ],
+      "liveScores": {
+        "safety": [
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.15
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 1.0
+      },
+      "baselineMean": {
+        "safety": 0.15
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "safety"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          0.5,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "safety": [
+          1.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.65,
+        "safety": 0.6
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.125,
+        "safety": 0.5
+      },
+      "baselineMean": {
+        "helpfulness": 0.65,
+        "safety": 0.6
+      },
+      "drifted": [
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'helpfulness' live mean 0.12 dropped more than 0.15 below batch baseline 0.65 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone",
+        "helpfulness",
+        "accuracy"
+      ],
+      "liveScores": {
+        "tone": [
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0
+        ],
+        "helpfulness": [
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5
+        ],
+        "accuracy": [
+          0.5,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "tone": 1.0,
+        "helpfulness": 0.95,
+        "accuracy": 0.3
+      },
+      "window": 20,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.5,
+        "helpfulness": 0.5,
+        "accuracy": 0.75
+      },
+      "baselineMean": {
+        "tone": 1.0,
+        "helpfulness": 0.95,
+        "accuracy": 0.3
+      },
+      "drifted": [
+        "tone",
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'tone' live mean 0.50 dropped more than 0.1 below batch baseline 1.00 (window=20) \u2014 batch re-evaluation recommended",
+        "criterion 'helpfulness' live mean 0.50 dropped more than 0.1 below batch baseline 0.95 (window=20) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone",
+        "safety",
+        "efficiency"
+      ],
+      "liveScores": {
+        "tone": [
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0
+        ],
+        "safety": [
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0
+        ],
+        "efficiency": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.55,
+        "safety": 0.45,
+        "efficiency": 0.5
+      },
+      "window": 20,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.5,
+        "safety": 0.5,
+        "efficiency": 0.5714285714285714
+      },
+      "baselineMean": {
+        "tone": 0.55,
+        "safety": 0.45,
+        "efficiency": 0.5
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "tone",
+        "efficiency",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "accuracy": [
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5
+        ],
+        "tone": [
+          0.0
+        ],
+        "efficiency": [
+          0.5
+        ],
+        "helpfulness": [
+          0.5,
+          0.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.25,
+        "tone": 0.7,
+        "efficiency": 0.7,
+        "helpfulness": 0.8
+      },
+      "window": 10,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.16666666666666666,
+        "tone": 0.0,
+        "efficiency": 0.5,
+        "helpfulness": 0.3333333333333333
+      },
+      "baselineMean": {
+        "accuracy": 0.25,
+        "tone": 0.7,
+        "efficiency": 0.7,
+        "helpfulness": 0.8
+      },
+      "drifted": [
+        "tone",
+        "efficiency",
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'tone' live mean 0.00 dropped more than 0.1 below batch baseline 0.70 (window=10) \u2014 batch re-evaluation recommended",
+        "criterion 'efficiency' live mean 0.50 dropped more than 0.1 below batch baseline 0.70 (window=10) \u2014 batch re-evaluation recommended",
+        "criterion 'helpfulness' live mean 0.33 dropped more than 0.1 below batch baseline 0.80 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone"
+      ],
+      "liveScores": {
+        "tone": [
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.25
+      },
+      "window": 10,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.7
+      },
+      "baselineMean": {
+        "tone": 0.25
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.3
+      },
+      "window": 5,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.4
+      },
+      "baselineMean": {
+        "helpfulness": 0.3
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone",
+        "safety",
+        "helpfulness",
+        "efficiency"
+      ],
+      "liveScores": {
+        "tone": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "safety": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "helpfulness": [
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0
+        ],
+        "efficiency": [
+          0.5,
+          0.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.25,
+        "safety": 0.05,
+        "helpfulness": 0.75,
+        "efficiency": 0.55
+      },
+      "window": 5,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 1.0,
+        "safety": 0.3333333333333333,
+        "helpfulness": 0.7,
+        "efficiency": 0.3333333333333333
+      },
+      "baselineMean": {
+        "tone": 0.25,
+        "safety": 0.05,
+        "helpfulness": 0.75,
+        "efficiency": 0.55
+      },
+      "drifted": [
+        "efficiency"
+      ],
+      "reeval": [
+        "criterion 'efficiency' live mean 0.33 dropped more than 0.2 below batch baseline 0.55 (window=5) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "efficiency",
+        "safety"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.5
+        ],
+        "efficiency": [
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0
+        ],
+        "safety": [
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.2,
+        "efficiency": 0.15,
+        "safety": 0.9
+      },
+      "window": 10,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.5625,
+        "efficiency": 0.5,
+        "safety": 0.0
+      },
+      "baselineMean": {
+        "helpfulness": 0.2,
+        "efficiency": 0.15,
+        "safety": 0.9
+      },
+      "drifted": [
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.00 dropped more than 0.2 below batch baseline 0.90 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "efficiency",
+        "tone",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "safety": [
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "efficiency": [
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "tone": [
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "helpfulness": [
+          1.0,
+          1.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.4,
+        "efficiency": 0.85,
+        "tone": 0.8,
+        "helpfulness": 0.75
+      },
+      "window": 50,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.3269230769230769,
+        "efficiency": 0.47058823529411764,
+        "tone": 0.43478260869565216,
+        "helpfulness": 0.625
+      },
+      "baselineMean": {
+        "safety": 0.4,
+        "efficiency": 0.85,
+        "tone": 0.8,
+        "helpfulness": 0.75
+      },
+      "drifted": [
+        "efficiency",
+        "tone"
+      ],
+      "reeval": [
+        "criterion 'efficiency' live mean 0.47 dropped more than 0.2 below batch baseline 0.85 (window=50) \u2014 batch re-evaluation recommended",
+        "criterion 'tone' live mean 0.43 dropped more than 0.2 below batch baseline 0.80 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "tone",
+        "accuracy",
+        "safety"
+      ],
+      "liveScores": {
+        "efficiency": [
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0
+        ],
+        "tone": [
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          0.5
+        ],
+        "accuracy": [
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5
+        ],
+        "safety": [
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.35,
+        "tone": 0.9,
+        "accuracy": 0.6,
+        "safety": 0.3
+      },
+      "window": 50,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.3958333333333333,
+        "tone": 0.52,
+        "accuracy": 0.4852941176470588,
+        "safety": 0.4868421052631579
+      },
+      "baselineMean": {
+        "efficiency": 0.35,
+        "tone": 0.9,
+        "accuracy": 0.6,
+        "safety": 0.3
+      },
+      "drifted": [
+        "tone",
+        "accuracy"
+      ],
+      "reeval": [
+        "criterion 'tone' live mean 0.52 dropped more than 0.1 below batch baseline 0.90 (window=50) \u2014 batch re-evaluation recommended",
+        "criterion 'accuracy' live mean 0.49 dropped more than 0.1 below batch baseline 0.60 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "accuracy",
+        "efficiency"
+      ],
+      "liveScores": {
+        "safety": [
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          1.0
+        ],
+        "accuracy": [
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        "efficiency": [
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.55,
+        "accuracy": 0.45,
+        "efficiency": 0.75
+      },
+      "window": 50,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.5,
+        "accuracy": 0.35,
+        "efficiency": 0.5714285714285714
+      },
+      "baselineMean": {
+        "safety": 0.55,
+        "accuracy": 0.45,
+        "efficiency": 0.75
+      },
+      "drifted": [
+        "accuracy",
+        "efficiency"
+      ],
+      "reeval": [
+        "criterion 'accuracy' live mean 0.35 dropped more than 0.1 below batch baseline 0.45 (window=50) \u2014 batch re-evaluation recommended",
+        "criterion 'efficiency' live mean 0.57 dropped more than 0.1 below batch baseline 0.75 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "safety",
+        "tone"
+      ],
+      "liveScores": {
+        "efficiency": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "safety": [
+          0.5
+        ],
+        "tone": [
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.8,
+        "safety": 0.0,
+        "tone": 0.05
+      },
+      "window": 5,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.6666666666666666,
+        "safety": 0.5,
+        "tone": 0.5
+      },
+      "baselineMean": {
+        "efficiency": 0.8,
+        "safety": 0.0,
+        "tone": 0.05
+      },
+      "drifted": [
+        "efficiency"
+      ],
+      "reeval": [
+        "criterion 'efficiency' live mean 0.67 dropped more than 0.1 below batch baseline 0.80 (window=5) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "accuracy"
+      ],
+      "liveScores": {
+        "safety": [
+          0.0
+        ],
+        "accuracy": [
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.8,
+        "accuracy": 0.6
+      },
+      "window": 20,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.0,
+        "accuracy": 0.42857142857142855
+      },
+      "baselineMean": {
+        "safety": 0.8,
+        "accuracy": 0.6
+      },
+      "drifted": [
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.00 dropped more than 0.2 below batch baseline 0.80 (window=20) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone",
+        "accuracy",
+        "safety"
+      ],
+      "liveScores": {
+        "tone": [
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          0.0
+        ],
+        "accuracy": [
+          0.5,
+          1.0,
+          0.0
+        ],
+        "safety": [
+          0.5,
+          0.0,
+          0.5,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.0,
+        "accuracy": 0.0,
+        "safety": 0.05
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.35,
+        "accuracy": 0.5,
+        "safety": 0.375
+      },
+      "baselineMean": {
+        "tone": 0.0,
+        "accuracy": 0.0,
+        "safety": 0.05
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy"
+      ],
+      "liveScores": {
+        "accuracy": [
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.3
+      },
+      "window": 50,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.6153846153846154
+      },
+      "baselineMean": {
+        "accuracy": 0.3
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "efficiency",
+        "tone"
+      ],
+      "liveScores": {
+        "accuracy": [
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        "efficiency": [
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0
+        ],
+        "tone": [
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.5,
+        "efficiency": 0.45,
+        "tone": 0.7
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.3888888888888889,
+        "efficiency": 0.625,
+        "tone": 0.8333333333333334
+      },
+      "baselineMean": {
+        "accuracy": 0.5,
+        "efficiency": 0.45,
+        "tone": 0.7
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone"
+      ],
+      "liveScores": {
+        "tone": [
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.1
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.5
+      },
+      "baselineMean": {
+        "tone": 0.1
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency"
+      ],
+      "liveScores": {
+        "efficiency": [
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.45
+      },
+      "window": 20,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.5263157894736842
+      },
+      "baselineMean": {
+        "efficiency": 0.45
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety"
+      ],
+      "liveScores": {
+        "safety": [
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 1.0
+      },
+      "window": 50,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.5769230769230769
+      },
+      "baselineMean": {
+        "safety": 1.0
+      },
+      "drifted": [
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.58 dropped more than 0.15 below batch baseline 1.00 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "safety",
+        "tone"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5
+        ],
+        "safety": [
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "tone": [
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.05,
+        "safety": 0.45,
+        "tone": 0.4
+      },
+      "window": 20,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.5,
+        "safety": 0.6071428571428571,
+        "tone": 0.5
+      },
+      "baselineMean": {
+        "helpfulness": 0.05,
+        "safety": 0.45,
+        "tone": 0.4
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "safety",
+        "tone",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "efficiency": [
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0
+        ],
+        "safety": [
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.0
+        ],
+        "tone": [
+          0.5
+        ],
+        "helpfulness": [
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.25,
+        "safety": 0.9,
+        "tone": 0.8,
+        "helpfulness": 0.9
+      },
+      "window": 50,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.4393939393939394,
+        "safety": 0.5,
+        "tone": 0.5,
+        "helpfulness": 0.48
+      },
+      "baselineMean": {
+        "efficiency": 0.25,
+        "safety": 0.9,
+        "tone": 0.8,
+        "helpfulness": 0.9
+      },
+      "drifted": [
+        "safety",
+        "tone",
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.50 dropped more than 0.2 below batch baseline 0.90 (window=50) \u2014 batch re-evaluation recommended",
+        "criterion 'tone' live mean 0.50 dropped more than 0.2 below batch baseline 0.80 (window=50) \u2014 batch re-evaluation recommended",
+        "criterion 'helpfulness' live mean 0.48 dropped more than 0.2 below batch baseline 0.90 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency"
+      ],
+      "liveScores": {
+        "efficiency": [
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.85
+      },
+      "window": 10,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 1.0
+      },
+      "baselineMean": {
+        "efficiency": 0.85
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "accuracy",
+        "tone",
+        "safety"
+      ],
+      "liveScores": {
+        "efficiency": [
+          0.5,
+          1.0,
+          0.5
+        ],
+        "accuracy": [
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "tone": [
+          0.0,
+          1.0
+        ],
+        "safety": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.2,
+        "accuracy": 0.15,
+        "tone": 0.9,
+        "safety": 0.1
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.6666666666666666,
+        "accuracy": 0.8,
+        "tone": 0.5,
+        "safety": 0.0
+      },
+      "baselineMean": {
+        "efficiency": 0.2,
+        "accuracy": 0.15,
+        "tone": 0.9,
+        "safety": 0.1
+      },
+      "drifted": [
+        "tone"
+      ],
+      "reeval": [
+        "criterion 'tone' live mean 0.50 dropped more than 0.15 below batch baseline 0.90 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "efficiency"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0
+        ],
+        "efficiency": [
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.35,
+        "efficiency": 0.05
+      },
+      "window": 10,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.5625,
+        "efficiency": 0.4
+      },
+      "baselineMean": {
+        "helpfulness": 0.35,
+        "efficiency": 0.05
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "helpfulness",
+        "safety",
+        "efficiency"
+      ],
+      "liveScores": {
+        "accuracy": [
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0
+        ],
+        "helpfulness": [
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0
+        ],
+        "safety": [
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0
+        ],
+        "efficiency": [
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.5,
+        "helpfulness": 0.45,
+        "safety": 0.3,
+        "efficiency": 1.0
+      },
+      "window": 20,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.53125,
+        "helpfulness": 0.5714285714285714,
+        "safety": 0.5,
+        "efficiency": 0.5833333333333334
+      },
+      "baselineMean": {
+        "accuracy": 0.5,
+        "helpfulness": 0.45,
+        "safety": 0.3,
+        "efficiency": 1.0
+      },
+      "drifted": [
+        "efficiency"
+      ],
+      "reeval": [
+        "criterion 'efficiency' live mean 0.58 dropped more than 0.1 below batch baseline 1.00 (window=20) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety"
+      ],
+      "liveScores": {
+        "safety": [
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.1
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.5714285714285714
+      },
+      "baselineMean": {
+        "safety": 0.1
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "efficiency",
+        "tone",
+        "safety"
+      ],
+      "liveScores": {
+        "accuracy": [
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "efficiency": [
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "tone": [
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.5
+        ],
+        "safety": [
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.85,
+        "efficiency": 0.95,
+        "tone": 0.95,
+        "safety": 1.0
+      },
+      "window": 50,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.4444444444444444,
+        "efficiency": 0.4444444444444444,
+        "tone": 0.7352941176470589,
+        "safety": 0.4027777777777778
+      },
+      "baselineMean": {
+        "accuracy": 0.85,
+        "efficiency": 0.95,
+        "tone": 0.95,
+        "safety": 1.0
+      },
+      "drifted": [
+        "accuracy",
+        "efficiency",
+        "tone",
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'accuracy' live mean 0.44 dropped more than 0.2 below batch baseline 0.85 (window=50) \u2014 batch re-evaluation recommended",
+        "criterion 'efficiency' live mean 0.44 dropped more than 0.2 below batch baseline 0.95 (window=50) \u2014 batch re-evaluation recommended",
+        "criterion 'tone' live mean 0.74 dropped more than 0.2 below batch baseline 0.95 (window=50) \u2014 batch re-evaluation recommended",
+        "criterion 'safety' live mean 0.40 dropped more than 0.2 below batch baseline 1.00 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "efficiency",
+        "accuracy",
+        "tone"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          0.0,
+          1.0,
+          0.5
+        ],
+        "efficiency": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "accuracy": [
+          0.5,
+          0.0
+        ],
+        "tone": [
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.7,
+        "efficiency": 0.15,
+        "accuracy": 0.0,
+        "tone": 1.0
+      },
+      "window": 10,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.5,
+        "efficiency": 0.3333333333333333,
+        "accuracy": 0.25,
+        "tone": 0.42857142857142855
+      },
+      "baselineMean": {
+        "helpfulness": 0.7,
+        "efficiency": 0.15,
+        "accuracy": 0.0,
+        "tone": 1.0
+      },
+      "drifted": [
+        "tone"
+      ],
+      "reeval": [
+        "criterion 'tone' live mean 0.43 dropped more than 0.2 below batch baseline 1.00 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "accuracy",
+        "efficiency",
+        "tone"
+      ],
+      "liveScores": {
+        "safety": [
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0
+        ],
+        "accuracy": [
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.5
+        ],
+        "efficiency": [
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "tone": [
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.8,
+        "accuracy": 0.0,
+        "efficiency": 0.05,
+        "tone": 1.0
+      },
+      "window": 50,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.5108695652173914,
+        "accuracy": 0.5555555555555556,
+        "efficiency": 0.4166666666666667,
+        "tone": 0.5588235294117647
+      },
+      "baselineMean": {
+        "safety": 0.8,
+        "accuracy": 0.0,
+        "efficiency": 0.05,
+        "tone": 1.0
+      },
+      "drifted": [
+        "safety",
+        "tone"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.51 dropped more than 0.2 below batch baseline 0.80 (window=50) \u2014 batch re-evaluation recommended",
+        "criterion 'tone' live mean 0.56 dropped more than 0.2 below batch baseline 1.00 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "safety",
+        "helpfulness",
+        "tone"
+      ],
+      "liveScores": {
+        "efficiency": [
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "safety": [
+          0.5,
+          1.0,
+          0.5
+        ],
+        "helpfulness": [
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.0
+        ],
+        "tone": [
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.9,
+        "safety": 0.6,
+        "helpfulness": 0.4,
+        "tone": 0.05
+      },
+      "window": 50,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.5,
+        "safety": 0.6666666666666666,
+        "helpfulness": 0.4375,
+        "tone": 0.55
+      },
+      "baselineMean": {
+        "efficiency": 0.9,
+        "safety": 0.6,
+        "helpfulness": 0.4,
+        "tone": 0.05
+      },
+      "drifted": [
+        "efficiency"
+      ],
+      "reeval": [
+        "criterion 'efficiency' live mean 0.50 dropped more than 0.15 below batch baseline 0.90 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety"
+      ],
+      "liveScores": {
+        "safety": [
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "safety": 1.0
+      },
+      "window": 50,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.5185185185185185
+      },
+      "baselineMean": {
+        "safety": 1.0
+      },
+      "drifted": [
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.52 dropped more than 0.2 below batch baseline 1.00 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "efficiency",
+        "tone",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "safety": [
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        "efficiency": [
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5
+        ],
+        "tone": [
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.5
+        ],
+        "helpfulness": [
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.75,
+        "efficiency": 0.25,
+        "tone": 0.85,
+        "helpfulness": 0.95
+      },
+      "window": 50,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.6428571428571429,
+        "efficiency": 0.6071428571428571,
+        "tone": 0.5652173913043478,
+        "helpfulness": 0.20833333333333334
+      },
+      "baselineMean": {
+        "safety": 0.75,
+        "efficiency": 0.25,
+        "tone": 0.85,
+        "helpfulness": 0.95
+      },
+      "drifted": [
+        "tone",
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'tone' live mean 0.57 dropped more than 0.15 below batch baseline 0.85 (window=50) \u2014 batch re-evaluation recommended",
+        "criterion 'helpfulness' live mean 0.21 dropped more than 0.15 below batch baseline 0.95 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "helpfulness",
+        "accuracy",
+        "safety"
+      ],
+      "liveScores": {
+        "efficiency": [
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5
+        ],
+        "helpfulness": [
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.0
+        ],
+        "accuracy": [
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          0.5
+        ],
+        "safety": [
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 1.0,
+        "helpfulness": 0.7,
+        "accuracy": 0.55,
+        "safety": 0.3
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.6666666666666666,
+        "helpfulness": 0.16666666666666666,
+        "accuracy": 0.6111111111111112,
+        "safety": 0.5
+      },
+      "baselineMean": {
+        "efficiency": 1.0,
+        "helpfulness": 0.7,
+        "accuracy": 0.55,
+        "safety": 0.3
+      },
+      "drifted": [
+        "efficiency",
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'efficiency' live mean 0.67 dropped more than 0.15 below batch baseline 1.00 (window=10) \u2014 batch re-evaluation recommended",
+        "criterion 'helpfulness' live mean 0.17 dropped more than 0.15 below batch baseline 0.70 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety"
+      ],
+      "liveScores": {
+        "safety": [
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.15
+      },
+      "window": 50,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.5641025641025641
+      },
+      "baselineMean": {
+        "safety": 0.15
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "safety",
+        "tone"
+      ],
+      "liveScores": {
+        "accuracy": [
+          1.0,
+          0.0
+        ],
+        "safety": [
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "tone": [
+          1.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.75,
+        "safety": 0.6,
+        "tone": 0.35
+      },
+      "window": 5,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.5,
+        "safety": 0.2,
+        "tone": 1.0
+      },
+      "baselineMean": {
+        "accuracy": 0.75,
+        "safety": 0.6,
+        "tone": 0.35
+      },
+      "drifted": [
+        "accuracy",
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'accuracy' live mean 0.50 dropped more than 0.15 below batch baseline 0.75 (window=5) \u2014 batch re-evaluation recommended",
+        "criterion 'safety' live mean 0.20 dropped more than 0.15 below batch baseline 0.60 (window=5) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "safety",
+        "accuracy"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          0.0
+        ],
+        "safety": [
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.0
+        ],
+        "accuracy": [
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.0,
+        "safety": 0.9,
+        "accuracy": 1.0
+      },
+      "window": 5,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.0,
+        "safety": 0.2,
+        "accuracy": 0.5
+      },
+      "baselineMean": {
+        "helpfulness": 0.0,
+        "safety": 0.9,
+        "accuracy": 1.0
+      },
+      "drifted": [
+        "safety",
+        "accuracy"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.20 dropped more than 0.15 below batch baseline 0.90 (window=5) \u2014 batch re-evaluation recommended",
+        "criterion 'accuracy' live mean 0.50 dropped more than 0.15 below batch baseline 1.00 (window=5) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone",
+        "safety",
+        "efficiency",
+        "accuracy"
+      ],
+      "liveScores": {
+        "tone": [
+          1.0,
+          0.0
+        ],
+        "safety": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "efficiency": [
+          0.5,
+          0.5,
+          1.0
+        ],
+        "accuracy": [
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "tone": 1.0,
+        "safety": 0.25,
+        "efficiency": 0.3,
+        "accuracy": 0.6
+      },
+      "window": 10,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.5,
+        "safety": 0.5,
+        "efficiency": 0.6666666666666666,
+        "accuracy": 0.6875
+      },
+      "baselineMean": {
+        "tone": 1.0,
+        "safety": 0.25,
+        "efficiency": 0.3,
+        "accuracy": 0.6
+      },
+      "drifted": [
+        "tone"
+      ],
+      "reeval": [
+        "criterion 'tone' live mean 0.50 dropped more than 0.1 below batch baseline 1.00 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone"
+      ],
+      "liveScores": {
+        "tone": [
+          0.5,
+          0.0,
+          0.5,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "tone": 1.0
+      },
+      "window": 5,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.375
+      },
+      "baselineMean": {
+        "tone": 1.0
+      },
+      "drifted": [
+        "tone"
+      ],
+      "reeval": [
+        "criterion 'tone' live mean 0.38 dropped more than 0.15 below batch baseline 1.00 (window=5) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "tone",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "accuracy": [
+          1.0,
+          0.5,
+          0.0
+        ],
+        "tone": [
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "helpfulness": [
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.6,
+        "tone": 0.2,
+        "helpfulness": 0.1
+      },
+      "window": 5,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.5,
+        "tone": 0.6,
+        "helpfulness": 0.5
+      },
+      "baselineMean": {
+        "accuracy": 0.6,
+        "tone": 0.2,
+        "helpfulness": 0.1
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "efficiency",
+        "tone",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "accuracy": [
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.5
+        ],
+        "efficiency": [
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0
+        ],
+        "tone": [
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "helpfulness": [
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.0,
+        "efficiency": 0.6,
+        "tone": 1.0,
+        "helpfulness": 0.6
+      },
+      "window": 20,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.5,
+        "efficiency": 0.5,
+        "tone": 0.5416666666666666,
+        "helpfulness": 0.3
+      },
+      "baselineMean": {
+        "accuracy": 0.0,
+        "efficiency": 0.6,
+        "tone": 1.0,
+        "helpfulness": 0.6
+      },
+      "drifted": [
+        "tone",
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'tone' live mean 0.54 dropped more than 0.1 below batch baseline 1.00 (window=20) \u2014 batch re-evaluation recommended",
+        "criterion 'helpfulness' live mean 0.30 dropped more than 0.1 below batch baseline 0.60 (window=20) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "accuracy",
+        "efficiency",
+        "safety"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "accuracy": [
+          1.0,
+          0.5
+        ],
+        "efficiency": [
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          1.0
+        ],
+        "safety": [
+          0.5,
+          0.5,
+          1.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.55,
+        "accuracy": 0.65,
+        "efficiency": 0.05,
+        "safety": 0.4
+      },
+      "window": 10,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.65,
+        "accuracy": 0.75,
+        "efficiency": 0.6,
+        "safety": 0.5
+      },
+      "baselineMean": {
+        "helpfulness": 0.55,
+        "accuracy": 0.65,
+        "efficiency": 0.05,
+        "safety": 0.4
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "efficiency",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "safety": [
+          0.5,
+          1.0
+        ],
+        "efficiency": [
+          1.0
+        ],
+        "helpfulness": [
+          0.5,
+          0.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.9,
+        "efficiency": 0.85,
+        "helpfulness": 0.3
+      },
+      "window": 5,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.75,
+        "efficiency": 1.0,
+        "helpfulness": 0.5
+      },
+      "baselineMean": {
+        "safety": 0.9,
+        "efficiency": 0.85,
+        "helpfulness": 0.3
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "efficiency"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          0.0,
+          0.0
+        ],
+        "efficiency": [
+          1.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.25,
+        "efficiency": 0.75
+      },
+      "window": 5,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.0,
+        "efficiency": 1.0
+      },
+      "baselineMean": {
+        "helpfulness": 0.25,
+        "efficiency": 0.75
+      },
+      "drifted": [
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'helpfulness' live mean 0.00 dropped more than 0.1 below batch baseline 0.25 (window=5) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "accuracy",
+        "helpfulness",
+        "safety"
+      ],
+      "liveScores": {
+        "efficiency": [
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "accuracy": [
+          0.5,
+          1.0,
+          0.5,
+          0.5
+        ],
+        "helpfulness": [
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.5
+        ],
+        "safety": [
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.05,
+        "accuracy": 0.75,
+        "helpfulness": 0.85,
+        "safety": 0.8
+      },
+      "window": 10,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.7142857142857143,
+        "accuracy": 0.625,
+        "helpfulness": 0.4166666666666667,
+        "safety": 0.7857142857142857
+      },
+      "baselineMean": {
+        "efficiency": 0.05,
+        "accuracy": 0.75,
+        "helpfulness": 0.85,
+        "safety": 0.8
+      },
+      "drifted": [
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'helpfulness' live mean 0.42 dropped more than 0.2 below batch baseline 0.85 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "efficiency",
+        "tone",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "safety": [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0
+        ],
+        "efficiency": [
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0
+        ],
+        "tone": [
+          1.0
+        ],
+        "helpfulness": [
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.4,
+        "efficiency": 0.3,
+        "tone": 0.4,
+        "helpfulness": 0.05
+      },
+      "window": 20,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.3181818181818182,
+        "efficiency": 0.5,
+        "tone": 1.0,
+        "helpfulness": 0.4166666666666667
+      },
+      "baselineMean": {
+        "safety": 0.4,
+        "efficiency": 0.3,
+        "tone": 0.4,
+        "helpfulness": 0.05
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone",
+        "accuracy",
+        "efficiency",
+        "safety"
+      ],
+      "liveScores": {
+        "tone": [
+          0.5,
+          0.5,
+          1.0,
+          0.5
+        ],
+        "accuracy": [
+          0.0,
+          1.0,
+          1.0
+        ],
+        "efficiency": [
+          0.0,
+          0.5
+        ],
+        "safety": [
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.6,
+        "accuracy": 0.7,
+        "efficiency": 0.05,
+        "safety": 0.95
+      },
+      "window": 10,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.625,
+        "accuracy": 0.6666666666666666,
+        "efficiency": 0.25,
+        "safety": 1.0
+      },
+      "baselineMean": {
+        "tone": 0.6,
+        "accuracy": 0.7,
+        "efficiency": 0.05,
+        "safety": 0.95
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "accuracy"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0
+        ],
+        "accuracy": [
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.15,
+        "accuracy": 0.8
+      },
+      "window": 20,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.7058823529411765,
+        "accuracy": 0.4411764705882353
+      },
+      "baselineMean": {
+        "helpfulness": 0.15,
+        "accuracy": 0.8
+      },
+      "drifted": [
+        "accuracy"
+      ],
+      "reeval": [
+        "criterion 'accuracy' live mean 0.44 dropped more than 0.1 below batch baseline 0.80 (window=20) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "safety"
+      ],
+      "liveScores": {
+        "efficiency": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "safety": [
+          1.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.7,
+        "safety": 0.35
+      },
+      "window": 5,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 1.0,
+        "safety": 0.5
+      },
+      "baselineMean": {
+        "efficiency": 0.7,
+        "safety": 0.35
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "efficiency",
+        "helpfulness",
+        "tone"
+      ],
+      "liveScores": {
+        "safety": [
+          0.0,
+          0.5,
+          0.0,
+          1.0
+        ],
+        "efficiency": [
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "helpfulness": [
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0
+        ],
+        "tone": [
+          0.0,
+          0.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.9,
+        "efficiency": 0.9,
+        "helpfulness": 0.15,
+        "tone": 0.6
+      },
+      "window": 5,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.375,
+        "efficiency": 0.4,
+        "helpfulness": 0.7,
+        "tone": 0.125
+      },
+      "baselineMean": {
+        "safety": 0.9,
+        "efficiency": 0.9,
+        "helpfulness": 0.15,
+        "tone": 0.6
+      },
+      "drifted": [
+        "safety",
+        "efficiency",
+        "tone"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.38 dropped more than 0.2 below batch baseline 0.90 (window=5) \u2014 batch re-evaluation recommended",
+        "criterion 'efficiency' live mean 0.40 dropped more than 0.2 below batch baseline 0.90 (window=5) \u2014 batch re-evaluation recommended",
+        "criterion 'tone' live mean 0.12 dropped more than 0.2 below batch baseline 0.60 (window=5) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "efficiency",
+        "safety",
+        "tone"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.5
+        ],
+        "efficiency": [
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0
+        ],
+        "safety": [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          1.0
+        ],
+        "tone": [
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.0,
+        "efficiency": 1.0,
+        "safety": 0.55,
+        "tone": 0.0
+      },
+      "window": 50,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.6538461538461539,
+        "efficiency": 0.43333333333333335,
+        "safety": 0.5227272727272727,
+        "tone": 0.48148148148148145
+      },
+      "baselineMean": {
+        "helpfulness": 0.0,
+        "efficiency": 1.0,
+        "safety": 0.55,
+        "tone": 0.0
+      },
+      "drifted": [
+        "efficiency"
+      ],
+      "reeval": [
+        "criterion 'efficiency' live mean 0.43 dropped more than 0.1 below batch baseline 1.00 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "helpfulness",
+        "safety",
+        "tone"
+      ],
+      "liveScores": {
+        "accuracy": [
+          0.0
+        ],
+        "helpfulness": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "safety": [
+          1.0
+        ],
+        "tone": [
+          0.0,
+          0.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.15,
+        "helpfulness": 0.05,
+        "safety": 0.95,
+        "tone": 0.3
+      },
+      "window": 10,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.0,
+        "helpfulness": 0.16666666666666666,
+        "safety": 1.0,
+        "tone": 0.16666666666666666
+      },
+      "baselineMean": {
+        "accuracy": 0.15,
+        "helpfulness": 0.05,
+        "safety": 0.95,
+        "tone": 0.3
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "helpfulness",
+        "accuracy"
+      ],
+      "liveScores": {
+        "safety": [
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.5
+        ],
+        "helpfulness": [
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "accuracy": [
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.75,
+        "helpfulness": 0.7,
+        "accuracy": 0.75
+      },
+      "window": 50,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.6666666666666666,
+        "helpfulness": 0.5568181818181818,
+        "accuracy": 0.55
+      },
+      "baselineMean": {
+        "safety": 0.75,
+        "helpfulness": 0.7,
+        "accuracy": 0.75
+      },
+      "drifted": [
+        "accuracy"
+      ],
+      "reeval": [
+        "criterion 'accuracy' live mean 0.55 dropped more than 0.15 below batch baseline 0.75 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety"
+      ],
+      "liveScores": {
+        "safety": [
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.75
+      },
+      "window": 50,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.46153846153846156
+      },
+      "baselineMean": {
+        "safety": 0.75
+      },
+      "drifted": [
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.46 dropped more than 0.15 below batch baseline 0.75 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "efficiency"
+      ],
+      "liveScores": {
+        "safety": [
+          0.5
+        ],
+        "efficiency": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.1,
+        "efficiency": 0.1
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.5,
+        "efficiency": 0.5555555555555556
+      },
+      "baselineMean": {
+        "safety": 0.1,
+        "efficiency": 0.1
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "safety"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "safety": [
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.2,
+        "safety": 0.7
+      },
+      "window": 20,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.6666666666666666,
+        "safety": 0.0
+      },
+      "baselineMean": {
+        "helpfulness": 0.2,
+        "safety": 0.7
+      },
+      "drifted": [
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.00 dropped more than 0.2 below batch baseline 0.70 (window=20) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety"
+      ],
+      "liveScores": {
+        "safety": [
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.45
+      },
+      "window": 10,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.5
+      },
+      "baselineMean": {
+        "safety": 0.45
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone",
+        "accuracy",
+        "safety",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "tone": [
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5
+        ],
+        "accuracy": [
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          0.0
+        ],
+        "safety": [
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "helpfulness": [
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.2,
+        "accuracy": 0.25,
+        "safety": 0.0,
+        "helpfulness": 0.35
+      },
+      "window": 20,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.40625,
+        "accuracy": 0.4166666666666667,
+        "safety": 0.475,
+        "helpfulness": 0.3
+      },
+      "baselineMean": {
+        "tone": 0.2,
+        "accuracy": 0.25,
+        "safety": 0.0,
+        "helpfulness": 0.35
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "safety"
+      ],
+      "liveScores": {
+        "efficiency": [
+          0.0,
+          1.0
+        ],
+        "safety": [
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.15,
+        "safety": 0.7
+      },
+      "window": 5,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.5,
+        "safety": 0.5
+      },
+      "baselineMean": {
+        "efficiency": 0.15,
+        "safety": 0.7
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "tone"
+      ],
+      "liveScores": {
+        "safety": [
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5
+        ],
+        "tone": [
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.95,
+        "tone": 0.05
+      },
+      "window": 50,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.5125,
+        "tone": 0.625
+      },
+      "baselineMean": {
+        "safety": 0.95,
+        "tone": 0.05
+      },
+      "drifted": [
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.51 dropped more than 0.15 below batch baseline 0.95 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "helpfulness",
+        "efficiency"
+      ],
+      "liveScores": {
+        "accuracy": [
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "helpfulness": [
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0
+        ],
+        "efficiency": [
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.2,
+        "helpfulness": 0.8,
+        "efficiency": 0.2
+      },
+      "window": 20,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.5277777777777778,
+        "helpfulness": 0.5454545454545454,
+        "efficiency": 0.5
+      },
+      "baselineMean": {
+        "accuracy": 0.2,
+        "helpfulness": 0.8,
+        "efficiency": 0.2
+      },
+      "drifted": [
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'helpfulness' live mean 0.55 dropped more than 0.1 below batch baseline 0.80 (window=20) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety"
+      ],
+      "liveScores": {
+        "safety": [
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.55
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.16666666666666666
+      },
+      "baselineMean": {
+        "safety": 0.55
+      },
+      "drifted": [
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.17 dropped more than 0.15 below batch baseline 0.55 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone",
+        "helpfulness",
+        "efficiency",
+        "safety"
+      ],
+      "liveScores": {
+        "tone": [
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "helpfulness": [
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5
+        ],
+        "efficiency": [
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "safety": [
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.9,
+        "helpfulness": 0.2,
+        "efficiency": 0.65,
+        "safety": 0.4
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.5,
+        "helpfulness": 0.3333333333333333,
+        "efficiency": 0.5625,
+        "safety": 0.5
+      },
+      "baselineMean": {
+        "tone": 0.9,
+        "helpfulness": 0.2,
+        "efficiency": 0.65,
+        "safety": 0.4
+      },
+      "drifted": [
+        "tone"
+      ],
+      "reeval": [
+        "criterion 'tone' live mean 0.50 dropped more than 0.15 below batch baseline 0.90 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "accuracy",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "safety": [
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "accuracy": [
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0
+        ],
+        "helpfulness": [
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.15,
+        "accuracy": 0.95,
+        "helpfulness": 0.15
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.25,
+        "accuracy": 0.6875,
+        "helpfulness": 0.5833333333333334
+      },
+      "baselineMean": {
+        "safety": 0.15,
+        "accuracy": 0.95,
+        "helpfulness": 0.15
+      },
+      "drifted": [
+        "accuracy"
+      ],
+      "reeval": [
+        "criterion 'accuracy' live mean 0.69 dropped more than 0.15 below batch baseline 0.95 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "efficiency"
+      ],
+      "liveScores": {
+        "accuracy": [
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.5
+        ],
+        "efficiency": [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.15,
+        "efficiency": 0.85
+      },
+      "window": 50,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.375,
+        "efficiency": 0.4318181818181818
+      },
+      "baselineMean": {
+        "accuracy": 0.15,
+        "efficiency": 0.85
+      },
+      "drifted": [
+        "efficiency"
+      ],
+      "reeval": [
+        "criterion 'efficiency' live mean 0.43 dropped more than 0.2 below batch baseline 0.85 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy",
+        "safety",
+        "helpfulness",
+        "tone"
+      ],
+      "liveScores": {
+        "accuracy": [
+          1.0,
+          0.5,
+          1.0,
+          0.0
+        ],
+        "safety": [
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "helpfulness": [
+          0.0,
+          0.5
+        ],
+        "tone": [
+          1.0,
+          0.0,
+          1.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.55,
+        "safety": 1.0,
+        "helpfulness": 0.3,
+        "tone": 0.3
+      },
+      "window": 5,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.625,
+        "safety": 0.5,
+        "helpfulness": 0.25,
+        "tone": 0.625
+      },
+      "baselineMean": {
+        "accuracy": 0.55,
+        "safety": 1.0,
+        "helpfulness": 0.3,
+        "tone": 0.3
+      },
+      "drifted": [
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'safety' live mean 0.50 dropped more than 0.15 below batch baseline 1.00 (window=5) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.35
+      },
+      "window": 20,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.4375
+      },
+      "baselineMean": {
+        "helpfulness": 0.35
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "accuracy"
+      ],
+      "liveScores": {
+        "accuracy": [
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.65
+      },
+      "window": 50,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "accuracy": 0.5
+      },
+      "baselineMean": {
+        "accuracy": 0.65
+      },
+      "drifted": [
+        "accuracy"
+      ],
+      "reeval": [
+        "criterion 'accuracy' live mean 0.50 dropped more than 0.1 below batch baseline 0.65 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "tone",
+        "accuracy",
+        "safety"
+      ],
+      "liveScores": {
+        "efficiency": [
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.0
+        ],
+        "tone": [
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "accuracy": [
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "safety": [
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.1,
+        "tone": 0.55,
+        "accuracy": 1.0,
+        "safety": 0.15
+      },
+      "window": 50,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.4166666666666667,
+        "tone": 0.627906976744186,
+        "accuracy": 0.5405405405405406,
+        "safety": 0.5
+      },
+      "baselineMean": {
+        "efficiency": 0.1,
+        "tone": 0.55,
+        "accuracy": 1.0,
+        "safety": 0.15
+      },
+      "drifted": [
+        "accuracy"
+      ],
+      "reeval": [
+        "criterion 'accuracy' live mean 0.54 dropped more than 0.1 below batch baseline 1.00 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "tone"
+      ],
+      "liveScores": {
+        "tone": [
+          1.0,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.25
+      },
+      "window": 20,
+      "driftThreshold": 0.2
+    },
+    "expected": {
+      "perCriterionMean": {
+        "tone": 0.5416666666666666
+      },
+      "baselineMean": {
+        "tone": 0.25
+      },
+      "drifted": [],
+      "reeval": [],
+      "driftDetected": false
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "efficiency",
+        "tone",
+        "helpfulness",
+        "safety"
+      ],
+      "liveScores": {
+        "efficiency": [
+          1.0,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0
+        ],
+        "tone": [
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.5,
+          1.0
+        ],
+        "helpfulness": [
+          0.5,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "safety": [
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.4,
+        "tone": 0.95,
+        "helpfulness": 0.15,
+        "safety": 0.65
+      },
+      "window": 50,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "efficiency": 0.5666666666666667,
+        "tone": 0.5277777777777778,
+        "helpfulness": 0.5555555555555556,
+        "safety": 0.2857142857142857
+      },
+      "baselineMean": {
+        "efficiency": 0.4,
+        "tone": 0.95,
+        "helpfulness": 0.15,
+        "safety": 0.65
+      },
+      "drifted": [
+        "tone",
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'tone' live mean 0.53 dropped more than 0.1 below batch baseline 0.95 (window=50) \u2014 batch re-evaluation recommended",
+        "criterion 'safety' live mean 0.29 dropped more than 0.1 below batch baseline 0.65 (window=50) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "helpfulness",
+        "efficiency",
+        "safety"
+      ],
+      "liveScores": {
+        "helpfulness": [
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "efficiency": [
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5
+        ],
+        "safety": [
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.75,
+        "efficiency": 0.65,
+        "safety": 0.65
+      },
+      "window": 20,
+      "driftThreshold": 0.1
+    },
+    "expected": {
+      "perCriterionMean": {
+        "helpfulness": 0.5294117647058824,
+        "efficiency": 0.5,
+        "safety": 0.5384615384615384
+      },
+      "baselineMean": {
+        "helpfulness": 0.75,
+        "efficiency": 0.65,
+        "safety": 0.65
+      },
+      "drifted": [
+        "helpfulness",
+        "efficiency",
+        "safety"
+      ],
+      "reeval": [
+        "criterion 'helpfulness' live mean 0.53 dropped more than 0.1 below batch baseline 0.75 (window=20) \u2014 batch re-evaluation recommended",
+        "criterion 'efficiency' live mean 0.50 dropped more than 0.1 below batch baseline 0.65 (window=20) \u2014 batch re-evaluation recommended",
+        "criterion 'safety' live mean 0.54 dropped more than 0.1 below batch baseline 0.65 (window=20) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  },
+  {
+    "input": {
+      "criteria": [
+        "safety",
+        "tone",
+        "helpfulness"
+      ],
+      "liveScores": {
+        "safety": [
+          1.0,
+          0.5
+        ],
+        "tone": [
+          1.0
+        ],
+        "helpfulness": [
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.5
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.05,
+        "tone": 0.75,
+        "helpfulness": 0.65
+      },
+      "window": 10,
+      "driftThreshold": 0.15
+    },
+    "expected": {
+      "perCriterionMean": {
+        "safety": 0.75,
+        "tone": 1.0,
+        "helpfulness": 0.5
+      },
+      "baselineMean": {
+        "safety": 0.05,
+        "tone": 0.75,
+        "helpfulness": 0.65
+      },
+      "drifted": [
+        "helpfulness"
+      ],
+      "reeval": [
+        "criterion 'helpfulness' live mean 0.50 dropped more than 0.15 below batch baseline 0.65 (window=10) \u2014 batch re-evaluation recommended"
+      ],
+      "driftDetected": true
+    }
+  }
+]

@@ -1,0 +1,2444 @@
+[
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "calculator": "auto"
+        }
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {}
+      },
+      "tool": "search_web",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {}
+      },
+      "tool": "read_file",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "issue_refund": "auto",
+          "delete_record": "verify"
+        }
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "search_web": "human_required",
+          "calculator": "verify"
+        }
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": true,
+      "question": "Authorize issue_refund?"
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {}
+      },
+      "tool": "search_web",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {}
+      },
+      "tool": "read_file",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "delete_record": "verify",
+          "search_web": "auto"
+        }
+      },
+      "tool": "calculator",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {}
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "read_file": "human_required",
+          "calculator": "verify",
+          "delete_record": "human_required"
+        }
+      },
+      "tool": "calculator",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "issue_refund": "verify",
+          "delete_record": "auto"
+        }
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "search_web": "auto"
+        }
+      },
+      "tool": "search_web",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {}
+      },
+      "tool": "calculator",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "delete_record": "auto",
+          "calculator": "human_required",
+          "read_file": "human_required"
+        }
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "delete_record": "verify",
+          "read_file": "human_required"
+        }
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": true,
+      "question": "Authorize issue_refund?"
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "search_web": "human_required",
+          "delete_record": "human_required",
+          "calculator": "human_required"
+        }
+      },
+      "tool": "calculator",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {}
+      },
+      "tool": "calculator",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "delete_record": "auto"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": true,
+      "question": "Authorize read_file?"
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "search_web": "verify"
+        }
+      },
+      "tool": "search_web",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "issue_refund": "verify",
+          "delete_record": "auto"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "search_web": "human_required"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "calculator": "auto",
+          "issue_refund": "human_required"
+        }
+      },
+      "tool": "calculator",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "calculator": "auto"
+        }
+      },
+      "tool": "search_web",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {}
+      },
+      "tool": "delete_record",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": true,
+      "question": "Authorize delete_record?"
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {}
+      },
+      "tool": "read_file",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": true,
+      "question": "Authorize read_file?"
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "issue_refund": "auto"
+        }
+      },
+      "tool": "search_web",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "issue_refund": "human_required",
+          "delete_record": "auto"
+        }
+      },
+      "tool": "calculator",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "calculator": "human_required",
+          "issue_refund": "auto",
+          "delete_record": "verify"
+        }
+      },
+      "tool": "delete_record",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "read_file": "auto"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "delete_record": "auto",
+          "search_web": "human_required"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "calculator": "human_required",
+          "read_file": "auto"
+        }
+      },
+      "tool": "calculator",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": true,
+      "question": "Authorize calculator?"
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "delete_record": "human_required",
+          "calculator": "auto"
+        }
+      },
+      "tool": "calculator",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "issue_refund": "verify",
+          "delete_record": "verify"
+        }
+      },
+      "tool": "search_web",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": true,
+      "question": "Authorize search_web?"
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {}
+      },
+      "tool": "search_web",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": true,
+      "question": "Authorize search_web?"
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "calculator": "verify",
+          "read_file": "verify"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "issue_refund": "verify"
+        }
+      },
+      "tool": "calculator",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "issue_refund": "auto"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": true,
+      "question": "Authorize read_file?"
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "search_web": "auto",
+          "issue_refund": "auto",
+          "read_file": "human_required"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "calculator": "verify",
+          "read_file": "verify"
+        }
+      },
+      "tool": "search_web",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "calculator": "human_required",
+          "delete_record": "auto"
+        }
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "search_web": "auto"
+        }
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {}
+      },
+      "tool": "calculator",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "delete_record": "auto",
+          "calculator": "auto"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {}
+      },
+      "tool": "delete_record",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "delete_record": "verify",
+          "calculator": "auto"
+        }
+      },
+      "tool": "search_web",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "search_web": "human_required",
+          "delete_record": "verify"
+        }
+      },
+      "tool": "delete_record",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "search_web": "auto",
+          "delete_record": "verify"
+        }
+      },
+      "tool": "delete_record",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {}
+      },
+      "tool": "delete_record",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "issue_refund": "auto",
+          "delete_record": "verify"
+        }
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {}
+      },
+      "tool": "search_web",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "delete_record": "auto",
+          "calculator": "human_required"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "issue_refund": "verify",
+          "search_web": "auto",
+          "calculator": "human_required"
+        }
+      },
+      "tool": "delete_record",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "search_web": "verify",
+          "read_file": "auto",
+          "calculator": "verify"
+        }
+      },
+      "tool": "search_web",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "calculator": "human_required",
+          "read_file": "verify"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "issue_refund": "verify"
+        }
+      },
+      "tool": "search_web",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "calculator": "human_required",
+          "issue_refund": "verify"
+        }
+      },
+      "tool": "delete_record",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "issue_refund": "human_required",
+          "read_file": "human_required",
+          "calculator": "auto"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "issue_refund": "human_required"
+        }
+      },
+      "tool": "delete_record",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "delete_record": "human_required",
+          "search_web": "human_required"
+        }
+      },
+      "tool": "delete_record",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "read_file": "verify",
+          "issue_refund": "human_required",
+          "calculator": "verify"
+        }
+      },
+      "tool": "calculator",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {}
+      },
+      "tool": "calculator",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "delete_record": "auto",
+          "read_file": "auto"
+        }
+      },
+      "tool": "delete_record",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "issue_refund": "auto"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "issue_refund": "human_required",
+          "delete_record": "auto",
+          "search_web": "verify"
+        }
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "issue_refund": "auto",
+          "delete_record": "auto",
+          "read_file": "verify"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "search_web": "verify"
+        }
+      },
+      "tool": "delete_record",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": true,
+      "question": "Authorize delete_record?"
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "read_file": "auto"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "read_file": "auto",
+          "issue_refund": "verify",
+          "search_web": "auto"
+        }
+      },
+      "tool": "read_file",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {}
+      },
+      "tool": "read_file",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {}
+      },
+      "tool": "calculator",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": true,
+      "question": "Authorize calculator?"
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "delete_record": "verify",
+          "issue_refund": "human_required"
+        }
+      },
+      "tool": "calculator",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "read_file": "human_required",
+          "issue_refund": "human_required"
+        }
+      },
+      "tool": "calculator",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {}
+      },
+      "tool": "read_file",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "delete_record": "human_required",
+          "search_web": "verify"
+        }
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {}
+      },
+      "tool": "search_web",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": true,
+      "question": "Authorize search_web?"
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {}
+      },
+      "tool": "calculator",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": true,
+      "question": "Authorize calculator?"
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "auto",
+        "overrides": {
+          "calculator": "auto",
+          "read_file": "verify"
+        }
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "auto",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "delete_record": "auto",
+          "calculator": "verify"
+        }
+      },
+      "tool": "calculator",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "verify",
+        "overrides": {
+          "search_web": "auto",
+          "read_file": "human_required"
+        }
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": true
+    },
+    "expected": {
+      "policy": "verify",
+      "escalate": false,
+      "question": null
+    }
+  },
+  {
+    "kind": "escalation",
+    "input": {
+      "autonomyPolicy": {
+        "default": "human_required",
+        "overrides": {
+          "read_file": "human_required",
+          "issue_refund": "human_required"
+        }
+      },
+      "tool": "issue_refund",
+      "humanAuthorized": false
+    },
+    "expected": {
+      "policy": "human_required",
+      "escalate": true,
+      "question": "Authorize issue_refund?"
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii",
+        "billing"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii",
+        "billing"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "billing"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii",
+        "billing"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii",
+        "billing"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "billing"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii",
+        "billing"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii",
+        "billing"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "billing"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii",
+        "billing"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii",
+        "billing"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "pii",
+        "billing"
+      ],
+      "escalated": true
+    },
+    "expected": {
+      "score": 1.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "should_escalate",
+        "billing"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 0.0
+    }
+  },
+  {
+    "kind": "score",
+    "input": {
+      "tags": [
+        "pii"
+      ],
+      "escalated": false
+    },
+    "expected": {
+      "score": 1.0
+    }
+  }
+]

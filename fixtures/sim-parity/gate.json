@@ -1,0 +1,5847 @@
+[
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.55
+      },
+      "candidateMeans": {},
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 500,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['tone'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.55,
+        "tone": 0.95,
+        "accuracy": 0.45
+      },
+      "candidateMeans": {
+        "helpfulness": 0.6,
+        "tone": 1.0,
+        "accuracy": 0.5
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 1200,
+      "candidateP95": 0.0,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 60% \u2192 80% (+20%) on 20 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 1.0,
+        "efficiency": 0.1
+      },
+      "candidateMeans": {
+        "safety": 0.9,
+        "efficiency": 0.9
+      },
+      "baselineMeanCost": 0.05,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 250,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on safety (-0.10)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 1.0,
+        "successDelta": 0.4,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.8,
+        "safety": 0.85
+      },
+      "candidateMeans": {
+        "helpfulness": 0.8,
+        "safety": 0.3
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 0.0,
+      "candidateP95": 0.0,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on safety (-0.55)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.5,
+        "successRateB": 0.0,
+        "successDelta": -0.5,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": -0.3,
+            "significant": true
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.1,
+            "significant": true
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.8,
+        "efficiency": 0.35,
+        "safety": 0.5
+      },
+      "candidateMeans": {
+        "helpfulness": 0.75,
+        "efficiency": 0.25,
+        "safety": 1.0
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 250,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: would significantly regress efficiency, safety (net pass-rate delta -50%)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.0,
+        "successRateB": 0.0,
+        "successDelta": 0.0,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.35,
+        "safety": 0.45,
+        "helpfulness": 0.95,
+        "tone": 0.5
+      },
+      "candidateMeans": {
+        "efficiency": 0.15,
+        "safety": 0.1,
+        "helpfulness": 0.15,
+        "tone": 0.4
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 800,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 0% on 6 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.95,
+        "safety": 0.75,
+        "helpfulness": 0.0
+      },
+      "candidateMeans": {
+        "safety": 0.45,
+        "helpfulness": 0.75
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 50,
+      "candidateP95": 0.0,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['accuracy'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.1
+      },
+      "candidateMeans": {
+        "efficiency": 0.15
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 1200,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: mean cost 0.0250 exceeds 2x baseline 0.0050"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.25,
+        "safety": 0.5,
+        "helpfulness": 0.2
+      },
+      "candidateMeans": {
+        "accuracy": 0.15,
+        "safety": 0.5,
+        "helpfulness": 0.55
+      },
+      "baselineMeanCost": 0.1,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 500,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on accuracy (-0.10)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 1.0,
+        "successRateB": 0.4,
+        "successDelta": -0.6,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.75,
+        "helpfulness": 0.8,
+        "efficiency": 0.65,
+        "accuracy": 0.6
+      },
+      "candidateMeans": {
+        "tone": 0.55,
+        "helpfulness": 0.65,
+        "efficiency": 0.4,
+        "accuracy": 0.55
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 500,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -60% on 20 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.8,
+        "successRateB": 0.6,
+        "successDelta": -0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.35,
+        "safety": 0.15,
+        "accuracy": 1.0,
+        "helpfulness": 0.95
+      },
+      "candidateMeans": {
+        "efficiency": 0.55,
+        "safety": 1.0,
+        "accuracy": 0.35,
+        "helpfulness": 0.5
+      },
+      "baselineMeanCost": 0.1,
+      "candidateMeanCost": 0.02,
+      "baselineP95": 50,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -20% on 20 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.2,
+        "successRateB": 0.4,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.4,
+        "accuracy": 0.2,
+        "efficiency": 0.35,
+        "safety": 0.3
+      },
+      "candidateMeans": {
+        "helpfulness": 0.25,
+        "accuracy": 0.05,
+        "efficiency": 0.75,
+        "safety": 0.3
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 100,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on helpfulness (-0.15), accuracy (-0.15)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.15,
+        "efficiency": 0.95,
+        "helpfulness": 0.05,
+        "tone": 0.55
+      },
+      "candidateMeans": {
+        "efficiency": 0.6,
+        "helpfulness": 0.9,
+        "tone": 1.0
+      },
+      "baselineMeanCost": 0.1,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 250,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['accuracy'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.5,
+        "safety": 0.8
+      },
+      "candidateMeans": {
+        "tone": 0.55,
+        "safety": 0.85
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 0.0,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: mean cost 0.0500 exceeds 2x baseline 0.0200"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.55,
+        "safety": 0.4,
+        "helpfulness": 0.75
+      },
+      "candidateMeans": {
+        "efficiency": 0.45,
+        "safety": 0.05,
+        "helpfulness": 0.0
+      },
+      "baselineMeanCost": 0.05,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 100,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on efficiency (-0.10), safety (-0.35), helpfulness (-0.75)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.2,
+        "successRateB": 0.0,
+        "successDelta": -0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.3
+      },
+      "candidateMeans": {
+        "helpfulness": 0.5
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 0.0,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -20% on 6 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.2,
+        "successRateB": 0.8,
+        "successDelta": 0.6,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.45,
+        "accuracy": 0.5,
+        "efficiency": 0.2,
+        "safety": 0.85
+      },
+      "candidateMeans": {
+        "tone": 0.9,
+        "accuracy": 0.5,
+        "efficiency": 0.7,
+        "safety": 0.45
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 800,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on safety (-0.40)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.5,
+        "successRateB": 0.5,
+        "successDelta": 0.0,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.8,
+        "helpfulness": 1.0,
+        "tone": 0.3
+      },
+      "candidateMeans": {
+        "safety": 0.1,
+        "helpfulness": 0.15,
+        "tone": 0.65
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 0.0,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 50% on 20 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.95,
+        "efficiency": 0.4,
+        "tone": 0.3,
+        "helpfulness": 0.05
+      },
+      "candidateMeans": {
+        "efficiency": 0.9,
+        "tone": 0.2,
+        "helpfulness": 0.7
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 1200,
+      "candidateP95": 0.0,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['accuracy'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.2,
+        "accuracy": 0.6
+      },
+      "candidateMeans": {
+        "helpfulness": 0.25,
+        "accuracy": 0.65
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 500,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 60% \u2192 80% (+20%) on 5 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 1.0
+      },
+      "candidateMeans": {
+        "accuracy": 0.9
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 500,
+      "candidateP95": 0.0,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on accuracy (-0.10)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.5,
+        "successRateB": 0.5,
+        "successDelta": 0.0,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.3,
+        "helpfulness": 0.4
+      },
+      "candidateMeans": {
+        "efficiency": 0.35,
+        "helpfulness": 0.6
+      },
+      "baselineMeanCost": 0.05,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 100,
+      "candidateP95": 0.0,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 50% on 5 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.2,
+        "successRateB": 0.4,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.05,
+            "significant": true
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.35
+      },
+      "candidateMeans": {
+        "helpfulness": 0.95
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.02,
+      "baselineP95": 500,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: would significantly regress helpfulness (net pass-rate delta +20%)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.5,
+        "successDelta": -0.1,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.05,
+            "significant": true
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.3,
+        "accuracy": 0.85
+      },
+      "candidateMeans": {
+        "tone": 0.8,
+        "accuracy": 0.65
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 1200,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: would significantly regress accuracy (net pass-rate delta -10%)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.05,
+        "helpfulness": 0.45
+      },
+      "candidateMeans": {
+        "helpfulness": 0.05
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 50,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['efficiency'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.15
+      },
+      "candidateMeans": {
+        "tone": 0.2
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 0.0,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: mean cost 0.1000 exceeds 2x baseline 0.0050"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.0,
+        "tone": 0.25,
+        "accuracy": 0.75
+      },
+      "candidateMeans": {
+        "helpfulness": 0.0,
+        "tone": 0.55,
+        "accuracy": 0.0
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 500,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on accuracy (-0.75)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.0,
+        "successRateB": 0.4,
+        "successDelta": 0.4,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.65
+      },
+      "candidateMeans": {
+        "helpfulness": 0.25
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 1200,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on helpfulness (-0.40)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.5,
+        "successDelta": -0.1,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.05,
+            "significant": true
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.75,
+        "safety": 0.1
+      },
+      "candidateMeans": {
+        "tone": 0.65,
+        "safety": 0.95
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 800,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: would significantly regress safety (net pass-rate delta -10%)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.2,
+        "successRateB": 0.2,
+        "successDelta": 0.0,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.85,
+        "tone": 0.15,
+        "helpfulness": 0.5
+      },
+      "candidateMeans": {
+        "efficiency": 0.2,
+        "tone": 0.35,
+        "helpfulness": 0.2
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 0.0,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 20% on 10 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.8,
+        "efficiency": 0.5
+      },
+      "candidateMeans": {
+        "efficiency": 0.05
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 500,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['accuracy'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.55,
+        "helpfulness": 0.0,
+        "efficiency": 0.75,
+        "tone": 0.7
+      },
+      "candidateMeans": {
+        "accuracy": 0.6,
+        "helpfulness": 0.05,
+        "efficiency": 0.8,
+        "tone": 0.75
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 100,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: p95 latency 500ms exceeds 2x baseline 100ms"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.1
+      },
+      "candidateMeans": {
+        "tone": 0.0
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.02,
+      "baselineP95": 0.0,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on tone (-0.10)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.5,
+        "successRateB": 0.8,
+        "successDelta": 0.3,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.25,
+        "helpfulness": 0.95,
+        "efficiency": 0.95
+      },
+      "candidateMeans": {
+        "safety": 0.65,
+        "helpfulness": 0.2,
+        "efficiency": 1.0
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 800,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on helpfulness (-0.75)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.5,
+        "successRateB": 0.0,
+        "successDelta": -0.5,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.7,
+        "accuracy": 0.75,
+        "efficiency": 0.4,
+        "safety": 0.85
+      },
+      "candidateMeans": {
+        "helpfulness": 0.35,
+        "accuracy": 0.2,
+        "efficiency": 0.65,
+        "safety": 0.45
+      },
+      "baselineMeanCost": 0.1,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 1200,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -50% on 10 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.5,
+        "successRateB": 0.8,
+        "successDelta": 0.3,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.95,
+        "accuracy": 0.65
+      },
+      "candidateMeans": {
+        "safety": 0.9,
+        "accuracy": 0.05
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 250,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on safety (-0.05), accuracy (-0.60)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.1,
+        "safety": 0.95
+      },
+      "candidateMeans": {
+        "safety": 0.5
+      },
+      "baselineMeanCost": 0.1,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 0.0,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['helpfulness'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.0,
+        "accuracy": 0.65
+      },
+      "candidateMeans": {
+        "safety": 0.05,
+        "accuracy": 0.7
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 800,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 60% \u2192 80% (+20%) on 10 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.75,
+        "safety": 0.9,
+        "accuracy": 1.0
+      },
+      "candidateMeans": {
+        "tone": 0.65,
+        "safety": 0.15,
+        "accuracy": 0.05
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 1200,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on tone (-0.10), safety (-0.75), accuracy (-0.95)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 1.0,
+        "successRateB": 0.5,
+        "successDelta": -0.5,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.45,
+        "tone": 0.25,
+        "helpfulness": 0.85,
+        "accuracy": 0.85
+      },
+      "candidateMeans": {
+        "efficiency": 0.05,
+        "tone": 0.95,
+        "helpfulness": 0.4,
+        "accuracy": 0.6
+      },
+      "baselineMeanCost": 0.1,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 0.0,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -50% on 6 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.5,
+        "successRateB": 0.6,
+        "successDelta": 0.1,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.85
+      },
+      "candidateMeans": {
+        "efficiency": 0.75
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 250,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on efficiency (-0.10)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 1.0,
+        "successRateB": 1.0,
+        "successDelta": 0.0,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.6,
+        "accuracy": 0.7,
+        "efficiency": 0.2,
+        "tone": 0.55
+      },
+      "candidateMeans": {
+        "helpfulness": 0.75,
+        "accuracy": 0.4,
+        "efficiency": 0.0,
+        "tone": 0.35
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 0.0,
+      "candidateP95": 0.0,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 100% on 6 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.55,
+        "tone": 0.6,
+        "accuracy": 0.65
+      },
+      "candidateMeans": {
+        "tone": 1.0,
+        "accuracy": 0.9
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 500,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['helpfulness'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.95,
+        "safety": 0.4
+      },
+      "candidateMeans": {
+        "efficiency": 1.0,
+        "safety": 0.45
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 50,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: p95 latency 1200ms exceeds 2x baseline 50ms"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.85,
+        "accuracy": 0.05,
+        "efficiency": 0.75,
+        "helpfulness": 0.0
+      },
+      "candidateMeans": {
+        "safety": 0.75,
+        "accuracy": 0.5,
+        "efficiency": 0.5,
+        "helpfulness": 0.55
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 1200,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on safety (-0.10), efficiency (-0.25)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.2,
+        "successRateB": 0.0,
+        "successDelta": -0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.65,
+        "safety": 0.65
+      },
+      "candidateMeans": {
+        "tone": 0.75,
+        "safety": 0.15
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 1200,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -20% on 6 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.8,
+        "successRateB": 0.0,
+        "successDelta": -0.8,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.85,
+        "efficiency": 0.5
+      },
+      "candidateMeans": {
+        "helpfulness": 0.2,
+        "efficiency": 0.55
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.02,
+      "baselineP95": 800,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -80% on 6 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.8,
+        "successRateB": 1.0,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.1,
+            "significant": true
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.05,
+            "significant": true
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.3,
+            "significant": true
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": -0.3,
+            "significant": true
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.15,
+        "accuracy": 0.95,
+        "safety": 1.0,
+        "efficiency": 0.35
+      },
+      "candidateMeans": {
+        "helpfulness": 0.25,
+        "accuracy": 0.35,
+        "safety": 0.9,
+        "efficiency": 0.7
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 250,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: would significantly regress helpfulness, accuracy, safety, efficiency (net pass-rate delta +20%)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.25,
+        "tone": 0.55
+      },
+      "candidateMeans": {
+        "tone": 0.25
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 100,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['accuracy'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.75,
+        "tone": 0.3,
+        "safety": 0.05
+      },
+      "candidateMeans": {
+        "efficiency": 0.8,
+        "tone": 0.35,
+        "safety": 0.1
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 0.0,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 60% \u2192 80% (+20%) on 20 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.75,
+        "efficiency": 0.8
+      },
+      "candidateMeans": {
+        "safety": 0.65,
+        "efficiency": 0.7
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 250,
+      "candidateP95": 0.0,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on safety (-0.10), efficiency (-0.10)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.4,
+        "safety": 0.1,
+        "efficiency": 0.1,
+        "helpfulness": 0.35
+      },
+      "candidateMeans": {
+        "accuracy": 0.75,
+        "safety": 0.95,
+        "efficiency": 0.1,
+        "helpfulness": 0.65
+      },
+      "baselineMeanCost": 0.05,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 800,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 60% \u2192 80% (+20%) on 20 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.4,
+        "successRateB": 0.8,
+        "successDelta": 0.4,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.65
+      },
+      "candidateMeans": {
+        "tone": 0.15
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 500,
+      "candidateP95": 0.0,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on tone (-0.50)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.4,
+        "successRateB": 1.0,
+        "successDelta": 0.6,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.95,
+        "tone": 0.5
+      },
+      "candidateMeans": {
+        "efficiency": 0.9,
+        "tone": 0.15
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 0.0,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on efficiency (-0.05), tone (-0.35)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.75,
+        "accuracy": 0.2,
+        "tone": 0.8,
+        "efficiency": 0.55
+      },
+      "candidateMeans": {
+        "accuracy": 0.45,
+        "tone": 0.95,
+        "efficiency": 0.0
+      },
+      "baselineMeanCost": 0.05,
+      "candidateMeanCost": 0.02,
+      "baselineP95": 0.0,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['safety'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.55
+      },
+      "candidateMeans": {
+        "efficiency": 0.6
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 1200,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 60% \u2192 80% (+20%) on 6 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.0,
+        "tone": 0.25,
+        "efficiency": 0.3
+      },
+      "candidateMeans": {
+        "helpfulness": 0.0,
+        "tone": 0.3,
+        "efficiency": 0.6
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 1200,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 60% \u2192 80% (+20%) on 5 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 1.0,
+        "successRateB": 0.0,
+        "successDelta": -1.0,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 1.0,
+        "safety": 0.55,
+        "accuracy": 0.2
+      },
+      "candidateMeans": {
+        "efficiency": 0.55,
+        "safety": 0.45,
+        "accuracy": 0.4
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 250,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -100% on 20 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.4,
+        "successRateB": 0.4,
+        "successDelta": 0.0,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.9
+      },
+      "candidateMeans": {
+        "helpfulness": 0.15
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 100,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 40% on 6 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 1.0,
+        "successRateB": 0.5,
+        "successDelta": -0.5,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.1,
+            "significant": true
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 1.0,
+        "accuracy": 0.0,
+        "efficiency": 1.0,
+        "helpfulness": 0.75
+      },
+      "candidateMeans": {
+        "safety": 0.55,
+        "accuracy": 0.5,
+        "efficiency": 0.1,
+        "helpfulness": 1.0
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 1200,
+      "candidateP95": 0.0,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: would significantly regress accuracy (net pass-rate delta -50%)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.5,
+        "safety": 0.15,
+        "accuracy": 0.05,
+        "helpfulness": 0.7
+      },
+      "candidateMeans": {
+        "safety": 0.6,
+        "accuracy": 0.7,
+        "helpfulness": 0.75
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.02,
+      "baselineP95": 0.0,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['efficiency'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 1.0,
+        "helpfulness": 0.15,
+        "safety": 0.6
+      },
+      "candidateMeans": {
+        "tone": 1.0,
+        "helpfulness": 0.2,
+        "safety": 0.65
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 0.0,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 60% \u2192 80% (+20%) on 20 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.0,
+        "accuracy": 0.85,
+        "helpfulness": 0.8
+      },
+      "candidateMeans": {
+        "efficiency": 0.0,
+        "accuracy": 0.6,
+        "helpfulness": 0.9
+      },
+      "baselineMeanCost": 0.1,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 100,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on accuracy (-0.25)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 1.0,
+        "successDelta": 0.4,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": -0.1,
+            "significant": true
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.8,
+        "safety": 0.3
+      },
+      "candidateMeans": {
+        "tone": 0.15,
+        "safety": 0.45
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 100,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: would significantly regress tone (net pass-rate delta +40%)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 1.0,
+        "successRateB": 0.0,
+        "successDelta": -1.0,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.0,
+        "accuracy": 0.0,
+        "efficiency": 0.25
+      },
+      "candidateMeans": {
+        "tone": 0.7,
+        "accuracy": 0.65,
+        "efficiency": 1.0
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 500,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -100% on 6 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.6,
+        "successDelta": 0.0,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.2,
+        "helpfulness": 0.45
+      },
+      "candidateMeans": {
+        "tone": 0.25,
+        "helpfulness": 0.2
+      },
+      "baselineMeanCost": 0.1,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 1200,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 60% on 10 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.75,
+        "safety": 0.0,
+        "accuracy": 0.9
+      },
+      "candidateMeans": {
+        "safety": 0.3,
+        "accuracy": 0.15
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 1200,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['helpfulness'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.65
+      },
+      "candidateMeans": {
+        "tone": 0.7
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 50,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: p95 latency 1200ms exceeds 2x baseline 50ms"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.25
+      },
+      "candidateMeans": {
+        "tone": 0.15
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 50,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on tone (-0.10)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.8,
+        "successRateB": 1.0,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.65,
+        "helpfulness": 0.3
+      },
+      "candidateMeans": {
+        "safety": 0.8,
+        "helpfulness": 0.3
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 500,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 80% \u2192 100% (+20%) on 10 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.2,
+        "successRateB": 0.8,
+        "successDelta": 0.6,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.85,
+        "accuracy": 0.95,
+        "safety": 0.1,
+        "helpfulness": 0.2
+      },
+      "candidateMeans": {
+        "tone": 0.0,
+        "accuracy": 0.45,
+        "safety": 0.85,
+        "helpfulness": 0.25
+      },
+      "baselineMeanCost": 0.1,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 250,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on tone (-0.85), accuracy (-0.50)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.8,
+        "successRateB": 1.0,
+        "successDelta": 0.2,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.1,
+        "tone": 0.9,
+        "efficiency": 0.6
+      },
+      "candidateMeans": {
+        "safety": 0.6,
+        "tone": 0.95,
+        "efficiency": 0.65
+      },
+      "baselineMeanCost": 0.1,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 800,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 80% \u2192 100% (+20%) on 5 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.55,
+        "efficiency": 0.75,
+        "safety": 0.65,
+        "helpfulness": 1.0
+      },
+      "candidateMeans": {
+        "efficiency": 0.6,
+        "safety": 0.35,
+        "helpfulness": 0.15
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 50,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['tone'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.35,
+        "tone": 0.1,
+        "safety": 0.1,
+        "accuracy": 0.45
+      },
+      "candidateMeans": {
+        "efficiency": 0.4,
+        "tone": 0.15,
+        "safety": 0.15,
+        "accuracy": 0.5
+      },
+      "baselineMeanCost": 0.05,
+      "candidateMeanCost": 0.02,
+      "baselineP95": 100,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: p95 latency 250ms exceeds 2x baseline 100ms"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.35
+      },
+      "candidateMeans": {
+        "efficiency": 0.25
+      },
+      "baselineMeanCost": 0.05,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 1200,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on efficiency (-0.10)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.5,
+        "successRateB": 0.4,
+        "successDelta": -0.1,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.05,
+            "significant": true
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.1,
+            "significant": true
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.0,
+        "efficiency": 0.6,
+        "accuracy": 0.1,
+        "safety": 0.25
+      },
+      "candidateMeans": {
+        "helpfulness": 0.25,
+        "efficiency": 0.6,
+        "accuracy": 0.45,
+        "safety": 0.5
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 800,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: would significantly regress accuracy, safety (net pass-rate delta -10%)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.4,
+        "successRateB": 0.4,
+        "successDelta": 0.0,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.45
+      },
+      "candidateMeans": {
+        "efficiency": 0.8
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 500,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 40% on 10 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.6,
+        "successDelta": 0.0,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.8,
+        "helpfulness": 0.7,
+        "safety": 0.0,
+        "accuracy": 0.7
+      },
+      "candidateMeans": {
+        "efficiency": 0.6,
+        "helpfulness": 0.95,
+        "safety": 0.4,
+        "accuracy": 0.65
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 0.0,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 60% on 10 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.0,
+        "accuracy": 0.4
+      },
+      "candidateMeans": {
+        "accuracy": 0.6
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 0.0,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['tone'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.2,
+        "safety": 0.45,
+        "tone": 0.4,
+        "efficiency": 0.25
+      },
+      "candidateMeans": {
+        "helpfulness": 0.25,
+        "safety": 0.5,
+        "tone": 0.45,
+        "efficiency": 0.3
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.02,
+      "baselineP95": 50,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 60% \u2192 80% (+20%) on 10 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.9,
+        "safety": 0.0,
+        "helpfulness": 0.75
+      },
+      "candidateMeans": {
+        "efficiency": 0.8,
+        "safety": 0.35,
+        "helpfulness": 0.85
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 100,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on efficiency (-0.10)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.8,
+        "successRateB": 0.2,
+        "successDelta": -0.6,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.7,
+        "tone": 0.95,
+        "safety": 0.2,
+        "efficiency": 0.65
+      },
+      "candidateMeans": {
+        "accuracy": 0.35,
+        "tone": 0.75,
+        "safety": 0.6,
+        "efficiency": 0.35
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 1200,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -60% on 20 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.8,
+        "successRateB": 0.5,
+        "successDelta": -0.3,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": -0.1,
+            "significant": true
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.1,
+            "significant": true
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.95,
+        "helpfulness": 0.15,
+        "accuracy": 0.65
+      },
+      "candidateMeans": {
+        "efficiency": 0.7,
+        "helpfulness": 0.0,
+        "accuracy": 0.35
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 1200,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: would significantly regress efficiency, helpfulness (net pass-rate delta -30%)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.4,
+        "successRateB": 0.4,
+        "successDelta": 0.0,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.15,
+        "safety": 0.75,
+        "tone": 0.9
+      },
+      "candidateMeans": {
+        "helpfulness": 0.8,
+        "safety": 0.45,
+        "tone": 0.95
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 800,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 40% on 20 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.55
+      },
+      "candidateMeans": {},
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 0.0,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['efficiency'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.05,
+        "accuracy": 0.8
+      },
+      "candidateMeans": {
+        "safety": 0.1,
+        "accuracy": 0.85
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 250,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 60% \u2192 80% (+20%) on 6 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.85,
+        "accuracy": 0.0
+      },
+      "candidateMeans": {
+        "helpfulness": 0.75,
+        "accuracy": 0.05
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 50,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on helpfulness (-0.10)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.2,
+        "successRateB": 1.0,
+        "successDelta": 0.8,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": -0.1,
+            "significant": true
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.05,
+            "significant": true
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.95,
+        "efficiency": 0.35,
+        "tone": 0.15,
+        "helpfulness": 0.95
+      },
+      "candidateMeans": {
+        "accuracy": 0.95,
+        "efficiency": 0.0,
+        "tone": 1.0,
+        "helpfulness": 0.65
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 500,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: would significantly regress tone, helpfulness (net pass-rate delta +80%)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.6,
+        "successDelta": 0.0,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": -0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.7,
+        "accuracy": 0.0,
+        "helpfulness": 0.15,
+        "efficiency": 0.85
+      },
+      "candidateMeans": {
+        "safety": 0.3,
+        "accuracy": 0.8,
+        "helpfulness": 1.0,
+        "efficiency": 0.0
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.02,
+      "baselineP95": 800,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 60% on 5 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.2,
+        "successRateB": 0.6,
+        "successDelta": 0.4,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.1,
+        "helpfulness": 0.15,
+        "efficiency": 0.35
+      },
+      "candidateMeans": {
+        "accuracy": 0.6,
+        "helpfulness": 0.8,
+        "efficiency": 0.5
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 100,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: mean cost 0.0250 exceeds 2x baseline 0.0100"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.1,
+        "helpfulness": 0.35
+      },
+      "candidateMeans": {
+        "helpfulness": 0.9
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 500,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['efficiency'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": 0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.0
+      },
+      "candidateMeans": {
+        "safety": 0.05
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 250,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 60% \u2192 80% (+20%) on 20 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.2,
+        "tone": 0.25,
+        "accuracy": 0.9,
+        "helpfulness": 0.75
+      },
+      "candidateMeans": {
+        "efficiency": 0.1,
+        "tone": 0.7,
+        "accuracy": 0.9,
+        "helpfulness": 0.5
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 800,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on efficiency (-0.10), helpfulness (-0.25)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.2,
+        "successRateB": 0.8,
+        "successDelta": 0.6,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.3,
+        "accuracy": 0.35
+      },
+      "candidateMeans": {
+        "safety": 0.15,
+        "accuracy": 0.5
+      },
+      "baselineMeanCost": 0.05,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 1200,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on safety (-0.15)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 1.0,
+        "successRateB": 0.0,
+        "successDelta": -1.0,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": -0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 1.0,
+        "tone": 0.95,
+        "accuracy": 1.0,
+        "efficiency": 0.3
+      },
+      "candidateMeans": {
+        "safety": 0.4,
+        "tone": 0.65,
+        "accuracy": 0.3,
+        "efficiency": 0.45
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 100,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -100% on 6 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 1.0,
+        "successRateB": 0.6,
+        "successDelta": -0.4,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": -0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.3,
+        "tone": 0.1,
+        "efficiency": 0.35
+      },
+      "candidateMeans": {
+        "safety": 0.85,
+        "tone": 0.4,
+        "efficiency": 0.85
+      },
+      "baselineMeanCost": 0.05,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 800,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -40% on 6 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": -0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.25,
+        "tone": 0.7,
+        "safety": 0.85
+      },
+      "candidateMeans": {
+        "tone": 0.1,
+        "safety": 0.7
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 500,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['accuracy'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.8,
+        "tone": 0.4
+      },
+      "candidateMeans": {
+        "helpfulness": 0.85,
+        "tone": 0.45
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 250,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: p95 latency 800ms exceeds 2x baseline 250ms"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.95
+      },
+      "candidateMeans": {
+        "helpfulness": 0.85
+      },
+      "baselineMeanCost": 0.05,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 500,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on helpfulness (-0.10)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.0,
+        "successRateB": 0.2,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.0
+      },
+      "candidateMeans": {
+        "safety": 0.65
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 100,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 0% \u2192 20% (+20%) on 6 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 1.0,
+        "successRateB": 0.2,
+        "successDelta": -0.8,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.7,
+        "tone": 0.55,
+        "accuracy": 0.15
+      },
+      "candidateMeans": {
+        "efficiency": 0.35,
+        "tone": 1.0,
+        "accuracy": 0.85
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.0,
+      "baselineP95": 500,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -80% on 6 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.2,
+        "successRateB": 0.6,
+        "successDelta": 0.4,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.55,
+        "accuracy": 0.6
+      },
+      "candidateMeans": {
+        "helpfulness": 0.05,
+        "accuracy": 0.55
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.05,
+      "baselineP95": 100,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on helpfulness (-0.50), accuracy (-0.05)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.35,
+        "safety": 0.55,
+        "efficiency": 0.6,
+        "tone": 0.6
+      },
+      "candidateMeans": {
+        "safety": 0.55,
+        "efficiency": 0.7,
+        "tone": 0.85
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 800,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['helpfulness'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.3
+      },
+      "candidateMeans": {
+        "efficiency": 0.35
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.02,
+      "baselineP95": 500,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: p95 latency 1200ms exceeds 2x baseline 500ms"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.9,
+        "accuracy": 0.45,
+        "efficiency": 0.8,
+        "safety": 0.95
+      },
+      "candidateMeans": {
+        "tone": 0.8,
+        "accuracy": 0.35,
+        "efficiency": 0.75,
+        "safety": 0.05
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 500,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on tone (-0.10), accuracy (-0.10), efficiency (-0.05), safety (-0.90)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 1.0,
+        "successRateB": 1.0,
+        "successDelta": 0.0,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.5
+      },
+      "candidateMeans": {
+        "efficiency": 0.7
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 0.0,
+      "candidateP95": 0.0,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 100% on 6 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.2,
+        "successRateB": 0.2,
+        "successDelta": 0.0,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.85,
+        "efficiency": 0.25,
+        "helpfulness": 0.5,
+        "safety": 0.85
+      },
+      "candidateMeans": {
+        "accuracy": 0.1,
+        "efficiency": 0.6,
+        "helpfulness": 0.05,
+        "safety": 0.3
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 250,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 20% on 10 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.5,
+        "successRateB": 0.4,
+        "successDelta": -0.1,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.85
+      },
+      "candidateMeans": {
+        "accuracy": 0.8
+      },
+      "baselineMeanCost": 0.0,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 800,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -10% on 20 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.15
+      },
+      "candidateMeans": {},
+      "baselineMeanCost": 0.1,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 250,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['helpfulness'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.05,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.95,
+        "safety": 0.7,
+        "efficiency": 0.35
+      },
+      "candidateMeans": {
+        "helpfulness": 1.0,
+        "safety": 0.75,
+        "efficiency": 0.4
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 500,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: mean cost 0.1000 exceeds 2x baseline 0.0100"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.4,
+        "accuracy": 0.05,
+        "helpfulness": 0.25,
+        "efficiency": 0.55
+      },
+      "candidateMeans": {
+        "tone": 0.3,
+        "accuracy": 0.3,
+        "helpfulness": 0.0,
+        "efficiency": 0.55
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 0.0,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on tone (-0.10), helpfulness (-0.25)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.5,
+        "successRateB": 0.0,
+        "successDelta": -0.5,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.25
+      },
+      "candidateMeans": {
+        "helpfulness": 0.95
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.02,
+      "baselineP95": 800,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: pass rate dropped -50% on 20 case(s)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.0,
+        "successRateB": 0.0,
+        "successDelta": 0.0,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.3,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.5,
+        "efficiency": 0.45,
+        "tone": 0.6,
+        "safety": 0.25
+      },
+      "candidateMeans": {
+        "helpfulness": 1.0,
+        "efficiency": 0.5,
+        "tone": 0.95,
+        "safety": 0.25
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.1,
+      "baselineP95": 250,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 0% on 10 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.2,
+        "successRateB": 0.8,
+        "successDelta": 0.6,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "helpfulness",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "accuracy",
+            "delta": -0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "helpfulness": 0.55,
+        "accuracy": 1.0
+      },
+      "candidateMeans": {
+        "helpfulness": 0.65,
+        "accuracy": 0.8
+      },
+      "baselineMeanCost": 0.02,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 100,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on accuracy (-0.20)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 20,
+        "perCriterion": [
+          {
+            "criterionId": "tone",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "tone": 0.6
+      },
+      "candidateMeans": {},
+      "baselineMeanCost": 0.1,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 500,
+      "candidateP95": 500,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: candidate scorecard is missing baseline criteria ['tone'] \u2014 unpaired criteria cannot be verified as non-regressing"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": -0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.05
+      },
+      "candidateMeans": {
+        "safety": 0.1
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.01,
+      "baselineP95": 800,
+      "candidateP95": 100,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 60% \u2192 80% (+20%) on 6 train case(s), no criterion regressed"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.6,
+        "successRateB": 0.8,
+        "successDelta": 0.2,
+        "nPaired": 6,
+        "perCriterion": [
+          {
+            "criterionId": "accuracy",
+            "delta": -0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          },
+          {
+            "criterionId": "tone",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "accuracy": 0.15,
+        "efficiency": 0.1,
+        "tone": 0.1
+      },
+      "candidateMeans": {
+        "accuracy": 0.05,
+        "efficiency": 0.3,
+        "tone": 0.35
+      },
+      "baselineMeanCost": 0.005,
+      "candidateMeanCost": 0.025,
+      "baselineP95": 100,
+      "candidateP95": 250,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on accuracy (-0.10)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.4,
+        "successRateB": 1.0,
+        "successDelta": 0.6,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "helpfulness",
+            "delta": 0.0,
+            "significant": false
+          },
+          {
+            "criterionId": "safety",
+            "delta": 0.0,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.55,
+        "helpfulness": 0.95,
+        "safety": 0.95
+      },
+      "candidateMeans": {
+        "efficiency": 0.2,
+        "helpfulness": 0.2,
+        "safety": 0.55
+      },
+      "baselineMeanCost": 0.025,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 0.0,
+      "candidateP95": 1200,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: per-criterion mean dropped beyond epsilon=0.02 on efficiency (-0.35), helpfulness (-0.75), safety (-0.40)"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.8,
+        "successRateB": 0.8,
+        "successDelta": 0.0,
+        "nPaired": 5,
+        "perCriterion": [
+          {
+            "criterionId": "safety",
+            "delta": 0.05,
+            "significant": false
+          },
+          {
+            "criterionId": "efficiency",
+            "delta": 0.3,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "safety": 0.5,
+        "efficiency": 0.45
+      },
+      "candidateMeans": {
+        "safety": 0.25,
+        "efficiency": 0.5
+      },
+      "baselineMeanCost": 0.05,
+      "candidateMeanCost": 0.02,
+      "baselineP95": 0.0,
+      "candidateP95": 800,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": false,
+      "reason": "rejected: no pass-rate improvement (tied at 80% on 5 case(s))"
+    }
+  },
+  {
+    "input": {
+      "comparison": {
+        "successRateA": 0.4,
+        "successRateB": 0.8,
+        "successDelta": 0.4,
+        "nPaired": 10,
+        "perCriterion": [
+          {
+            "criterionId": "efficiency",
+            "delta": 0.1,
+            "significant": false
+          }
+        ]
+      },
+      "baselineMeans": {
+        "efficiency": 0.65
+      },
+      "candidateMeans": {
+        "efficiency": 0.8
+      },
+      "baselineMeanCost": 0.01,
+      "candidateMeanCost": 0.005,
+      "baselineP95": 1200,
+      "candidateP95": 50,
+      "cfg": {
+        "learning": {
+          "epsilon": 0.02,
+          "max_cost_multiplier": 2.0,
+          "max_latency_multiplier": 2.0
+        }
+      }
+    },
+    "expected": {
+      "promote": true,
+      "reason": "accepted: pass rate 40% \u2192 80% (+40%) on 10 train case(s), no criterion regressed"
+    }
+  }
+]
