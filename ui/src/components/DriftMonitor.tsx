@@ -85,16 +85,17 @@ export function DriftMonitor({ agentId, baselineScorecardId }: {
 
   if (state === "loading") return <Skeleton />;
   if (state === "error") return <p className="dm-error">Couldn’t load live drift: {err}</p>;
-  if (!data || data.criteria.length === 0) {
+  const criteria = data?.criteria ?? [];
+  if (criteria.length === 0) {
     return <EmptyState title="No live scores yet"
       hint="Sampled production responses will chart here as they arrive." />;
   }
 
   return (
     <div className="drift-monitor">
-      {data.criteria.map((c) => (
+      {criteria.map((c) => (
         <Strip key={c.criterion_id} crit={c}
-               window={data.window} threshold={data.drift_threshold} />
+               window={data?.window ?? 50} threshold={data?.drift_threshold ?? 0.15} />
       ))}
     </div>
   );
