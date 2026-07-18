@@ -274,6 +274,15 @@ export function EditorPage() {
 
   return (
     <div className="page">
+      {/* Honest small-screen notice. The node canvas needs pointer precision and
+          horizontal room it can't get on a phone; rather than ship a broken
+          drag surface, we say so plainly. Shown/hidden purely by CSS at the
+          ≤768px breakpoint so the desktop editor is untouched. */}
+      <div className="editor-smallnote" role="note">
+        <span className="ic"><IconWarning size={18} /></span>
+        <p>The workflow editor needs a wider screen — open it on a tablet or
+          desktop. Your results, runs, and reports are fully available here.</p>
+      </div>
       <div className="topbar">
         <select
           aria-label="Open a saved evaluation"

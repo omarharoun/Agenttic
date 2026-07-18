@@ -139,6 +139,22 @@ export class ApiError extends Error {
   }
 }
 
+/** Global mid-session 401 hook (SPEC-4 Step 21). The app shell guards its
+ *  initial `me()` call, but ANY api call can 401 later (session expiry, token
+ *  revoke). Rather than let every page reinvent the bounce, the api layer fires
+ *  a single typed callback the moment it constructs a 401 {@link ApiError}; the
+ *  shell registers a handler that redirects to /login?next=<current path>. The
+ *  ApiError is still thrown, so callers that catch it locally keep working. */
+type UnauthorizedHandler = (err: ApiError) => void;
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+
+/** Register the process-wide 401 handler (the app shell owns it). Returns an
+ *  unsubscribe fn so the effect can clean up. Only one is active at a time. */
+export function onUnauthorized(handler: UnauthorizedHandler): () => void {
+  unauthorizedHandler = handler;
+  return () => { if (unauthorizedHandler === handler) unauthorizedHandler = null; };
+}
+
 /** Parse a JSON API response, tolerating ANY body. Both the ok and the error
  *  path funnel through here: a non-2xx response, or a 2xx whose body isn't JSON,
  *  yields a typed {@link ApiError} the caller can catch — never an uncaught
@@ -158,8 +174,12 @@ async function json<T>(res: Response): Promise<T> {
 
   if (!res.ok) {
     if (res.status === 401) {
-      throw new ApiError("401 unauthenticated — log in or set an API token", 401,
-                         data?.detail ?? data ?? body);
+      const err = new ApiError("401 unauthenticated — log in or set an API token", 401,
+                               data?.detail ?? data ?? body);
+      // Notify the shell so a mid-session 401 anywhere bounces to /login,
+      // then still throw so any local catch keeps rendering its own state.
+      try { unauthorizedHandler?.(err); } catch { /* handler must never mask the error */ }
+      throw err;
     }
     const detail: unknown = data?.detail ?? data?.error ?? (data === undefined ? body.trim() : undefined);
     const msg = typeof detail === "string" && detail

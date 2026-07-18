@@ -1570,6 +1570,59 @@ table.data tbody tr { transition: background 0.1s; }
   .std-toolbar > button.primary { width: 100%; }
 }
 
+/* =========================================================================
+   SPEC-4 Step 21 — the read surfaces render honestly down to 360px.
+
+   Goal: at ≤360px the DATA read pages (Dashboard, Results, Scorecard detail,
+   Status) produce NO page-level horizontal scroll — documentElement.scrollWidth
+   ≤ innerWidth. Multi-column grids collapse to one column; wide tables keep
+   their existing .table-wrap { overflow-x:auto } so they scroll INSIDE their
+   box, never the page. The node-canvas editor gets an honest notice instead of
+   a broken drag surface.
+   ========================================================================= */
+
+/* The editor's small-screen notice is hidden on the wide layout and shown
+   (with the canvas suppressed) below the tablet breakpoint. */
+.editor-smallnote { display: none; }
+
+@media (max-width: 768px) {
+  /* Show the honest notice, and hide the node canvas + its side panels — a
+     drag-and-drop graph editor is not usable on a phone. */
+  .editor-smallnote {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin: var(--sp-5) var(--sp-4); padding: var(--sp-4) var(--sp-5);
+    border: 1px solid var(--border); border-radius: var(--card-radius);
+    background: var(--panel-2); color: var(--text);
+  }
+  .editor-smallnote .ic { color: var(--wait); flex-shrink: 0; margin-top: 1px; }
+  .editor-smallnote p { margin: 0; font-size: var(--t-sm); line-height: 1.5; }
+  /* Advanced mode is a drag-and-drop node canvas (palette + React Flow + config
+     dock) that can't be used on a phone; suppress it so the honest notice stands
+     in its place. The guided template flow reflows fine and stays. */
+  .editor-body { display: none; }
+}
+
+@media (max-width: 360px) {
+  /* Read surfaces: collapse every multi-column grid to a single column so
+     nothing is forced wider than the viewport. */
+  .dash-stats { grid-template-columns: 1fr; }
+  .dash-grid { grid-template-columns: 1fr; }
+  /* .sd-exec collapses via ScorecardDetail.css so it wins that file's cascade. */
+  .status-meta { gap: var(--sp-3); }
+
+  /* Tighten the page gutters so content has room without overflowing. */
+  .list-page, .settings { padding: var(--sp-4) var(--sp-3); }
+  .status-page { padding: var(--sp-6) var(--sp-3) var(--sp-16); }
+
+  /* The dashboard index pill's track can't demand more than the cell allows. */
+  .dash-idx-track { min-width: 0; }
+
+  /* Status rows: let the name wrap and the latency/state chips settle below
+     rather than push the row past the viewport edge. */
+  .status-row { flex-wrap: wrap; }
+  .status-row .r-latency { min-width: 0; }
+}
+
 /* ========================================================================== */
 /* ===  Methodology & Index explainer (public /methodology page)          === */
 /* ========================================================================== */

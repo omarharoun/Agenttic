@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { api, auth, type Me } from "./api";
+import { api, auth, onUnauthorized, type Me } from "./api";
 import { AccountMenu } from "./components/AccountMenu";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { EmptyState } from "./components/ui";
 import { useRunNotifications } from "./notify";
 import { useExecutionEvents } from "./sse";
@@ -235,6 +236,18 @@ export function AppShell() {
       });
   }, [nav]);
 
+  // Global mid-session 401: the shell guards the initial me() above, but any
+  // later api call can 401 (session expiry / token revoke). Register one handler
+  // in the api layer that bounces to /login?next=<current path> so a stale
+  // session anywhere lands on the login page instead of a broken console. Read
+  // the live path from window.location so the redirect always reflects where
+  // the user actually is when the 401 fires.
+  useEffect(() => onUnauthorized(() => {
+    const here = window.location.pathname + window.location.search;
+    if (here.startsWith("/login")) return;   // already there — avoid a loop
+    nav(`/login?next=${encodeURIComponent(here)}`, { replace: true });
+  }), [nav]);
+
   const logout = async () => {
     try { await api.logout(); } catch { /* ignore */ }
     auth.set("");
@@ -313,6 +326,7 @@ export function AppShell() {
           </div>
         )}
         <div className="app-routes">
+          <ErrorBoundary resetKeys={[loc.pathname]}>
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="build" element={<EditorPage />} />
@@ -344,6 +358,7 @@ export function AppShell() {
             <Route path="styleguide" element={<StyleguidePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          </ErrorBoundary>
         </div>
       </div>
       <CopilotDock />

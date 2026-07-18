@@ -91,6 +91,11 @@
 .status-fresh.stale .live-pip { background: var(--wait); animation: none; }
 @keyframes status-pip { 50% { opacity: 0.25; } }
 
+/* Respect reduced-motion (SPEC-4 Step 17.4 / 21.4): still the pulsing pip. */
+@media (prefers-reduced-motion: reduce) {
+  .status-fresh .live-pip { animation: none; }
+}
+
 .status-error {
   margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4);
   border: 1px solid var(--fail-border); background: var(--fail-soft);
