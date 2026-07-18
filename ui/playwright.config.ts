@@ -1,62 +1,81 @@
 import { defineConfig, devices } from "@playwright/test";
 
-/* Browser-level gates for the design system.
+/* SPEC-4 Step 21 — production bar: end-to-end + visual-regression harness.
  *
- * SPEC-11 recorded these as deliberately missing: "Full axe + visual-regression
- * are browser-runner (Playwright) CI gates and are NOT set up in this
- * environment." Everything checkable without a browser was gated; the rest was
- * left honestly unproven. This is that runner.
+ * Serves the *built* app (dist/) with `vite preview` on a dedicated test port
+ * so E2E runs against the same artifact CI ships. The backend is never started:
+ * every spec mocks `**​/api/**` via Playwright route interception (see
+ * e2e/mock-api.ts), so the suite is fully hermetic — no live server, no DB.
  *
- * It serves the real production build (`vite-react-ssg build` output) rather
- * than the dev server, so what is asserted is what ships — prerendered HTML,
- * hashed assets, the same CSS pipeline.
+ * Two chromium projects run the same specs in both themes. The app resolves its
+ * theme from localStorage["ascore_theme"] + <html data-theme> (not the OS
+ * media query alone), so each project seeds that preference in an init script;
+ * `colorScheme` is set too so any media-query-driven CSS matches.
  */
+
+const PORT = 4317;
+const BASE_URL = `http://127.0.0.1:${PORT}`;
+
+/** Injected before every page load to pin the theme deterministically. */
+function themeInit(theme: "dark" | "light") {
+  return `try {
+    localStorage.setItem('ascore_theme', '${theme}');
+    document.documentElement.setAttribute('data-theme', '${theme}');
+  } catch {}`;
+}
+
 export default defineConfig({
   testDir: "./e2e",
-  outputDir: "./test-results",
+  // Specs use the `.e2e.ts` suffix (not `.spec.ts`) so the vitest default glob
+  // (**/*.{test,spec}.*) never picks them up — the two runners stay isolated
+  // without touching the existing vitest setup.
+  testMatch: "**/*.e2e.ts",
+  // Snapshots live next to the specs, split per project (theme) so a light and
+  // dark baseline never collide.
+  snapshotPathTemplate: "{testDir}/__screenshots__/{projectName}/{testFilePath}/{arg}{ext}",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
-
-  // Snapshots are the M45 evidence that migrating to tokens changed nothing, so
-  // they live beside the specs and are committed.
-  snapshotPathTemplate: "{testDir}/__screenshots__/{testFileName}/{arg}{ext}",
-
-  use: {
-    baseURL: "http://127.0.0.1:4319",
-    trace: "on-first-retry",
-    // Deterministic rendering: an animation mid-capture is the classic source
-    // of a snapshot that fails for no reason.
-    reducedMotion: "reduce",
-  },
-
+  workers: process.env.CI ? 2 : undefined,
+  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
+  timeout: 30_000,
   expect: {
-    /* An ABSOLUTE pixel budget, not a ratio.
-     *
-     * A ratio scales with page size, which is exactly backwards: the landing
-     * page is ~1280x5000, so maxDiffPixelRatio 0.002 silently allowed ~12,800
-     * changed pixels — a whole button could change colour and still pass. That
-     * was not hypothetical: repainting --accent green in the light theme was
-     * caught on only 2 of 8 screens at that tolerance.
-     *
-     * A flat budget absorbs a few hundred antialiased edge pixels without
-     * scaling the blind spot up with the page. Verified against two
-     * back-to-back clean runs that diffed at zero. */
-    toHaveScreenshot: { maxDiffPixels: 120, animations: "disabled" },
+    // Visual-regression tolerance: allow sub-pixel AA/font-hinting drift, fail
+    // on real layout/color changes.
+    toHaveScreenshot: { maxDiffPixelRatio: 0.02, animations: "disabled" },
   },
-
+  use: {
+    baseURL: BASE_URL,
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+  },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "chromium-dark",
+      use: {
+        ...devices["Desktop Chrome"],
+        colorScheme: "dark",
+      },
+      // The theme seed is applied per-project via a fixture (see e2e/fixtures).
+      metadata: { themeInit: themeInit("dark") },
+    },
+    {
+      name: "chromium-light",
+      use: {
+        ...devices["Desktop Chrome"],
+        colorScheme: "light",
+      },
+      metadata: { themeInit: themeInit("light") },
+    },
   ],
-
   webServer: {
-    // `--host 127.0.0.1` is load-bearing: vite preview otherwise binds ::1 only,
-    // so a 127.0.0.1 baseURL never connects and the runner just waits out its
-    // whole timeout with no useful error.
-    command: "npm run build && npx vite preview --port 4319 --strictPort --host 127.0.0.1",
-    url: "http://127.0.0.1:4319/",
+    // Serve the production build. `--host 127.0.0.1` pins the bind address so it
+    // matches BASE_URL (vite preview otherwise binds localhost/IPv6 only, which
+    // 127.0.0.1 health checks can't reach). `--strictPort` makes a port clash a
+    // hard failure instead of silently drifting.
+    command: `npm run preview -- --port ${PORT} --strictPort --host 127.0.0.1`,
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
-    timeout: 300_000,   // the SSG build runs first (~30s) plus tsc and lint
+    timeout: 120_000,
   },
 });
