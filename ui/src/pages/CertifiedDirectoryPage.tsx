@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SiteNav } from "../components/SiteNav";
 import { Link } from "react-router-dom";
 import { api, type JsonObject } from "../api";
 import { certIdOf, type DirectoryEntry, gradeColor, indexFromCert, statusView } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
 import { EmptyState, Skeleton } from "../components/ui";
+import { PageData } from "../components/PageData";
 import { IconArrowRight, StatusIcon } from "../icons";
 
 /* ============================================================================
@@ -35,15 +36,24 @@ function normalize(raw: DirectoryEntry[] | JsonObject): DirectoryEntry[] {
 }
 
 export function CertifiedDirectoryPage() {
-  const [rows, setRows] = useState<DirectoryEntry[] | null | undefined>(undefined);
+  const [rows, setRows] = useState<DirectoryEntry[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<unknown | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setErr(null);
     let ok = true;
     api.publicCertifiedDirectory()
       .then((d) => { if (ok) setRows(normalize(d)); })
-      .catch(() => { if (ok) setRows(null); });
+      // A missing/unreachable endpoint is a genuine load failure, not "nobody
+      // certified yet" — surface it as an error with a retry, not a fake empty.
+      .catch((e) => { if (ok) setErr(e); })
+      .finally(() => { if (ok) setLoading(false); });
     return () => { ok = false; };
   }, []);
+
+  useEffect(() => load(), [load]);
 
   const list = rows ?? [];
 
@@ -64,17 +74,25 @@ export function CertifiedDirectoryPage() {
           </p>
         </header>
 
-        {rows === undefined ? (
-          <div className="cert-dir-skel" aria-busy="true" aria-label="Loading certified agents">
-            <Skeleton rows={6} />
-          </div>
-        ) : list.length === 0 ? (
-          <EmptyState
-            title="No certified agents yet"
-            hint="Be the first. Run your agent through the safety suites and publish a grade the world can verify."
-            action={<Link className="btn-primary" to="/signup">Get your agent certified</Link>}
-          />
-        ) : (
+        <PageData
+          loading={loading}
+          error={err}
+          empty={list.length === 0}
+          onRetry={load}
+          errorTitle="Couldn't load the directory"
+          skeleton={
+            <div className="cert-dir-skel" aria-busy="true" aria-label="Loading certified agents">
+              <Skeleton rows={6} />
+            </div>
+          }
+          emptyState={
+            <EmptyState
+              title="No certified agents yet"
+              hint="Be the first. Run your agent through the safety suites and publish a grade the world can verify."
+              action={<Link className="btn-primary" to="/signup">Get your agent certified</Link>}
+            />
+          }
+        >
           <div className="cert-dir-grid">
             {list.map((c) => {
               const sv = statusView(c.status);
@@ -98,7 +116,7 @@ export function CertifiedDirectoryPage() {
               );
             })}
           </div>
-        )}
+        </PageData>
 
         <section className="section" style={{ textAlign: "center", marginTop: 8 }}>
           <h2>How certification works</h2>

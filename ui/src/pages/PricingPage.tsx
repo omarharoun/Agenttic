@@ -4,7 +4,12 @@ import { SiteNav } from "../components/SiteNav";
 import { money } from "../billing";
 import type { PricingCatalog } from "../api";
 
-/* ============================================================================
+/* SPEC-4 17.3 — EXEMPT from the state trio: renders from a static default
+   catalog (real HTML, no JS), then silently hydrates from /api/pricing. It is
+   never empty and a failed refresh just keeps the static content — no
+   loading/empty/error state is owed.
+
+   ============================================================================
    Public pricing page (/pricing) — plans + the free-credits offer.
 
    Bundle-safe & prerenderable: it renders from a STATIC default catalog (so it

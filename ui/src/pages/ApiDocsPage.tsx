@@ -1,6 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { SiteNav } from "../components/SiteNav";
 import { Link } from "react-router-dom";
+
+/* This page is EFFECTIVELY STATIC docs: the Authentication + quickstart + ops
+   sections are hardcoded and always render. Only the auto-generated endpoint
+   index is fetched (/openapi.json). So it is exempt from the empty/skeleton
+   trio — there is always content — but it still owes the reader an ERROR
+   FALLBACK with a retry when that one fetch fails, rather than a silent gap. */
 
 const GROUP_TITLES: Record<string, string> = {
   auth: "Authentication", workflows: "Workflows", executions: "Executions",
@@ -29,10 +35,17 @@ export function ApiDocsPage() {
   const [err, setErr] = useState<string | null>(null);
   const origin = typeof window !== "undefined" ? window.location.origin : "https://agenttic.io";
 
-  useEffect(() => {
-    fetch("/openapi.json").then((r) => r.json()).then(setSpec)
-      .catch(() => setErr("Could not load /openapi.json"));
+  const loadSpec = useCallback(() => {
+    setErr(null);
+    fetch("/openapi.json")
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(setSpec)
+      .catch(() => setErr(
+        "Couldn't load the live endpoint index from /openapi.json. " +
+        "The reference sections above are still accurate — retry to pull the full list."));
   }, []);
+
+  useEffect(() => { loadSpec(); }, [loadSpec]);
 
   const groups = useMemo(() => {
     if (!spec?.paths) return {};
@@ -160,7 +173,12 @@ curl -s ${origin}/api/standard/leaderboard -H "$AUTH"`}</pre>
           </p>
         </div>
 
-        {err && <p style={{ color: "var(--fail)" }}>{err}</p>}
+        {err && (
+          <div className="apidocs-spec-err note-err" role="alert">
+            {err}{" "}
+            <button type="button" className="btn-ghost sm" onClick={loadSpec}>Retry</button>
+          </div>
+        )}
         {!spec && !err && <p style={{ color: "var(--muted)" }}>Loading spec…</p>}
 
         {orderedGroups.map((g) => (

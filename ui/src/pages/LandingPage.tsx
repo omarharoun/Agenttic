@@ -5,7 +5,11 @@ import { gradeColor, indexFromCert, normalizeScores } from "../cert";
 import { IcoRail, IcoBus, IcoShield } from "../components/Icons";
 import { SiteNav } from "../components/SiteNav";
 
-/* ============================================================================
+/* SPEC-4 17.3 — EXEMPT from the state trio: static marketing page. It prerenders
+   to real HTML and is complete with no data; the showcase cert it fetches only
+   enriches an already-full page, so there is no loading/empty/error to own.
+
+   ============================================================================
    The public landing page — "the safety lab for AI agents".
 
    Design language: the instrument readout. Not a metric dashboard — one

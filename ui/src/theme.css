@@ -1265,6 +1265,36 @@ th.sortable:hover { color: var(--accent); }
 .empty-title { font: 500 var(--t-title)/1.2 var(--font-serif); color: var(--text); }
 .empty-hint { font-size: 13.5px; margin-top: 6px; }
 .empty-action { margin-top: 14px; }
+
+/* ===== PageData — the state trio wrapper (skeleton / error+retry / empty).
+   The skeleton shape is caller-supplied; these rules only style the shared
+   error panel and the skeleton-block helpers pages use to match their layout.
+   Tokens only — no raw hex — so both themes are covered. ===== */
+.pagedata-error {
+  text-align: center; padding: 44px 20px; max-width: 460px; margin: 8px auto;
+  border: 1px solid var(--fail-border); background: var(--fail-soft);
+  border-radius: var(--r); color: var(--text);
+}
+.pagedata-error-ico { color: var(--fail); margin-bottom: 10px; display: flex; justify-content: center; }
+.pagedata-error-ico svg { width: 30px; height: 30px; }
+.pagedata-error-title { font: 500 var(--t-title)/1.2 var(--font-serif); color: var(--text); }
+.pagedata-error-msg { font-size: 13.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; word-break: break-word; }
+.pagedata-error-action { margin-top: 16px; }
+.pagedata-error-action .btn-ghost { display: inline-flex; align-items: center; gap: 6px; }
+.pagedata-error-action .btn-ghost svg { width: 15px; height: 15px; }
+/* layout-matched skeleton helpers: a stack of block placeholders shaped like
+   the eventual content (cards, rows) rather than a single shimmer bar. */
+.pagedata-skel { display: flex; flex-direction: column; gap: 14px; padding: 4px 0; }
+.pagedata-skel-block {
+  border-radius: var(--r); background: linear-gradient(90deg, var(--panel-2), var(--border), var(--panel-2));
+  background-size: 200% 100%; animation: shimmer 1.3s infinite;
+}
+.pagedata-skel-row { display: flex; gap: 14px; }
+.pagedata-skel-row > .pagedata-skel-block { flex: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .pagedata-skel-block { animation: none; opacity: 0.7; }
+}
+
 /* standard-benchmark toolbar + dataset chips */
 .std-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 6px 0 12px; }
 .dataset-chip {

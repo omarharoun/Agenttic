@@ -1,7 +1,8 @@
 import { ReactFlowProvider } from "@xyflow/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, errMessage } from "../api";
+import { ErrorPanel } from "../components/PageData";
 import type {
   BudgetContext, CostEstimate, ExecutionResults, WorkflowDoc, WorkflowSummary,
 } from "../api";
@@ -73,6 +74,11 @@ export function EditorPage() {
   // Detect a missing Anthropic key UP FRONT so the user is prompted before
   // building a whole evaluation and hitting a 400 wall at Run.
   const [keySet, setKeySet] = useState<boolean | null>(null);
+  // The editor can't render until its node catalog + workflow list have loaded.
+  // Track that boot explicitly so a slow load shows a layout-matched skeleton
+  // (not a blank canvas) and a failed load shows an error with a Retry.
+  const [booting, setBooting] = useState(true);
+  const [bootErr, setBootErr] = useState<unknown | null>(null);
 
   // Reconnect to a run that's still executing server-side for this workflow —
   // leaving the page never loses it; the run is owned by the server and we just
@@ -103,7 +109,6 @@ export function EditorPage() {
         .catch(() => setResults(null));
       store.select(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.exec.status, store.exec.executionId]);
 
   const load = (doc: WorkflowDoc) => {
@@ -127,22 +132,31 @@ export function EditorPage() {
     api.anthropicKeyStatus().then((s) => setKeySet(s.set)).catch(() => setKeySet(null));
   }, []);
 
-  useEffect(() => {
+  const boot = useCallback(() => {
+    setBooting(true);
+    setBootErr(null);
     (async () => {
-      store.setCatalog(await api.nodeTypes());
-      const existing = await api.listWorkflows();
-      setWorkflows(existing);
-      // existing work resumes; otherwise the guided picker / empty canvas
-      load(existing.length
-        ? (await api.getWorkflow(existing[0].workflow_id)).workflow
-        : EMPTY);
-      if (existing.length) {
-        refreshEstimate(existing[0].workflow_id);
-        reconnect(existing[0].workflow_id);
+      try {
+        store.setCatalog(await api.nodeTypes());
+        const existing = await api.listWorkflows();
+        setWorkflows(existing);
+        // existing work resumes; otherwise the guided picker / empty canvas
+        load(existing.length
+          ? (await api.getWorkflow(existing[0].workflow_id)).workflow
+          : EMPTY);
+        if (existing.length) {
+          refreshEstimate(existing[0].workflow_id);
+          reconnect(existing[0].workflow_id);
+        }
+      } catch (e) {
+        setBootErr(e);
+      } finally {
+        setBooting(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => { boot(); }, [boot]);
 
   const uniqueId = (base: string) =>
     workflows.some((w) => w.workflow_id === base) ? `${base}-${Date.now() % 1000}` : base;
@@ -234,6 +248,29 @@ export function EditorPage() {
 
   const running = ["running", "waiting_approval"].includes(store.exec.status);
   const hasNodes = store.nodes.length > 0;
+
+  // Boot gate: the editor is useless without its node catalog + workflow list.
+  // A failed load gets an error+retry; a slow load gets a layout-matched
+  // skeleton (topbar + canvas) rather than a blank page. There is no "empty"
+  // state for the editor itself — zero workflows is a valid start, handled by
+  // the guided template picker / empty canvas below.
+  if (bootErr != null) {
+    return (
+      <div className="page">
+        <ErrorPanel error={bootErr} onRetry={boot} title="Couldn't open the editor" />
+      </div>
+    );
+  }
+  if (booting) {
+    return (
+      <div className="page">
+        <div className="pagedata-skel" aria-busy="true" aria-label="Loading the editor">
+          <div className="pagedata-skel-block" style={{ height: 44 }} />
+          <div className="pagedata-skel-block" style={{ height: 420, marginTop: 8 }} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page">

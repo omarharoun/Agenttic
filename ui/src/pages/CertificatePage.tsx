@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SiteNav } from "../components/SiteNav";
 import { Link, useParams } from "react-router-dom";
-import { api } from "../api";
+import { api, ApiError } from "../api";
 import {
   badgeUrl, bandForIndex, type Certification, type CertScore, embedSnippets,
   gradeColor, indexFromCert, normalizeScores, siteOrigin, statusView,
@@ -9,6 +9,7 @@ import {
 } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
 import { Skeleton } from "../components/ui";
+import { ErrorPanel } from "../components/PageData";
 import { StatusIcon, IconCheck, IconExternal } from "../icons";
 
 /* ============================================================================
@@ -80,9 +81,15 @@ function CopyRow({ label, value }: { label: string; value: string }) {
 export function CertificatePage() {
   const { id = "" } = useParams();
   const [cert, setCert] = useState<Certification | null | undefined>(undefined);
+  // A 404 means the cert genuinely doesn't exist → the branded "not found"
+  // invitation. Any other failure (network, 5xx) is transient → an error panel
+  // with a Retry, so a blip on the brand's trust surface isn't read as "revoked".
+  const [err, setErr] = useState<unknown | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     let ok = true;
+    setCert(undefined);
+    setErr(null);
     api.publicCertification(id)
       .then((c) => {
         if (!ok) return;
@@ -92,15 +99,23 @@ export function CertificatePage() {
         // "Safety score X/100") and the same dimensions the scan scored.
         setCert({ ...c, index: indexFromCert(c), scores: normalizeScores(c) });
       })
-      .catch(() => { if (ok) setCert(null); });
+      .catch((e) => {
+        if (!ok) return;
+        if (e instanceof ApiError && e.status === 404) setCert(null);
+        else setErr(e);
+      });
     return () => { ok = false; };
   }, [id]);
+
+  useEffect(() => load(), [load]);
 
   return (
     <>
       <SiteNav />
       <main className="cert-page">
-        {cert === undefined ? (
+        {err != null ? (
+          <ErrorPanel error={err} onRetry={load} title="Couldn't load this certificate" />
+        ) : cert === undefined ? (
           <div className="cert-loading-skel" aria-busy="true" aria-label="Loading certificate">
             <div className="cls-seal" />
             <Skeleton rows={5} />

@@ -6,7 +6,11 @@ import { api } from "../api";
 import { GRADE_BANDS, gradeColor } from "../cert";
 import { Seal } from "../components/Seal";
 
-/* ============================================================================
+/* SPEC-4 17.3 — EXEMPT from the state trio: a static explainer. It reads the
+   canonical catalog live where it can but ships complete static fallbacks, so
+   it is never empty and a failed read leaves the page whole — nothing to own.
+
+   ============================================================================
    Methodology & Index — the public, unauthenticated explainer for how the
    Agenttic Index is computed and why it's trustworthy. The credibility spine
    of the "Artificial Analysis for agents" positioning.
