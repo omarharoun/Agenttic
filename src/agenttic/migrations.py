@@ -328,6 +328,16 @@ def _seed_judge_configs(conn) -> None:
              "ca": cfg.created_at.isoformat(), "p": cfg.model_dump_json()})
 
 
+def _calibration_splits_table(conn) -> None:
+    """v27 — frozen train/held-out calibration splits (SPEC-3 Step 15.2, Hard
+    Rule 15). One row per (tenant, criterion_id, seed, trace_id) records whether
+    a labeled trace is TRAIN or HELD-OUT, so every optimization round for a
+    criterion reuses the SAME held-out benchmark (extend, never reshuffle)."""
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers CalibrationSplitRow)
+    from agenttic.registry.sqlite_store import CalibrationSplitRow
+    CalibrationSplitRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -356,6 +366,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (24, "feedback_table", _feedback_table),
     (25, "agent_config_table", _agent_config_table),
     (26, "seed_judge_configs", _seed_judge_configs),
+    (27, "calibration_splits_table", _calibration_splits_table),
 ]
 
 
