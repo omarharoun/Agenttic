@@ -383,6 +383,17 @@ def _judge_optimization_requests_table(conn) -> None:
     JudgeOptimizationRequestRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _generated_suite_snapshots_table(conn) -> None:
+    """v29 — generator draft snapshots (SPEC-3 Step 16). One row per
+    (tenant, suite_id, version) capturing the "as-generated" case set, plus the
+    review diff computed at approval time. Only GENERATOR drafts write here, so
+    generator quality (edit_rate) is measurable; other suites simply have no
+    row and their diff reports as "unavailable"."""
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers the row)
+    from agenttic.registry.sqlite_store import GeneratedSuiteSnapshotRow
+    GeneratedSuiteSnapshotRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     # 24-29 were BURNED while the code that created them could not be found. It
@@ -423,6 +434,8 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (31, "gaming_reports_table", _gaming_reports_table),
     (28, "judge_optimization_requests_table",
      _judge_optimization_requests_table),
+    (29, "generated_suite_snapshots_table",
+     _generated_suite_snapshots_table),
 ]
 
 

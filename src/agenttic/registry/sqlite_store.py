@@ -101,6 +101,26 @@ class CaseRow(SQLModel, table=True):
     payload: str
 
 
+class GeneratedSuiteSnapshotRow(SQLModel, table=True):
+    """The "as-generated" case set for a GENERATOR draft suite (Step 16).
+
+    Written once when ``generate_suite`` finalizes a draft, keyed by
+    (tenant, suite_id, version). Lets ``approve_suite`` diff the cases a human
+    approved against what the generator originally produced, so generator
+    quality (edit_rate) is measurable. ``review_diff`` is populated at approval
+    time (added/edited/deleted/unchanged counts). Only generator drafts are
+    snapshotted; mined/imported suites have no row, and their diff reads as
+    "unavailable" rather than fabricated."""
+    __table_args__ = (UniqueConstraint("tenant_id", "suite_id", "version"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    suite_id: str = Field(index=True)
+    version: int
+    created_at: datetime
+    payload: str          # JSON: list of generated cases (model_dump)
+    review_diff: str | None = None  # JSON diff, filled on approve (best-effort)
+
+
 class RubricRow(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("tenant_id", "rubric_id", "version"),)
     id: int | None = Field(default=None, primary_key=True)
@@ -1439,6 +1459,52 @@ class Registry:
                            payload=suite.model_dump_json()))
             s.commit()
 
+    # -- generator draft snapshots (Step 16) --------------------------------
+
+    def save_generated_snapshot(self, suite_id: str, version: int,
+                                cases: list[TestCase]) -> None:
+        """Persist the "as-generated" case set for a GENERATOR draft, so the
+        approve flow can diff it against what the human approved (Step 16).
+        Idempotent: an existing snapshot for (suite_id, version) is left intact
+        (a resumed generation re-finalizing must not clobber the original)."""
+        with Session(self.engine) as s:
+            exists = s.exec(select(GeneratedSuiteSnapshotRow).where(
+                GeneratedSuiteSnapshotRow.tenant_id == self.tenant,
+                GeneratedSuiteSnapshotRow.suite_id == suite_id,
+                GeneratedSuiteSnapshotRow.version == version)).first()
+            if exists:
+                return
+            payload = json.dumps([c.model_dump(mode="json") for c in cases])
+            s.add(GeneratedSuiteSnapshotRow(
+                tenant_id=self.tenant, suite_id=suite_id, version=version,
+                created_at=datetime.now(timezone.utc), payload=payload))
+            s.commit()
+
+    def get_generated_snapshot(self, suite_id: str, version: int
+                               ) -> list[TestCase] | None:
+        """The generated case set for a draft, or None if never snapshotted
+        (mined/imported suites, or suites generated before Step 16)."""
+        with Session(self.engine) as s:
+            row = s.exec(select(GeneratedSuiteSnapshotRow).where(
+                GeneratedSuiteSnapshotRow.tenant_id == self.tenant,
+                GeneratedSuiteSnapshotRow.suite_id == suite_id,
+                GeneratedSuiteSnapshotRow.version == version)).first()
+            if not row:
+                return None
+            return [TestCase.model_validate(c) for c in json.loads(row.payload)]
+
+    def get_review_diff(self, suite_id: str, version: int) -> dict | None:
+        """The recorded review diff (added/edited/deleted/unchanged), or None
+        if there's no snapshot or the diff hasn't been recorded yet."""
+        with Session(self.engine) as s:
+            row = s.exec(select(GeneratedSuiteSnapshotRow).where(
+                GeneratedSuiteSnapshotRow.tenant_id == self.tenant,
+                GeneratedSuiteSnapshotRow.suite_id == suite_id,
+                GeneratedSuiteSnapshotRow.version == version)).first()
+            if not row or not row.review_diff:
+                return None
+            return json.loads(row.review_diff)
+
     def approve_suite(self, suite_id: str, version: int) -> None:
         with Session(self.engine) as s:
             row = s.exec(select(SuiteRow).where(
@@ -1448,6 +1514,54 @@ class Registry:
             if not row:
                 raise NotFoundError(f"suite {suite_id} v{version}")
             row.approved = True
+            s.add(row)
+            s.commit()
+        # Additive, best-effort: record the review diff against the generated
+        # snapshot. A diff failure (or no snapshot for a mined suite) must never
+        # block approval — the flag is already flipped above.
+        try:
+            self._record_review_diff(suite_id, version)
+        except Exception:  # noqa: BLE001
+            pass
+
+    @staticmethod
+    def _diff_cases(generated: list[TestCase], approved: list[TestCase]) -> dict:
+        """Diff the generated case set against the approved one, keyed by
+        test_id. edited = same test_id but changed input / expected / tags."""
+        def _key(c: TestCase) -> tuple:
+            return (json.dumps(c.input, sort_keys=True),
+                    json.dumps(c.expected, sort_keys=True),
+                    json.dumps(sorted(c.tags), sort_keys=True))
+
+        gen = {c.test_id: c for c in generated}
+        appr = {c.test_id: c for c in approved}
+        added = sorted(set(appr) - set(gen))
+        deleted = sorted(set(gen) - set(appr))
+        edited, unchanged = [], []
+        for tid in set(gen) & set(appr):
+            (edited if _key(gen[tid]) != _key(appr[tid]) else unchanged).append(tid)
+        return {
+            "generated_count": len(generated),
+            "added": len(added), "edited": len(edited),
+            "deleted": len(deleted), "unchanged": len(unchanged),
+            "added_ids": added, "edited_ids": sorted(edited),
+            "deleted_ids": deleted,
+        }
+
+    def _record_review_diff(self, suite_id: str, version: int) -> None:
+        generated = self.get_generated_snapshot(suite_id, version)
+        if generated is None:
+            return  # no snapshot => diff stays unavailable, never fabricated
+        _, approved = self.get_suite(suite_id, version)
+        diff = self._diff_cases(generated, approved)
+        with Session(self.engine) as s:
+            row = s.exec(select(GeneratedSuiteSnapshotRow).where(
+                GeneratedSuiteSnapshotRow.tenant_id == self.tenant,
+                GeneratedSuiteSnapshotRow.suite_id == suite_id,
+                GeneratedSuiteSnapshotRow.version == version)).first()
+            if row is None:
+                return
+            row.review_diff = json.dumps(diff)
             s.add(row)
             s.commit()
 

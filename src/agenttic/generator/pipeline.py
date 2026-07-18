@@ -294,6 +294,14 @@ class BenchmarkGenerator:
             approved=False,
         )
         registry.finalize_suite(suite)
+        # Snapshot the "as-generated" case set so the approve flow can diff it
+        # against what the human approved (Step 16 — generator quality). Only
+        # generator drafts write here; best-effort, never blocks generation.
+        try:
+            registry.save_generated_snapshot(suite.suite_id, suite.version, all_cases)
+        except Exception:  # noqa: BLE001
+            logger.warning("generator: failed to snapshot suite %s for scoring",
+                           suite.suite_id, exc_info=True)
         self._write_review(suite, tasks, rubrics, all_cases, Path(review_dir))
         return suite
 

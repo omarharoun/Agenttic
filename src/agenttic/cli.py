@@ -399,6 +399,50 @@ def validate_suite_cmd(suite_id: str, version: int = 1, config: str = "config.ya
     for p in problems:
         console.print(f"  - {p}")
     raise typer.Exit(1)
+@app.command(name="generator-report")
+def generator_report(suite: str = typer.Option(None, "--suite",
+                     help="one suite id; omit to report across all suites"),
+                     config: str = "config.yaml"):
+    """Measure generator quality (Step 16): edit_rate, discrimination, coverage
+    balance — read-only. Measure before optimizing (Hard Rule 16)."""
+    from agenttic.generator.quality import compute_generator_report
+    from agenttic.registry.sqlite_store import NotFoundError
+
+    cfg, reg = _ctx(config)
+    if suite:
+        suite_ids = [suite]
+    else:
+        suite_ids = [d["suite_id"] for d in reg.list_suites()]
+    if not suite_ids:
+        console.print("[dim]No suites found.[/]")
+        return
+
+    def _fmt(x):
+        return f"{x:.2f}" if isinstance(x, float) else "[dim]n/a[/]"
+
+    table = Table("suite", "cases", "configs", "edit_rate",
+                  "discrimination", "coverage_div")
+    reports = []
+    for sid in suite_ids:
+        try:
+            rep = compute_generator_report(reg, sid)
+        except NotFoundError:
+            continue
+        reports.append(rep)
+        table.add_row(sid, str(rep.n_cases), str(rep.n_agent_configs),
+                      _fmt(rep.edit_rate), _fmt(rep.discrimination),
+                      _fmt(rep.coverage_balance.get("divergence")))
+    console.print(table)
+    if suite and reports:
+        rep = reports[0]
+        cov = rep.coverage_balance
+        console.print(f"\n[bold]Coverage[/] (actual vs TAG_MIX target):")
+        for tag in sorted(set(cov["actual"]) | set(cov["target"])):
+            console.print(f"  {tag}: {cov['actual'].get(tag, 0):.2f} "
+                          f"(target {cov['target'].get(tag, 0):.2f}, "
+                          f"Δ {cov['deltas'].get(tag, 0):+.2f})")
+        for n in rep.notes:
+            console.print(f"[dim]note: {n}[/]")
 
 
 @app.command()
