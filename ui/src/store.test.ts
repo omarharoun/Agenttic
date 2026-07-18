@@ -25,7 +25,7 @@ describe("applyEvent reducer", () => {
   });
 
   it("gate waiting flips execution status and node state", () => {
-    let s = applyEvent(emptyExec(),
+    const s = applyEvent(emptyExec(),
       ev("node_waiting", "gate", { suite_id: "s", version: 1 }));
     expect(s.status).toBe("waiting_approval");
     expect(s.nodeStates.gate).toBe("waiting");

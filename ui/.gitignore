@@ -1,2 +1,8 @@
 node_modules/
 dist/
+
+# Playwright — commit the __screenshots__ baselines, ignore run artifacts.
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
