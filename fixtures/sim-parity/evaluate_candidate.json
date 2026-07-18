@@ -1,0 +1,2304 @@
+[
+  {
+    "input": {
+      "successRateA": 0.6,
+      "successRateB": 0.0,
+      "successDelta": -0.6,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": -0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.0,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -60% on 5 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.5,
+      "successRateB": 1.0,
+      "successDelta": 0.5,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": -0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": true,
+      "reason": "accepted: pass rate 50% \u2192 100% (+50%) on 20 train case(s), no criterion regressed",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 0.6,
+      "successDelta": -0.2,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": -0.05,
+          "significant": true
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress efficiency (net pass-rate delta -20%)",
+      "regressions": [
+        "efficiency"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 0.6,
+      "successDelta": -0.4,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "accuracy",
+          "delta": -0.3,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress accuracy (net pass-rate delta -40%)",
+      "regressions": [
+        "accuracy"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.5,
+      "successRateB": 0.2,
+      "successDelta": -0.3,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": -0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -30% on 6 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.4,
+      "successRateB": 0.6,
+      "successDelta": 0.2,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "safety",
+          "delta": -0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": 0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": true,
+      "reason": "accepted: pass rate 40% \u2192 60% (+20%) on 20 train case(s), no criterion regressed",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.6,
+      "successRateB": 0.8,
+      "successDelta": 0.2,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": -0.05,
+          "significant": true
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": -0.05,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress tone, accuracy (net pass-rate delta +20%)",
+      "regressions": [
+        "tone",
+        "accuracy"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.6,
+      "successRateB": 0.0,
+      "successDelta": -0.6,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -60% on 6 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.5,
+      "successRateB": 0.5,
+      "successDelta": 0.0,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": -0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: no pass-rate improvement (tied at 50% on 10 case(s))",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 0.5,
+      "successDelta": -0.5,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": -0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -50% on 10 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.5,
+      "successRateB": 1.0,
+      "successDelta": 0.5,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": -0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": true,
+      "reason": "accepted: pass rate 50% \u2192 100% (+50%) on 6 train case(s), no criterion regressed",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.6,
+      "successRateB": 0.4,
+      "successDelta": -0.2,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "safety",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": -0.3,
+          "significant": true
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.1,
+          "significant": true
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress efficiency, helpfulness (net pass-rate delta -20%)",
+      "regressions": [
+        "efficiency",
+        "helpfulness"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.0,
+      "successRateB": 0.8,
+      "successDelta": 0.8,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "safety",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": -0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": true,
+      "reason": "accepted: pass rate 0% \u2192 80% (+80%) on 5 train case(s), no criterion regressed",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.6,
+      "successRateB": 0.0,
+      "successDelta": -0.6,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": -0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": -0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -60% on 20 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.5,
+      "successRateB": 0.6,
+      "successDelta": 0.1,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "safety",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": -0.3,
+          "significant": true
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.1,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress accuracy, helpfulness (net pass-rate delta +10%)",
+      "regressions": [
+        "accuracy",
+        "helpfulness"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 1.0,
+      "successDelta": 0.2,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": -0.05,
+          "significant": true
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": -0.3,
+          "significant": true
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress efficiency, tone (net pass-rate delta +20%)",
+      "regressions": [
+        "efficiency",
+        "tone"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.4,
+      "successRateB": 0.5,
+      "successDelta": 0.1,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "accuracy",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": true,
+      "reason": "accepted: pass rate 40% \u2192 50% (+10%) on 10 train case(s), no criterion regressed",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 0.0,
+      "successDelta": -0.8,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": -0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -80% on 5 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.6,
+      "successRateB": 0.4,
+      "successDelta": -0.2,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "safety",
+          "delta": 0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -20% on 6 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.4,
+      "successRateB": 0.4,
+      "successDelta": 0.0,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": 0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: no pass-rate improvement (tied at 40% on 5 case(s))",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 1.0,
+      "successDelta": 0.2,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": -0.3,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress safety (net pass-rate delta +20%)",
+      "regressions": [
+        "safety"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.6,
+      "successRateB": 0.2,
+      "successDelta": -0.4,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": -0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -40% on 5 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.5,
+      "successRateB": 0.2,
+      "successDelta": -0.3,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "accuracy",
+          "delta": 0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -30% on 20 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 0.5,
+      "successDelta": -0.3,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -30% on 5 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.2,
+      "successRateB": 0.6,
+      "successDelta": 0.4,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": -0.1,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress tone (net pass-rate delta +40%)",
+      "regressions": [
+        "tone"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 0.8,
+      "successDelta": 0.0,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: no pass-rate improvement (tied at 80% on 6 case(s))",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.5,
+      "successRateB": 0.2,
+      "successDelta": -0.3,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -30% on 6 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.0,
+      "successRateB": 0.6,
+      "successDelta": 0.6,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": -0.3,
+          "significant": true
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress safety (net pass-rate delta +60%)",
+      "regressions": [
+        "safety"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 1.0,
+      "successDelta": 0.0,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "safety",
+          "delta": 0.0,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: no pass-rate improvement (tied at 100% on 10 case(s))",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.2,
+      "successRateB": 0.5,
+      "successDelta": 0.3,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "safety",
+          "delta": 0.0,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": true,
+      "reason": "accepted: pass rate 20% \u2192 50% (+30%) on 10 train case(s), no criterion regressed",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 0.4,
+      "successDelta": -0.6,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "safety",
+          "delta": -0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -60% on 5 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 1.0,
+      "successDelta": 0.0,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: no pass-rate improvement (tied at 100% on 10 case(s))",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.0,
+      "successRateB": 1.0,
+      "successDelta": 1.0,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": -0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": -0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": -0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": true,
+      "reason": "accepted: pass rate 0% \u2192 100% (+100%) on 5 train case(s), no criterion regressed",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.4,
+      "successRateB": 0.4,
+      "successDelta": 0.0,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.3,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress helpfulness (net pass-rate delta +0%)",
+      "regressions": [
+        "helpfulness"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.4,
+      "successRateB": 0.0,
+      "successDelta": -0.4,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "accuracy",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.05,
+          "significant": true
+        },
+        {
+          "criterionId": "tone",
+          "delta": 0.0,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress helpfulness (net pass-rate delta -40%)",
+      "regressions": [
+        "helpfulness"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.6,
+      "successRateB": 0.6,
+      "successDelta": 0.0,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": -0.3,
+          "significant": true
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress safety (net pass-rate delta +0%)",
+      "regressions": [
+        "safety"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.5,
+      "successRateB": 1.0,
+      "successDelta": 0.5,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": -0.1,
+          "significant": true
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress efficiency (net pass-rate delta +50%)",
+      "regressions": [
+        "efficiency"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.0,
+      "successRateB": 0.0,
+      "successDelta": 0.0,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "safety",
+          "delta": 0.0,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: no pass-rate improvement (tied at 0% on 10 case(s))",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 0.0,
+      "successDelta": -0.8,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": 0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -80% on 5 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.6,
+      "successRateB": 0.4,
+      "successDelta": -0.2,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": -0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -20% on 20 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 0.2,
+      "successDelta": -0.6,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -60% on 20 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.5,
+      "successRateB": 0.4,
+      "successDelta": -0.1,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": -0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -10% on 5 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 0.5,
+      "successDelta": -0.3,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.1,
+          "significant": true
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": -0.3,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress helpfulness, accuracy (net pass-rate delta -30%)",
+      "regressions": [
+        "helpfulness",
+        "accuracy"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 0.2,
+      "successDelta": -0.6,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "accuracy",
+          "delta": -0.3,
+          "significant": true
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.05,
+          "significant": true
+        },
+        {
+          "criterionId": "tone",
+          "delta": -0.05,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress accuracy, helpfulness, tone (net pass-rate delta -60%)",
+      "regressions": [
+        "accuracy",
+        "helpfulness",
+        "tone"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.0,
+      "successRateB": 1.0,
+      "successDelta": 1.0,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": -0.1,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress efficiency (net pass-rate delta +100%)",
+      "regressions": [
+        "efficiency"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 0.5,
+      "successDelta": -0.5,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "safety",
+          "delta": -0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": 0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -50% on 10 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.5,
+      "successRateB": 1.0,
+      "successDelta": 0.5,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": -0.1,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress safety (net pass-rate delta +50%)",
+      "regressions": [
+        "safety"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 0.5,
+      "successDelta": -0.3,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": -0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -30% on 5 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.6,
+      "successRateB": 0.8,
+      "successDelta": 0.2,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": 0.0,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": true,
+      "reason": "accepted: pass rate 60% \u2192 80% (+20%) on 20 train case(s), no criterion regressed",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 0.8,
+      "successDelta": 0.0,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": -0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.0,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: no pass-rate improvement (tied at 80% on 20 case(s))",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.4,
+      "successRateB": 0.6,
+      "successDelta": 0.2,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": -0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": -0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": true,
+      "reason": "accepted: pass rate 40% \u2192 60% (+20%) on 20 train case(s), no criterion regressed",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 0.4,
+      "successDelta": -0.4,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -40% on 5 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 0.5,
+      "successDelta": -0.5,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": -0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -50% on 10 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.2,
+      "successRateB": 0.6,
+      "successDelta": 0.4,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": -0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": true,
+      "reason": "accepted: pass rate 20% \u2192 60% (+40%) on 6 train case(s), no criterion regressed",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.5,
+      "successRateB": 0.6,
+      "successDelta": 0.1,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": -0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": -0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": 0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": true,
+      "reason": "accepted: pass rate 50% \u2192 60% (+10%) on 5 train case(s), no criterion regressed",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.5,
+      "successRateB": 0.5,
+      "successDelta": 0.0,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: no pass-rate improvement (tied at 50% on 10 case(s))",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.2,
+      "successRateB": 0.0,
+      "successDelta": -0.2,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "safety",
+          "delta": 0.0,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -20% on 5 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.2,
+      "successRateB": 0.5,
+      "successDelta": 0.3,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": -0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": -0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": true,
+      "reason": "accepted: pass rate 20% \u2192 50% (+30%) on 10 train case(s), no criterion regressed",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 1.0,
+      "successDelta": 0.0,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": -0.1,
+          "significant": true
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.0,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress tone (net pass-rate delta +0%)",
+      "regressions": [
+        "tone"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 0.5,
+      "successDelta": -0.5,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": 0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -50% on 6 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 0.4,
+      "successDelta": -0.6,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "accuracy",
+          "delta": 0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -60% on 10 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 1.0,
+      "successDelta": 0.2,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": -0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": true,
+      "reason": "accepted: pass rate 80% \u2192 100% (+20%) on 5 train case(s), no criterion regressed",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.6,
+      "successRateB": 0.5,
+      "successDelta": -0.1,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": -0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -10% on 6 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.4,
+      "successRateB": 0.4,
+      "successDelta": 0.0,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "safety",
+          "delta": -0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: no pass-rate improvement (tied at 40% on 6 case(s))",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.8,
+      "successRateB": 0.2,
+      "successDelta": -0.6,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": 0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -60% on 20 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 0.5,
+      "successDelta": -0.5,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": -0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -50% on 6 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.0,
+      "successRateB": 0.0,
+      "successDelta": 0.0,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "safety",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": -0.3,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress tone (net pass-rate delta +0%)",
+      "regressions": [
+        "tone"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.4,
+      "successRateB": 0.8,
+      "successDelta": 0.4,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": -0.05,
+          "significant": true
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.1,
+          "significant": true
+        },
+        {
+          "criterionId": "safety",
+          "delta": -0.3,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress accuracy, helpfulness, safety (net pass-rate delta +40%)",
+      "regressions": [
+        "accuracy",
+        "helpfulness",
+        "safety"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 0.5,
+      "successDelta": -0.5,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.0,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -50% on 20 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 0.2,
+      "successDelta": -0.8,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "accuracy",
+          "delta": -0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": -0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": 0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -80% on 5 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.2,
+      "successRateB": 1.0,
+      "successDelta": 0.8,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": 0.05,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": true,
+      "reason": "accepted: pass rate 20% \u2192 100% (+80%) on 5 train case(s), no criterion regressed",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.0,
+      "successRateB": 0.0,
+      "successDelta": 0.0,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "accuracy",
+          "delta": -0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: no pass-rate improvement (tied at 0% on 10 case(s))",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.0,
+      "successRateB": 0.0,
+      "successDelta": 0.0,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "accuracy",
+          "delta": 0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": -0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": 0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: no pass-rate improvement (tied at 0% on 6 case(s))",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 0.2,
+      "successDelta": -0.8,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.1,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -80% on 20 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.2,
+      "successRateB": 0.6,
+      "successDelta": 0.4,
+      "nPaired": 6,
+      "perCriterion": [
+        {
+          "criterionId": "helpfulness",
+          "delta": -0.05,
+          "significant": true
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "efficiency",
+          "delta": -0.1,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress helpfulness, efficiency (net pass-rate delta +40%)",
+      "regressions": [
+        "helpfulness",
+        "efficiency"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 1.0,
+      "successDelta": 0.0,
+      "nPaired": 20,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: no pass-rate improvement (tied at 100% on 20 case(s))",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 1.0,
+      "successRateB": 0.2,
+      "successDelta": -0.8,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "tone",
+          "delta": -0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": 0.1,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -80% on 5 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.6,
+      "successRateB": 0.5,
+      "successDelta": -0.1,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "safety",
+          "delta": 0.3,
+          "significant": false
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: pass rate dropped -10% on 5 case(s)",
+      "regressions": []
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.0,
+      "successRateB": 0.8,
+      "successDelta": 0.8,
+      "nPaired": 5,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": 0.05,
+          "significant": false
+        },
+        {
+          "criterionId": "tone",
+          "delta": 0.3,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": -0.05,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress accuracy (net pass-rate delta +80%)",
+      "regressions": [
+        "accuracy"
+      ]
+    }
+  },
+  {
+    "input": {
+      "successRateA": 0.6,
+      "successRateB": 1.0,
+      "successDelta": 0.4,
+      "nPaired": 10,
+      "perCriterion": [
+        {
+          "criterionId": "efficiency",
+          "delta": -0.1,
+          "significant": true
+        },
+        {
+          "criterionId": "helpfulness",
+          "delta": 0.0,
+          "significant": false
+        },
+        {
+          "criterionId": "accuracy",
+          "delta": -0.3,
+          "significant": true
+        }
+      ]
+    },
+    "expected": {
+      "accept": false,
+      "reason": "rejected: would significantly regress efficiency, accuracy (net pass-rate delta +40%)",
+      "regressions": [
+        "efficiency",
+        "accuracy"
+      ]
+    }
+  }
+]
