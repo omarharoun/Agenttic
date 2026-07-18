@@ -1741,6 +1741,93 @@ def learn_approve(
                   f"(status={ac.status}, by {ac.approved_by}).")
 
 
+# -- judge learning (SPEC-3 Step 15.3) ---------------------------------------
+
+@app.command(name="learn-judge")
+def learn_judge(
+    criterion: str = typer.Option(..., "--criterion", "-c",
+                                  help="criterion id to learn a judge for"),
+    rounds: int = typer.Option(1, "--rounds", help="optimization rounds"),
+    config: str = "config.yaml",
+):
+    """Optimize the JUDGE for a criterion from judge-vs-human disagreements.
+
+    Splits the criterion's human labels into a frozen train/held-out benchmark
+    (15.2), proposes candidate judge configs against the disagreement dossier,
+    gates them (train must improve, held-out must improve by a margin, no
+    overfit, fail-closed on unscored held-out), and promotes the survivor to the
+    active config lineage. Refuses when the criterion has too few labels."""
+    from agenttic.learning.judge_optimizer import run_judge_learning
+    cfg, reg = _ctx(config)
+    summary = run_judge_learning(reg, cfg, criterion, rounds=rounds)
+    if summary.get("refused"):
+        console.print(f"[yellow]refused[/] — {summary['reason']}")
+        return
+    console.print(f"[bold]Judge learning[/] on '{criterion}' — {rounds} round(s)")
+    for jc in summary["promoted"]:
+        console.print(f"[green]PROMOTED[/] {jc.judge_config_id} (v{jc.version})")
+    for jc in summary["rejected"]:
+        console.print(f"[dim]rejected[/] {jc.judge_config_id}")
+    if not summary["promoted"]:
+        console.print("[dim]no candidate judge promoted this run[/]")
+
+
+@app.command(name="judge-lineage")
+def judge_lineage_cmd(
+    criterion: str = typer.Option(..., "--criterion", "-c", help="criterion id"),
+    config: str = "config.yaml",
+):
+    """Print the judge-config lineage (v1→v2…) with train + held-out agreement
+    deltas pulled from each promotion's round record."""
+    import json as _json
+    _cfg, reg = _ctx(config)
+    chain = reg.judge_lineage(criterion)
+    if not chain:
+        console.print(f"[dim]no judge lineage for {criterion}[/]")
+        return
+
+    def _deltas(jc):
+        # The round record is folded into the changelog as `round={...json...}`.
+        marker = "round="
+        idx = (jc.changelog or "").rfind(marker)
+        if idx < 0:
+            return "-", "-"
+        try:
+            rec = _json.loads(jc.changelog[idx + len(marker):])
+            tr = rec.get("train") or [None, None]
+            ho = rec.get("holdout") or [None, None]
+            tr_s = (f"{tr[0]:.2f}→{tr[1]:.2f}"
+                    if tr[0] is not None and tr[1] is not None else "-")
+            ho_s = (f"{ho[0]:.2f}→{ho[1]:.2f}"
+                    if ho[0] is not None and ho[1] is not None else "-")
+            return tr_s, ho_s
+        except Exception:
+            return "-", "-"
+
+    table = Table("version", "judge_config_id", "status", "train Δ", "held-out Δ")
+    for jc in chain:
+        tr_s, ho_s = _deltas(jc)
+        table.add_row(f"v{jc.version}", jc.judge_config_id, jc.status, tr_s, ho_s)
+    console.print(table)
+
+
+@app.command()
+def rejudge(
+    scorecard_id: str = typer.Argument(..., help="scorecard id to re-judge"),
+    config: str = "config.yaml",
+):
+    """Re-score a scorecard's judge-scored criteria with the CURRENT active
+    judge configs and save the result as a NEW scorecard version (append-only;
+    the original is never mutated — Hard Rule 14)."""
+    from agenttic.learning.judge_optimizer import rejudge as _rejudge
+    cfg, reg = _ctx(config)
+    new_sc = _rejudge(reg, cfg, scorecard_id)
+    console.print(f"[green]Re-judged[/] {scorecard_id} → new scorecard "
+                  f"{new_sc.scorecard_id}")
+    console.print(f"task success rate: {new_sc.task_success_rate:.0%} "
+                  f"(n={new_sc.n_scored})")
+
+
 @app.command()
 def lineage(
     agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)"),
