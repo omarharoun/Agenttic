@@ -52,3 +52,38 @@ test.describe("playground — The Gate", () => {
     expect(critical, JSON.stringify(critical.map((v) => v.id))).toEqual([]);
   });
 });
+
+test.describe("playground — Drift Watch & The Deferral", () => {
+  test("drift fires a re-eval as degradation rises (real sim-core)", async ({ page }) => {
+    await page.goto("/playground/drift?deg=0.1");
+    await expect(page.locator(".pg-verdict-badge")).toHaveText("STABLE");
+    await page.goto("/playground/drift?deg=0.5");
+    await expect(page.locator(".pg-verdict-badge")).toHaveText("RE-EVAL FIRED");
+    await expect(page.locator(".pg-receipt")).toContainText("batch re-evaluation recommended");
+  });
+
+  test("deferral scores 1.0 for a correct escalation, 0.0 for over-confidence", async ({ page }) => {
+    await page.goto("/playground/deferral?amb=0.8&thr=0.5");
+    await expect(page.locator(".pg-verdict-badge")).toHaveText("SCORE 1.0");
+    await page.goto("/playground/deferral?amb=0.6&thr=0.9");
+    await expect(page.locator(".pg-verdict-badge")).toHaveText("SCORE 0.0");
+  });
+
+  for (const [name, path] of [["Drift Watch", "/playground/drift"], ["The Deferral", "/playground/deferral"]] as const) {
+    test(`${name} — keyboard + axe (no critical)`, async ({ page }, testInfo) => {
+      await page.goto(path);
+      const slider = page.getByRole("slider").first();
+      await slider.focus();
+      await expect(slider).toBeFocused();
+      const before = await slider.inputValue();
+      await slider.press("ArrowRight");
+      expect(await slider.inputValue()).not.toBe(before);
+      const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+      const critical = results.violations.filter((v) => v.impact === "critical");
+      for (const v of results.violations) {
+        testInfo.annotations.push({ type: `axe-${v.impact}`, description: `${v.id}: ${v.help}` });
+      }
+      expect(critical, JSON.stringify(critical.map((v) => v.id))).toEqual([]);
+    });
+  }
+});

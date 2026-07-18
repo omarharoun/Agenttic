@@ -7,6 +7,8 @@ import { MethodologyPage } from "./pages/MethodologyPage";
 import { NotFoundPublicPage } from "./pages/NotFoundPublicPage";
 import { PlaygroundPage } from "./pages/PlaygroundPage";
 import { PlaygroundGatePage } from "./pages/PlaygroundGatePage";
+import { PlaygroundDriftPage } from "./pages/PlaygroundDriftPage";
+import { PlaygroundDeferralPage } from "./pages/PlaygroundDeferralPage";
 import { PricingPage } from "./pages/PricingPage";
 import { StatusPage } from "./pages/StatusPage";
 
@@ -71,6 +73,8 @@ export const routes: RouteRecord[] = [
   // public playground — no-signup sim-core simulations (prerendered, SEO)
   { path: "/playground", element: <PlaygroundPage />, entry: "src/pages/PlaygroundPage.tsx" },
   { path: "/playground/gate", element: <PlaygroundGatePage />, entry: "src/pages/PlaygroundGatePage.tsx" },
+  { path: "/playground/drift", element: <PlaygroundDriftPage />, entry: "src/pages/PlaygroundDriftPage.tsx" },
+  { path: "/playground/deferral", element: <PlaygroundDeferralPage />, entry: "src/pages/PlaygroundDeferralPage.tsx" },
   // public certification brand surfaces
   { path: "/certified", element: <CertifiedDirectoryPage />, entry: "src/pages/CertifiedDirectoryPage.tsx" },
   { path: "/certified/:id", element: suspense(<CertificatePage />) },

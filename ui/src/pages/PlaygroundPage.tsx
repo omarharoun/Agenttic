@@ -22,11 +22,11 @@ const SIMS: SimCard[] = [
     teaches: "Why a change that lifts the average can still be rejected — and why that's the point.",
   },
   {
-    to: null, title: "Drift Watch", status: "soon",
+    to: "/playground/drift", title: "Drift Watch", status: "live",
     teaches: "Why single bad answers don't page anyone, but a trend does.",
   },
   {
-    to: null, title: "The Deferral", status: "soon",
+    to: "/playground/deferral", title: "The Deferral", status: "live",
     teaches: "Why knowing when to stop and ask a human is a scored skill.",
   },
 ];

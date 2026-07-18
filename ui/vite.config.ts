@@ -5,7 +5,7 @@ import { defineConfig } from "vite";
  *  interactive (client-rendered) and /app/* is a pure client SPA — neither is
  *  prerendered, so the heavy React Flow console never runs in the build. */
 const PRERENDER = new Set(["/", "/methodology", "/pricing", "/certified", "/api-docs", "/status",
-  "/playground", "/playground/gate"]);
+  "/playground", "/playground/gate", "/playground/drift", "/playground/deferral"]);
 
 export default defineConfig({
   plugins: [react()],

@@ -145,6 +145,22 @@
   font-size: 0.85em;
 }
 
+/* facts list (drift / deferral) */
+.pg-facts { display: grid; gap: var(--sp-2, 8px); margin: var(--sp-3, 14px) 0 0; }
+.pg-facts > div { display: flex; justify-content: space-between; gap: var(--sp-3, 14px); }
+.pg-facts dt { color: var(--muted); font-size: 0.88em; margin: 0; }
+.pg-facts dd { margin: 0; font-family: var(--font-mono, monospace); }
+
+/* drift strip chart */
+.pg-strip { width: 100%; height: auto; display: block; margin-bottom: var(--sp-3, 14px); }
+.pg-strip-band { fill: var(--ok); opacity: 0.12; }
+.pg-strip-threshold { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; }
+.pg-strip-mean { stroke: var(--accent); stroke-width: 2; }
+.pg-strip-mean.is-fired { stroke: var(--fail); }
+.pg-dot-ok { fill: var(--ok); }
+.pg-dot-bad { fill: var(--fail); }
+.pg-muted { color: var(--muted); }
+
 @media (prefers-reduced-motion: reduce) {
   .pg-card.is-live, .pg-preset, .pg-verdict { transition: none; }
   .pg-card.is-live:hover { transform: none; }
