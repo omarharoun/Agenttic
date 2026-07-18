@@ -43,6 +43,41 @@ export default tseslint.config(
     },
   },
   {
+    // SPEC-4 Hard Rule 20 — ZERO hardcoded colour hex in the two ship surfaces
+    // (src/pages + src/components). Every colour must come from a theme token
+    // (var(--…)) so both light and dark themes stay honest. We match a `#`
+    // followed by 3–8 hex digits in the three places a literal colour can hide:
+    // string Literals, template-string chunks (TemplateElement), and raw JSX
+    // text. The negative lookbehind `(?<!&)` is load-bearing: it excludes HTML
+    // numeric character entities like `&#123;` / `&#162;`, which are NOT colours
+    // and legitimately appear in copy — without it the rule would false-fire on
+    // them. Scoped to these two dirs only, per the spec.
+    files: [
+      "src/pages/**/*.{ts,tsx}",
+      "src/components/**/*.{ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/(?<!&)#[0-9a-fA-F]{3,8}\\b/]",
+          message:
+            "Hardcoded colour hex is banned in pages/components (Hard Rule 20) — use a var(--…) theme token from theme.css.",
+        },
+        {
+          selector: "TemplateElement[value.raw=/(?<!&)#[0-9a-fA-F]{3,8}\\b/]",
+          message:
+            "Hardcoded colour hex is banned in pages/components (Hard Rule 20) — use a var(--…) theme token from theme.css.",
+        },
+        {
+          selector: "JSXText[value=/(?<!&)#[0-9a-fA-F]{3,8}\\b/]",
+          message:
+            "Hardcoded colour hex is banned in pages/components (Hard Rule 20) — use a var(--…) theme token from theme.css.",
+        },
+      ],
+    },
+  },
+  {
     // Tests may use `any` freely (fixtures, mocks); they aren't shipped console.
     files: ["src/**/*.test.{ts,tsx}"],
     rules: {

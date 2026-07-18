@@ -280,3 +280,15 @@
   line-height: 1.5;
   white-space: pre-wrap;
 }
+
+/* --- Responsive (SPEC-4 Step 21.1) ---------------------------------------- */
+/* At ≤360px the executive header stacks to a single column so its 180px stat
+   cards don't force the page wider than the viewport. This lives here (not in
+   theme.css) so it reliably wins the cascade over the base `.sd-exec` rule
+   defined above — both are same-specificity, and this one comes later. The
+   per-case + criterion tables already scroll inside their .table-wrap. */
+@media (max-width: 360px) {
+  .sd-exec { grid-template-columns: 1fr; }
+  .sd-regress-row { flex-wrap: wrap; gap: 4px 12px; }
+  .sd-regress-row > span:first-child { min-width: 0; }
+}
