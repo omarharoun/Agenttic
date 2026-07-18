@@ -1,7 +1,14 @@
 __pycache__/
 *.pyc
 .venv/
+# sqlite registries & their WAL/SHM sidecars — runtime data, incl. test/seed dbs
 ascore.db
+ascore.*.db
+ascore.*.db-shm
+ascore.*.db-wal
+# seeded/runtime review + calibration stores (config-configurable dirs)
+calibration/
+review/
 report.md
 # build artifacts (scripts/release/pypi.sh writes here)
 dist/
