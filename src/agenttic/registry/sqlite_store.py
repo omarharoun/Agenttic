@@ -261,6 +261,29 @@ class AgentConfigRow(SQLModel, table=True):
     payload: str = "{}"                         # the config/changelog JSON
 
 
+class JudgeConfigRow(SQLModel, table=True):
+    """A versioned judge-config artifact per criterion (SPEC-3 Step 15.1). One
+    row per (tenant, criterion_id, version). ``status`` (candidate | active |
+    rejected | retired) tracks the lineage; the invariant "exactly ONE active
+    per (tenant, criterion_id)" is enforced at the app level in
+    ``save_judge_config`` / ``set_active_judge_config`` (portable across SQLite
+    and Postgres). ``parent_id`` (in the payload) chains the lineage
+    baseline→latest. Append-only except for the in-place active↔retired flip on
+    promotion."""
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "criterion_id", "version"),
+        UniqueConstraint("tenant_id", "judge_config_id"),
+    )
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    judge_config_id: str = Field(index=True)
+    criterion_id: str = Field(index=True)
+    version: int
+    status: str = Field(default="candidate", index=True)  # candidate|active|rejected|retired
+    created_at: datetime
+    payload: str
+
+
 class SpendRow(SQLModel, table=True):
     """Append-only ledger of LLM spend, for the daily budget cap."""
     id: int | None = Field(default=None, primary_key=True)
@@ -1646,6 +1669,105 @@ class Registry:
             row.processed = True
             s.add(row)
             s.commit()
+
+    # -- judge configs (SPEC-3 Step 15.1) -------------------------------------
+
+    def save_judge_config(self, cfg) -> None:
+        """Persist one JudgeConfig (append-only per version). Enforces the
+        single-active invariant: if ``cfg.status == 'active'`` and another
+        active config already exists for this criterion, it is refused — a new
+        active must be introduced via :meth:`set_active_judge_config`, which
+        atomically retires the incumbent. Raises on a duplicate
+        (criterion_id, version) or judge_config_id within the tenant."""
+        from agenttic.schema.judge_config import JudgeConfig  # noqa: F401
+        with Session(self.engine) as s:
+            dup = s.exec(select(JudgeConfigRow).where(
+                JudgeConfigRow.tenant_id == self.tenant,
+                JudgeConfigRow.judge_config_id == cfg.judge_config_id)).first()
+            if dup:
+                raise DuplicateVersionError(
+                    f"judge config {cfg.judge_config_id} already stored")
+            ver_dup = s.exec(select(JudgeConfigRow).where(
+                JudgeConfigRow.tenant_id == self.tenant,
+                JudgeConfigRow.criterion_id == cfg.criterion_id,
+                JudgeConfigRow.version == cfg.version)).first()
+            if ver_dup:
+                raise DuplicateVersionError(
+                    f"judge config for {cfg.criterion_id} v{cfg.version} "
+                    "already stored; save the next version instead")
+            if cfg.status == "active":
+                existing_active = s.exec(select(JudgeConfigRow).where(
+                    JudgeConfigRow.tenant_id == self.tenant,
+                    JudgeConfigRow.criterion_id == cfg.criterion_id,
+                    JudgeConfigRow.status == "active")).first()
+                if existing_active is not None:
+                    raise ValueError(
+                        f"criterion {cfg.criterion_id} already has an active "
+                        f"judge config ({existing_active.judge_config_id}); "
+                        "promote via set_active_judge_config to retire it first "
+                        "(exactly one active per criterion)")
+            s.add(JudgeConfigRow(
+                tenant_id=self.tenant, judge_config_id=cfg.judge_config_id,
+                criterion_id=cfg.criterion_id, version=cfg.version,
+                status=cfg.status, created_at=cfg.created_at,
+                payload=cfg.model_dump_json()))
+            s.commit()
+
+    def active_judge_config(self, criterion_id: str):
+        """The single active JudgeConfig for a criterion, or None."""
+        from agenttic.schema.judge_config import JudgeConfig
+        with Session(self.engine) as s:
+            row = s.exec(select(JudgeConfigRow).where(
+                JudgeConfigRow.tenant_id == self.tenant,
+                JudgeConfigRow.criterion_id == criterion_id,
+                JudgeConfigRow.status == "active")).first()
+            return JudgeConfig.model_validate_json(row.payload) if row else None
+
+    def judge_lineage(self, criterion_id: str) -> list:
+        """Every JudgeConfig for a criterion, ordered by version (ascending)."""
+        from agenttic.schema.judge_config import JudgeConfig
+        with Session(self.engine) as s:
+            rows = s.exec(select(JudgeConfigRow).where(
+                JudgeConfigRow.tenant_id == self.tenant,
+                JudgeConfigRow.criterion_id == criterion_id
+            ).order_by(JudgeConfigRow.version)).all()
+            return [JudgeConfig.model_validate_json(r.payload) for r in rows]
+
+    def set_active_judge_config(self, criterion_id: str,
+                                judge_config_id: str):
+        """Atomically flip active↔retired on promotion (used by Step 15.3):
+        retire the current active config (if any) and promote ``judge_config_id``
+        to active, in ONE transaction — so there is never a moment (or a
+        persisted state) with two actives for a criterion. Returns the promoted
+        JudgeConfig. 404 if the target isn't this tenant's / criterion's."""
+        from agenttic.schema.judge_config import JudgeConfig
+        with Session(self.engine) as s:
+            target = s.exec(select(JudgeConfigRow).where(
+                JudgeConfigRow.tenant_id == self.tenant,
+                JudgeConfigRow.criterion_id == criterion_id,
+                JudgeConfigRow.judge_config_id == judge_config_id)).first()
+            if target is None:
+                raise NotFoundError(
+                    f"judge config {judge_config_id} for {criterion_id}")
+            actives = s.exec(select(JudgeConfigRow).where(
+                JudgeConfigRow.tenant_id == self.tenant,
+                JudgeConfigRow.criterion_id == criterion_id,
+                JudgeConfigRow.status == "active")).all()
+            for row in actives:
+                if row.judge_config_id == judge_config_id:
+                    continue
+                row.status = "retired"
+                cfg = JudgeConfig.model_validate_json(row.payload)
+                row.payload = cfg.model_copy(update={"status": "retired"}
+                                             ).model_dump_json()
+                s.add(row)
+            target.status = "active"
+            tcfg = JudgeConfig.model_validate_json(target.payload)
+            promoted = tcfg.model_copy(update={"status": "active"})
+            target.payload = promoted.model_dump_json()
+            s.add(target)
+            s.commit()
+            return promoted
 
     # -- agent-config promotion ledger (SPEC-2 Step 14) -----------------------
 

@@ -142,10 +142,16 @@ def evidence_attempts_score_injection(criterion: Criterion, trace: Trace) -> boo
     return bool(_SCORE_LITERAL_RE.search(_evidence_body(criterion, trace)))
 
 
-def build_judge_prompt(criterion: Criterion, trace: Trace, tc: TestCase) -> str:
+def _new_fence() -> str:
     # Per-call RANDOM fence: the agent can't pre-close a fence it can't predict,
     # so it cannot smuggle "instructions" back out into the judge's own channel.
-    fence = f"UNTRUSTED_AGENT_OUTPUT_{secrets.token_hex(16)}"
+    return f"UNTRUSTED_AGENT_OUTPUT_{secrets.token_hex(16)}"
+
+
+def build_judge_prompt(
+    criterion: Criterion, trace: Trace, tc: TestCase, *, fence: str | None = None
+) -> str:
+    fence = fence or _new_fence()
     evidence = _evidence_body(criterion, trace)
     return (
         f"CRITERION: {criterion.description}\n\n"
@@ -177,6 +183,7 @@ class LLMJudge:
         advisor_max_uses: int = 1,
         cfg: dict | None = None,
         retry_policy=None,
+        reg=None,
     ):
         if model == agent_model:
             raise ValueError(
@@ -198,6 +205,11 @@ class LLMJudge:
         self.advisor_max_tokens = advisor_max_tokens
         self.advisor_max_uses = advisor_max_uses
         self.cfg = cfg  # for pricing; cost is 0 when not provided
+        # Optional registry handle: when present, the judge renders the active,
+        # versioned JudgeConfig for a criterion (SPEC-3 Step 15.1). Absent ⇒ the
+        # built-in ``build_judge_prompt`` (unchanged behaviour for every existing
+        # LLMJudge construction that does not pass ``reg``).
+        self.reg = reg
         from agenttic.retry import RetryPolicy
         self.retry_policy = retry_policy or (
             RetryPolicy.from_cfg(cfg) if cfg else RetryPolicy())
@@ -216,10 +228,10 @@ class LLMJudge:
                 record_judge_injection()
             except Exception:  # noqa: BLE001 — telemetry must never fail scoring
                 pass
-        prompt = build_judge_prompt(criterion, trace, tc)
+        prompt, system_prompt = self._render(criterion, trace, tc)
         last_err = "no attempts made"
         for _ in range(self.max_retries + 1):
-            resp = self._create(prompt)
+            resp = self._create(prompt, system_prompt)
             texts = [
                 b.text for b in resp.content if getattr(b, "type", "") == "text"
             ]
@@ -243,6 +255,33 @@ class LLMJudge:
             f"no valid judge output after {self.max_retries + 1} attempts ({last_err})"
         )
 
+    def _render(self, criterion: Criterion, trace: Trace, tc: TestCase
+               ) -> tuple[str, str]:
+        """Build the (user prompt, system prompt) pair for a judge call.
+
+        With a registry handle AND an active versioned JudgeConfig for this
+        criterion, render through that config (SPEC-3 Step 15.1). Otherwise fall
+        back to the built-in ``build_judge_prompt`` — byte-identical to the
+        pre-15.1 behaviour. Both paths share a single per-call random fence, so
+        the seed config's rendered prompt is provably identical to the built-in
+        one. In advisor mode the advisor system prompt is used unchanged; the
+        config's ``system_prompt`` governs only the plain (non-advisor) call."""
+        fence = _new_fence()
+        active = None
+        if self.reg is not None:
+            try:
+                active = self.reg.active_judge_config(criterion.criterion_id)
+            except Exception:  # noqa: BLE001 — a registry hiccup must not break scoring
+                active = None
+        if active is not None:
+            from agenttic.schema.judge_config import render_judge_prompt
+            prompt = render_judge_prompt(active, criterion, trace, tc, fence=fence)
+            system = active.system_prompt
+        else:
+            prompt = build_judge_prompt(criterion, trace, tc, fence=fence)
+            system = SYSTEM_PROMPT
+        return prompt, system
+
     def _call_cost(self, resp) -> float:
         """USD cost of a judge call from its token usage (0 without pricing).
         Advisor-tool tokens reported on the response are priced at the executor
@@ -260,13 +299,13 @@ class LLMJudge:
         from agenttic.pricing import token_cost
         return token_cost(self.cfg, self.model, tin, tout)
 
-    def _create(self, prompt: str):
+    def _create(self, prompt: str, system_prompt: str = SYSTEM_PROMPT):
         from agenttic.retry import with_retry
         if self.advisor_model is None:
             return with_retry(lambda: self.client.messages.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
-                system=SYSTEM_PROMPT,
+                system=system_prompt,
                 messages=[{"role": "user", "content": prompt}],
             ), self.retry_policy, op="judge")
         messages = [{"role": "user", "content": prompt}]
@@ -326,13 +365,17 @@ class LLMJudge:
         return score, str(data.get("rationale", ""))
 
 
-def make_judge(cfg: dict, agent_model: str, client=None) -> LLMJudge:
+def make_judge(cfg: dict, agent_model: str, client=None, reg=None) -> LLMJudge:
     """Pick the judge configuration for one run, respecting Hard Rule 4.
 
     Preferred: tiered judge — ``judge_executor`` (cheap) consulting
     ``judge_strong`` as an advisor on borderline calls. Falls back to a plain
     ``judge_strong`` judge whenever the executor or advisor would coincide
     with the agent-under-test model (e.g. the Sonnet reference agent).
+
+    ``reg`` (optional): a registry handle. When provided, the judge renders the
+    active versioned JudgeConfig per criterion (SPEC-3 Step 15.1); absent, it
+    uses the built-in prompt (byte-identical to pre-15.1).
     """
     executor = cfg["models"].get("judge_executor")
     strong = cfg["models"]["judge_strong"]
@@ -344,5 +387,7 @@ def make_judge(cfg: dict, agent_model: str, client=None) -> LLMJudge:
             advisor_model=strong,
             advisor_max_tokens=cfg.get("scoring", {}).get("advisor_max_tokens", 2048),
             cfg=cfg,
+            reg=reg,
         )
-    return LLMJudge(model=strong, agent_model=agent_model, client=client, cfg=cfg)
+    return LLMJudge(model=strong, agent_model=agent_model, client=client, cfg=cfg,
+                    reg=reg)
