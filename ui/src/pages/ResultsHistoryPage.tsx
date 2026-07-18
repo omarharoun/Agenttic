@@ -80,10 +80,8 @@ export function ResultsHistoryPage() {
                 <thead>
                   <tr>
                     <th>result</th><th>agent</th><th>suite</th>
-                    <th title="How much of the situation space these runs reached, and whether the properties held throughout.">
-                      verification</th>
-                    <th className="num" title={PASS_MEANING}>pass rate</th><th className="num">cost</th>
-                    <th>when</th><th></th>
+                    <th className="num" title={PASS_MEANING}>success</th><th className="num">cost</th>
+                    <th>when</th><th><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>

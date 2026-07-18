@@ -71,14 +71,15 @@ function TokenControl() {
     <div style={{ position: "relative" }}>
       <button title={set ? "API token set" : "Set API token (optional)"}
               aria-label={set ? "API token set" : "Set API token (optional)"}
+              aria-haspopup="dialog" aria-expanded={open}
               onClick={() => setOpen((o) => !o)} className="icon-btn"
               style={{ color: set ? "var(--ok)" : "var(--muted)" }}><IconKey size={16} /></button>
       {open && (
         <div style={{ position: "absolute", left: 0, bottom: 42, zIndex: 20,
                       background: "var(--panel-2)", border: "1px solid var(--border)",
                       borderRadius: 10, padding: 10, width: 220, boxShadow: "var(--shadow)" }}>
-          <label style={{ fontSize: 11, color: "var(--muted)" }}>API token (optional)</label>
-          <input value={val} type="password" placeholder="for CI / API clients"
+          <label htmlFor="api-token-input" style={{ fontSize: 11, color: "var(--muted)" }}>API token (optional)</label>
+          <input id="api-token-input" value={val} type="password" placeholder="for CI / API clients"
                  onChange={(e) => setVal(e.target.value)} style={{ width: "100%" }} />
           <button className="active" style={{ marginTop: 6 }}
                   onClick={() => { auth.set(val.trim()); setOpen(false); location.reload(); }}>save</button>

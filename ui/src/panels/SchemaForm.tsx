@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { api } from "../api";
 import type { JsonObject, JsonValue, NodeTypeSpec } from "../api";
 
@@ -34,6 +35,8 @@ export function SchemaForm({
 }) {
   const props = schema.properties ?? {};
   const set = (key: string, v: JsonValue) => onChange({ ...value, [key]: v });
+  const uid = useId();
+  const fid = (key: string) => `${uid}-${key}`;
 
   return (
     <>
@@ -42,6 +45,7 @@ export function SchemaForm({
         const label = `${key}${required ? " *" : ""}`;
         const current = value[key] ?? p.default ?? "";
         const type = fieldType(p);
+        const id = fid(key);
 
         if (type === "enum") {
           const options: string[] =
@@ -50,8 +54,8 @@ export function SchemaForm({
             [];
           return (
             <div key={key}>
-              <label>{label}</label>
-              <select value={String(current)} onChange={(e) => set(key, e.target.value)}>
+              <label htmlFor={id}>{label}</label>
+              <select id={id} value={String(current)} onChange={(e) => set(key, e.target.value)}>
                 {options.map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
@@ -72,8 +76,8 @@ export function SchemaForm({
         if (type === "number") {
           return (
             <div key={key}>
-              <label>{label}</label>
-              <input type="number" value={current === null ? "" : String(current)}
+              <label htmlFor={id}>{label}</label>
+              <input id={id} type="number" value={current === null ? "" : String(current)}
                      onChange={(e) => set(key, e.target.value === ""
                        ? null : Number(e.target.value))} />
             </div>
@@ -82,8 +86,8 @@ export function SchemaForm({
         if (key === "text" || key === "system_prompt") { // long-text fields
           return (
             <div key={key}>
-              <label>{label}</label>
-              <textarea value={String(current)}
+              <label htmlFor={id}>{label}</label>
+              <textarea id={id} value={String(current)}
                         onChange={(e) => set(key, e.target.value)} />
             </div>
           );
@@ -91,9 +95,9 @@ export function SchemaForm({
         if (key === "file_path" || key === "agent_yaml_path") {
           return (
             <div key={key}>
-              <label>{label} <small>(or upload)</small></label>
-              <input value={String(current)} onChange={(e) => set(key, e.target.value)} />
-              <input type="file" style={{ marginTop: 4 }}
+              <label htmlFor={id}>{label} <small>(or upload)</small></label>
+              <input id={id} value={String(current)} onChange={(e) => set(key, e.target.value)} />
+              <input type="file" aria-label={`Upload ${key}`} style={{ marginTop: 4 }}
                      onChange={async (e) => {
                        const f = e.target.files?.[0];
                        if (f) set(key, (await api.upload(f)).file_path);
@@ -103,8 +107,8 @@ export function SchemaForm({
         }
         return (
           <div key={key}>
-            <label>{label}</label>
-            <input value={String(current)} onChange={(e) => set(key, e.target.value)} />
+            <label htmlFor={id}>{label}</label>
+            <input id={id} value={String(current)} onChange={(e) => set(key, e.target.value)} />
           </div>
         );
       })}

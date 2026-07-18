@@ -31,8 +31,8 @@ function CatalogPicker({ onPick }: { onPick: (a: CatalogAgent) => void }) {
   if (agents.length === 0) return null;
   return (
     <div>
-      <label>declared agent <small>(prefills connection details)</small></label>
-      <select defaultValue="" onChange={(e) => {
+      <label htmlFor="cfg-catalog-agent">declared agent <small>(prefills connection details)</small></label>
+      <select id="cfg-catalog-agent" defaultValue="" onChange={(e) => {
         const a = agents.find((x) => x.agent_id === e.target.value);
         if (a) onPick(a);
       }}>
@@ -94,8 +94,9 @@ export function ConfigPanel({ results }: { results?: ExecutionResults }) {
                 <IconHand size={15} /> Review done — approve suite
               </button>
             )}
-            <label>label</label>
+            <label htmlFor="cfg-node-label">label</label>
             <input
+              id="cfg-node-label"
               value={data.label ?? ""}
               onChange={(e) => setData(node.id, { label: e.target.value })}
             />
@@ -113,8 +114,8 @@ export function ConfigPanel({ results }: { results?: ExecutionResults }) {
             />
             <div className="policy-box">
               <div className="policy-title">resilience</div>
-              <label>retries on failure</label>
-              <input type="number" min={0}
+              <label htmlFor="cfg-retries">retries on failure</label>
+              <input id="cfg-retries" type="number" min={0}
                      value={data.retries ?? 0}
                      onChange={(e) => setData(node.id,
                        { retries: Math.max(0, Number(e.target.value) || 0) })} />

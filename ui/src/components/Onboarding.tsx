@@ -163,7 +163,9 @@ export function Onboarding() {
           Follow the thread — your progress is saved, so you can leave and come back.
         </p>
         <div className="onboard-progress" role="progressbar"
-             aria-valuenow={completedCount} aria-valuemin={0} aria-valuemax={STEPS.length}>
+             aria-label="Onboarding progress"
+             aria-valuenow={completedCount} aria-valuemin={0} aria-valuemax={STEPS.length}
+             aria-valuetext={`${completedCount} of ${STEPS.length} complete`}>
           <span className="onboard-progress-fill" style={{ width: `${pct}%` }} />
         </div>
         <span className="onboard-progress-lab">{completedCount} of {STEPS.length} complete</span>

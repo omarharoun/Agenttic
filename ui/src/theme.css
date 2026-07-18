@@ -34,9 +34,161 @@
    whole component layer retunes without a rename sweep.
    ========================================================================== */
 
-/* ===== design tokens live in design/tokens.css (SPEC-11 Step 50) —
-   the ONE source of truth, imported before this file in main.tsx.
-   The :root + light token blocks that used to sit here now live there. */
+:root {
+  /* fonts */
+  --font-ui: "Geist", system-ui, -apple-system, sans-serif;
+  --font-serif: "Marcellus", "Times New Roman", serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* gold ramp — true metallic gold, hue-fixed, shared by both themes
+     (legacy clay names kept so the component layer retunes for free) */
+  --clay-50: #FAF3DC; --clay-100: #F1E3B1; --clay-200: #E5CF7F; --clay-300: #DBBE55;
+  --clay-400: #D4AF37; --clay: #C9A227; --clay-600: #A98618; --clay-700: #8A6D14; --clay-800: #6B5510;
+
+  /* radii — machined edges */
+  --r-xs: 2px; --r-sm: 3px; --r-md: 5px; --r: 5px; --r-lg: 8px; --r-xl: 10px;
+  --r-2xl: 14px; --r-pill: 999px;
+
+  /* spacing (4px base) */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px;
+  --sp-8: 32px; --sp-10: 40px; --sp-12: 48px; --sp-16: 64px; --sp-20: 80px;
+
+  /* type scale */
+  --t-display: 56px; --t-h1: 34px; --t-h2: 26px; --t-h3: 20px; --t-title: 17px;
+  --t-lg: 16px; --t-base: 14px; --t-sm: 13px; --t-xs: 12px; --t-label: 11px;
+  --track-caps: 0.14em;
+
+  /* motion — escapement */
+  --ease-escape: cubic-bezier(0.3, 0, 0.1, 1);
+  --dur-fast: 0.16s; --dur-gauge: 0.8s;
+
+  /* ===== obsidian case-back dark (default) ===== */
+  --bg: #08090B;
+  --panel: #0E1013;
+  --panel-2: #14171B;
+  --field: #0B0D10;
+  --border: #242930;
+  --border-soft: #171B20;
+  --border-strong: #363D46;
+  --text: #E8E9E4;             /* silvered ink */
+  --muted: #99A0A7;            /* rhodium */
+  --faint: #7B828A;            /* engraved micro-labels — WCAG AA (≥4.5:1) on panels */
+
+  /* accent — restrained gilt */
+  --accent: var(--clay);
+  --accent-hover: var(--clay-400);
+  --accent-soft: rgba(201, 162, 39, 0.14);
+  --accent-line: rgba(201, 162, 39, 0.45);
+  --accent-ink: #201A08;   /* near-black ink ON gold — dial lettering */
+
+  /* instrument metals + the one red */
+  --metal: #C7CBD1;                       /* rhodium detail */
+  --metal-soft: rgba(199, 203, 209, 0.14);
+  --live: #E44936;                        /* seconds-hand vermillion — live/alert ONLY (WCAG AA on panels) */
+  --live-soft: rgba(200, 64, 47, 0.16);
+  --hairline: rgba(232, 233, 228, 0.10);
+
+  /* status — cool, dial-tuned */
+  --ok: #6FA07A;   --ok-soft: rgba(111, 160, 122, 0.14);  --ok-border: rgba(111, 160, 122, 0.5);
+  --wait: #C9A34E; --wait-soft: rgba(201, 163, 78, 0.14); --wait-border: rgba(201, 163, 78, 0.5);
+  --fail: #D85644; --fail-soft: rgba(200, 80, 63, 0.14);  --fail-border: rgba(200, 80, 63, 0.5);  /* text bumped to WCAG AA on panels */
+  --info: #7D96B8; --info-soft: rgba(125, 150, 184, 0.14); --info-border: rgba(125, 150, 184, 0.5);
+  --neutral: #A9AFB6; --neutral-soft: rgba(169, 175, 182, 0.12);
+
+  /* dataviz — gilt, steel, rhodium, verdigris */
+  --viz-1: #C9A227; --viz-2: #7D96B8; --viz-3: #C7CBD1; --viz-4: #6FA07A; --viz-grid: #262B31;
+
+  /* landing instrument (ruled readout field) — fine engraved lines */
+  --lp-grid: rgba(232, 233, 228, 0.055);
+  --lp-hair: rgba(232, 233, 228, 0.07);
+
+  /* category hues (advanced canvas) — mapped onto the family */
+  --cat-input: var(--info);
+  --cat-benchmark: var(--wait);
+  --cat-agents: var(--accent);
+  --cat-evaluation: var(--ok);
+  --cat-delivery: var(--clay-400);
+
+  /* inline code */
+  --code-bg: #14171B; --code-text: var(--clay-200);
+
+  /* shadows (dark) + focus ring — crisp, machined */
+  --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.28);
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.38);
+  --shadow-lg: 0 14px 44px rgba(0, 0, 0, 0.50);
+  /* keyboard focus — a single gilt ring token consumed everywhere. `--ring`
+     stays as the box-shadow spelling the component layer already uses so no
+     rename sweep is needed; `--focus-ring` is the colour it draws with. */
+  --focus-ring: rgba(201, 162, 39, 0.55);
+  --ring: 0 0 0 3px var(--focus-ring);
+
+  /* ===== shared card contract — the ONE surface look every boxed panel uses.
+     Radius/border/shadow stay identical page-to-page; padding is contextual. */
+  --card-radius: var(--r-lg);
+  --card-border: 1px solid var(--border);
+  --card-shadow: var(--shadow-sm);
+  --card-bg: var(--panel);
+  --content-max: 1400px;
+
+  /* readable ink on the amber "approve" button (theme-aware) */
+  --on-wait: #241B07;
+}
+
+/* ===== silvered-opaline light variant ===== */
+html[data-theme="light"] {
+  --bg: #ECEDEA;
+  --panel: #F8F8F5;
+  --panel-2: #FFFFFF;
+  --field: #FFFFFF;
+  --border: #D8DAD4;
+  --border-soft: #E4E6E1;
+  --border-strong: #B8BBB4;
+  --text: #16181B;
+  --muted: #565B60;
+  --faint: #686C70;            /* micro-labels — WCAG AA (≥4.5:1) on pale panels */
+
+  --accent: #826613;           /* darkened a hair: AA as link text on bg, AA+ under white button ink */
+  --accent-hover: #6B5510;
+  --accent-soft: #F6EFD6;
+  --accent-line: #E5CF7F;
+  --accent-ink: #FFFFFF;
+
+  --metal: #656A71;            /* rhodium detail — AA on pale panels */
+  --metal-soft: rgba(126, 133, 141, 0.14);
+  --live: #B23A2B;
+  --live-soft: rgba(178, 58, 43, 0.14);
+  --hairline: rgba(22, 24, 27, 0.10);
+
+  --ok: #45704F;   --ok-soft: #E7EFE6;   --ok-border: #C8DCC6;
+  --wait: #84651C; --wait-soft: #F4ECD8; --wait-border: #E4D3A3;  /* AA as text and under white button ink */
+  --fail: #A63E2E; --fail-soft: #F5E3DE; --fail-border: #E5C0B6;
+  --info: #3C5B82; --info-soft: #E5EBF2; --info-border: #C5D4E5;
+  --neutral: #565B60; --neutral-soft: #E9EBE6;
+
+  --viz-1: #8A6D14; --viz-2: #3C5B82; --viz-3: #6E747B; --viz-4: #45704F; --viz-grid: #E1E3DD;
+
+  --lp-grid: rgba(22, 24, 27, 0.05);
+  --lp-hair: rgba(22, 24, 27, 0.07);
+
+  --cat-input: #3C5B82;
+  --cat-benchmark: #93701F;
+  --cat-agents: #8F7644;
+  --cat-evaluation: #45704F;
+  --cat-delivery: #6E747B;
+
+  --code-bg: #EFF0EC; --code-text: #75603B;
+
+  --shadow-xs: 0 1px 2px rgba(20, 24, 28, 0.05);
+  --shadow-sm: 0 1px 2px rgba(20, 24, 28, 0.04), 0 2px 6px rgba(20, 24, 28, 0.05);
+  --shadow: 0 2px 4px rgba(20, 24, 28, 0.04), 0 8px 20px rgba(20, 24, 28, 0.07);
+  --shadow-lg: 0 10px 38px rgba(20, 24, 28, 0.12);
+  /* light-theme keyboard focus — darker gilt so the ring reads on pale panels */
+  --focus-ring: rgba(138, 109, 20, 0.55);
+  --ring: 0 0 0 3px var(--focus-ring);
+
+  --on-wait: #FFFFFF;
+}
 
 * { box-sizing: border-box; }
 
@@ -1810,7 +1962,7 @@ table.data tbody tr { transition: background 0.1s; }
 .embed-grade { font: 600 var(--t-lg)/1 var(--font-serif); }
 .embed-link { color: var(--accent); text-decoration: none; font-size: var(--t-sm); }
 .embed-row { margin-top: 10px; }
-.embed-row label { display: block; font: 600 var(--t-label)/1 var(--font-ui); text-transform: uppercase;
+.embed-row label, .embed-row .embed-row-label { display: block; font: 600 var(--t-label)/1 var(--font-ui); text-transform: uppercase;
   letter-spacing: 0.06em; color: var(--faint); margin-bottom: 5px; }
 .embed-field { display: flex; align-items: flex-start; gap: 8px; }
 .embed-field code {
@@ -2031,7 +2183,7 @@ table.data tbody tr { transition: background 0.1s; }
 .scan-cert-note { color: var(--muted); font-size: var(--t-sm); margin: 0; }
 .scan-embed-preview { display: flex; align-items: center; gap: var(--sp-4); }
 .scan-embed-preview .embed-link { color: var(--accent); text-decoration: none; font-size: var(--t-sm); }
-.scan-embed-row label { display: block; font: 600 var(--t-label)/1 var(--font-ui); text-transform: uppercase; letter-spacing: 0.06em; color: var(--faint); margin-bottom: 5px; }
+.scan-embed-row label, .scan-embed-row .scan-embed-label { display: block; font: 600 var(--t-label)/1 var(--font-ui); text-transform: uppercase; letter-spacing: 0.06em; color: var(--faint); margin-bottom: 5px; }
 .scan-actions-row { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-top: 4px; }
 
 /* error states */
@@ -2486,9 +2638,18 @@ table td.num, .lb-score { font-variant-numeric: tabular-nums lining-nums; }
 }
 .cert-dim-fill { transition: width var(--dur-gauge) var(--ease-escape); }
 
-/* machined focus ring — keyboard users get the gilt */
+/* machined focus ring — keyboard users get the gilt. One catch-all covering
+   every natively- and ARIA-interactive element, so links, buttons, form fields,
+   <summary> disclosures, tabs, menu items and anything made focusable with a
+   tabindex all get the same visible ring. This is the single a11y guarantee for
+   WCAG 2.4.7 (focus visible); no interactive control may set `outline: none`
+   without a visible :focus-visible alternative — this rule is that alternative. */
 a:focus-visible, button:focus-visible, input:focus-visible,
-select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+select:focus-visible, textarea:focus-visible, summary:focus-visible,
+[tabindex]:focus-visible,
+[role="tab"]:focus-visible, [role="menuitem"]:focus-visible,
+[role="button"]:focus-visible, [role="option"]:focus-visible,
+[role="link"]:focus-visible {
   outline: none; box-shadow: var(--ring); border-radius: var(--r-sm);
 }
 
@@ -3269,7 +3430,7 @@ a.btn-primary, button.btn-primary,
 .cd-lede { color: var(--muted); font-size: var(--t-base); line-height: 1.65; max-width: 62ch; margin: 0 0 var(--sp-4); }
 .cd-fine { color: var(--faint); font-size: var(--t-xs); line-height: 1.6; margin: var(--sp-2) 0 0; }
 .cd-copy { margin-bottom: var(--sp-3); }
-.cd-copy label {
+.cd-copy label, .cd-copy .cd-copy-label {
   display: block; font: 500 var(--t-label)/1 var(--font-mono);
   letter-spacing: var(--track-caps); text-transform: uppercase;
   color: var(--faint); margin-bottom: 6px;

@@ -35,7 +35,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
   };
   return (
     <div className="embed-row">
-      <label>{label}</label>
+      <span className="embed-row-label">{label}</span>
       <div className="embed-field">
         <code onClick={(e) => {
           const r = document.createRange();
@@ -218,8 +218,8 @@ export function CertificationsPage() {
             ) : (
               <div className="cert-issue">
                 <div className="ci-field">
-                  <label>Scorecard</label>
-                  <select value={picked} onChange={(e) => setPicked(e.target.value)}>
+                  <label htmlFor="cert-scorecard">Scorecard</label>
+                  <select id="cert-scorecard" value={picked} onChange={(e) => setPicked(e.target.value)}>
                     <option value="">Select a scorecard…</option>
                     {scorecards.map((s) => (
                       <option key={s.scorecard_id} value={s.scorecard_id}>
@@ -229,8 +229,8 @@ export function CertificationsPage() {
                   </select>
                 </div>
                 <div className="ci-field">
-                  <label>Agent name <small>shown on the certificate</small></label>
-                  <input value={agentName} placeholder="e.g. Acme Support Agent v2"
+                  <label htmlFor="cert-agent-name">Agent name <small>shown on the certificate</small></label>
+                  <input id="cert-agent-name" value={agentName} placeholder="e.g. Acme Support Agent v2"
                          onChange={(e) => setAgentName(e.target.value)} />
                 </div>
                 <button className="primary" disabled={!picked || busy} onClick={issue}>

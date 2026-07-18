@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type AgentsView, type CatalogAgent, errMessage } from "../api";
-import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { EmptyState, Field, PageHeader, Skeleton } from "../components/ui";
 import { IconWarning, IconAgent } from "../icons";
 
 const SOURCE_COLOR: Record<string, string> = {
@@ -66,51 +66,58 @@ export function AgentsPage() {
           <div style={{ display: "grid",
                         gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <div>
-              <label>agent_id *</label>
-              <input value={form.agent_id}
-                     onChange={(e) => setForm({ ...form, agent_id: e.target.value })} />
+              <Field label="agent_id *">
+                <input value={form.agent_id}
+                       onChange={(e) => setForm({ ...form, agent_id: e.target.value })} />
+              </Field>
             </div>
             <div>
-              <label>variant</label>
-              <select value={form.variant}
-                      onChange={(e) => setForm({ ...form, variant: e.target.value })}>
-                <option value="reference">Built-in reference agent</option>
-                <option value="blackbox">Your API agent (external endpoint)</option>
-              </select>
+              <Field label="variant">
+                <select value={form.variant}
+                        onChange={(e) => setForm({ ...form, variant: e.target.value })}>
+                  <option value="reference">Built-in reference agent</option>
+                  <option value="blackbox">Your API agent (external endpoint)</option>
+                </select>
+              </Field>
             </div>
             {form.variant === "reference" && (
               <div>
-                <label>model <small>(optional override)</small></label>
-                <input value={form.model}
-                       onChange={(e) => setForm({ ...form, model: e.target.value })} />
+                <Field label={<>model <small>(optional override)</small></>}>
+                  <input value={form.model}
+                         onChange={(e) => setForm({ ...form, model: e.target.value })} />
+                </Field>
               </div>
             )}
             {form.variant === "blackbox" && (
               <>
                 <div>
-                  <label>url *</label>
-                  <input value={form.url}
-                         onChange={(e) => setForm({ ...form, url: e.target.value })} />
+                  <Field label="url *">
+                    <input value={form.url}
+                           onChange={(e) => setForm({ ...form, url: e.target.value })} />
+                  </Field>
                 </div>
                 <div>
-                  <label>cost per call (USD) <small>(black-box; 0 = unknown)</small></label>
-                  <input type="number" step="0.0001" value={form.cost_per_call_usd}
-                         onChange={(e) => setForm({ ...form,
-                           cost_per_call_usd: Number(e.target.value) || 0 })} />
+                  <Field label={<>cost per call (USD) <small>(black-box; 0 = unknown)</small></>}>
+                    <input type="number" step="0.0001" value={form.cost_per_call_usd}
+                           onChange={(e) => setForm({ ...form,
+                             cost_per_call_usd: Number(e.target.value) || 0 })} />
+                  </Field>
                 </div>
               </>
             )}
             <div style={{ gridColumn: "1 / -1" }}>
-              <label>description</label>
-              <input value={form.description}
-                     onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              <Field label="description">
+                <input value={form.description}
+                       onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              </Field>
             </div>
             {form.variant === "reference" && (
               <div style={{ gridColumn: "1 / -1" }}>
-                <label>system_prompt <small>(task instructions)</small></label>
-                <textarea value={form.system_prompt}
-                          onChange={(e) => setForm(
-                            { ...form, system_prompt: e.target.value })} />
+                <Field label={<>system_prompt <small>(task instructions)</small></>}>
+                  <textarea value={form.system_prompt}
+                            onChange={(e) => setForm(
+                              { ...form, system_prompt: e.target.value })} />
+                </Field>
               </div>
             )}
           </div>

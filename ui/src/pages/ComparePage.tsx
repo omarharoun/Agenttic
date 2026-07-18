@@ -5,7 +5,7 @@ import type {
   AbComparison, AbCriterionDelta, AbFlippedCase, AbMcNemar, AbRunDetail,
   AbRunSummary, JsonValue, SuiteSummary,
 } from "../api";
-import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
+import { EmptyState, Field, PageHeader, Skeleton, Uncertainty } from "../components/ui";
 import { Term } from "../components/Term";
 import { money, ms } from "../stats";
 import { IconWarning, IconShield, IconCompare, IconDownload } from "../icons";
@@ -50,50 +50,57 @@ function VariantForm({ v, onChange, accent }: {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <div>
-          <label>agent_id *</label>
-          <input value={v.agent_id} placeholder="e.g. triage-bot"
-                 onChange={(e) => set({ agent_id: e.target.value })} />
+          <Field label="agent_id *">
+            <input value={v.agent_id} placeholder="e.g. triage-bot"
+                   onChange={(e) => set({ agent_id: e.target.value })} />
+          </Field>
         </div>
         <div>
-          <label>kind</label>
-          <select value={v.variant} onChange={(e) => set({ variant: e.target.value })}>
-            <option value="reference">Built-in reference agent</option>
-            <option value="blackbox">Your API agent (external endpoint)</option>
-            <option value="managed">Managed agent (deployed)</option>
-          </select>
+          <Field label="kind">
+            <select value={v.variant} onChange={(e) => set({ variant: e.target.value })}>
+              <option value="reference">Built-in reference agent</option>
+              <option value="blackbox">Your API agent (external endpoint)</option>
+              <option value="managed">Managed agent (deployed)</option>
+            </select>
+          </Field>
         </div>
         {v.variant === "reference" && (
           <div style={{ gridColumn: "1 / -1" }}>
-            <label>model <small>(optional — blank uses the default)</small></label>
-            <input value={v.model} placeholder="e.g. claude-haiku-4-5-20251001"
-                   onChange={(e) => set({ model: e.target.value })} />
+            <Field label={<>model <small>(optional — blank uses the default)</small></>}>
+              <input value={v.model} placeholder="e.g. claude-haiku-4-5-20251001"
+                     onChange={(e) => set({ model: e.target.value })} />
+            </Field>
           </div>
         )}
         {v.variant === "reference" && (
           <div style={{ gridColumn: "1 / -1" }}>
-            <label>system_prompt <small>(task instructions)</small></label>
-            <textarea value={v.system_prompt} rows={3}
-                      onChange={(e) => set({ system_prompt: e.target.value })} />
+            <Field label={<>system_prompt <small>(task instructions)</small></>}>
+              <textarea value={v.system_prompt} rows={3}
+                        onChange={(e) => set({ system_prompt: e.target.value })} />
+            </Field>
           </div>
         )}
         {v.variant === "blackbox" && (
           <div style={{ gridColumn: "1 / -1" }}>
-            <label>url *</label>
-            <input value={v.url} placeholder="https://…/agent"
-                   onChange={(e) => set({ url: e.target.value })} />
+            <Field label="url *">
+              <input value={v.url} placeholder="https://…/agent"
+                     onChange={(e) => set({ url: e.target.value })} />
+            </Field>
           </div>
         )}
         {v.variant === "managed" && (
           <>
             <div>
-              <label>managed_agent_id *</label>
-              <input value={v.managed_agent_id}
-                     onChange={(e) => set({ managed_agent_id: e.target.value })} />
+              <Field label="managed_agent_id *">
+                <input value={v.managed_agent_id}
+                       onChange={(e) => set({ managed_agent_id: e.target.value })} />
+              </Field>
             </div>
             <div>
-              <label>environment_id *</label>
-              <input value={v.environment_id}
-                     onChange={(e) => set({ environment_id: e.target.value })} />
+              <Field label="environment_id *">
+                <input value={v.environment_id}
+                       onChange={(e) => set({ environment_id: e.target.value })} />
+              </Field>
             </div>
           </>
         )}
@@ -332,16 +339,17 @@ export function ComparePage() {
         <section className="policy-box" style={{ marginBottom: 16 }}>
           <div className="policy-title">new comparison</div>
           <div style={{ marginBottom: 10 }}>
-            <label>suite *</label>
-            <select value={suiteId} onChange={(e) => setSuiteId(e.target.value)}>
-              <option value="">— pick a suite —</option>
-              {(suites ?? []).map((s) => (
-                <option key={s.suite_id} value={s.suite_id} disabled={!s.approved}>
-                  {s.suite_id} (v{s.version}, {s.n_cases} cases)
-                  {s.approved ? "" : " — not approved"}
-                </option>
-              ))}
-            </select>
+            <Field label="suite *">
+              <select value={suiteId} onChange={(e) => setSuiteId(e.target.value)}>
+                <option value="">— pick a suite —</option>
+                {(suites ?? []).map((s) => (
+                  <option key={s.suite_id} value={s.suite_id} disabled={!s.approved}>
+                    {s.suite_id} (v{s.version}, {s.n_cases} cases)
+                    {s.approved ? "" : " — not approved"}
+                  </option>
+                ))}
+              </select>
+            </Field>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <VariantForm v={a} onChange={setA} accent="var(--cat-agents)" />

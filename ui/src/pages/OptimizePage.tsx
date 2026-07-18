@@ -4,7 +4,7 @@ import type {
   OptimizeRun, OptimizeRunSummary, OptimizeLineagePoint, OptimizeRound,
   OptimizeCandidate, OptimizeRegression, SuiteSummary,
 } from "../api";
-import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { EmptyState, Field, PageHeader, Skeleton } from "../components/ui";
 import { Term } from "../components/Term";
 import { IconCheck, IconClose, IconOptimize } from "../icons";
 
@@ -70,50 +70,58 @@ function StartForm({ suites, onStarted }: {
       </p>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <div>
-          <label>suite</label>
-          <select value={cfg.suite_id} onChange={(e) => set({ suite_id: e.target.value })}>
-            <option value="">select an approved suite…</option>
-            {approved.map((s) => (
-              <option key={s.suite_id} value={s.suite_id}>{s.suite_id}</option>
-            ))}
-          </select>
+          <Field label="suite">
+            <select value={cfg.suite_id} onChange={(e) => set({ suite_id: e.target.value })}>
+              <option value="">select an approved suite…</option>
+              {approved.map((s) => (
+                <option key={s.suite_id} value={s.suite_id}>{s.suite_id}</option>
+              ))}
+            </select>
+          </Field>
         </div>
         <div>
-          <label>agent id</label>
-          <input value={cfg.agent_id}
-                 onChange={(e) => set({ agent_id: e.target.value })} />
+          <Field label="agent id">
+            <input value={cfg.agent_id}
+                   onChange={(e) => set({ agent_id: e.target.value })} />
+          </Field>
         </div>
         <div style={{ gridColumn: "1 / -1" }}>
-          <label>baseline system prompt <small>(the starting point to improve)</small></label>
-          <textarea value={cfg.baseline_prompt} rows={3}
-                    placeholder="leave blank to start from no system prompt"
-                    onChange={(e) => set({ baseline_prompt: e.target.value })} />
+          <Field label={<>baseline system prompt <small>(the starting point to improve)</small></>}>
+            <textarea value={cfg.baseline_prompt} rows={3}
+                      placeholder="leave blank to start from no system prompt"
+                      onChange={(e) => set({ baseline_prompt: e.target.value })} />
+          </Field>
         </div>
         <div>
-          <label>rounds</label>
-          <input type="number" min={1} max={10} value={cfg.rounds}
-                 onChange={(e) => set({ rounds: +e.target.value })} />
+          <Field label="rounds">
+            <input type="number" min={1} max={10} value={cfg.rounds}
+                   onChange={(e) => set({ rounds: +e.target.value })} />
+          </Field>
         </div>
         <div>
-          <label>candidates / round</label>
-          <input type="number" min={1} max={8} value={cfg.candidates_per_round}
-                 onChange={(e) => set({ candidates_per_round: +e.target.value })} />
+          <Field label="candidates / round">
+            <input type="number" min={1} max={8} value={cfg.candidates_per_round}
+                   onChange={(e) => set({ candidates_per_round: +e.target.value })} />
+          </Field>
         </div>
         <div>
-          <label>held-out fraction <small>(overfitting guard)</small></label>
-          <input type="number" min={0} max={0.5} step={0.05}
-                 value={cfg.heldout_fraction}
-                 onChange={(e) => set({ heldout_fraction: +e.target.value })} />
+          <Field label={<>held-out fraction <small>(overfitting guard)</small></>}>
+            <input type="number" min={0} max={0.5} step={0.05}
+                   value={cfg.heldout_fraction}
+                   onChange={(e) => set({ heldout_fraction: +e.target.value })} />
+          </Field>
         </div>
         <div>
-          <label>max suite executions <small>(cost cap)</small></label>
-          <input type="number" min={1} value={cfg.max_agent_runs}
-                 onChange={(e) => set({ max_agent_runs: +e.target.value })} />
+          <Field label={<>max suite executions <small>(cost cap)</small></>}>
+            <input type="number" min={1} value={cfg.max_agent_runs}
+                   onChange={(e) => set({ max_agent_runs: +e.target.value })} />
+          </Field>
         </div>
         <div>
-          <label>model <small>(frozen across the run)</small></label>
-          <input value={cfg.model} placeholder="blank = default"
-                 onChange={(e) => set({ model: e.target.value })} />
+          <Field label={<>model <small>(frozen across the run)</small></>}>
+            <input value={cfg.model} placeholder="blank = default"
+                   onChange={(e) => set({ model: e.target.value })} />
+          </Field>
         </div>
       </div>
       {err && <div style={{ color: "var(--fail)", marginTop: 8 }}>{err}</div>}

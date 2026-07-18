@@ -75,7 +75,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
   const [done, setDone] = useState(false);
   return (
     <div className="scan-embed-row">
-      <label>{label}</label>
+      <span className="scan-embed-label">{label}</span>
       <div className="embed-field">
         <code>{value}</code>
         <button type="button" className="ghost-sm" onClick={() => {
@@ -422,7 +422,7 @@ function ConnectPanel({ onScan }: { onScan: () => void }) {
       )}
 
       {/* 3 · optional auth header (secret — stored encrypted) */}
-      <label className="scan-input-label">3 · Auth header (optional — stored encrypted)</label>
+      <div className="scan-input-label">3 · Auth header (optional — stored encrypted)</div>
       <div className="scan-auth">
         <div className="scan-auth-field">
           <label htmlFor="conn-an">Header name</label>

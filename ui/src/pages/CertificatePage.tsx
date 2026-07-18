@@ -65,7 +65,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
   const [done, setDone] = useState(false);
   return (
     <div className="cd-copy">
-      <label>{label}</label>
+      <span className="cd-copy-label">{label}</span>
       <div className="cd-copy-field">
         <code>{value}</code>
         <button type="button" onClick={() => {

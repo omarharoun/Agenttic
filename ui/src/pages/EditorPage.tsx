@@ -276,6 +276,7 @@ export function EditorPage() {
     <div className="page">
       <div className="topbar">
         <select
+          aria-label="Open a saved evaluation"
           value={workflows.some((w) => w.workflow_id === store.workflowId) ? store.workflowId : ""}
           onChange={(e) => e.target.value && openWorkflow(e.target.value)}
           style={{ background: "var(--panel-2)", color: "var(--text)",
@@ -309,20 +310,25 @@ export function EditorPage() {
         )}
         <button onClick={deleteWorkflow} title="Delete workflow" aria-label="Delete workflow"><IconTrash size={15} /></button>
         <input ref={fileInput} type="file" accept=".json,application/json"
-               style={{ display: "none" }}
+               aria-label="Import a workflow JSON file" style={{ display: "none" }}
                onChange={(e) => { const f = e.target.files?.[0]; if (f) importWorkflow(f); e.target.value = ""; }} />
-        <input className="wfname" value={store.workflowName}
+        <input className="wfname" aria-label="Evaluation name" value={store.workflowName}
                onChange={(e) => { store.setWorkflowMeta(store.workflowId, e.target.value); store.markDirty(true); }} />
         {store.dirty && <span style={{ color: "var(--muted)" }}>●</span>}
         <span className="spacer" />
 
-        <div className="seg" title="Editing mode">
-          <button className={mode === "guided" ? "on" : ""} onClick={() => setEditorMode("guided")}>Guided</button>
-          <button className={mode === "advanced" ? "on" : ""} onClick={() => setEditorMode("advanced")}>Advanced</button>
+        <div className="seg" role="group" aria-label="Editing mode" title="Editing mode">
+          <button className={mode === "guided" ? "on" : ""} aria-pressed={mode === "guided"}
+                  onClick={() => setEditorMode("guided")}>Guided</button>
+          <button className={mode === "advanced" ? "on" : ""} aria-pressed={mode === "advanced"}
+                  onClick={() => setEditorMode("advanced")}>Advanced</button>
         </div>
 
+        <span className="sr-only" role="status" aria-live="polite">
+          {store.exec.status !== "idle" ? `Run status: ${store.exec.status.replace(/_/g, " ")}` : ""}
+        </span>
         {store.exec.status !== "idle" && (
-          <span className={`status-chip ${store.exec.status}`}>{store.exec.status.replace("_", " ")}</span>
+          <span className={`status-chip ${store.exec.status}`} aria-hidden>{store.exec.status.replace("_", " ")}</span>
         )}
         {store.exec.status === "waiting_approval" && store.exec.executionId && (
           <button className="approve" onClick={() => api.approve(store.exec.executionId!)}><IconHand size={15} /> Approve</button>

@@ -1,5 +1,26 @@
-import type { ReactNode } from "react";
+import { cloneElement, isValidElement, useId, type ReactElement, type ReactNode } from "react";
 import { ciLabel, wilsonInterval } from "../stats";
+
+/** A form field with an accessibly-associated <label>. Generates a stable id
+ *  (useId) and threads it onto both the <label htmlFor> and the single control
+ *  passed as children — so every input/select/textarea has a programmatic name
+ *  without per-call id bookkeeping. Preserves the existing markup: the label and
+ *  the control render as the same sibling pair the CSS already styles. */
+export function Field({ label, children, hint }: {
+  label: ReactNode; children: ReactElement<{ id?: string }>; hint?: ReactNode;
+}) {
+  const generated = useId();
+  const id = children.props.id ?? generated;
+  const control = isValidElement(children)
+    ? cloneElement(children, { id })
+    : children;
+  return (
+    <>
+      <label htmlFor={id}>{label}{hint}</label>
+      {control}
+    </>
+  );
+}
 
 /** The credibility hedge that belongs next to EVERY headline rate: the sample
  *  size `n` and a Wilson 95% interval. Mirrors the Training Camp gate, which

@@ -51,7 +51,8 @@ export function ExecutionsPage() {
           <table className="data">
             <thead>
               <tr><th>execution</th><th>workflow</th><th>status</th>
-                  <th>started</th><th>nodes</th><th></th></tr>
+                  <th>started</th><th>nodes</th>
+                  <th><span className="sr-only">Actions</span></th></tr>
             </thead>
             <tbody>
               {rows.map((r) => (
@@ -70,11 +71,13 @@ export function ExecutionsPage() {
                   <td>{Object.entries(r.node_states as Record<string, string>)
                     .map(([n, s]) => `${n}:${s}`).join("  ")}</td>
                   <td>
-                    <button onClick={() => inspect(r.execution_id)}>
+                    <button onClick={() => inspect(r.execution_id)}
+                            aria-label={`Inspect run ${r.execution_id}`}>
                       inspect
                     </button>
                     {r.status === "waiting_approval" && (
                       <button className="approve" style={{ marginLeft: 6 }}
+                              aria-label={`Approve run ${r.execution_id}`}
                               onClick={() => api.approve(r.execution_id).then(refresh)}>
                         approve
                       </button>
@@ -89,7 +92,7 @@ export function ExecutionsPage() {
         {detail && (
           <>
             <h2 style={{ marginTop: 22 }}>
-              {detail.execution_id} <span style={{
+              {detail.execution_id} <span role="status" aria-live="polite" style={{
                 color: STATE_COLOR[detail.status] }}>({detail.status})</span>
             </h2>
             <ReplayCanvas execution={detail} />
