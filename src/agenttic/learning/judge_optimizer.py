@@ -518,6 +518,16 @@ def run_judge_learning(reg, cfg: dict, criterion_id: str, rounds: int = 1, *,
         return {"criterion_id": criterion_id, "rounds": 0, "refused": True,
                 "reason": reason, "promoted": [], "rejected": [], "records": []}
 
+    # A learning round for this criterion RESOLVES the outstanding request the
+    # calibration flywheel filed (Step 15.4): re-optimization is now under way
+    # on-command, so any open "please re-optimize" request is cleared. Runs
+    # BEFORE the (network-touching) rounds so an early failure still records
+    # that the request was actioned; harmless when there is nothing open.
+    try:
+        reg.clear_judge_optimization_requests(criterion_id)
+    except Exception:  # noqa: BLE001 — clearing is best-effort, never blocks a round
+        pass
+
     criterion = _resolve_criterion(reg, criterion_id)
     proposer = client if client is not None else _default_proposer(cfg)
     jc = judge_client if judge_client is not None else \

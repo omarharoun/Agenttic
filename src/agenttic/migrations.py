@@ -338,6 +338,16 @@ def _calibration_splits_table(conn) -> None:
     CalibrationSplitRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _judge_optimization_requests_table(conn) -> None:
+    """v28 — judge-optimization requests (SPEC-3 Step 15.4). One row per filed
+    "please re-optimize this judge" request. Detection is automatic (the
+    calibration flywheel notices via ``mine_labels``); the fix stays on-command
+    (``learn-judge`` clears the request). At most one open row per criterion."""
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers the row)
+    from agenttic.registry.sqlite_store import JudgeOptimizationRequestRow
+    JudgeOptimizationRequestRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -367,6 +377,8 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (25, "agent_config_table", _agent_config_table),
     (26, "seed_judge_configs", _seed_judge_configs),
     (27, "calibration_splits_table", _calibration_splits_table),
+    (28, "judge_optimization_requests_table",
+     _judge_optimization_requests_table),
 ]
 
 

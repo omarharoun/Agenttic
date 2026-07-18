@@ -27,6 +27,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import uuid
 from pathlib import Path
 
 from agenttic.registry.sqlite_store import NotFoundError
@@ -34,6 +35,8 @@ from agenttic.schema.testcase import TestCase, TestSuite
 
 MINED_TAG = "mined_from_production"
 _CALIBRATION_HEADER = ("trace_id", "criterion_id", "human_score")
+
+_DEFAULT_CALIBRATION_THRESHOLD = 0.8
 
 
 # --------------------------------------------------------------------------- #
@@ -224,6 +227,11 @@ def mine_labels(reg, agent_id: str | None = None, suite_id: str | None = None,
     if not ratings:
         return 0
 
+    # Count each criterion's labels BEFORE this mining run, so the trigger can
+    # tell whether a criterion just CROSSED min_labels (was below, now >=).
+    grew: dict[str, str] = {}  # criterion_id -> a target suite that grew it
+    counts_before = _label_counts(calibration_dir)
+
     appended = 0
     for fb in ratings:
         target = _route_rating_suite(reg, fb, suite_id)
@@ -232,8 +240,37 @@ def mine_labels(reg, agent_id: str | None = None, suite_id: str | None = None,
         _append_label(calibration_dir / f"{target}.csv",
                       fb.trace_id, fb.criterion_id, fb.rating)
         reg.mark_feedback_processed(fb.feedback_id)
+        grew.setdefault(fb.criterion_id, target)
         appended += 1
+
+    # Side effect ONLY: notice + file a request per criterion whose labels grew.
+    # This NEVER auto-runs the optimizer (optimization stays on-command via
+    # `learn-judge`) — the analogue of Step 9's drift-triggered re-eval.
+    for criterion_id, target in grew.items():
+        try:
+            maybe_request_judge_optimization(
+                reg, cfg or {}, criterion_id, target,
+                counts_before=counts_before.get(criterion_id, 0))
+        except Exception:  # noqa: BLE001 — a trigger failure must not lose labels
+            pass
+
     return appended
+
+
+def _label_counts(calibration_dir: Path) -> dict[str, int]:
+    """Distinct-trace label count per criterion across every suite CSV in the
+    calibration dir (the same universe ``optimizable`` counts over)."""
+    from agenttic.scoring.calibration import load_labels
+    seen: dict[str, set[str]] = {}
+    if calibration_dir.exists():
+        for csv_path in sorted(calibration_dir.glob("*.csv")):
+            try:
+                labels = load_labels(csv_path)
+            except Exception:  # noqa: BLE001 — a bad/empty CSV is skipped
+                continue
+            for (trace_id, criterion_id) in labels:
+                seen.setdefault(criterion_id, set()).add(trace_id)
+    return {cid: len(ids) for cid, ids in seen.items()}
 
 
 def _route_rating_suite(reg, fb, suite_id: str | None) -> str | None:
@@ -271,3 +308,135 @@ def _append_label(path: Path, trace_id: str, criterion_id: str,
         if write_header:
             w.writerow(_CALIBRATION_HEADER)
         w.writerow([trace_id, criterion_id, human_score])
+
+
+# --------------------------------------------------------------------------- #
+# Step 15.4 — auto-TRIGGER from the calibration flywheel.
+#
+# New labels are the signal. When ``mine_labels`` grows a criterion's label set,
+# it asks ``maybe_request_judge_optimization`` whether that criterion's judge
+# now warrants re-optimizing, and if so FILES a request (never runs the
+# optimizer). Two triggers, matching Step 9's drift-triggered re-eval:
+#
+#   1. CROSSED min_labels — the criterion was below the optimizable threshold
+#      and this run pushed it to/above it (it just became optimizable).
+#   2. Calibrated-eligible but agreement DROPPED — the criterion already has
+#      >= min_labels labels and its judge-vs-human agreement on the UPDATED
+#      label set is below ``scoring.calibration_threshold``.
+#
+# Resolving judge scores for the agreement check (documented design choice):
+# we read the judge's per-criterion scores from the tenant's STORED scorecards
+# (``reg.scorecards_for(agent_id)`` → run_scores → criterion_scores), keyed by
+# (trace_id, criterion_id). ``mine_labels`` already runs at feedback-mining
+# time with the same agent's scorecards to hand, and those scorecards ARE the
+# judge's numbers — no LLM call, no fabrication. If judge scores can't be
+# resolved for at least ``min_n`` labeled traces, the agreement check is
+# SKIPPED for this round (we never invent a score); the crossed-min_labels
+# trigger still fires on its own.
+# --------------------------------------------------------------------------- #
+
+
+def maybe_request_judge_optimization(reg, cfg: dict, criterion_id: str,
+                                     suite_id: str, *,
+                                     counts_before: int | None = None):
+    """Notice whether ``criterion_id``'s judge needs re-optimizing and, if so,
+    FILE a :class:`JudgeOptimizationRequest` — never run the optimizer.
+
+    Returns the filed request (existing open one is refreshed, not duplicated),
+    or ``None`` when nothing warrants a request this round."""
+    from agenttic.scoring.calibration import (
+        calibration_report, min_labels, optimizable,
+    )
+    from agenttic.schema.judge_request import JudgeOptimizationRequest
+
+    _, calibration_dir = _paths(reg, cfg)
+    labels = _load_all_labels(calibration_dir)
+    ok, _reason = optimizable(labels, criterion_id, cfg)
+    n_now = _distinct_traces(labels, criterion_id)
+    threshold = float((cfg.get("scoring") or {}).get(
+        "calibration_threshold", _DEFAULT_CALIBRATION_THRESHOLD))
+    min_lbl = min_labels(cfg)
+
+    reason: str | None = None
+
+    # Trigger 1: the criterion JUST crossed min_labels (was below, now >=).
+    if ok and counts_before is not None and counts_before < min_lbl <= n_now:
+        reason = f"criterion crossed min_labels ({n_now} labels)"
+
+    # Trigger 2: calibrated-eligible but agreement dropped below threshold. Only
+    # meaningful once optimizable; computed from stored judge scores (skip if we
+    # can't resolve enough — never fabricate).
+    if ok and reason is None:
+        judge_scores, scales = _stored_judge_scores(reg, criterion_id)
+        report = calibration_report(
+            judge_scores, labels, scales, threshold=threshold)
+        crit = report.get(criterion_id)
+        if crit is not None and crit.agreement < threshold:
+            reason = (
+                f"agreement {crit.agreement:.2f} dropped below threshold "
+                f"{threshold:.2f} on {crit.n} labels")
+
+    if reason is None:
+        return None
+
+    req = JudgeOptimizationRequest(
+        request_id=f"jor-{criterion_id}-{uuid.uuid4().hex[:10]}",
+        criterion_id=criterion_id, suite_id=suite_id, reason=reason)
+    return reg.save_judge_optimization_request(req)
+
+
+def _load_all_labels(calibration_dir: Path) -> dict:
+    """Merge every calibration CSV into one ``{(trace_id, criterion_id): score}``
+    dict (a criterion may span suites)."""
+    from agenttic.scoring.calibration import load_labels
+    merged: dict = {}
+    if calibration_dir.exists():
+        for csv_path in sorted(calibration_dir.glob("*.csv")):
+            try:
+                merged.update(load_labels(csv_path))
+            except Exception:  # noqa: BLE001
+                continue
+    return merged
+
+
+def _distinct_traces(labels: dict, criterion_id: str) -> int:
+    return len({tid for (tid, cid) in labels if cid == criterion_id})
+
+
+def _stored_judge_scores(reg, criterion_id: str
+                         ) -> tuple[list[tuple[str, str, float]], dict[str, str]]:
+    """Judge scores + scales for a criterion, read from STORED scorecards (no
+    LLM call). Returns ``([(trace_id, criterion_id, score)...], {criterion_id ->
+    scale})`` — the exact shape ``calibration_report`` consumes. Scales are
+    resolved from the criterion's rubric (default "binary" when unknown)."""
+    judge_scores: list[tuple[str, str, float]] = []
+    scales: dict[str, str] = {}
+    try:
+        cards = reg.all_scorecards()
+    except Exception:  # noqa: BLE001
+        cards = []
+    seen: set[str] = set()
+    for sc in cards:
+        for run in getattr(sc, "run_scores", []) or []:
+            trace_id = getattr(run, "trace_id", None)
+            if not trace_id or trace_id in seen:
+                continue
+            for cs in getattr(run, "criterion_scores", []) or []:
+                if cs.criterion_id != criterion_id or cs.scorer != "judge":
+                    continue
+                judge_scores.append((trace_id, criterion_id, cs.score))
+                seen.add(trace_id)
+        scales.update(_scales_from_scorecard(reg, sc, criterion_id))
+    if criterion_id not in scales:
+        scales[criterion_id] = "binary"
+    return judge_scores, scales
+
+
+def _scales_from_scorecard(reg, sc, criterion_id: str) -> dict[str, str]:
+    """Best-effort criterion scale from the scorecard's rubric."""
+    try:
+        rubric = reg.get_rubric(sc.rubric_id, sc.rubric_version)
+        return {c.criterion_id: c.scale for c in rubric.criteria
+                if c.criterion_id == criterion_id}
+    except Exception:  # noqa: BLE001
+        return {}

@@ -254,6 +254,28 @@ class CalibrationSplitRow(SQLModel, table=True):
     created_at: datetime
 
 
+class JudgeOptimizationRequestRow(SQLModel, table=True):
+    """An outstanding "please re-optimize this judge" request (SPEC-3 Step 15.4).
+
+    Filed as a side effect of ``mine_labels`` when new human labels reveal a
+    criterion whose judge needs re-optimizing (it just crossed ``min_labels``,
+    or its measured agreement dropped below the calibration threshold). NEVER
+    auto-executed — the fix stays on-command via ``learn-judge``. ``status`` is
+    "open" until a ``run_judge_learning`` round CLEARS it ("cleared"). De-dupe:
+    at most one ``status='open'`` row per (tenant, criterion_id) — a fresh
+    trigger updates the open row in place rather than stacking duplicates."""
+    __table_args__ = (UniqueConstraint("tenant_id", "request_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    request_id: str = Field(index=True)
+    criterion_id: str = Field(index=True)
+    suite_id: str = ""
+    reason: str = ""
+    status: str = Field(default="open", index=True)  # open | cleared
+    created_at: datetime
+    cleared_at: datetime | None = None
+
+
 class SpendRow(SQLModel, table=True):
     """Append-only ledger of LLM spend, for the daily budget cap."""
     id: int | None = Field(default=None, primary_key=True)
@@ -1180,6 +1202,83 @@ class Registry:
                     trace_id=trace_id, side=side, created_at=now))
             s.commit()
 
+    # -- judge-optimization requests (SPEC-3 Step 15.4) -----------------------
+
+    def save_judge_optimization_request(self, request):
+        """File (or refresh) a judge-optimization request.
+
+        De-dupe: at most ONE ``status='open'`` request per (tenant,
+        criterion_id). If an open request already exists for the criterion, its
+        ``reason``/``suite_id`` are UPDATED in place (the latest trigger wins)
+        and that same request is returned — we never stack duplicate open rows.
+        Otherwise a new open row is inserted. Returns the persisted
+        :class:`JudgeOptimizationRequest`."""
+        from agenttic.schema.judge_request import JudgeOptimizationRequest
+        with Session(self.engine) as s:
+            existing = s.exec(select(JudgeOptimizationRequestRow).where(
+                JudgeOptimizationRequestRow.tenant_id == self.tenant,
+                JudgeOptimizationRequestRow.criterion_id == request.criterion_id,
+                JudgeOptimizationRequestRow.status == "open")).first()
+            if existing is not None:
+                existing.reason = request.reason
+                if request.suite_id:
+                    existing.suite_id = request.suite_id
+                s.add(existing)
+                s.commit()
+                return JudgeOptimizationRequest(
+                    request_id=existing.request_id,
+                    criterion_id=existing.criterion_id,
+                    suite_id=existing.suite_id, reason=existing.reason,
+                    status=existing.status, created_at=existing.created_at,
+                    cleared_at=existing.cleared_at)
+            row = JudgeOptimizationRequestRow(
+                tenant_id=self.tenant, request_id=request.request_id,
+                criterion_id=request.criterion_id, suite_id=request.suite_id,
+                reason=request.reason, status="open",
+                created_at=request.created_at, cleared_at=None)
+            s.add(row)
+            s.commit()
+            return JudgeOptimizationRequest(
+                request_id=row.request_id, criterion_id=row.criterion_id,
+                suite_id=row.suite_id, reason=row.reason, status=row.status,
+                created_at=row.created_at, cleared_at=row.cleared_at)
+
+    def open_judge_optimization_requests(self, criterion_id: str | None = None
+                                         ) -> list:
+        """Open judge-optimization requests, oldest-first. Filtered to one
+        criterion when ``criterion_id`` is given, else all open requests for the
+        tenant."""
+        from agenttic.schema.judge_request import JudgeOptimizationRequest
+        with Session(self.engine) as s:
+            q = select(JudgeOptimizationRequestRow).where(
+                JudgeOptimizationRequestRow.tenant_id == self.tenant,
+                JudgeOptimizationRequestRow.status == "open")
+            if criterion_id is not None:
+                q = q.where(
+                    JudgeOptimizationRequestRow.criterion_id == criterion_id)
+            rows = s.exec(q.order_by(JudgeOptimizationRequestRow.created_at)).all()
+            return [JudgeOptimizationRequest(
+                request_id=r.request_id, criterion_id=r.criterion_id,
+                suite_id=r.suite_id, reason=r.reason, status=r.status,
+                created_at=r.created_at, cleared_at=r.cleared_at) for r in rows]
+
+    def clear_judge_optimization_requests(self, criterion_id: str) -> int:
+        """Mark every OPEN request for a criterion cleared (called when a
+        learning round runs — a completed optimization resolves the outstanding
+        request). Returns the number of requests cleared."""
+        with Session(self.engine) as s:
+            rows = s.exec(select(JudgeOptimizationRequestRow).where(
+                JudgeOptimizationRequestRow.tenant_id == self.tenant,
+                JudgeOptimizationRequestRow.criterion_id == criterion_id,
+                JudgeOptimizationRequestRow.status == "open")).all()
+            now = _now()
+            for row in rows:
+                row.status = "cleared"
+                row.cleared_at = now
+                s.add(row)
+            s.commit()
+            return len(rows)
+
     # -- agent-config promotion ledger (SPEC-2 Step 14) -----------------------
 
     def save_agent_config(self, config) -> None:
@@ -1296,6 +1395,16 @@ class Registry:
             rows = s.exec(select(ScorecardRow).where(
                 ScorecardRow.tenant_id == self.tenant,
                 ScorecardRow.suite_id.in_(ids)).order_by(ScorecardRow.created_at)).all()
+            return [Scorecard.model_validate_json(r.payload) for r in rows]
+
+    def all_scorecards(self) -> list["Scorecard"]:
+        """Every scorecard for the tenant (any agent/suite), oldest-first. Used
+        by the calibration flywheel (Step 15.4) to resolve stored judge scores
+        for a criterion's agreement check."""
+        with Session(self.engine) as s:
+            rows = s.exec(select(ScorecardRow).where(
+                ScorecardRow.tenant_id == self.tenant
+            ).order_by(ScorecardRow.created_at)).all()
             return [Scorecard.model_validate_json(r.payload) for r in rows]
 
     # -- result cache (per-tenant; identical inputs reuse a result, $0 spend) --
