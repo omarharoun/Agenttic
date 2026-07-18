@@ -4295,6 +4295,12 @@ def learn_judge(
     active config lineage. Refuses when the criterion has too few labels."""
     from agenttic.learning.judge_optimizer import run_judge_learning
     cfg, reg = _ctx(config)
+    others = [r for r in reg.open_judge_optimization_requests()
+              if r.criterion_id != criterion]
+    if others:
+        console.print(f"[yellow]note[/] — {len(others)} other criterion/-a have "
+                      "open judge-optimization requests (see `agenttic "
+                      "judge-requests`)")
     summary = run_judge_learning(reg, cfg, criterion, rounds=rounds)
     if summary.get("refused"):
         console.print(f"[yellow]refused[/] — {summary['reason']}")
@@ -4344,6 +4350,34 @@ def judge_lineage_cmd(
     for jc in chain:
         tr_s, ho_s = _deltas(jc)
         table.add_row(f"v{jc.version}", jc.judge_config_id, jc.status, tr_s, ho_s)
+    console.print(table)
+
+
+@app.command(name="judge-requests")
+def judge_requests_cmd(
+    criterion: str = typer.Option(None, "--criterion", "-c",
+                                  help="filter to one criterion id"),
+    config: str = "config.yaml",
+):
+    """List OPEN judge-optimization requests the calibration flywheel filed
+    (SPEC-3 Step 15.4).
+
+    New human labels can reveal that a criterion's judge needs re-optimizing —
+    it just crossed ``min_labels`` or its agreement dropped below the calibration
+    threshold. The platform NOTICES and files a request here; it never
+    auto-runs the optimizer. Clear a request by running
+    ``agenttic learn-judge --criterion <id>``. Read-only."""
+    _cfg, reg = _ctx(config)
+    requests = reg.open_judge_optimization_requests(criterion)
+    if not requests:
+        console.print("[dim]no open judge-optimization requests[/]")
+        return
+    console.print(f"[bold]{len(requests)} open judge-optimization request(s)[/] "
+                  "— run `agenttic learn-judge --criterion <id>` to act")
+    table = Table("criterion", "suite", "reason", "filed")
+    for r in requests:
+        table.add_row(r.criterion_id, r.suite_id or "-", r.reason,
+                      r.created_at.strftime("%Y-%m-%d %H:%M"))
     console.print(table)
 
 

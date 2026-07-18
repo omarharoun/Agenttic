@@ -373,6 +373,16 @@ def _calibration_splits_table(conn) -> None:
     CalibrationSplitRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _judge_optimization_requests_table(conn) -> None:
+    """v28 — judge-optimization requests (SPEC-3 Step 15.4). One row per filed
+    "please re-optimize this judge" request. Detection is automatic (the
+    calibration flywheel notices via ``mine_labels``); the fix stays on-command
+    (``learn-judge`` clears the request). At most one open row per criterion."""
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers the row)
+    from agenttic.registry.sqlite_store import JudgeOptimizationRequestRow
+    JudgeOptimizationRequestRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     # 24-29 were BURNED while the code that created them could not be found. It
@@ -411,6 +421,8 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (27, "calibration_splits_table", _calibration_splits_table),
     (30, "verification_evidence_tables", _verification_evidence_tables),
     (31, "gaming_reports_table", _gaming_reports_table),
+    (28, "judge_optimization_requests_table",
+     _judge_optimization_requests_table),
 ]
 
 
