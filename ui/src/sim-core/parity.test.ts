@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import {
-  gate, evaluateCandidate, driftStatus, shouldEscalate,
+  gate, gateSteps, evaluateCandidate, driftStatus, shouldEscalate,
   escalatedAppropriatelyScore, wilsonInterval, wilsonLowerBound,
   exactMatchRate, krippendorffAlphaInterval, recomputeScorecard,
 } from "./index";
@@ -47,6 +47,11 @@ describe("sim-core parity — gate", () => {
       const r = gate(rest, cfg);
       expect(r.promote).toBe(c.expected.promote);
       expect(r.reason).toBe(c.expected.reason);      // byte-for-byte
+      // the stepwise replay (23.3) must re-derive the identical verdict
+      const stepped = gateSteps(rest, cfg);
+      expect(stepped.result).toEqual(r);
+      // the deciding step's ok reflects the verdict
+      expect(stepped.steps[stepped.steps.length - 1].ok).toBe(r.promote);
     }
   });
 });

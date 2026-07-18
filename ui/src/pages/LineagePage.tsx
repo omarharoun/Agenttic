@@ -6,6 +6,7 @@ import {
 } from "../api";
 import { EmptyState, PageHeader, RawToggle, Skeleton, Uncertainty } from "../components/ui";
 import { PageData } from "../components/PageData";
+import { GateReplay } from "../components/GateReplay";
 import { IconOptimize, IconShield } from "../icons";
 
 /* SPEC-4 Step 20.1 — the agent-config family tree.
@@ -379,7 +380,17 @@ export function LineagePage() {
             )}
 
             {selectedNode
-              ? <GateReceiptPanel node={selectedNode} />
+              ? (
+                <>
+                  <GateReceiptPanel node={selectedNode} />
+                  {/* SPEC-5 23.3: re-derive the gate stepwise from the stored
+                      scorecards through sim-core — a replay, not a recording. */}
+                  <GateReplay
+                    node={selectedNode}
+                    parent={data?.nodes.find((n) => n.hash === selectedNode.parent_hash) ?? null}
+                  />
+                </>
+              )
               : <p className="muted-sm">Select a node above to read its gate receipt.</p>}
 
             <div style={{ marginTop: 22 }}>
