@@ -1,0 +1,49 @@
+/* SPEC-5 23.2 — scorecard what-if. Tokens only; instant recompute (no motion). */
+
+.whatif {
+  margin-top: var(--sp-4, 20px);
+  border: 1px solid var(--accent-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.whatif-banner {
+  background: var(--accent-soft);
+  color: var(--text);
+  padding: var(--sp-2, 8px) var(--sp-4, 20px);
+  font-size: 0.85em;
+  border-bottom: 1px solid var(--accent-line);
+}
+.whatif-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4, 20px);
+  padding: var(--sp-4, 20px);
+}
+@media (max-width: 720px) { .whatif-body { grid-template-columns: 1fr; } }
+
+.whatif-h3 { margin: 0 0 var(--sp-3, 14px); font-size: 0.95em; }
+.whatif-slider { display: flex; flex-direction: column; gap: 5px; margin-bottom: var(--sp-3, 14px); }
+.whatif-slider-head { display: flex; justify-content: space-between; font-size: 0.88em; }
+.whatif-slider-val { font-family: var(--font-mono, monospace); color: var(--accent); }
+.whatif-slider input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+.whatif-rate {
+  display: flex; align-items: baseline; gap: var(--sp-3, 14px); flex-wrap: wrap;
+  margin-bottom: var(--sp-3, 14px);
+}
+.whatif-rate-num { font-size: 1.8em; font-weight: 700; }
+.whatif-rate-ci, .whatif-rate-n { color: var(--muted); font-size: 0.85em; }
+.whatif-flips { margin: 0 0 var(--sp-2, 8px); color: var(--muted); font-size: 0.9em; }
+.whatif-flip-list { list-style: none; margin: 0 0 var(--sp-3, 14px); padding: 0; font-size: 0.88em; }
+.whatif-flip-list li { padding: 3px 0; }
+.whatif-flip-list .flip-gain { color: var(--ok); }
+.whatif-flip-list .flip-loss { color: var(--fail); }
+.flip-weighted { color: var(--muted); font-family: var(--font-mono, monospace); font-size: 0.9em; }
+
+.whatif-propose { margin-top: var(--sp-2, 8px); }
+.whatif-proposal { margin-top: var(--sp-3, 14px); }
+.whatif-proposal p { color: var(--muted); font-size: 0.85em; margin: 0 0 6px; }
+.whatif-proposal pre {
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+  padding: var(--sp-3, 14px); font-size: 0.82em; overflow: auto; margin: 0;
+}
