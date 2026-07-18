@@ -358,6 +358,16 @@ def gate(candidate_sc: Scorecard, baseline_sc: Scorecard, cfg: dict
     # (2) ε-tolerance per-criterion floor (beyond the significance veto)
     base_means = baseline_sc.per_criterion_means
     cand_means = candidate_sc.per_criterion_means
+    # Fail CLOSED if the candidate simply stopped being scored on a criterion:
+    # an unpaired criterion can't regress, which would let a lobotomized rubric
+    # "win". The gate is the last line of defense (Hard Rule 9) — a criterion
+    # missing from the candidate is treated as a rejection, never as neutral.
+    missing = sorted(set(base_means) - set(cand_means))
+    if missing:
+        return False, (
+            "rejected: candidate scorecard is missing baseline criteria "
+            f"{missing} — unpaired criteria cannot be verified as non-regressing"
+        )
     eps_drops = [
         (cid, cand_means[cid] - base_means[cid])
         for cid in base_means

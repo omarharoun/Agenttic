@@ -159,6 +159,21 @@ class TestGate:
         ok, reason = gate(cand, base, CFG)
         assert not ok and "regress" in reason
 
+    def test_rejects_candidate_missing_a_baseline_criterion(self):
+        # Fail CLOSED (Hard Rule 9): a candidate that stops scoring a criterion
+        # ("tone") must NOT be promoted just because higher-success on "acc" — an
+        # unpaired criterion can't be verified as non-regressing, so it's rejected.
+        # Without the missing-criterion check this candidate would sail through
+        # (better task_success_rate, no visible regression on the shared "acc").
+        ids = [f"t{i}" for i in range(4)]
+        base = self._sc("b", {t: (t in ("t0", "t1")) for t in ids},
+                        {t: {"acc": 0.0, "tone": 1.0} for t in ids})
+        cand = self._sc("c", {t: True for t in ids},
+                        {t: {"acc": 1.0} for t in ids})   # "tone" dropped entirely
+        ok, reason = gate(cand, base, CFG)
+        assert not ok
+        assert "missing" in reason and "tone" in reason
+
     def test_rejects_cost_blowout(self):
         ids = [f"t{i}" for i in range(4)]
         base = self._sc("b", {t: False for t in ids},
