@@ -3,6 +3,8 @@ __pycache__/
 .venv/
 # sqlite registries & their WAL/SHM sidecars — runtime data, incl. test/seed dbs
 ascore.db
+ascore.db-shm
+ascore.db-wal
 ascore.*.db
 ascore.*.db-shm
 ascore.*.db-wal
