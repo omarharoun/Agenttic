@@ -7,8 +7,13 @@ import type { PricingCatalog } from "../api";
 import "../landing/landing.css";
 import "./PricingPage.css";
 
-/* ============================================================================
-   Public access page (/pricing).
+/* SPEC-4 17.3 — EXEMPT from the state trio: renders from a static default
+   catalog (real HTML, no JS), then silently hydrates from /api/pricing. It is
+   never empty and a failed refresh just keeps the static content — no
+   loading/empty/error state is owed.
+
+   ============================================================================
+   Public pricing page (/pricing) — plans + the free-credits offer.
 
    Rebuilt for the closed-source position: Agenttic is scoped and sold as a
    verification engagement, not licensed by the seat and not downloaded. There is

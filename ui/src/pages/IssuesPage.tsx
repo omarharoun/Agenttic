@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { IssuesReport } from "../components/IssuesReport";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { PageData } from "../components/PageData";
 import { IconIssues } from "../icons";
 
 /** A run that produced results, worth surfacing issues for. */
@@ -16,9 +17,13 @@ const HAS_RESULTS = new Set(["succeeded", "completed_with_errors", "failed"]);
 export function IssuesPage() {
   const [params, setParams] = useSearchParams();
   const [runs, setRuns] = useState<Run[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<unknown | null>(null);
   const selected = params.get("execution");
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setErr(null);
     api.listExecutions()
       .then((r) => {
         const scored = (r as Run[]).filter((x) => HAS_RESULTS.has(x.status));
@@ -28,9 +33,12 @@ export function IssuesPage() {
           setParams({ execution: scored[0].execution_id }, { replace: true });
         }
       })
-      .catch(() => setRuns([]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      // A failed list is an error to surface + retry, not a fake "no runs yet".
+      .catch((e) => setErr(e))
+      .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => load(), [load]);
 
   const current = useMemo(
     () => runs?.find((r) => r.execution_id === selected) ?? null, [runs, selected]);
@@ -42,18 +50,24 @@ export function IssuesPage() {
           title="Issues"
           subtitle="What's wrong with your agent — its real failures, ranked worst-first, with the evidence and the fix for each. Nothing here is invented: every issue is a computed failure from a run you scored." />
 
-        {runs === null ? (
-          <Skeleton rows={5} />
-        ) : runs.length === 0 ? (
-          <EmptyState icon={<IconIssues />} title="No scored runs yet"
-                      hint="Score an agent first (New evaluation → Run). Once a run finishes, its issues appear here." />
-        ) : (
+        <PageData
+          loading={loading}
+          error={err}
+          empty={runs != null && runs.length === 0}
+          onRetry={load}
+          errorTitle="Couldn't load your runs"
+          skeleton={<Skeleton rows={5} />}
+          emptyState={
+            <EmptyState icon={<IconIssues />} title="No scored runs yet"
+                        hint="Score an agent first (New evaluation → Run). Once a run finishes, its issues appear here." />
+          }
+        >
           <>
             <div className="issues-runpick">
               <label htmlFor="run-select">Run</label>
               <select id="run-select" value={selected ?? ""}
                       onChange={(e) => setParams({ execution: e.target.value })}>
-                {runs.map((r) => (
+                {(runs ?? []).map((r) => (
                   <option key={r.execution_id} value={r.execution_id}>
                     {r.execution_id} · {r.workflow_id} · {new Date(r.started_at).toLocaleString()}
                   </option>
@@ -64,7 +78,7 @@ export function IssuesPage() {
             </div>
             {selected && <IssuesReport key={selected} executionId={selected} />}
           </>
-        )}
+        </PageData>
       </div>
     </div>
   );

@@ -9,14 +9,14 @@ import { Seal } from "../components/Seal";
 import "../landing/landing.css";
 import "./MethodologyPage.css";
 
-/* ============================================================================
-   Methodology — the public, unauthenticated explainer for how an agent is put
-   through the programme and what the resulting mark means.
+/* SPEC-4 17.3 — EXEMPT from the state trio: a static explainer. It reads the
+   canonical catalog live where it can but ships complete static fallbacks, so
+   it is never empty and a failed read leaves the page whole — nothing to own.
 
-   Restyled onto the landing's academy language (landing.css is the contract):
-   serif headlines, mono eyebrows, a numbered progression, one inverted dark
-   section for rhythm. Structure classes come from `.lp`; only the
-   methodology-specific surfaces live in MethodologyPage.css. Tokens only.
+   ============================================================================
+   Methodology & Index — the public, unauthenticated explainer for how the
+   Agenttic Index is computed and why it's trustworthy. The credibility spine
+   of the "Artificial Analysis for agents" positioning.
 
    Live-from-API where possible (GET /api/standard/metrics and
    /api/standard/datasets are public reads) so the page stays in sync with the

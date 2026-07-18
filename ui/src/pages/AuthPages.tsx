@@ -3,6 +3,10 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { HexMark, IconCheck, IconWarning } from "../icons";
 
+/* SPEC-4 17.3 — EXEMPT from the state trio: auth forms are input surfaces, not
+   data routes. They own per-submit busy/validation feedback inline; there is no
+   page-load fetch to be loading/empty/error over. */
+
 function Brand() {
   return (
     <Link to="/" className="brand" style={{ textDecoration: "none", color: "var(--text)",

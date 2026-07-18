@@ -9,7 +9,8 @@ import {
   type PricingCatalog,
 } from "../api";
 import { money, sharePct } from "../billing";
-import { EmptyState, PageHeader, Spinner } from "../components/ui";
+import { EmptyState, PageHeader } from "../components/ui";
+import { PageData } from "../components/PageData";
 import { IconInvoice } from "../icons";
 
 /* ============================================================================
@@ -37,7 +38,11 @@ export function BillingPage() {
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  // `loadErr` is the initial-load failure that drives the PageData error panel;
+  // `actionErr` is a transient checkout failure shown inline without wiping the
+  // page (the data is still valid, only the redirect attempt failed).
+  const [loadErr, setLoadErr] = useState<unknown | null>(null);
+  const [actionErr, setActionErr] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -54,9 +59,9 @@ export function BillingPage() {
         setProviders(prov);
         setInvoices(inv);
         setLedger(led);
-        setErr(null);
+        setLoadErr(null);
       })
-      .catch((e) => setErr(errMessage(e) || "Failed to load billing"))
+      .catch((e) => setLoadErr(e))
       .finally(() => setLoading(false));
   }, []);
 
@@ -67,22 +72,16 @@ export function BillingPage() {
     body: { kind: "subscription" | "topup"; plan_id?: string; topup_id?: string },
   ) => {
     setBusy(`${provider}:${body.plan_id || body.topup_id}`);
-    setErr(null);
+    setActionErr(null);
     try {
       const fn = provider === "stripe" ? api.checkoutStripe : api.checkoutPaypal;
       const { url } = await fn(body);
       window.location.href = url;   // redirect to the hosted checkout
     } catch (e) {
-      setErr(errMessage(e) || `Couldn't start ${provider} checkout`);
+      setActionErr(errMessage(e) || `Couldn't start ${provider} checkout`);
       setBusy(null);
     }
   };
-
-  if (loading) {
-    return <div className="page"><div className="list-page">
-      <PageHeader title="Billing" subtitle="Plan, credits & invoices" />
-      <Spinner /></div></div>;
-  }
 
   const stripeOn = !!providers?.stripe.configured;
   const paypalOn = !!providers?.paypal.configured;
@@ -100,8 +99,15 @@ export function BillingPage() {
           actions={<button className="btn-ghost" onClick={load}>Refresh</button>}
         />
 
-        {err && <div className="bill-alert">{err}</div>}
+        {actionErr && <div className="bill-alert">{actionErr}</div>}
 
+        <PageData
+          loading={loading}
+          error={loadErr}
+          onRetry={load}
+          errorTitle="Couldn't load billing"
+          skeleton={<BillingSkeleton />}
+        >
         {/* --- balance + plan summary --- */}
         <div className="bill-top">
           <section className="card bill-balance">
@@ -272,6 +278,27 @@ export function BillingPage() {
             </table>
           </>
         )}
+        </PageData>
+      </div>
+    </div>
+  );
+}
+
+/** Layout-matched loading placeholder: the three summary cards, then the plans
+ *  grid — same shape the loaded page settles into, so nothing jumps. */
+function BillingSkeleton() {
+  return (
+    <div className="pagedata-skel" aria-busy="true" aria-label="Loading billing">
+      <div className="pagedata-skel-row">
+        <div className="pagedata-skel-block" style={{ height: 132 }} />
+        <div className="pagedata-skel-block" style={{ height: 132 }} />
+        <div className="pagedata-skel-block" style={{ height: 132 }} />
+      </div>
+      <div className="pagedata-skel-block" style={{ height: 18, width: 80, marginTop: 12 }} />
+      <div className="pagedata-skel-row">
+        <div className="pagedata-skel-block" style={{ height: 220 }} />
+        <div className="pagedata-skel-block" style={{ height: 220 }} />
+        <div className="pagedata-skel-block" style={{ height: 220 }} />
       </div>
     </div>
   );

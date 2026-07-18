@@ -4,7 +4,11 @@ import { AssistantChat } from "../components/AssistantChat";
 import { Seal, SealMark } from "../components/Seal";
 import { useAssistantCert } from "../useAssistantCert";
 
-/* ============================================================================
+/* SPEC-4 17.3 — EXEMPT from the state trio: an interactive chat surface, not a
+   data route. The page is complete on first paint; <AssistantChat> owns its own
+   streaming/error states, so there is no page-level loading/empty/error to add.
+
+   ============================================================================
    /assistant — the Safe Assistant surface (public entry).
 
    Agenttic's flagship consumer chat: a friendly personal assistant that wears

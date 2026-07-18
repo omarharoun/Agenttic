@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { SiteNav } from "../components/SiteNav";
 import { Link } from "react-router-dom";
 import { api, type JsonObject } from "../api";
 import { certIdOf, type DirectoryEntry, gradeColor, indexFromCert, statusView } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
 import { EmptyState, Skeleton } from "../components/ui";
+import { PageData } from "../components/PageData";
 import { IconArrowRight, StatusIcon } from "../icons";
 
 /* ============================================================================
@@ -60,15 +62,24 @@ const SAYS: { k: string; v: string; not?: boolean }[] = [
 ];
 
 export function CertifiedDirectoryPage() {
-  const [rows, setRows] = useState<DirectoryEntry[] | null | undefined>(undefined);
+  const [rows, setRows] = useState<DirectoryEntry[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<unknown | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setErr(null);
     let ok = true;
     api.publicCertifiedDirectory()
       .then((d) => { if (ok) setRows(normalize(d)); })
-      .catch(() => { if (ok) setRows(null); });
+      // A missing/unreachable endpoint is a genuine load failure, not "nobody
+      // certified yet" — surface it as an error with a retry, not a fake empty.
+      .catch((e) => { if (ok) setErr(e); })
+      .finally(() => { if (ok) setLoading(false); });
     return () => { ok = false; };
   }, []);
+
+  useEffect(() => load(), [load]);
 
   const list = rows ?? [];
 
@@ -76,38 +87,38 @@ export function CertifiedDirectoryPage() {
     <div className="lp">
       <SiteNav />
 
-      {/* ---- HERO ---- */}
-      <header className="lp-hero">
-        <div className="wrap lp-hero__grid">
-          <div className="lp-hero__copy">
-            <Eyebrow>The register · qualified agents</Eyebrow>
-            <div className="lp-hero__tag">Agents that finished the program</div>
-            <h1>Certified agents</h1>
-            <p className="lp-hero__lede">
-              AI agents that have <em>earned</em> an Agenttic Safety Certification.
-              A credential is not issued from a good score: it requires coverage
-              of the situation space to close and every safety property to hold,
-              and the signing path refuses when they do not.
-            </p>
-            <p className="lp-hero__lede">
-              The grade is pinned to one exact agent version and expires. Every
-              entry links to a signed certificate anyone can verify independently.
-            </p>
-            <div className="lp-cta">
-              <Button href="/#access">Book a coverage audit</Button>
-              <Button variant="ghost" href="/methodology">How grades work</Button>
+      <main className="lp">
+        <header className="cert-dir-hero">
+          <Seal size={108} />
+          <span className="eyebrow">The registry</span>
+          <h1>Certified agents</h1>
+          <p className="sub">
+            AI agents that have earned an Agenttic Safety Certification — graded on
+            injection robustness, harmful-action refusal, secret-leak resistance
+            and more, with the grade pinned to a specific agent version. Every
+            entry links to a signed, verifiable certificate.
+          </p>
+        </header>
+
+        <PageData
+          loading={loading}
+          error={err}
+          empty={list.length === 0}
+          onRetry={load}
+          errorTitle="Couldn't load the directory"
+          skeleton={
+            <div className="cert-dir-skel" aria-busy="true" aria-label="Loading certified agents">
+              <Skeleton rows={6} />
             </div>
-            <p className="lp-hero__foot">
-              Signed · scoped · dated · revocable
-            </p>
-          </div>
-        ) : list.length === 0 ? (
-          <EmptyState
-            title="No certified agents yet"
-            hint="Be the first. Run your agent through the safety suites and publish a grade the world can verify."
-            action={<Link className="btn-primary" to="/signup">Get your agent certified</Link>}
-          />
-        ) : (
+          }
+          emptyState={
+            <EmptyState
+              title="No certified agents yet"
+              hint="Be the first. Run your agent through the safety suites and publish a grade the world can verify."
+              action={<Link className="btn-primary" to="/signup">Get your agent certified</Link>}
+            />
+          }
+        >
           <div className="cert-dir-grid">
             {list.map((c) => {
               const sv = statusView(c.status);
@@ -131,7 +142,7 @@ export function CertifiedDirectoryPage() {
               );
             })}
           </div>
-        )}
+        </PageData>
 
           <figure className="cd-mark">
             <Seal size={168} />

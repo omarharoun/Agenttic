@@ -3,7 +3,11 @@ import { PageHeader } from "../components/ui";
 import * as Icons from "../icons";
 import type { IconProps } from "../icons";
 
-/* ============================================================================
+/* SPEC-4 17.3 — EXEMPT from the state trio: a static catalogue rendered from
+   in-module constants (the icon exports, token list). It fetches nothing, so it
+   is never loading/empty/error.
+
+   ============================================================================
    Internal style guide (SPEC-4 17.1).
 
    Reachable at /app/styleguide, behind the same app auth as every other /app

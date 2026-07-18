@@ -12,8 +12,12 @@ import {
 } from "../landing/data";
 import "../landing/landing.css";
 
-/* ============================================================================
-   The public landing route — the "trust layer" narrative (stage 2).
+/* SPEC-4 17.3 — EXEMPT from the state trio: static marketing page. It prerenders
+   to real HTML and is complete with no data; the showcase cert it fetches only
+   enriches an already-full page, so there is no loading/empty/error to own.
+
+   ============================================================================
+   The public landing page — "the safety lab for AI agents".
 
    Record -> Evaluate -> Assert -> Certify. Six sections against the previous
    nineteen, because the old page was 14.4 viewports and its length was

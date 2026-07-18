@@ -6,7 +6,11 @@ import { ScanExperience } from "../components/ScanExperience";
 import { SealMark } from "../components/Seal";
 import "./ScanPage.css";
 
-/* ============================================================================
+/* SPEC-4 17.3 — EXEMPT from the state trio: this is an interactive intake, not
+   a data route. There is no page-load fetch to be loading/empty/error over; the
+   scan's own live progress is owned inside <ScanExperience>.
+
+   ============================================================================
    /scan — the dedicated scanner page (also the primary public entry).
 
    Mobile-first. The hero IS the intake interview: Agenttic asks four quick

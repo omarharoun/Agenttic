@@ -1,7 +1,8 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, errMessage, type Me } from "../api";
-import { PageHeader, Spinner } from "../components/ui";
+import { PageHeader, Skeleton } from "../components/ui";
+import { PageData } from "../components/PageData";
 import { type ThemePref, useThemePref } from "../theme";
 import { IconKey, IconLock, IconMonitor, IconMoon, IconSun } from "../icons";
 
@@ -55,18 +56,34 @@ function Card({ title, desc, children }: { title: React.ReactNode; desc?: string
 
 function AccountSection() {
   const [me, setMe] = useState<Me | null>(null);
-  useEffect(() => { api.me().then(setMe).catch(() => setMe(null)); }, []);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<unknown | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true); setErr(null);
+    api.me().then(setMe).catch((e) => setErr(e)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => load(), [load]);
+
   return (
     <>
       <Card title="Account" desc="Your identity and workspace.">
-        {!me ? <Spinner /> : (
-          <dl className="kv-grid">
-            <dt>Email</dt><dd>{me.email ?? "—"}</dd>
-            <dt>Role</dt><dd><span className="pill">{me.role}</span></dd>
-            <dt>Workspace</dt><dd className="mono">{me.tenant}</dd>
-            <dt>Auth</dt><dd>{me.auth_method}</dd>
-          </dl>
-        )}
+        <PageData
+          loading={loading}
+          error={err}
+          onRetry={load}
+          errorTitle="Couldn't load your account"
+          skeleton={<Skeleton rows={4} />}
+        >
+          {me && (
+            <dl className="kv-grid">
+              <dt>Email</dt><dd>{me.email ?? "—"}</dd>
+              <dt>Role</dt><dd><span className="pill">{me.role}</span></dd>
+              <dt>Workspace</dt><dd className="mono">{me.tenant}</dd>
+              <dt>Auth</dt><dd>{me.auth_method}</dd>
+            </dl>
+          )}
+        </PageData>
       </Card>
       <AppearanceCard />
     </>
@@ -100,9 +117,15 @@ function ApiKeysSection() {
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState<"" | "test" | "save" | "remove">("");
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [statusErr, setStatusErr] = useState<unknown | null>(null);
 
-  const load = () => api.anthropicKeyStatus().then(setStatus).catch(() => setStatus(null));
-  useEffect(() => { load(); }, []);
+  const load = useCallback(() => {
+    setLoading(true); setStatusErr(null);
+    return api.anthropicKeyStatus().then(setStatus)
+      .catch((e) => setStatusErr(e)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { load(); }, [load]);
 
   const test = async () => {
     setBusy("test"); setMsg(null);
@@ -134,18 +157,26 @@ function ApiKeysSection() {
     <Card title={<>Anthropic API key <span className="req-pill">Required</span></>}
           desc="Required to run tests. Agenttic runs your agents with your own Anthropic key — you're never charged for model usage, Anthropic bills you directly.">
       <div className="key-status">
-        {status === null ? <Spinner /> : status.set ? (
-          <div className="key-set">
-            <span className="key-dot ok" />
-            <span className="mono">{status.masked}</span>
-            <span className="muted-sm">set{status.updated_at ? ` · updated ${new Date(status.updated_at).toLocaleDateString()}` : ""}</span>
-            <button className="ghost-sm" disabled={busy === "remove"} onClick={remove}>Remove</button>
-          </div>
-        ) : (
-          <div className="key-unset key-required">
-            <span className="key-dot req" /> No key set — required to run tests. Add yours below.
-          </div>
-        )}
+        <PageData
+          loading={loading}
+          error={statusErr}
+          onRetry={load}
+          errorTitle="Couldn't check your key"
+          skeleton={<Skeleton rows={1} />}
+        >
+          {status?.set ? (
+            <div className="key-set">
+              <span className="key-dot ok" />
+              <span className="mono">{status.masked}</span>
+              <span className="muted-sm">set{status.updated_at ? ` · updated ${new Date(status.updated_at).toLocaleDateString()}` : ""}</span>
+              <button className="ghost-sm" disabled={busy === "remove"} onClick={remove}>Remove</button>
+            </div>
+          ) : (
+            <div className="key-unset key-required">
+              <span className="key-dot req" /> No key set — required to run tests. Add yours below.
+            </div>
+          )}
+        </PageData>
       </div>
 
       <label>{status?.set ? "Replace key" : "Add your key"}</label>
@@ -180,9 +211,15 @@ function PersonalTokensCard() {
   const [busy, setBusy] = useState(false);
   const [fresh, setFresh] = useState<{ name: string; token: string } | null>(null);
   const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState<unknown | null>(null);
 
-  const load = () => api.listTokens().then((r) => setTokens(r.tokens)).catch(() => setTokens([]));
-  useEffect(() => { load(); }, []);
+  const load = useCallback(() => {
+    setLoading(true); setLoadErr(null);
+    return api.listTokens().then((r) => setTokens(r.tokens))
+      .catch((e) => setLoadErr(e)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { load(); }, [load]);
 
   const create = async () => {
     setBusy(true); setErr("");
@@ -223,11 +260,17 @@ function PersonalTokensCard() {
       </div>
       {err && <div className="note-err">{err}</div>}
 
-      {tokens === null ? <Spinner /> : tokens.length === 0 ? (
-        <p className="muted-sm">No personal tokens yet.</p>
-      ) : (
+      <PageData
+        loading={loading}
+        error={loadErr}
+        empty={tokens != null && tokens.length === 0}
+        onRetry={load}
+        errorTitle="Couldn't load your tokens"
+        skeleton={<Skeleton rows={2} />}
+        emptyState={<p className="muted-sm">No personal tokens yet.</p>}
+      >
         <ul className="pat-list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
-          {tokens.map((t) => (
+          {(tokens ?? []).map((t) => (
             <li key={t.id} style={{ display: "flex", alignItems: "center", gap: 10,
                                     padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
               <span style={{ flex: 1 }}>
@@ -241,7 +284,7 @@ function PersonalTokensCard() {
             </li>
           ))}
         </ul>
-      )}
+      </PageData>
       <p className="muted-sm" style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 6 }}>
         <IconLock size={14} /> Stored hashed — only shown once at creation. Revoking takes effect immediately.
         See the <Link to="/api-docs">API docs</Link> for the run-a-test quickstart.
