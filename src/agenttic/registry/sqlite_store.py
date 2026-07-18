@@ -284,6 +284,26 @@ class JudgeConfigRow(SQLModel, table=True):
     payload: str
 
 
+class CalibrationSplitRow(SQLModel, table=True):
+    """The FROZEN train/held-out assignment of a criterion's calibration labels
+    (SPEC-3 Step 15.2, Hard Rule 15). One row per (tenant, criterion_id, seed,
+    trace_id): ``side`` is "train" | "holdout". Persisting the split so every
+    optimization round for a criterion reuses THE SAME held-out benchmark — the
+    calibration set never reshuffles under an optimizer's feet. When labels are
+    added later the split is EXTENDED (new trace_ids assigned by the same seeded
+    rule), never re-partitioned; existing rows are immutable."""
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "criterion_id", "seed", "trace_id"),
+    )
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    criterion_id: str = Field(index=True)
+    seed: int = Field(index=True)
+    trace_id: str = Field(index=True)
+    side: str  # "train" | "holdout"
+    created_at: datetime
+
+
 class SpendRow(SQLModel, table=True):
     """Append-only ledger of LLM spend, for the daily budget cap."""
     id: int | None = Field(default=None, primary_key=True)
@@ -1768,6 +1788,44 @@ class Registry:
             s.add(target)
             s.commit()
             return promoted
+
+    # -- calibration splits (SPEC-3 Step 15.2, Hard Rule 15) ------------------
+
+    def get_calibration_split(self, criterion_id: str, seed: int
+                              ) -> dict[str, str]:
+        """The frozen assignment (trace_id -> "train"|"holdout") for
+        (criterion_id, seed). Empty dict when no split has been persisted yet."""
+        with Session(self.engine) as s:
+            rows = s.exec(select(CalibrationSplitRow).where(
+                CalibrationSplitRow.tenant_id == self.tenant,
+                CalibrationSplitRow.criterion_id == criterion_id,
+                CalibrationSplitRow.seed == seed)).all()
+            return {r.trace_id: r.side for r in rows}
+
+    def save_calibration_split(self, criterion_id: str, seed: int,
+                               assignment: dict[str, str]) -> None:
+        """Persist the initial frozen split for (criterion_id, seed). Idempotent
+        per trace_id: a trace already assigned is left untouched (never moved)."""
+        self.extend_calibration_split(criterion_id, seed, assignment)
+
+    def extend_calibration_split(self, criterion_id: str, seed: int,
+                                 additions: dict[str, str]) -> None:
+        """Add NEW trace_id assignments without disturbing existing ones. A
+        trace_id already stored for (criterion_id, seed) is skipped — the frozen
+        held-out set never reshuffles (Hard Rule 15)."""
+        with Session(self.engine) as s:
+            existing = set(s.exec(select(CalibrationSplitRow.trace_id).where(
+                CalibrationSplitRow.tenant_id == self.tenant,
+                CalibrationSplitRow.criterion_id == criterion_id,
+                CalibrationSplitRow.seed == seed)).all())
+            now = _now()
+            for trace_id, side in additions.items():
+                if trace_id in existing:
+                    continue
+                s.add(CalibrationSplitRow(
+                    tenant_id=self.tenant, criterion_id=criterion_id, seed=seed,
+                    trace_id=trace_id, side=side, created_at=now))
+            s.commit()
 
     # -- agent-config promotion ledger (SPEC-2 Step 14) -----------------------
 

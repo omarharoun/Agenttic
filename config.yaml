@@ -39,6 +39,12 @@ learning:
   max_latency_multiplier: 2.0  # candidate p95 latency must be <= Nx baseline
   high_severity_domains: []    # suite-domain tokens whose promotions need
                                # `agenttic learn approve` (e.g. [refunds, payments])
+judge_learning:            # SPEC-3 Step 15.2 — learn a judge from human labels
+  min_labels: 20           # a criterion needs >= this many labels to be optimizable
+  holdout_frac: 0.4        # fraction of a criterion's labels held out as a benchmark
+  seed: 1234               # deterministic, FROZEN split seed (reused every round)
+  min_holdout_gain: 0.05   # (Step 15.3) min held-out agreement gain to promote a judge
+  max_overfit_gap: 0.15    # (Step 15.3) max train-minus-heldout gap tolerated
 scoring:
   max_parallel: 5            # cases scored concurrently (judge calls)
   calibration_threshold: 0.8

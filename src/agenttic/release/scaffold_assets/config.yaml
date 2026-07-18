@@ -13,6 +13,12 @@ harness:
   max_parallel: 5
   transport_retries: 2
   # resume (reuse successful persisted traces on re-run) is always on — not a toggle
+judge_learning:            # SPEC-3 Step 15.2 — learn a judge from human labels
+  min_labels: 20           # a criterion needs >= this many labels to be optimizable
+  holdout_frac: 0.4        # fraction of a criterion's labels held out as a benchmark
+  seed: 1234               # deterministic, FROZEN split seed (reused every round)
+  min_holdout_gain: 0.05   # (Step 15.3) min held-out agreement gain to promote a judge
+  max_overfit_gap: 0.15    # (Step 15.3) max train-minus-heldout gap tolerated
 scoring:
   calibration_threshold: 0.8
   advisor_max_tokens: 2048   # per-consult cap on advisor output (API minimum 1024)
