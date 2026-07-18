@@ -118,6 +118,38 @@ def ingest(trace: Trace, request: Request, rubric_id: str):
     return {"trace_id": trace.trace_id, "stored": True, "scored": scored}
 
 
+@router.get("/live/{agent_id}/windows")
+def live_windows(agent_id: str, request: Request, baseline_scorecard_id: str,
+                 window: int = 50):
+    """The raw rolling-window scores per criterion + the batch baseline mean —
+    the data the console drift strip-chart draws (SPEC-5 23.4). Reads the
+    registry directly (no LLM, no LiveMonitor), so the client re-derives the
+    drift decision through the parity-proven sim-core drift rule."""
+    state = request.state
+    try:
+        baseline = state.reg.get_scorecard(baseline_scorecard_id)
+    except NotFoundError:
+        raise HTTPException(404, f"scorecard {baseline_scorecard_id} not found")
+    base = baseline.per_criterion_means
+    live_cfg = (state.cfg.get("live") or {})
+    criteria = []
+    for cid in base:
+        scores = state.reg.live_scores(agent_id, cid, window)
+        if not scores:
+            continue
+        criteria.append({
+            "criterion_id": cid,
+            "baseline_mean": base[cid],
+            "window_scores": scores,   # newest-first, as the registry returns them
+        })
+    return {
+        "agent_id": agent_id,
+        "window": window,
+        "drift_threshold": live_cfg.get("drift_threshold", 0.15),
+        "criteria": criteria,
+    }
+
+
 @router.get("/live/{agent_id}/status")
 def live_status(agent_id: str, request: Request, rubric_id: str,
                 baseline_scorecard_id: str):

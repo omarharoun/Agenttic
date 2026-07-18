@@ -6,6 +6,7 @@ import {
 } from "../api";
 import { DataView, EmptyState, PageHeader, RawToggle, Skeleton, Uncertainty } from "../components/ui";
 import { PageData } from "../components/PageData";
+import { DriftMonitor } from "../components/DriftMonitor";
 import { IconTarget, IconCheck, IconWarning } from "../icons";
 
 /* SPEC-4 Step 20.2 — calibration status + the labeling workspace.
@@ -286,6 +287,18 @@ export function CalibrationPage() {
             </div>
           </>
         </PageData>
+
+        {/* SPEC-5 23.4 — live drift strip-chart per criterion, re-derived from
+            the raw rolling window through sim-core. */}
+        <section className="cal-drift" aria-label="Live drift" style={{ marginTop: 28 }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>Live drift</h2>
+          <p className="muted-sm" style={{ marginTop: 0 }}>
+            Rolling live means vs the batch baseline for the pilot support-triage
+            agent. A criterion drifts when its mean falls more than the threshold
+            below baseline — then a re-evaluation is requested.
+          </p>
+          <DriftMonitor agentId="support-triage-agent" baselineScorecardId="sc_base" />
+        </section>
       </div>
     </div>
   );
