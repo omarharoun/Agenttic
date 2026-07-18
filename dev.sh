@@ -19,9 +19,12 @@ BIN=./.venv/bin/agenttic
 server_pid=""
 
 start() {
-  "$BIN" ui &
+  # LAN=1 ./dev.sh  → bind 0.0.0.0 so other devices on the network can reach it.
+  local lan_flag=""
+  [ -n "${LAN:-}" ] && lan_flag="--lan"
+  "$BIN" ui $lan_flag &
   server_pid=$!
-  echo "· agenttic ui started (pid $server_pid)"
+  echo "· agenttic ui started (pid $server_pid)${lan_flag:+  [LAN — bound to 0.0.0.0]}"
 }
 
 stop() {

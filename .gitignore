@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .venv/
+# sqlite registries & their WAL/SHM sidecars — runtime data, incl. test/seed dbs
 ascore.db
 # disposable SQLite test artifacts (CLI/e2e runs drop these in the repo root).
 # They were tracked by accident, which made `git status` permanently dirty and
@@ -8,6 +9,12 @@ ascore.db
 *.db
 *.db-shm
 *.db-wal
+ascore.*.db
+ascore.*.db-shm
+ascore.*.db-wal
+# seeded/runtime review + calibration stores (config-configurable dirs)
+calibration/
+review/
 report.md
 # build artifacts (scripts/release/pypi.sh writes here)
 dist/
