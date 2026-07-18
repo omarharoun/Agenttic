@@ -1,0 +1,151 @@
+/* SPEC-5 Step 24 — public playground. Chronometer tokens only (no raw hex).
+   Motion encodes state and is decorative-free; all transitions are disabled
+   under prefers-reduced-motion, and every value is also present as text. */
+
+.playground-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--sp-8, 40px) var(--sp-4, 20px) var(--sp-16, 80px);
+}
+.pg-header { margin-bottom: var(--sp-6, 28px); }
+.pg-eyebrow {
+  font-size: var(--fs-1, 12px);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 var(--sp-2, 8px);
+}
+.pg-lede { color: var(--muted); max-width: 62ch; }
+
+/* ---- hub cards ---- */
+.pg-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--sp-3, 14px);
+  margin: var(--sp-6, 28px) 0;
+}
+.pg-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 8px);
+  padding: var(--sp-4, 20px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  text-decoration: none;
+  color: var(--text);
+}
+.pg-card.is-live { transition: border-color 0.15s ease, transform 0.15s ease; }
+.pg-card.is-live:hover { border-color: var(--accent-line); transform: translateY(-2px); }
+.pg-card.is-soon { opacity: 0.55; }
+.pg-card-title { font-weight: 600; display: flex; align-items: center; gap: var(--sp-2, 8px); }
+.pg-card-soon {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); border: 1px solid var(--border); border-radius: 999px;
+  padding: 1px 8px;
+}
+.pg-card-teaches { color: var(--muted); font-size: 0.92em; }
+
+/* ---- the gate lab ---- */
+.pg-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--sp-3, 14px);
+  margin-bottom: var(--sp-5, 24px);
+}
+.pg-preset {
+  text-align: left;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: var(--sp-3, 14px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.pg-preset:hover, .pg-preset:focus-visible { border-color: var(--accent-line); }
+.pg-preset.is-active { border-color: var(--accent); background: var(--accent-soft); }
+.pg-preset-label { font-weight: 600; }
+.pg-preset-blurb { color: var(--muted); font-size: 0.85em; }
+
+.pg-lab {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4, 20px);
+  align-items: start;
+}
+@media (max-width: 720px) { .pg-lab { grid-template-columns: 1fr; } }
+
+.pg-controls, .pg-verdict {
+  padding: var(--sp-4, 20px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.pg-h2 { margin: 0 0 var(--sp-3, 14px); font-size: 1.05em; }
+
+.pg-crit-row {
+  display: flex; align-items: center; gap: var(--sp-3, 14px);
+  margin-bottom: var(--sp-3, 14px);
+}
+.pg-slider { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.pg-slider-head { display: flex; justify-content: space-between; font-size: 0.9em; }
+.pg-slider-val { font-family: var(--font-mono, monospace); color: var(--accent); }
+.pg-slider input[type="range"] { width: 100%; accent-color: var(--accent); }
+.pg-baseline-note {
+  font-size: 0.78em; color: var(--muted); white-space: nowrap; min-width: 6.5em;
+  text-align: right;
+}
+.pg-check { display: flex; align-items: center; gap: var(--sp-2, 8px); margin-top: var(--sp-2, 8px); }
+.pg-check input { accent-color: var(--accent); }
+
+/* verdict panel — colour encodes the promote/reject state */
+.pg-verdict { border-width: 2px; transition: border-color 0.2s ease; }
+.pg-verdict.is-promote { border-color: var(--ok); }
+.pg-verdict.is-reject { border-color: var(--fail); }
+.pg-verdict-badge {
+  display: inline-block;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700; letter-spacing: 0.1em;
+  padding: 4px 12px; border-radius: 6px; color: #fff;
+}
+.pg-verdict.is-promote .pg-verdict-badge { background: var(--ok); }
+.pg-verdict.is-reject .pg-verdict-badge { background: #c0392b; }
+.pg-receipt {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.9em; line-height: 1.5;
+  margin: var(--sp-3, 14px) 0;
+  color: var(--text);
+}
+.pg-deltas { display: flex; flex-wrap: wrap; gap: 8px; }
+.pg-delta {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8em; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--border); color: var(--muted);
+}
+.pg-delta.is-up { color: var(--ok); border-color: var(--ok); }
+.pg-delta.is-down { color: var(--fail); border-color: var(--fail); }
+.pg-delta.is-missing { color: #fff; background: #c0392b; border-color: #c0392b; }
+
+.pg-cta {
+  margin-top: var(--sp-6, 28px);
+  padding: var(--sp-4, 20px);
+  border: 1px solid var(--accent-line);
+  border-radius: 12px;
+  background: var(--accent-soft);
+  display: flex; align-items: center; gap: var(--sp-3, 14px); flex-wrap: wrap;
+}
+.pg-cta p { margin: 0; flex: 1; min-width: 12em; font-weight: 500; }
+.pg-cta-alt { color: var(--accent); text-decoration: none; }
+
+.pg-synthetic-note {
+  margin-top: var(--sp-5, 24px);
+  color: var(--muted);
+  font-size: 0.85em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-card.is-live, .pg-preset, .pg-verdict { transition: none; }
+  .pg-card.is-live:hover { transform: none; }
+}

@@ -5,6 +5,8 @@ import { CertifiedDirectoryPage } from "./pages/CertifiedDirectoryPage";
 import { LandingPage } from "./pages/LandingPage";
 import { MethodologyPage } from "./pages/MethodologyPage";
 import { NotFoundPublicPage } from "./pages/NotFoundPublicPage";
+import { PlaygroundPage } from "./pages/PlaygroundPage";
+import { PlaygroundGatePage } from "./pages/PlaygroundGatePage";
 import { PricingPage } from "./pages/PricingPage";
 import { StatusPage } from "./pages/StatusPage";
 
@@ -52,6 +54,9 @@ export const routes: RouteRecord[] = [
   { path: "/pricing", element: <PricingPage />, entry: "src/pages/PricingPage.tsx" },
   // public service-status board — Agenttic's own uptime (prerendered shell, live-polled)
   { path: "/status", element: <StatusPage />, entry: "src/pages/StatusPage.tsx" },
+  // public playground — no-signup sim-core simulations (prerendered, SEO)
+  { path: "/playground", element: <PlaygroundPage />, entry: "src/pages/PlaygroundPage.tsx" },
+  { path: "/playground/gate", element: <PlaygroundGatePage />, entry: "src/pages/PlaygroundGatePage.tsx" },
   // public certification brand surfaces
   { path: "/certified", element: <CertifiedDirectoryPage />, entry: "src/pages/CertifiedDirectoryPage.tsx" },
   { path: "/certified/:id", element: suspense(<CertificatePage />) },

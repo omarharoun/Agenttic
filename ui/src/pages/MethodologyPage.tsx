@@ -231,6 +231,11 @@ export function MethodologyPage() {
               weak safety or reliability number.
             </li>
           </ul>
+          <p className="meth-callout-cta">
+            See the headline-can’t-hide-a-weak-spot rule for yourself:{" "}
+            <Link to="/playground/gate">drive the promotion gate</Link> on our
+            public playground — it runs the exact logic, on synthetic data.
+          </p>
           <p className="meth-callout-foot">
             None of this is a disclaimer that the grade doesn't count — it's the
             opposite. A grade here is a careful, repeatable signal you can rely on,
