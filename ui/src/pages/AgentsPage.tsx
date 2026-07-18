@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import { api, type AgentsView, type CatalogAgent, errMessage } from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 import { IconWarning, IconAgent } from "../icons";
 
@@ -21,8 +21,8 @@ const BLANK = {
  *  - discovery: every agent observed from runs, since the set is open-ended.
  *  Both are merged in /api/agents, so a row can be declared, discovered, or both. */
 export function AgentsPage() {
-  const [data, setData] = useState<any | null>(null);
-  const [catalog, setCatalog] = useState<any[]>([]);
+  const [data, setData] = useState<AgentsView | null>(null);
+  const [catalog, setCatalog] = useState<CatalogAgent[]>([]);
   const [form, setForm] = useState({ ...BLANK });
   const [error, setError] = useState<string | null>(null);
 
@@ -38,8 +38,8 @@ export function AgentsPage() {
       await api.registerAgent(form);
       setForm({ ...BLANK });
       reload();
-    } catch (e: any) {
-      setError(String(e.message ?? e));
+    } catch (e) {
+      setError(errMessage(e));
     }
   };
 
@@ -130,7 +130,7 @@ export function AgentsPage() {
                     <th>connection</th><th></th></tr>
               </thead>
               <tbody>
-                {catalog.map((a: any) => (
+                {catalog.map((a) => (
                   <tr key={a.agent_id}>
                     <td>{a.agent_id}
                       {a.description && (
@@ -169,7 +169,7 @@ export function AgentsPage() {
                   <th className="num">traces</th><th>suites</th><th>last seen</th></tr>
             </thead>
             <tbody>
-              {agents.map((a: any) => (
+              {agents.map((a) => (
                 <tr key={a.agent_id}>
                   <td>{a.agent_id}
                     {a.managed_agent_id && (
@@ -180,7 +180,7 @@ export function AgentsPage() {
                   </td>
                   <td>{a.declared ? a.variant : "—"}</td>
                   <td>
-                    {a.sources.map((s: string) => (
+                    {(a.sources ?? []).map((s: string) => (
                       <span key={s} style={{
                         color: SOURCE_COLOR[s] ?? "var(--muted)",
                         border: `1px solid ${SOURCE_COLOR[s] ?? "var(--border)"}`,
@@ -190,7 +190,7 @@ export function AgentsPage() {
                   </td>
                   <td className="num">{a.n_scorecards}</td>
                   <td className="num">{a.n_traces}</td>
-                  <td>{a.suites.join(", ") || "—"}</td>
+                  <td>{(a.suites ?? []).join(", ") || "—"}</td>
                   <td>{a.last_seen
                     ? new Date(a.last_seen).toLocaleString() : "—"}</td>
                 </tr>

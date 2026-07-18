@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import type { CatalogAgent, ExecutionResults, JsonObject, JsonValue } from "../api";
 import { useFlowStore } from "../store";
 import { ExecutionLog } from "./ExecutionLog";
 import { ResultsPanel } from "./ResultsPanel";
 import { SchemaForm } from "./SchemaForm";
 import { IconHand } from "../icons";
+
+/** The dynamic payload React Flow carries on each node in this app. */
+interface NodeData {
+  ntype: string;
+  label?: string;
+  config?: JsonObject;
+  retries?: number;
+  continue_on_error?: boolean;
+}
 
 const AGENT_FIELDS = ["agent_id", "variant", "model", "system_prompt", "url",
   "managed_agent_id", "environment_id", "cost_per_call_usd",
@@ -13,8 +23,8 @@ const AGENT_FIELDS = ["agent_id", "variant", "model", "system_prompt", "url",
 /** Dropdown of declared catalog agents. Picking one freezes its connection
  *  details into the node config (reproducible snapshot), then the form below
  *  stays fully editable for ad-hoc tweaks. */
-function CatalogPicker({ onPick }: { onPick: (a: any) => void }) {
-  const [agents, setAgents] = useState<any[]>([]);
+function CatalogPicker({ onPick }: { onPick: (a: CatalogAgent) => void }) {
+  const [agents, setAgents] = useState<CatalogAgent[]>([]);
   useEffect(() => {
     api.listCatalog().then((c) => setAgents(c.agents)).catch(() => setAgents([]));
   }, []);
@@ -37,15 +47,16 @@ function CatalogPicker({ onPick }: { onPick: (a: any) => void }) {
   );
 }
 
-export function ConfigPanel({ results }: { results?: any }) {
+export function ConfigPanel({ results }: { results?: ExecutionResults }) {
   const { selectedNodeId, nodes, catalog, updateConfig, exec, setGraph,
           markDirty } = useFlowStore();
   const node = nodes.find((n) => n.id === selectedNodeId);
-  const spec = node ? catalog[(node.data as any).ntype] : null;
+  const data = node ? (node.data as unknown as NodeData) : undefined;
+  const spec = data ? catalog[data.ntype] : null;
   const nodeState = node ? exec.nodeStates[node.id] : undefined;
   const hasResults = results && (results.cases?.length || results.scorecards?.length);
 
-  const setData = (nodeId: string, patch: Record<string, any>) => {
+  const setData = (nodeId: string, patch: Partial<NodeData>) => {
     const s = useFlowStore.getState();
     setGraph(s.nodes.map((n) => n.id === nodeId
       ? { ...n, data: { ...n.data, ...patch } } : n), s.edges);
@@ -74,7 +85,7 @@ export function ConfigPanel({ results }: { results?: any }) {
             configure it — results appear here when the run finishes.
           </p>
         )}
-        {node && spec && (
+        {node && data && spec && (
           <>
             <p style={{ color: "var(--muted)", marginTop: 0 }}>{spec.description}</p>
             {nodeState === "waiting" && (
@@ -85,31 +96,31 @@ export function ConfigPanel({ results }: { results?: any }) {
             )}
             <label>label</label>
             <input
-              value={(node.data as any).label ?? ""}
+              value={data.label ?? ""}
               onChange={(e) => setData(node.id, { label: e.target.value })}
             />
             {spec.type === "agent" && (
               <CatalogPicker onPick={(a) => updateConfig(node.id, {
-                ...((node.data as any).config ?? {}),
+                ...(data.config ?? {}),
                 ...Object.fromEntries(
-                  AGENT_FIELDS.map((k) => [k, a[k] ?? ""])),
+                  AGENT_FIELDS.map((k) => [k, (a[k] as JsonValue) ?? ""])),
               })} />
             )}
             <SchemaForm
               schema={spec.config_schema}
-              value={(node.data as any).config ?? {}}
+              value={data.config ?? {}}
               onChange={(config) => updateConfig(node.id, config)}
             />
             <div className="policy-box">
               <div className="policy-title">resilience</div>
               <label>retries on failure</label>
               <input type="number" min={0}
-                     value={(node.data as any).retries ?? 0}
+                     value={data.retries ?? 0}
                      onChange={(e) => setData(node.id,
                        { retries: Math.max(0, Number(e.target.value) || 0) })} />
               <label style={{ marginTop: 8 }}>
                 <input type="checkbox" style={{ width: "auto", marginRight: 6 }}
-                       checked={!!(node.data as any).continue_on_error}
+                       checked={!!data.continue_on_error}
                        onChange={(e) => setData(node.id,
                          { continue_on_error: e.target.checked })} />
                 continue run if this node fails

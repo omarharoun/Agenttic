@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, downloadBlob } from "../api";
+import { api, downloadBlob, errMessage } from "../api";
+import type {
+  AbComparison, AbCriterionDelta, AbFlippedCase, AbMcNemar, AbRunDetail,
+  AbRunSummary, JsonValue, SuiteSummary,
+} from "../api";
 import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
 import { Term } from "../components/Term";
 import { money, ms } from "../stats";
@@ -98,9 +102,9 @@ function VariantForm({ v, onChange, accent }: {
   );
 }
 
-function variantPayload(v: Variant): Record<string, any> {
+function variantPayload(v: Variant): Record<string, JsonValue> {
   // send only the fields the chosen kind needs (avoids stray validation)
-  const base: Record<string, any> = { label: v.label, variant: v.variant,
+  const base: Record<string, JsonValue> = { label: v.label, variant: v.variant,
     agent_id: v.agent_id };
   if (v.variant === "reference") { base.model = v.model; base.system_prompt = v.system_prompt; }
   if (v.variant === "blackbox") base.url = v.url;
@@ -111,13 +115,13 @@ function variantPayload(v: Variant): Record<string, any> {
   return base;
 }
 
-const pct = (x: number) => `${Math.round((x ?? 0) * 100)}%`;
-const signedPct = (x: number) => `${x >= 0 ? "+" : ""}${Math.round(x * 100)}pp`;
+const pct = (x?: number | null) => `${Math.round((x ?? 0) * 100)}%`;
+const signedPct = (x?: number | null) => `${(x ?? 0) >= 0 ? "+" : ""}${Math.round((x ?? 0) * 100)}pp`;
 
 /** The side-by-side comparison scorecard with the honest verdict. */
-function Comparison({ c, id }: { c: any; id: string }) {
+function Comparison({ c, id }: { c: AbComparison; id: string }) {
   const [report, setReport] = useState("");
-  const mc = c.mcnemar || {};
+  const mc: AbMcNemar = c.mcnemar ?? {};
   const la = c.label_a, lb = c.label_b;
   const sig = mc.significant;
   const isTie = c.winner === "tie";
@@ -159,8 +163,8 @@ function Comparison({ c, id }: { c: any; id: string }) {
                 <div className="cell-ci"><Uncertainty rate={c.success_rate_a} n={c.n_paired} /></div></td>
               <td className="num">{pct(c.success_rate_b)}
                 <div className="cell-ci"><Uncertainty rate={c.success_rate_b} n={c.n_paired} /></div></td>
-              <td className="num" style={{ color: c.success_delta > 0 ? "var(--ok)"
-                : c.success_delta < 0 ? "var(--fail)" : "var(--muted)" }}>
+              <td className="num" style={{ color: (c.success_delta ?? 0) > 0 ? "var(--ok)"
+                : (c.success_delta ?? 0) < 0 ? "var(--fail)" : "var(--muted)" }}>
                 {signedPct(c.success_delta)}</td>
             </tr>
             <tr><td>Mean cost / run</td>
@@ -193,11 +197,11 @@ function Comparison({ c, id }: { c: any; id: string }) {
             <thead><tr><th>criterion</th><th className="num">{la}</th><th className="num">{lb}</th><th className="num">Δ</th>
               <th>favors</th><th>significance</th><th className="num">n</th></tr></thead>
             <tbody>
-              {c.per_criterion.map((cc: any) => (
+              {c.per_criterion.map((cc: AbCriterionDelta) => (
                 <tr key={cc.criterion_id}>
                   <td className="mono">{cc.criterion_id}</td>
                   <td className="num">{pct(cc.mean_a)}</td><td className="num">{pct(cc.mean_b)}</td>
-                  <td className="num" style={{ color: cc.delta > 0 ? "var(--ok)" : cc.delta < 0
+                  <td className="num" style={{ color: (cc.delta ?? 0) > 0 ? "var(--ok)" : (cc.delta ?? 0) < 0
                     ? "var(--fail)" : "var(--muted)" }}>{signedPct(cc.delta)}</td>
                   <td>{cc.direction === "tie" ? "—" : cc.direction === "B" ? lb : la}</td>
                   <td style={{ color: cc.significant ? "var(--ok)" : "var(--muted)" }}>
@@ -216,7 +220,7 @@ function Comparison({ c, id }: { c: any; id: string }) {
           <table className="data">
             <thead><tr><th>test case</th><th>{la}</th><th>{lb}</th><th>direction</th></tr></thead>
             <tbody>
-              {c.flipped_cases.map((f: any) => (
+              {c.flipped_cases.map((f: AbFlippedCase) => (
                 <tr key={f.test_id}>
                   <td className="mono">{f.test_id}</td>
                   <td className={f.a_passed ? "ok" : "err"}>{f.a_passed ? "PASS" : "FAIL"}</td>
@@ -233,10 +237,10 @@ function Comparison({ c, id }: { c: any; id: string }) {
         </div>
       ) : <p style={{ color: "var(--muted)" }}>No cases changed outcome between the variants.</p>}
 
-      {c.excluded_test_ids?.length > 0 && (
+      {(c.excluded_test_ids?.length ?? 0) > 0 && (
         <p style={{ color: "var(--wait)", fontSize: 12, marginTop: 10 }}>
-          <IconWarning size={13} /> {c.excluded_test_ids.length} case(s) errored in a variant and were
-          excluded from the comparison: {c.excluded_test_ids.join(", ")}
+          <IconWarning size={13} /> {c.excluded_test_ids!.length} case(s) errored in a variant and were
+          excluded from the comparison: {c.excluded_test_ids!.join(", ")}
         </p>
       )}
 
@@ -268,13 +272,13 @@ function Comparison({ c, id }: { c: any; id: string }) {
 }
 
 export function ComparePage() {
-  const [suites, setSuites] = useState<any[] | null>(null);
+  const [suites, setSuites] = useState<SuiteSummary[] | null>(null);
   const [suiteId, setSuiteId] = useState("");
   const [a, setA] = useState(blankVariant("A"));
   const [b, setB] = useState(blankVariant("B"));
-  const [runs, setRuns] = useState<any[]>([]);
+  const [runs, setRuns] = useState<AbRunSummary[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
-  const [detail, setDetail] = useState<any | null>(null);
+  const [detail, setDetail] = useState<AbRunDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
 
@@ -310,8 +314,8 @@ export function ComparePage() {
       });
       setSelected(comparison_id);
       refreshRuns();
-    } catch (e: any) {
-      setError(String(e.message ?? e));
+    } catch (e) {
+      setError(errMessage(e));
     } finally {
       setStarting(false);
     }
@@ -359,7 +363,7 @@ export function ComparePage() {
           <div style={{ marginBottom: 20 }}>
             <h2>
               {detail.comparison_id}{" "}
-              <span style={{ color: STATUS_COLOR[detail.status] }}>
+              <span style={{ color: STATUS_COLOR[detail.status ?? ""] }}>
                 ({detail.status})</span>
             </h2>
             {detail.status === "running" && (
@@ -393,9 +397,9 @@ export function ComparePage() {
                   <tr key={r.comparison_id}>
                     <td className="mono">{r.comparison_id}</td>
                     <td>{r.suite_id}</td>
-                    <td style={{ color: STATUS_COLOR[r.status] }}>{r.status}</td>
+                    <td style={{ color: STATUS_COLOR[r.status ?? ""] }}>{r.status}</td>
                     <td style={{ maxWidth: 360, fontSize: 12 }}>{r.verdict ?? "—"}</td>
-                    <td>{new Date(r.created_at).toLocaleString()}</td>
+                    <td>{new Date(r.created_at ?? "").toLocaleString()}</td>
                     <td><button onClick={() => setSelected(r.comparison_id)}>view</button></td>
                   </tr>
                 ))}

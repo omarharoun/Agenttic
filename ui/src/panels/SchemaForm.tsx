@@ -1,4 +1,25 @@
 import { api } from "../api";
+import type { JsonObject, JsonValue, NodeTypeSpec } from "../api";
+
+/** The config-schema shape a node type advertises (JSON-Schema subset). */
+type ConfigSchema = NodeTypeSpec["config_schema"];
+
+/** Narrow a dynamic prop's `type` keyword (a `JsonValue`) to a string. */
+function propType(p: JsonObject): string | undefined {
+  return typeof p.type === "string" ? p.type : undefined;
+}
+
+/** Narrow a prop's `anyOf` (a `JsonValue`) to a list of sub-schemas. */
+function propAnyOf(p: JsonObject): JsonObject[] {
+  return Array.isArray(p.anyOf)
+    ? p.anyOf.filter((a): a is JsonObject => typeof a === "object" && a !== null && !Array.isArray(a))
+    : [];
+}
+
+/** Narrow a prop's `enum` (a `JsonValue`) to a list of option strings. */
+function propEnum(p: JsonObject): string[] | undefined {
+  return Array.isArray(p.enum) ? p.enum.map((o) => String(o)) : undefined;
+}
 
 /** Minimal JSON-Schema-driven form for node configs (flat scalars/enums —
  * exactly what the pydantic config models emit). */
@@ -7,12 +28,12 @@ export function SchemaForm({
   value,
   onChange,
 }: {
-  schema: { properties?: Record<string, any>; required?: string[] };
-  value: Record<string, any>;
-  onChange: (v: Record<string, any>) => void;
+  schema: ConfigSchema;
+  value: JsonObject;
+  onChange: (v: JsonObject) => void;
 }) {
   const props = schema.properties ?? {};
-  const set = (key: string, v: any) => onChange({ ...value, [key]: v });
+  const set = (key: string, v: JsonValue) => onChange({ ...value, [key]: v });
 
   return (
     <>
@@ -24,11 +45,13 @@ export function SchemaForm({
 
         if (type === "enum") {
           const options: string[] =
-            p.enum ?? p.anyOf?.flatMap((a: any) => a.enum ?? a.const ?? []) ?? [];
+            propEnum(p) ??
+            propAnyOf(p).flatMap((a) => propEnum(a) ?? (a.const != null ? [String(a.const)] : [])) ??
+            [];
           return (
             <div key={key}>
               <label>{label}</label>
-              <select value={current} onChange={(e) => set(key, e.target.value)}>
+              <select value={String(current)} onChange={(e) => set(key, e.target.value)}>
                 {options.map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
@@ -50,7 +73,7 @@ export function SchemaForm({
           return (
             <div key={key}>
               <label>{label}</label>
-              <input type="number" value={current === null ? "" : current}
+              <input type="number" value={current === null ? "" : String(current)}
                      onChange={(e) => set(key, e.target.value === ""
                        ? null : Number(e.target.value))} />
             </div>
@@ -60,7 +83,7 @@ export function SchemaForm({
           return (
             <div key={key}>
               <label>{label}</label>
-              <textarea value={current}
+              <textarea value={String(current)}
                         onChange={(e) => set(key, e.target.value)} />
             </div>
           );
@@ -69,7 +92,7 @@ export function SchemaForm({
           return (
             <div key={key}>
               <label>{label} <small>(or upload)</small></label>
-              <input value={current} onChange={(e) => set(key, e.target.value)} />
+              <input value={String(current)} onChange={(e) => set(key, e.target.value)} />
               <input type="file" style={{ marginTop: 4 }}
                      onChange={async (e) => {
                        const f = e.target.files?.[0];
@@ -81,7 +104,7 @@ export function SchemaForm({
         return (
           <div key={key}>
             <label>{label}</label>
-            <input value={current} onChange={(e) => set(key, e.target.value)} />
+            <input value={String(current)} onChange={(e) => set(key, e.target.value)} />
           </div>
         );
       })}
@@ -89,10 +112,11 @@ export function SchemaForm({
   );
 }
 
-function fieldType(p: any): string {
-  if (p.enum || p.anyOf?.some((a: any) => a.enum || a.const !== undefined))
-    return p.anyOf?.every((a: any) => a.type === "boolean") ? "boolean" : "enum";
-  const t = p.type ?? p.anyOf?.find((a: any) => a.type !== "null")?.type;
+function fieldType(p: JsonObject): string {
+  const anyOf = propAnyOf(p);
+  if (propEnum(p) || anyOf.some((a) => propEnum(a) || a.const !== undefined))
+    return anyOf.length > 0 && anyOf.every((a) => propType(a) === "boolean") ? "boolean" : "enum";
+  const t = propType(p) ?? anyOf.find((a) => propType(a) !== "null" && propType(a) !== undefined)?.type;
   if (t === "boolean") return "boolean";
   if (t === "integer" || t === "number") return "number";
   return "string";

@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { api } from "../api";
+import { api, errMessage } from "../api";
+import type {
+  HardeningDetail, HardeningDeltaCase, HardeningDetailCase,
+  HardeningHistoryEntry, HardeningCandidate, HardeningLiveCandidate,
+  HardeningSuiteSummary,
+} from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 import { Term } from "../components/Term";
 import { IconCheck, IconWarning, IconLive, IconShield, IconArrowRight, IconArrowLeft } from "../icons";
@@ -55,8 +60,8 @@ function RerunForm({ suiteId, onStarted }: {
     try {
       await api.rerunRegression({ regression_suite_id: suiteId, ...cfg });
       onStarted();
-    } catch (e: any) {
-      setErr(String(e.message ?? e));
+    } catch (e) {
+      setErr(errMessage(e));
     } finally { setBusy(false); }
   };
 
@@ -117,7 +122,7 @@ function RerunForm({ suiteId, onStarted }: {
 /** Detail for one regression suite: its cases (+ why each was caught), run
  * history, the latest per-case delta, and the re-run control. */
 function SuiteDetail({ suiteId, onBack }: { suiteId: string; onBack: () => void }) {
-  const [d, setD] = useState<any | null | undefined>(undefined);
+  const [d, setD] = useState<HardeningDetail | null | undefined>(undefined);
   const [pollFrom, setPollFrom] = useState<number | null>(null);
 
   const load = () => api.hardeningDetail(suiteId).then(setD).catch(() => setD(null));
@@ -190,14 +195,14 @@ function SuiteDetail({ suiteId, onBack }: { suiteId: string; onBack: () => void 
             <table className="data">
               <thead><tr><th>test case</th><th>before</th><th>after</th><th>status</th></tr></thead>
               <tbody>
-                {delta.per_case.map((c: any) => (
+                {delta.per_case.map((c: HardeningDeltaCase) => (
                   <tr key={c.test_id}>
                     <td className="mono">{c.test_id}</td>
                     <td className={c.prev_passed == null ? "" : c.prev_passed ? "ok" : "err"}>
                       {c.prev_passed == null ? "—" : c.prev_passed ? "PASS" : "FAIL"}</td>
                     <td className={c.now_passed == null ? "" : c.now_passed ? "ok" : "err"}>
                       {c.now_passed == null ? "—" : c.now_passed ? "PASS" : "FAIL"}</td>
-                    <td style={{ color: STATUS_COLOR[c.status] }}>{c.status}</td>
+                    <td style={{ color: STATUS_COLOR[c.status ?? ""] }}>{c.status}</td>
                   </tr>
                 ))}
               </tbody>
@@ -213,7 +218,7 @@ function SuiteDetail({ suiteId, onBack }: { suiteId: string; onBack: () => void 
         <table className="data">
           <thead><tr><th>test case</th><th>task</th><th>why caught</th></tr></thead>
           <tbody>
-            {d.cases.map((c: any) => (
+            {d.cases.map((c: HardeningDetailCase) => (
               <tr key={c.test_id}>
                 <td className="mono">{c.test_id}</td>
                 <td style={{ maxWidth: 320, fontSize: 12 }}>{c.task_description}</td>
@@ -234,14 +239,14 @@ function SuiteDetail({ suiteId, onBack }: { suiteId: string; onBack: () => void 
             <thead><tr><th>scorecard</th><th>v</th><th className="num">success</th>
               <th className="num">cases</th><th className="num">errored</th><th>when</th></tr></thead>
             <tbody>
-              {d.history.slice().reverse().map((h: any) => (
+              {d.history.slice().reverse().map((h: HardeningHistoryEntry) => (
                 <tr key={h.scorecard_id}>
                   <td className="mono">{h.scorecard_id}</td>
                   <td>{h.suite_version}</td>
                   <td className="num">{pct(h.task_success_rate)}</td>
                   <td className="num">{h.n_cases}</td>
                   <td className="num">{h.errored}</td>
-                  <td>{new Date(h.created_at).toLocaleString()}</td>
+                  <td>{new Date(h.created_at ?? "").toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
@@ -258,7 +263,7 @@ function SuiteDetail({ suiteId, onBack }: { suiteId: string; onBack: () => void 
  * so each promoted case wants a human's eyes (verify input + attach a rubric).
  * Deliberately distinct from the scorecard candidates below. */
 function LiveCatches({ onPromoted }: { onPromoted: (note: { ok: boolean; text: string }) => void }) {
-  const [catches, setCatches] = useState<any[] | null>(null);
+  const [catches, setCatches] = useState<HardeningLiveCandidate[] | null>(null);
   const [rubric, setRubric] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -266,19 +271,19 @@ function LiveCatches({ onPromoted }: { onPromoted: (note: { ok: boolean; text: s
     .then((r) => setCatches(r.candidates)).catch(() => setCatches([]));
   useEffect(() => { load(); }, []);
 
-  const promote = async (c: any) => {
-    setBusy(c.trace_id);
+  const promote = async (c: HardeningLiveCandidate) => {
+    setBusy(c.trace_id ?? null);
     try {
       const res = await api.promoteLiveFailures({
-        agent_id: c.agent_id, trace_ids: [c.trace_id], rubric_id: rubric,
+        agent_id: c.agent_id ?? "", trace_ids: [c.trace_id ?? ""], rubric_id: rubric,
       });
       const added = res.added?.length ?? 0;
       onPromoted({ ok: true, text: added
         ? `Promoted live catch into ${res.regression_suite_id} (v${res.version}) — needs review before re-run.`
         : `Already promoted — no new live case added.` });
       load();
-    } catch (e: any) {
-      onPromoted({ ok: false, text: String(e.message ?? e) });
+    } catch (e) {
+      onPromoted({ ok: false, text: errMessage(e) });
     } finally { setBusy(null); }
   };
 
@@ -345,8 +350,8 @@ export function HardeningPage() {
   const selected = params.get("suite");
   const promoteFrom = params.get("promote");  // deep-link: a scorecard to promote
 
-  const [candidates, setCandidates] = useState<any[] | null>(null);
-  const [suites, setSuites] = useState<any[] | null>(null);
+  const [candidates, setCandidates] = useState<HardeningCandidate[] | null>(null);
+  const [suites, setSuites] = useState<HardeningSuiteSummary[] | null>(null);
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -365,8 +370,8 @@ export function HardeningPage() {
         ? `Promoted ${added} case(s) into ${res.regression_suite_id} (v${res.version}).`
         : `No new cases to promote — already hardened (${res.skipped_duplicates?.length ?? 0} duplicate(s)).` });
       refresh();
-    } catch (e: any) {
-      setNote({ ok: false, text: String(e.message ?? e) });
+    } catch (e) {
+      setNote({ ok: false, text: errMessage(e) });
     } finally { setBusy(null); }
   };
 
@@ -476,11 +481,11 @@ export function HardeningPage() {
                     <td className="num" style={{ color: "var(--fail)" }}>{c.n_failing}</td>
                     <td className="num" style={{ color: c.n_errored ? "var(--wait)" : "inherit" }}>
                       {c.n_errored}</td>
-                    <td style={{ fontSize: 12 }}>{new Date(c.created_at).toLocaleString()}</td>
+                    <td style={{ fontSize: 12 }}>{new Date(c.created_at ?? "").toLocaleString()}</td>
                     <td>
                       <button className="primary" disabled={busy === c.scorecard_id}
                               aria-label={`Promote failing cases from ${c.scorecard_id}`}
-                              onClick={() => promote(c.scorecard_id)}>
+                              onClick={() => promote(c.scorecard_id ?? "")}>
                         {busy === c.scorecard_id ? "Promoting…" : "Promote failures"}
                       </button>
                     </td>

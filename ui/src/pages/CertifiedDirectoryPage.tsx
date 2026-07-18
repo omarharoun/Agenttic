@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { SiteNav } from "../components/SiteNav";
-import { Button, Eyebrow, SectionHeading } from "../components/ds";
-import { api } from "../api";
+import { api, type JsonObject } from "../api";
 import { certIdOf, type DirectoryEntry, gradeColor, indexFromCert, statusView } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
 import { EmptyState, Skeleton } from "../components/ui";
@@ -23,19 +21,22 @@ import { IconArrowRight, StatusIcon } from "../icons";
    whole point of the page.
    ========================================================================== */
 
-function normalize(raw: any): DirectoryEntry[] {
-  const list = Array.isArray(raw) ? raw
+function normalize(raw: DirectoryEntry[] | JsonObject): DirectoryEntry[] {
+  const list: unknown[] = Array.isArray(raw) ? raw
     : Array.isArray(raw?.certifications) ? raw.certifications
     : Array.isArray(raw?.agents) ? raw.agents
     : [];
-  return list.map((c: any) => ({
-    id: certIdOf(c),
-    agent_name: c.agent_name ?? c.agent_id ?? "Unnamed agent",
-    grade: c.grade ?? "—",
-    index: indexFromCert(c),
-    issued_at: c.issued_at ?? "",
-    status: c.status ?? "valid",
-  })).filter((c: DirectoryEntry) => c.id);
+  return list.map((entry): DirectoryEntry => {
+    const c = (entry ?? {}) as Record<string, unknown>;
+    return {
+      id: certIdOf(c),
+      agent_name: (c.agent_name ?? c.agent_id ?? "Unnamed agent") as string,
+      grade: (c.grade ?? "—") as string,
+      index: indexFromCert(c),
+      issued_at: (c.issued_at ?? "") as string,
+      status: (c.status ?? "valid") as DirectoryEntry["status"],
+    };
+  }).filter((c) => c.id);
 }
 
 /** How an agent reaches this page — the same three stages the program runs. */

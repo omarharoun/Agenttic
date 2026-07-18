@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import type {
+  Execution, ScorecardSummary, StandardLeaderboard, StandardLeaderboardRow,
+} from "../api";
 import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
 import { Onboarding } from "../components/Onboarding";
 import { money } from "../stats";
@@ -48,17 +51,17 @@ function Stat({ label, value, hint }: { label: string; value: React.ReactNode; h
 }
 
 export function DashboardPage() {
-  const [board, setBoard] = useState<any | null | undefined>(undefined);
-  const [results, setResults] = useState<any[] | null>(null);
-  const [execs, setExecs] = useState<any[] | null>(null);
+  const [board, setBoard] = useState<StandardLeaderboard | null | undefined>(undefined);
+  const [results, setResults] = useState<ScorecardSummary[] | null>(null);
+  const [execs, setExecs] = useState<Execution[] | null>(null);
 
   useEffect(() => {
     api.standardLeaderboard().then(setBoard).catch(() => setBoard(null));
-    api.listScorecards().then((r) => setResults(r as any[])).catch(() => setResults([]));
+    api.listScorecards().then((r) => setResults(r)).catch(() => setResults([]));
     api.listExecutions().then((r) => setExecs(r)).catch(() => setExecs([]));
   }, []);
 
-  const agents: any[] = board?.agents ?? [];
+  const agents: StandardLeaderboardRow[] = board?.agents ?? [];
   const topAgents = agents.slice(0, 5);
   const recent = (results ?? []).slice(0, 6);
   const running = (execs ?? []).filter(

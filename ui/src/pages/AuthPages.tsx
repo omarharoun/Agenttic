@@ -60,11 +60,13 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
       const r = await (signup ? api.signup(email, password) : api.login(email, password));
       if (r?.needs_verification) { setPending(email); return; }
       nav(next, { replace: true });
-    } catch (e: any) {
+    } catch (e) {
       // login of an unverified account → offer the resend flow
-      const detail = e?.detail ?? e?.message ?? e;
-      if (typeof detail === "object" && detail?.needs_verification) {
-        setPending(detail.email || email); return;
+      const err = e as { detail?: unknown; message?: unknown } | null | undefined;
+      const detail = err?.detail ?? err?.message ?? e;
+      if (detail && typeof detail === "object" && "needs_verification" in detail && detail.needs_verification) {
+        const d = detail as { email?: string };
+        setPending(d.email || email); return;
       }
       const txt = (typeof detail === "string" ? detail : JSON.stringify(detail));
       if (txt.includes("not verified")) { setPending(email); return; }
@@ -124,9 +126,10 @@ export function VerifyPage() {
     if (!token) { setState("error"); setMsg("Missing verification token."); return; }
     api.verifyEmail(token)
       .then(() => { setState("ok"); setTimeout(() => nav("/app", { replace: true }), 1200); })
-      .catch((e: any) => {
+      .catch((e) => {
         setState("error");
-        const d = e?.detail ?? e?.message ?? e;
+        const err = e as { detail?: unknown; message?: unknown } | null | undefined;
+        const d = err?.detail ?? err?.message ?? e;
         setMsg(typeof d === "string" ? d.replace(/^\d+\s*—?\s*/, "") : "verification failed");
       });
   }, [token, nav]);

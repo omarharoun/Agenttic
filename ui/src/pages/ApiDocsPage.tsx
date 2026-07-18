@@ -12,8 +12,20 @@ const GROUP_ORDER = ["auth", "workflows", "executions", "resources", "cost",
 
 interface Ep { method: string; path: string; summary: string; group: string; }
 
+/** The slice of the OpenAPI document this page reads: a path→method→operation
+ *  map, where each operation carries an optional summary/description + tags. */
+interface OpenApiOperation {
+  summary?: string;
+  description?: string;
+  tags?: string[];
+}
+type OpenApiPathItem = Record<string, OpenApiOperation>;
+interface OpenApiSpec {
+  paths?: Record<string, OpenApiPathItem>;
+}
+
 export function ApiDocsPage() {
-  const [spec, setSpec] = useState<any | null>(null);
+  const [spec, setSpec] = useState<OpenApiSpec | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const origin = typeof window !== "undefined" ? window.location.origin : "https://agenttic.io";
 
@@ -25,8 +37,8 @@ export function ApiDocsPage() {
   const groups = useMemo(() => {
     if (!spec?.paths) return {};
     const out: Record<string, Ep[]> = {};
-    for (const [path, methods] of Object.entries<any>(spec.paths)) {
-      for (const [method, op] of Object.entries<any>(methods)) {
+    for (const [path, methods] of Object.entries(spec.paths)) {
+      for (const [method, op] of Object.entries(methods)) {
         if (!["get", "post", "put", "delete", "patch"].includes(method)) continue;
         const group = (op.tags && op.tags[0]) || "other";
         (out[group] ??= []).push({

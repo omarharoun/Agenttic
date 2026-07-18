@@ -1,207 +1,52 @@
-import type { GamingReport } from "./components/GamingCard";
-export interface NodeTypeSpec {
-  type: string;
-  title: string;
-  category: string;
-  description: string;
-  inputs: Record<string, string>;
-  outputs: Record<string, string>;
-  config_schema: {
-    properties?: Record<string, any>;
-    required?: string[];
-  };
-}
-
-export interface WorkflowNode {
-  node_id: string;
-  type: string;
-  label: string;
-  position: { x: number; y: number };
-  config: Record<string, any>;
-  retries?: number;
-  continue_on_error?: boolean;
-}
-
-export interface WorkflowEdge {
-  edge_id: string;
-  source: string;
-  source_port: string;
-  target: string;
-  target_port: string;
-}
-
-export interface WorkflowDoc {
-  workflow_id: string;
-  name: string;
-  nodes: WorkflowNode[];
-  edges: WorkflowEdge[];
-}
-
-/** A safety dimension as the scan reports it (plain-language). */
-export interface ScanCheck {
-  criterion_id: string;
-  label: string;
-  status: "pending" | "pass" | "warn" | "fail";
-  passed: boolean | null;
-  detail: string;
-  percent?: number;
-  critical: boolean;
-}
-
-export interface ScanResult {
-  scorecard_id: string;
-  agent_id: string;
-  grade: string;
-  composite_score: number;
-  grade_capped: boolean;
-  cap_reason: string;
-  dimensions: ScanCheck[];
-  missing_required: string[];
-  n_cases: number;
-  errored: number;
-  cost_usd: number;
-}
-
-/** A live scan job (GET /api/scan/{id}). */
-export interface ScanJob {
-  scan_id: string;
-  target: string;
-  agent_name: string;
-  status: "running" | "done" | "error";
-  phase: string;
-  progress: number;
-  n_cases: number;
-  cases_done: number;
-  checks: ScanCheck[];
-  result: ScanResult | null;
-  certificate: any | null;
-  cert_note: string | null;
-  error: string | null;
-}
-
-export interface ScanPreview {
-  dimensions: { criterion_id: string; label: string; critical: boolean }[];
-  endpoint: { needs_key: boolean; note: string };
-  demo: { needs_key: boolean; key_set: boolean; note: string };
-}
-
-/** One per-probe finding in the Safety Scan Report (…/findings). */
-export interface ScanFinding {
-  test_id: string;
-  criterion_id: string | null;
-  category: string;
-  description: string;
-  probe_input: string;
-  injected_content: string;
-  agent_output: string;
-  tool_calls: { name: string; input: string }[];
-  passed: boolean | null;
-  verdict: "passed" | "refused" | "gap" | "error";
-  detail: string;
-  tags: string[];
-  source: string;
-  scoring: string;
-}
-
-/** The per-probe findings document behind a completed scan. */
-export interface ScanFindingsDoc {
-  scan_id: string;
-  agent_name: string;
-  target: string;
-  status: string;
-  available: boolean;
-  note?: string;
-  scorecard_id?: string;
-  suite_id?: string;
-  agent_id?: string;
-  agent_config_hash?: string | null;
-  visibility?: string;
-  n_probes?: number;
-  n_gaps?: number;
-  n_passed?: number;
-  n_errored?: number;
-  findings: ScanFinding[];
-}
-
-/** The saved "Connect your agent" config (masked — never carries the secret). */
-export interface ConnectionStatus {
-  connected: boolean;
-  agent_name?: string;
-  endpoint_url?: string;
-  preset?: "openai" | "generic" | "custom";
-  request_field?: string;
-  response_path?: string;
-  model?: string;
-  auth_header_name?: string;
-  auth_set?: boolean;
-  auth_masked?: string;
-  consent?: boolean;
-  consent_at?: string | null;
-  updated_at?: string | null;
-}
-
-/** What the user enters to configure / test / save a connection. */
-export interface ConnectionInput {
-  endpoint_url: string;
-  agent_name?: string;
-  preset?: "openai" | "generic" | "custom";
-  request_field?: string;
-  response_path?: string;
-  model?: string;
-  auth_header_name?: string;
-  auth_header_value?: string;
-  consent?: boolean;
-}
-
-export interface ConnectionTestResult {
-  ok: boolean;
-  reply: string;
-  error: string | null;
-  mapping: { preset: string; request_field: string; response_path: string; model: string };
-}
-
-/** One ranked issue in an execution's Issues report (GET /executions/{id}/issues). */
-export interface Issue {
-  id: string;
-  title: string;
-  criterion_id: string | null;
-  category: string;
-  category_label: string;
-  severity: "critical" | "high" | "medium" | "low";
-  impact_rank: number;
-  why: string;
-  affected_n: number;
-  n_measured: number;
-  affected_share: number | null;
-  evidence: {
-    counts: Record<string, number>;
-    cases: {
-      test_id?: string; score?: number; scorer?: string; calibrated?: boolean;
-      rationale?: string | null; prediction?: string; expected?: string;
-    }[];
-    criteria?: { criterion_id: string; description?: string; provisional: number }[];
-    truncated: number;
-  };
-  suggested_fix: { capability: string; label: string; route: string; blurb: string };
-  status: string;
-}
-
-export interface IssuesReport {
-  status: string;
-  issues: Issue[];
-  summary: {
-    total_issues: number;
-    by_severity: Record<"critical" | "high" | "medium" | "low", number>;
-    n_scored: number;
-    n_passed: number;
-    n_errored: number;
-    pass_rate: number | null;
-    pass_wilson_low: number | null;
-    pass_wilson_high: number | null;
-    headline: string;
-    clean: boolean;
-  };
-}
+/* SPEC-4 Step 17.2 — every API response is typed. The response-shape types
+ * live in ./api/types.ts (mirrored field-for-field from the server's Pydantic
+ * schemas). We re-export them here so existing `import { … } from "../api"`
+ * call sites keep working unchanged. */
+export * from "./api/types";
+import type {
+  // core schemas
+  Scorecard, Trace, TestSuite, Rubric,
+  // auth / settings
+  Me, AuthResult, AnthropicKeyStatus, KeyTestResult, TokenList, CreatedToken,
+  // workflows / executions
+  NodeTypeSpec, WorkflowDoc, WorkflowSummary, WorkflowLoad, WorkflowSaveResult,
+  StartExecutionResult, Execution, ExecutionResults, IssuesReport,
+  ApproveExecutionResult, CancelExecutionResult, CostEstimate,
+  // suites / agents / scorecards
+  SuiteSummary, AgentsView, CatalogList, CatalogAgent, ScorecardSummary,
+  // leaderboard / standard
+  Leaderboard, StandardMetrics, StandardLeaderboard, StandardDatasets,
+  // scan
+  ScanPreview, StartScanResult, ScanJob, ScanFindingsDoc, PublicDemoPreview,
+  // connect
+  ConnectionStatus, ConnectionInput, ConnectionTestResult,
+  // copilot / assistant
+  CopilotStatus, AssistantSession,
+  // certifications
+  CertificationList, CertificationRecord, AssistantCertification,
+  // A/B
+  StartAbResult, AbRunSummary, AbComparison, AbRunDetail,
+  // hardening
+  HardeningCandidates, HardeningLiveCandidates, HardeningSuites, HardeningDetail,
+  HardeningSuiteRef,
+  // optimize
+  StartOptimizeResult, OptimizeRunList, OptimizeRun,
+  // camp
+  CampTasks, CampRunList, CampRun,
+  // billing / status
+  PricingCatalog, BillingOverview, LedgerEntry, Invoice, BillingProviderConfig,
+  CheckoutResult, ServiceStatus,
+  // uploads
+  UploadResult, ExtractResult,
+  // copilot streaming
+  CopilotHandlers, CopilotErrorInfo,
+  // dynamic values
+  JsonObject, JsonValue,
+} from "./api/types";
+// The public certification + directory render shapes live in ./cert (pure,
+// unit-testable, no cycle back to api.ts) — reuse them so the console has ONE
+// authoritative Certification type instead of a divergent copy.
+import type { Certification, DirectoryEntry } from "./cert";
 
 const TOKEN_KEY = "agenttic_token";
 
@@ -250,6 +95,21 @@ export function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+/** Narrow an unknown caught value to a human message — the typed replacement
+ *  for the old `catch (e: any) { String(e?.message ?? e) }` idiom. Handles
+ *  `Error`, the structured `{message}`/`{detail}` envelopes the server uses,
+ *  and bare strings. */
+export function errMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "string") return e;
+  if (e && typeof e === "object") {
+    const o = e as Record<string, unknown>;
+    const m = o.message ?? o.detail ?? o.error;
+    if (typeof m === "string") return m;
+  }
+  return String(e);
+}
+
 /** Append the token to an SSE URL (EventSource has no header API). */
 export function sseUrl(path: string): string {
   const t = auth.get();
@@ -284,7 +144,9 @@ export class ApiError extends Error {
 async function json<T>(res: Response): Promise<T> {
   const ctype = res.headers.get("content-type") || "";
   const body = await res.text().catch(() => "");
-  let data: any = undefined;
+  // The parsed body is genuinely dynamic; keep it as a record of unknowns so we
+  // can probe `.detail`/`.error` without an `any`.
+  let data: Record<string, unknown> | undefined = undefined;
   // Parse when it's declared JSON, or looks like JSON — so a mislabeled JSON
   // body still works, while an HTML shell (`<!DOCTYPE …`) never does.
   if (body && (ctype.includes("application/json") || /^\s*[[{]/.test(body))) {
@@ -315,205 +177,6 @@ async function json<T>(res: Response): Promise<T> {
   return data as T;
 }
 
-export interface Me { role: string; tenant: string; email: string | null; auth_method: string; }
-
-// --- billing ---------------------------------------------------------------
-export interface BillingPlan {
-  id: string;
-  name: string;
-  price_cents: number;
-  interval: string;
-  included_credits: number;
-  features?: string[];
-  highlight?: boolean;
-}
-export interface BillingTopup {
-  id: string;
-  name: string;
-  price_cents: number;
-  credits: number;
-}
-export interface PricingCatalog {
-  currency: string;
-  free_trial_credits: number;
-  credit_cent_value: number;
-  plans: BillingPlan[];
-  topups: BillingTopup[];
-  stripe_publishable_key?: string;   // NOT secret — safe client-side
-}
-export interface BillingOverview {
-  billing_enabled: boolean;
-  currency: string;
-  credit_cent_value: number;
-  balance_credits: number;
-  balance_cents: number;
-  balance_display: string;
-  plan: { id: string; name: string; price_cents: number; interval: string; included_credits: number };
-  status: string;
-  provider: string;
-  current_period_end: string | null;
-  usage_by_reason: Record<string, number>;
-}
-export interface LedgerEntry {
-  entry_id: string;
-  kind: "grant" | "debit";
-  credits: number;
-  reason: string;
-  model: string;
-  meta: Record<string, any>;
-  created_at: string;
-}
-export interface Invoice {
-  invoice_id: string;
-  number: string;
-  provider: string;
-  status: string;
-  currency: string;
-  subtotal_cents: number;
-  tax_cents: number;
-  total_cents: number;
-  credits_granted: number;
-  line_items: { description: string; quantity: number; unit_cents: number; amount_cents: number }[];
-  description: string;
-  issued_at: string;
-}
-export interface BillingProviderConfig {
-  stripe: { configured: boolean; test_mode: boolean; publishable_key?: string };
-  paypal: { configured: boolean; sandbox: boolean };
-}
-
-/** Live service-status rollup (Agenttic's OWN uptime — GET /api/status). */
-export type HealthState = "operational" | "degraded" | "down" | "unknown";
-export interface ComponentHealth {
-  name: string;
-  status: HealthState;
-  latency_ms: number | null;
-  detail: string;
-  last_checked: string;
-}
-export interface ServiceStatus {
-  status: HealthState;
-  version: string | null;
-  build: string | null;
-  started_at: string;
-  uptime_seconds: number;
-  checked_at: string;
-  components: ComponentHealth[];
-}
-
-/* --- stored scenario runs (GET /api/scenario-runs) ------------------------
- *
- * One realized scenario driven against one agent through the enforcement
- * gateway, in a world that can be made to fail on cue. The types below mirror
- * `registry/sqlite_store._scenario_run_from_payload` exactly, INCLUDING the
- * nullables — every one of them is a distinct claim and none may be normalised
- * away on the way in:
- *
- *   faults.recorded === false  → the four lists are null: no report was stored,
- *                                which is not "nothing was staged".
- *   coverage.measured === false→ bins is null: nobody measured, which is not
- *                                "measured and credited nothing" (bins: []).
- *   derived.n_user_turns null  → the trace could not be read. Not zero.
- */
-export interface ScenarioFault {
-  tool: string;
-  call_index: number;
-  kind: string;                 // timeout|error_5xx|rate_limited|stale_data|malformed_response
-  once: boolean;
-  truncate_pct?: number;        // malformed_response only
-  step?: number;                // once it is an event (fired or skipped)
-  observable?: boolean;         // fired only
-  reason?: string;              // skipped only — why it could not happen
-}
-export interface ScenarioFaultCounts {
-  planned: number; fired: number; skipped: number; never_reached: number;
-}
-/** A recorded fault report, or the ABSENCE of one. The four lists are four
- *  different facts; only `fired` is a thing that happened to the run. */
-export interface ScenarioFaults {
-  recorded: boolean;
-  source: string | null;        // scenario_plan|requested_tool_condition|explicit|none
-  planned: ScenarioFault[] | null;
-  fired: ScenarioFault[] | null;
-  skipped: ScenarioFault[] | null;
-  never_reached: ScenarioFault[] | null;
-  counts: ScenarioFaultCounts | null;
-  /** present when a stored report could not be reconstructed on read */
-  problem?: string;
-}
-/** One transcript line. `kind`/`discloses`/`revealed_fact`/`delivered` are facts
- *  about a COUNTERPARTY turn and are absent on an agent reply — hence optional
- *  rather than a union, which is also how the backend emits them. */
-export interface TranscriptEntry {
-  speaker: string;              // "user" | "agent"
-  text: string;                 // may be "" — the agent said nothing
-  kind?: string;                // open|reveal|pushback|reply|close
-  discloses?: string;           // hidden_facts key, "" when none
-  revealed_fact?: boolean;      // derived: discloses !== ""
-  delivered?: boolean;          // derived: false exactly for the closing turn
-}
-/** One row of `CoverageReport.divergence()`, stored VERBATIM by
- *  `Registry.save_scenario_run` and served back under the coverage block. It is
- *  the OPPOSITE of an exhibited bin: the stimulus point asked for this corner
- *  and the run never produced it.
- *
- *  `exhibited` is 0 by construction — the row exists because it is 0 — and is
- *  carried rather than assumed, so a payload that ever says otherwise shows what
- *  it says. These rows are a fact about the GENERATOR's reach and are never
- *  summed into a coverage number. */
-export interface CoverageDivergence {
-  coverpoint_id: string;
-  bin_id: string;
-  requested: number;            // how many samples asked for this corner
-  exhibited: number;            // 0 — that is why the row is here
-}
-export interface ScenarioRunRow {
-  run_id: string; scenario_id: string; agent_id: string; trace_id: string;
-  space_ref: string; space_fingerprint: string; seed: number;
-  created_at: string;           // ISO-8601 UTC; no offset suffix on SQLite
-  ended: string;                // "" for a single-shot run
-  conversational: boolean; world_changed: boolean; n_blocked: number;
-  faults: { recorded: boolean; counts: ScenarioFaultCounts | null };
-}
-export interface ScenarioRunDetail {
-  run_id: string; scenario_id: string; agent_id: string; trace_id: string;
-  space_ref: string; space_fingerprint: string; seed: number;
-  created_at: string;
-  point: Record<string, string>;
-  ticket: string;
-  session_id: string;           // "" for a single-shot run
-  ended: string;
-  transcript: TranscriptEntry[];
-  state_diff: Record<string, { before: unknown; after: unknown }>;
-  blocked: string[];            // tool NAMES the gateway refused
-  interactions: Record<string, unknown>[];
-  faults: ScenarioFaults;
-  elicitation: { disclosed: string[]; withheld: string[] };
-  /** `measured` speaks for `bins` and for NOTHING else — the registry collects
-   *  the two halves at different moments, so `{measured: true, bins: [...],
-   *  divergence: null}` is a real row: the bins were counted and nobody computed
-   *  divergence. `divergence` therefore answers its own presence question:
-   *    null      → NOT RECORDED. Nobody computed it for this run.
-   *    []        → computed, and every requested corner appeared. A measurement.
-   *    [...]     → the point asked for these corners and the run did not produce
-   *                them.
-   *  The key is optional because a row written before the field existed carries
-   *  no key at all; that reads as not recorded, like `null`. */
-  coverage: { measured: boolean; bins: string[] | null;
-              divergence?: CoverageDivergence[] | null };
-  user_provenance: Record<string, unknown>;
-  disclosures: Record<string, unknown>[];
-  derived: {
-    conversational: boolean;
-    n_user_turns: number | null;
-    world_changed: boolean;
-    n_changed_fields: number;
-    n_blocked: number;
-    elicitation_complete: boolean | null;
-    content_sha256: string;
-  };
-}
-
 export const api = {
   /** The verification surface — what this platform tests, enumerated from the
    *  live registries so the page can never overstate what is implemented. */
@@ -525,58 +188,58 @@ export const api = {
     afetch("/api/auth/signup", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<AuthResult>(r)),
   login: (email: string, password: string) =>
     afetch("/api/auth/login", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
-    }).then((r) => json<any>(r)),
-  logout: () => afetch("/api/auth/logout", { method: "POST" }).then((r) => json<any>(r)),
+    }).then((r) => json<AuthResult>(r)),
+  logout: () => afetch("/api/auth/logout", { method: "POST" }).then((r) => json<AuthResult>(r)),
   verifyEmail: (token: string) =>
     afetch("/api/auth/verify", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<AuthResult>(r)),
   resendVerification: (email: string) =>
     afetch("/api/auth/resend-verification", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<AuthResult>(r)),
 
   // --- settings: BYO Anthropic key (never returns the raw key) ---
   anthropicKeyStatus: () =>
     afetch("/api/settings/anthropic-key").then((r) =>
-      json<{ set: boolean; masked: string | null; updated_at: string | null }>(r)),
+      json<AnthropicKeyStatus>(r)),
   testAnthropicKey: (key: string) =>
     afetch("/api/settings/anthropic-key/test", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key }),
-    }).then((r) => json<{ valid: boolean; error: string | null }>(r)),
+    }).then((r) => json<KeyTestResult>(r)),
   setAnthropicKey: (key: string) =>
     afetch("/api/settings/anthropic-key", {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key }),
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<AuthResult>(r)),
   deleteAnthropicKey: () =>
-    afetch("/api/settings/anthropic-key", { method: "DELETE" }).then((r) => json<any>(r)),
+    afetch("/api/settings/anthropic-key", { method: "DELETE" }).then((r) => json<AuthResult>(r)),
 
   // Personal API tokens (PATs) — programmatic REST access as the user's account.
   listTokens: () =>
     afetch("/api/settings/tokens").then((r) =>
-      json<{ tokens: { id: number; name: string; masked: string; created_at: string; last_used_at: string | null }[] }>(r)),
+      json<TokenList>(r)),
   createToken: (name: string) =>
     afetch("/api/settings/tokens", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
-    }).then((r) => json<{ id: number; name: string; token: string; masked: string; created_at: string }>(r)),
+    }).then((r) => json<CreatedToken>(r)),
   revokeToken: (id: number) =>
-    afetch(`/api/settings/tokens/${id}`, { method: "DELETE" }).then((r) => json<any>(r)),
+    afetch(`/api/settings/tokens/${id}`, { method: "DELETE" }).then((r) => json<AuthResult>(r)),
 
   nodeTypes: () => afetch("/api/node-types").then((r) => json<NodeTypeSpec[]>(r)),
-  listWorkflows: () => afetch("/api/workflows").then((r) => json<any[]>(r)),
+  listWorkflows: () => afetch("/api/workflows").then((r) => json<WorkflowSummary[]>(r)),
   getWorkflow: (id: string) =>
     afetch(`/api/workflows/${id}`).then((r) =>
-      json<{ workflow: WorkflowDoc; problems: string[] }>(r)),
+      json<WorkflowLoad>(r)),
   deleteWorkflow: (id: string) =>
     afetch(`/api/workflows/${id}`, { method: "DELETE" }),
   saveWorkflow: (wf: WorkflowDoc, dryRun = false) =>
@@ -584,14 +247,14 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(wf),
-    }).then((r) => json<{ workflow_id: string; problems: string[]; saved: boolean }>(r)),
+    }).then((r) => json<WorkflowSaveResult>(r)),
   startExecution: (workflowId: string) =>
     afetch(`/api/workflows/${workflowId}/executions`, { method: "POST" }).then(
-      (r) => json<{ execution_id: string }>(r)),
+      (r) => json<StartExecutionResult>(r)),
   getExecution: (id: string) =>
-    afetch(`/api/executions/${id}`).then((r) => json<any>(r)),
+    afetch(`/api/executions/${id}`).then((r) => json<Execution>(r)),
   executionResults: (id: string) =>
-    afetch(`/api/executions/${id}/results`).then((r) => json<any>(r)),
+    afetch(`/api/executions/${id}/results`).then((r) => json<ExecutionResults>(r)),
   executionIssues: (id: string) =>
     afetch(`/api/executions/${id}/issues`).then((r) => json<IssuesReport>(r)),
   // EGR (eval-gaming resistance). 404 when no gaming run was recorded for this
@@ -601,53 +264,53 @@ export const api = {
     afetch(`/api/executions/${id}/gaming`).then((r) => json<GamingReport>(r)),
   listExecutions: (workflowId?: string) =>
     afetch(`/api/executions${workflowId ? `?workflow_id=${encodeURIComponent(workflowId)}` : ""}`)
-      .then((r) => json<any[]>(r)),
+      .then((r) => json<Execution[]>(r)),
   approve: (executionId: string) =>
     afetch(`/api/executions/${executionId}/approve`, { method: "POST" }).then(
-      (r) => json<any>(r)),
+      (r) => json<ApproveExecutionResult>(r)),
   cancel: (executionId: string) =>
     afetch(`/api/executions/${executionId}/cancel`, { method: "POST" }).then(
-      (r) => json<any>(r)),
+      (r) => json<CancelExecutionResult>(r)),
   estimateWorkflow: (id: string) =>
-    afetch(`/api/workflows/${id}/estimate`).then((r) => json<any>(r)),
+    afetch(`/api/workflows/${id}/estimate`).then((r) => json<CostEstimate>(r)),
   estimateSuite: (suiteId: string, agentId?: string) =>
     afetch(`/api/estimate?suite_id=${encodeURIComponent(suiteId)}` +
            (agentId ? `&agent_id=${encodeURIComponent(agentId)}` : ""))
-      .then((r) => json<any>(r)),
-  listSuites: () => afetch("/api/suites").then((r) => json<any[]>(r)),
+      .then((r) => json<CostEstimate>(r)),
+  listSuites: () => afetch("/api/suites").then((r) => json<SuiteSummary[]>(r)),
   suiteReview: (id: string) =>
     afetch(`/api/suites/${id}/review`).then((r) => (r.ok ? r.text() : "")),
   approveSuite: (id: string, version: number) =>
     afetch(`/api/suites/${id}/approve?version=${version}`, { method: "POST" }),
-  listAgents: () => afetch("/api/agents").then((r) => json<any>(r)),
+  listAgents: () => afetch("/api/agents").then((r) => json<AgentsView>(r)),
   listCatalog: (includeRetired = false) =>
     afetch(`/api/agents/catalog${includeRetired ? "?include_retired=true" : ""}`)
-      .then((r) => json<{ agents: any[] }>(r)),
-  registerAgent: (agent: Record<string, any>) =>
+      .then((r) => json<CatalogList>(r)),
+  registerAgent: (agent: Record<string, JsonValue>) =>
     afetch("/api/agents/catalog", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(agent),
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<CatalogAgent>(r)),
   retireAgent: (agentId: string) =>
     afetch(`/api/agents/catalog/${encodeURIComponent(agentId)}`, {
       method: "DELETE",
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<AuthResult>(r)),
   leaderboard: (suites: string[] = []) =>
     afetch(`/api/leaderboard${suites.length ? `?suites=${suites.join(",")}` : ""}`)
-      .then((r) => json<any>(r)),
+      .then((r) => json<Leaderboard>(r)),
   // canonical standard benchmarking
-  standardMetrics: () => afetch("/api/standard/metrics").then((r) => json<any>(r)),
-  standardLeaderboard: () => afetch("/api/standard/leaderboard").then((r) => json<any>(r)),
-  seedStandard: () => afetch("/api/standard/seed", { method: "POST" }).then((r) => json<any>(r)),
-  standardDatasets: () => afetch("/api/standard/datasets").then((r) => json<any>(r)),
+  standardMetrics: () => afetch("/api/standard/metrics").then((r) => json<StandardMetrics>(r)),
+  standardLeaderboard: () => afetch("/api/standard/leaderboard").then((r) => json<StandardLeaderboard>(r)),
+  seedStandard: () => afetch("/api/standard/seed", { method: "POST" }).then((r) => json<StandardMetrics>(r)),
+  standardDatasets: () => afetch("/api/standard/datasets").then((r) => json<StandardDatasets>(r)),
   ingestDataset: (id: string) =>
-    afetch(`/api/standard/ingest/${id}`, { method: "POST" }).then((r) => json<any>(r)),
+    afetch(`/api/standard/ingest/${id}`, { method: "POST" }).then((r) => json<StandardMetrics>(r)),
   runStandard: (body: { agent_id?: string; system_prompt?: string; k?: number }) =>
     afetch("/api/standard/run", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<StandardMetrics>(r)),
   // --- safety scan ("Scan my agent") — the consumer on-ramp -------------
   scanPreview: () =>
     afetch("/api/scan/preview").then((r) => json<ScanPreview>(r)),
@@ -658,7 +321,7 @@ export const api = {
     afetch("/api/scan", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then((r) => json<{ scan_id: string; target: string; n_dimensions: number }>(r)),
+    }).then((r) => json<StartScanResult>(r)),
   scanStatus: (scanId: string) =>
     afetch(`/api/scan/${encodeURIComponent(scanId)}`).then((r) => json<ScanJob>(r)),
   scanFindings: (scanId: string) =>
@@ -668,12 +331,12 @@ export const api = {
   // reference agent live on the server's key, fresh results every run.
   publicDemoPreview: () =>
     fetch("/api/public/demo-scan/preview")
-      .then((r) => json<{ available: boolean; dimensions: ScanPreview["dimensions"] }>(r)),
+      .then((r) => json<PublicDemoPreview>(r)),
   startPublicDemo: (agentName = "") =>
     fetch("/api/public/demo-scan", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ agent_name: agentName }),
-    }).then((r) => json<{ scan_id: string; target: string; n_dimensions: number }>(r)),
+    }).then((r) => json<StartScanResult>(r)),
   publicDemoStatus: (scanId: string) =>
     fetch(`/api/public/demo-scan/${encodeURIComponent(scanId)}`)
       .then((r) => json<ScanJob>(r)),
@@ -705,56 +368,56 @@ export const api = {
   // --- Copilot (in-app guide assistant; server-side key, SSE streaming) --
   copilotStatus: () =>
     afetch("/api/copilot/status").then((r) =>
-      json<{ available: boolean; model: string }>(r)),
+      json<CopilotStatus>(r)),
 
   // --- Safe Assistant (flagship consumer chat) --------------------------
   // The sibling backend is implementing these; the UI normalizes responses
   // (see assistant.ts) and falls back to a labelled local preview if absent.
   createAssistantSession: () =>
-    afetch("/api/assistant/sessions", { method: "POST" }).then((r) => json<any>(r)),
+    afetch("/api/assistant/sessions", { method: "POST" }).then((r) => json<AssistantSession>(r)),
   getAssistantSession: (id: string) =>
-    afetch(`/api/assistant/sessions/${encodeURIComponent(id)}`).then((r) => json<any>(r)),
+    afetch(`/api/assistant/sessions/${encodeURIComponent(id)}`).then((r) => json<AssistantSession>(r)),
   sendAssistantMessage: (id: string, text: string) =>
     afetch(`/api/assistant/sessions/${encodeURIComponent(id)}/message`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<AssistantSession>(r)),
   approveAssistantAction: (id: string, actionId: string, decision: "allow" | "deny") =>
     afetch(`/api/assistant/sessions/${encodeURIComponent(id)}/approve`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action_id: actionId, decision }),
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<AssistantSession>(r)),
 
   // --- agent safety certification ---------------------------------------
   // Public reads (unauthenticated) — back the /certified pages + badge.
   publicCertification: (id: string) =>
     fetch(`/api/public/certifications/${encodeURIComponent(id)}`)
-      .then((r) => json<any>(r)),
+      .then((r) => json<Certification>(r)),
   publicCertifiedDirectory: () =>
-    fetch("/api/public/certifications").then((r) => json<any>(r)),
+    fetch("/api/public/certifications").then((r) => json<DirectoryEntry[]>(r)),
   // The Safe Assistant's REAL grade + cert id (latest valid cert), or a null
   // grade if none is issued — backs the honest seal on the public assistant
   // page + landing. Never a placeholder.
   assistantCertification: () =>
-    fetch("/api/public/assistant/certification").then((r) => json<any>(r)),
+    fetch("/api/public/assistant/certification").then((r) => json<AssistantCertification>(r)),
   // Public, unauthenticated service-status rollup — backs the /status page.
   serviceStatus: () =>
     fetch("/api/status").then((r) => json<ServiceStatus>(r)),
   // Authenticated — issue from a scorecard, list, revoke.
   listCertifications: () =>
-    afetch("/api/certifications").then((r) => json<any>(r)),
+    afetch("/api/certifications").then((r) => json<CertificationList>(r)),
   issueCertification: (body: { scorecard_id: string; agent_name?: string }) =>
     afetch("/api/certifications", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<CertificationRecord>(r)),
   revokeCertification: (id: string) =>
     afetch(`/api/certifications/${encodeURIComponent(id)}`, { method: "DELETE" })
-      .then((r) => json<any>(r)),
+      .then((r) => json<AuthResult>(r)),
 
-  listScorecards: () => afetch("/api/scorecards").then((r) => json<any[]>(r)),
+  listScorecards: () => afetch("/api/scorecards").then((r) => json<ScorecardSummary[]>(r)),
   getScorecard: (id: string) =>
-    afetch(`/api/scorecards/${id}`).then((r) => json<any>(r)),
+    afetch(`/api/scorecards/${id}`).then((r) => json<Scorecard>(r)),
   scorecardReport: (id: string) =>
     afetch(`/api/scorecards/${id}/report`).then(async (r) => {
       if (!r.ok) throw new Error(`${r.status}`);
@@ -768,14 +431,14 @@ export const api = {
   // --- A/B comparison (two variants, head-to-head on one suite) ---
   startAbRun: (body: {
     suite_id: string; version?: number | null;
-    variant_a: Record<string, any>; variant_b: Record<string, any>;
+    variant_a: Record<string, JsonValue>; variant_b: Record<string, JsonValue>;
   }) =>
     afetch("/api/ab/runs", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then((r) => json<{ comparison_id: string }>(r)),
-  listAbRuns: () => afetch("/api/ab/runs").then((r) => json<any[]>(r)),
-  getAbRun: (id: string) => afetch(`/api/ab/runs/${id}`).then((r) => json<any>(r)),
+    }).then((r) => json<StartAbResult>(r)),
+  listAbRuns: () => afetch("/api/ab/runs").then((r) => json<AbRunSummary[]>(r)),
+  getAbRun: (id: string) => afetch(`/api/ab/runs/${id}`).then((r) => json<AbRunDetail>(r)),
   abReport: (id: string) => afetch(`/api/ab/runs/${id}/report`).then((r) => r.text()),
   abPdf: (id: string) =>
     afetch(`/api/ab/runs/${id}/report.pdf`).then(async (r) => {
@@ -785,31 +448,31 @@ export const api = {
 
   // -- hardening loop (failure → regression suite → re-run → delta) --------
   hardeningCandidates: () =>
-    afetch("/api/hardening/candidates").then((r) => json<{ candidates: any[] }>(r)),
+    afetch("/api/hardening/candidates").then((r) => json<HardeningCandidates>(r)),
   hardeningSuites: () =>
-    afetch("/api/hardening/suites").then((r) => json<{ suites: any[] }>(r)),
+    afetch("/api/hardening/suites").then((r) => json<HardeningSuites>(r)),
   hardeningDetail: (id: string) =>
-    afetch(`/api/hardening/suites/${encodeURIComponent(id)}`).then((r) => json<any>(r)),
+    afetch(`/api/hardening/suites/${encodeURIComponent(id)}`).then((r) => json<HardeningDetail>(r)),
   promoteFailures: (body: { scorecard_id: string; test_ids?: string[] | null;
                             source?: string }) =>
     afetch("/api/hardening/promote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<HardeningSuiteRef>(r)),
   // live-monitor catches: below-threshold sampled production traces, promotable
   // into a needs-review regression suite (distinct from scorecard candidates).
   hardeningLiveCandidates: (agentId?: string) =>
     afetch("/api/hardening/live-candidates" +
       (agentId ? `?agent_id=${encodeURIComponent(agentId)}` : "")
-    ).then((r) => json<{ candidates: any[] }>(r)),
+    ).then((r) => json<HardeningLiveCandidates>(r)),
   promoteLiveFailures: (body: { agent_id: string; trace_ids?: string[] | null;
                                 rubric_id?: string; threshold?: number }) =>
     afetch("/api/hardening/promote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ source: "live", ...body }),
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<HardeningSuiteRef>(r)),
   rerunRegression: (body: {
     regression_suite_id: string; variant?: string; url?: string;
     system_prompt?: string; model?: string; managed_agent_id?: string;
@@ -819,7 +482,7 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<HardeningDetail>(r)),
 
   // -- prompt-optimizer (self-improving system prompt; OPRO/ProTeGi) --------
   startOptimize: (body: {
@@ -831,24 +494,21 @@ export const api = {
     afetch("/api/optimize/runs", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then((r) => json<{
-      run_id: string; projected_agent_runs: number; max_agent_runs: number;
-      note: string;
-    }>(r)),
+    }).then((r) => json<StartOptimizeResult>(r)),
   listOptimizeRuns: () =>
-    afetch("/api/optimize/runs").then((r) => json<{ runs: any[] }>(r)),
+    afetch("/api/optimize/runs").then((r) => json<OptimizeRunList>(r)),
   getOptimizeRun: (id: string) =>
-    afetch(`/api/optimize/runs/${encodeURIComponent(id)}`).then((r) => json<any>(r)),
+    afetch(`/api/optimize/runs/${encodeURIComponent(id)}`).then((r) => json<OptimizeRun>(r)),
 
   // -- training camp (folded-in AgentCamp: run N episodes, grade, Wilson
   //    lower-bound accuracy, two-condition promotion gate, distillation export)
   campTasks: () =>
     afetch("/api/camps/tasks").then((r) =>
-      json<{ tasks: { task_id: string; name: string }[]; modes: string[] }>(r)),
+      json<CampTasks>(r)),
   listCamps: () =>
-    afetch("/api/camps").then((r) => json<{ runs: any[] }>(r)),
+    afetch("/api/camps").then((r) => json<CampRunList>(r)),
   getCamp: (id: string) =>
-    afetch(`/api/camps/${encodeURIComponent(id)}`).then((r) => json<any>(r)),
+    afetch(`/api/camps/${encodeURIComponent(id)}`).then((r) => json<CampRun>(r)),
   startCamp: (body: {
     task_id?: string; mode?: string; episodes?: number; threshold?: number;
     min_episodes_for_gate?: number; seed?: number; model?: string;
@@ -857,7 +517,7 @@ export const api = {
     afetch("/api/camps", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<CampRun>(r)),
   startImprove: (body: {
     task_id?: string; rounds?: number; episodes_per_round?: number;
     threshold?: number; holdout?: number; seed?: number; degenerate?: boolean;
@@ -865,10 +525,10 @@ export const api = {
     afetch("/api/camps/improve", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then((r) => json<any>(r)),
+    }).then((r) => json<CampRun>(r)),
   approveCamp: (id: string) =>
     afetch(`/api/camps/${encodeURIComponent(id)}/approve`, { method: "POST" })
-      .then((r) => json<any>(r)),
+      .then((r) => json<CampRun>(r)),
   exportCampDistillation: (id: string) =>
     afetch(`/api/camps/${encodeURIComponent(id)}/distillation.jsonl`)
       .then(async (r) => {
@@ -896,46 +556,28 @@ export const api = {
     afetch("/api/billing/checkout/stripe", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then((r) => json<{ url: string; id: string }>(r)),
+    }).then((r) => json<CheckoutResult>(r)),
   /** Start a PayPal checkout (subscription or top-up); returns the approval URL. */
   checkoutPaypal: (body: { kind: "subscription" | "topup"; plan_id?: string; topup_id?: string }) =>
     afetch("/api/billing/checkout/paypal", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then((r) => json<{ url: string; id: string }>(r)),
+    }).then((r) => json<CheckoutResult>(r)),
 
-  listTraces: () => afetch("/api/traces").then((r) => json<any[]>(r)),
-  getTrace: (id: string) => afetch(`/api/traces/${id}`).then((r) => json<any>(r)),
-
-  // --- stored scenario runs --------------------------------------------
-  /** This tenant's stored scenario runs, NEWEST FIRST. `scenario_id` and
-   *  `agent_id` are exact matches; `limit` is clamped server-side to 1..500. */
-  listScenarioRuns: (q: { scenario_id?: string; agent_id?: string; limit?: number } = {}) => {
-    const p = new URLSearchParams();
-    if (q.scenario_id) p.set("scenario_id", q.scenario_id);
-    if (q.agent_id) p.set("agent_id", q.agent_id);
-    if (q.limit != null) p.set("limit", String(q.limit));
-    const qs = p.toString();
-    return afetch(`/api/scenario-runs${qs ? `?${qs}` : ""}`).then(
-      (r) => json<{ count: number; runs: ScenarioRunRow[] }>(r));
-  },
-  /** One stored run in full. The body is the registry's view over the wire —
-   *  the route computes nothing of its own. 404 carries a JSON `detail`. */
-  getScenarioRun: (runId: string) =>
-    afetch(`/api/scenario-runs/${encodeURIComponent(runId)}`).then(
-      (r) => json<ScenarioRunDetail>(r)),
+  listTraces: () => afetch("/api/traces").then((r) => json<Trace[]>(r)),
+  getTrace: (id: string) => afetch(`/api/traces/${id}`).then((r) => json<Trace>(r)),
   upload: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
     return afetch("/api/uploads", { method: "POST", body: fd }).then((r) =>
-      json<{ file_path: string }>(r));
+      json<UploadResult>(r));
   },
   // Upload a requirement document (pdf/docx/txt/md); server extracts the text.
   extractDocument: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
     return afetch("/api/documents/extract", { method: "POST", body: fd }).then(
-      (r) => json<{ filename: string; chars: number; text: string }>(r));
+      (r) => json<ExtractResult>(r));
   },
 };
 
@@ -948,38 +590,10 @@ export const api = {
    in the payload (see routes/copilot.py `_sse`), which we reverse here.
  * ------------------------------------------------------------------------ */
 
-/** A tool-activity event (the agent using the platform API on your behalf). */
-export interface CopilotToolEvent {
-  tool: string;
-  phase: "start" | "done";
-  kind?: "read" | "write";
-  ok?: boolean;
-  summary?: string;
-}
-
-/** A write/cost action the agent proposes; the user must confirm before it runs. */
-export interface CopilotApproval {
-  tool: string;
-  input: Record<string, any>;
-  card: { title?: string; detail?: string; cost_note?: string; risk?: string };
-}
-
-/** A classified, safe-to-show error (matches the backend `error` SSE payload /
- *  HTTP `detail`): a stable `code`, an honest `message`, and a suggested action. */
-export interface CopilotErrorInfo {
-  code: string;
-  message: string;
-  action?: "retry" | "upgrade" | "none";
-}
-
-export interface CopilotHandlers {
-  onSession?: (info: { session_id: string; status: string }) => void;
-  onToken: (text: string) => void;
-  onTool?: (ev: CopilotToolEvent) => void;
-  onApproval?: (a: CopilotApproval) => void;
-  onDone?: (info: { session_id: string; status: string }) => void;
-  onError?: (err: CopilotErrorInfo) => void;
-}
+/* CopilotToolEvent / CopilotApproval / CopilotErrorInfo / CopilotHandlers are
+ * defined in ./api/types and re-exported from this module (see the top of the
+ * file), so existing `import { CopilotApproval } from "../api"` call sites keep
+ * working. */
 
 function unescapeSse(s: string): string {
   let out = "";
@@ -1090,9 +704,9 @@ export function copilotApprove(
 
 /** Is the public intake bot available on this server? available=false → the
  *  caller should fall back to the quick form and say the assistant is offline. */
-export function publicCopilotStatus(): Promise<{ available: boolean; model: string }> {
+export function publicCopilotStatus(): Promise<CopilotStatus> {
   return fetch("/api/public/copilot/status").then((r) =>
-    json<{ available: boolean; model: string }>(r));
+    json<CopilotStatus>(r));
 }
 
 /** Send a message to the public intake bot and stream its answer, tool activity,
