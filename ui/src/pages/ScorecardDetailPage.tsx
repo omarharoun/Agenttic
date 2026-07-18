@@ -7,6 +7,7 @@ import {
 import { pct, money, ms } from "../stats";
 import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
 import { PageData } from "../components/PageData";
+import { WhatIfPanel } from "../components/WhatIfPanel";
 import {
   IconResults, IconDownload, IconDoc, IconChevronRight, IconChevronDown,
   IconCheck, IconClose, IconError, IconExternal, IconIssues, IconLock, IconShield,
@@ -196,6 +197,7 @@ export function ScorecardDetailPage() {
   const [err, setErr] = useState<unknown | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportErr, setExportErr] = useState<string | null>(null);
+  const [whatIf, setWhatIf] = useState(false);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -424,6 +426,32 @@ export function ScorecardDetailPage() {
                   </div>
                 )}
               </section>
+
+              {/* 2b — What-if mode (SPEC-5 23.2): retune weights + threshold and
+                  watch pass/fail recompute live via parity-proven sim-core. */}
+              {(data.run_scores?.length ?? 0) > 0 &&
+                Object.keys(data.per_criterion_means ?? {}).length > 0 && (
+                <section className="sd-section" aria-label="What-if">
+                  <h2 className="sd-h2">
+                    <IconResults size={16} /> What if
+                    <button
+                      type="button"
+                      className="btn-ghost sd-whatif-toggle"
+                      aria-expanded={whatIf}
+                      onClick={() => setWhatIf((v) => !v)}
+                      style={{ marginLeft: "auto" }}
+                    >
+                      {whatIf ? "Hide" : "Explore rubric changes"}
+                    </button>
+                  </h2>
+                  {whatIf && (
+                    <WhatIfPanel
+                      runs={data.run_scores}
+                      criteria={Object.keys(data.per_criterion_means)}
+                    />
+                  )}
+                </section>
+              )}
 
               {/* 3 — Per-case table. */}
               <section className="sd-section" aria-label="Per-case results">
