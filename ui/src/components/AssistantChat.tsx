@@ -242,7 +242,7 @@ export function AssistantChat() {
   }, [messages, pending]);
 
   /* ---- apply a normalized server turn into the live assistant placeholder -- */
-  const applyServerTurn = useCallback((raw: any, aid: string) => {
+  const applyServerTurn = useCallback((raw: unknown, aid: string) => {
     const s = normalizeSession(raw, sessionId ?? "");
     if (s.posture) setPosture(s.posture);
     const last = [...s.messages].reverse().find((m) => m.role === "assistant");

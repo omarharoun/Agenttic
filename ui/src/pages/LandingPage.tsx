@@ -144,12 +144,13 @@ function Instrument() {
   const [live, setLive] = useState<LiveCert | null | undefined>(undefined);
   useEffect(() => {
     api.assistantCertification()
-      .then((a: any) => {
-        if (!a?.gradeable || !a.cert_id) { setLive(null); return; }
-        return api.publicCertification(a.cert_id).then((c: any) => setLive({
-          certId: a.cert_id,
-          agentName: c.agent_name ?? a.agent_id,
-          grade: c.grade ?? a.grade,
+      .then((a) => {
+        const certId = a?.cert_id;
+        if (!a?.gradeable || !certId) { setLive(null); return; }
+        return api.publicCertification(certId).then((c) => setLive({
+          certId,
+          agentName: c.agent_name ?? a.agent_id ?? "",
+          grade: c.grade ?? a.grade ?? "",
           index: indexFromCert(c),
           methodology: c.methodology_version || "current",
           points: toPoints(normalizeScores(c)),

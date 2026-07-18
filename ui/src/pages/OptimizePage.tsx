@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "../api";
+import { api, errMessage } from "../api";
+import type {
+  OptimizeRun, OptimizeRunSummary, OptimizeLineagePoint, OptimizeRound,
+  OptimizeCandidate, OptimizeRegression, SuiteSummary,
+} from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 import { Term } from "../components/Term";
 import { IconCheck, IconClose, IconOptimize } from "../icons";
@@ -32,7 +36,7 @@ const blank = (): StartCfg => ({
 /** Launch a prompt-optimization run. Cost-warned: it surfaces the projected
  * number of suite executions before the run starts (BYO-key pays for each). */
 function StartForm({ suites, onStarted }: {
-  suites: { suite_id: string; approved: boolean }[];
+  suites: SuiteSummary[];
   onStarted: (runId: string) => void;
 }) {
   const [cfg, setCfg] = useState<StartCfg>(blank());
@@ -49,8 +53,8 @@ function StartForm({ suites, onStarted }: {
       setNote(`~${res.projected_agent_runs} suite executions projected ` +
               `(cap ${res.max_agent_runs}). ${res.note}`);
       onStarted(res.run_id);
-    } catch (e: any) {
-      setErr(String(e.message ?? e));
+    } catch (e) {
+      setErr(errMessage(e));
     } finally { setBusy(false); }
   };
 
@@ -122,14 +126,14 @@ function StartForm({ suites, onStarted }: {
 
 /** Per-version train (solid) and held-out (dashed) score curve. Divergence
  * between the two lines IS the overfitting signal. */
-function ScoreCurve({ lineage }: { lineage: any[] }) {
+function ScoreCurve({ lineage }: { lineage: OptimizeLineagePoint[] }) {
   if (!lineage?.length) return null;
   const W = 420, H = 140, pad = 28;
   const xs = lineage.map((_, i) =>
     pad + (lineage.length === 1 ? 0 : i * (W - 2 * pad) / (lineage.length - 1)));
   const y = (v: number) => H - pad - v * (H - 2 * pad);
-  const path = (key: string) => lineage
-    .map((v, i) => v[key] == null ? null : `${xs[i]},${y(v[key])}`)
+  const path = (key: "train_success_rate" | "heldout_success_rate") => lineage
+    .map((v, i) => v[key] == null ? null : `${xs[i]},${y(v[key] as number)}`)
     .filter(Boolean).join(" ");
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", maxWidth: W }}>
@@ -177,7 +181,7 @@ function PromptDiff({ before, after }: { before: string; after: string }) {
   );
 }
 
-function RunDetail({ run }: { run: any }) {
+function RunDetail({ run }: { run: OptimizeRun }) {
   const art = run.run;
   const prog = run.progress;
   if (run.status === "running") {
@@ -204,7 +208,7 @@ function RunDetail({ run }: { run: any }) {
   }
   if (!art) return null;
   const gap = art.overfit_gap;
-  const trainGain = art.best_train_rate - art.baseline_train_rate;
+  const trainGain = (art.best_train_rate ?? 0) - (art.baseline_train_rate ?? 0);
   const heldGain = art.best_heldout_rate == null || art.baseline_heldout_rate == null
     ? null : art.best_heldout_rate - art.baseline_heldout_rate;
 
@@ -236,7 +240,7 @@ function RunDetail({ run }: { run: any }) {
         </div>
       </div>
 
-      {art.lineage?.length > 1 && (
+      {(art.lineage?.length ?? 0) > 1 && art.lineage && (
         <div className="policy-box">
           <div className="policy-title">score per prompt version</div>
           <ScoreCurve lineage={art.lineage} />
@@ -249,32 +253,32 @@ function RunDetail({ run }: { run: any }) {
 
       <div className="policy-box">
         <div className="policy-title">baseline → best prompt</div>
-        <PromptDiff before={art.baseline_prompt} after={art.best_prompt} />
+        <PromptDiff before={art.baseline_prompt ?? ""} after={art.best_prompt ?? ""} />
       </div>
 
       <div className="policy-box">
         <div className="policy-title">rounds — why each candidate was kept or rejected</div>
-        {art.rounds.map((r: any) => (
+        {(art.rounds ?? []).map((r: OptimizeRound) => (
           <div key={r.round} style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 12, fontWeight: 600 }}>
               round {r.round} · baseline {pct(r.baseline_train_rate)} · targeting{" "}
               {(r.failing_criteria || []).join(", ") || "—"}
             </div>
-            {r.candidates.map((c: any) => (
+            {(r.candidates ?? []).map((c: OptimizeCandidate) => (
               <div key={c.index} style={{ fontSize: 12, marginTop: 4, paddingLeft: 10,
                 borderLeft: `2px solid ${c.accepted ? "var(--ok)" : "var(--border)"}` }}>
                 <span style={{ color: c.accepted ? "var(--ok)" : "var(--muted)" }}>
                   {c.accepted ? <><IconCheck size={13} /> accepted</> : <><IconClose size={13} /> rejected</>}
                 </span>{" "}
                 <span style={{ color: "var(--muted)" }}>({signedPct(c.success_delta)} train) — {c.reason}</span>
-                {c.regressions?.length > 0 && (
+                {(c.regressions?.length ?? 0) > 0 && (
                   <span style={{ color: "var(--fail)" }}>
-                    {" "}regressed: {c.regressions.map((x: any) => x.criterion_id).join(", ")}
+                    {" "}regressed: {(c.regressions ?? []).map((x: OptimizeRegression) => x.criterion_id).join(", ")}
                   </span>
                 )}
               </div>
             ))}
-            {!r.candidates.length && <div style={{ fontSize: 12, color: "var(--muted)",
+            {!(r.candidates ?? []).length && <div style={{ fontSize: 12, color: "var(--muted)",
               paddingLeft: 10 }}>no candidates (nothing left to fix)</div>}
           </div>
         ))}
@@ -299,10 +303,10 @@ function Metric({ label, value, sub, subColor }: {
  * the baseline→best lineage, the per-round accept/reject reasoning, and the
  * train-vs-held-out overfitting check. */
 export function OptimizePage() {
-  const [suites, setSuites] = useState<any[]>([]);
-  const [runs, setRuns] = useState<any[]>([]);
+  const [suites, setSuites] = useState<SuiteSummary[]>([]);
+  const [runs, setRuns] = useState<OptimizeRunSummary[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
-  const [detail, setDetail] = useState<any>(null);
+  const [detail, setDetail] = useState<OptimizeRun | null>(null);
   const [loading, setLoading] = useState(true);
   const pollRef = useRef<number | null>(null);
 
@@ -311,7 +315,7 @@ export function OptimizePage() {
 
   useEffect(() => {
     Promise.all([api.listSuites().catch(() => []), refreshRuns()])
-      .then(([s]) => setSuites(s as any[]))
+      .then(([s]) => setSuites(s))
       .finally(() => setLoading(false));
   }, []);
 

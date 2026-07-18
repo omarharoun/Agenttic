@@ -10,7 +10,7 @@ function textOf(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") return String(node);
   if (Array.isArray(node)) return node.map(textOf).join("");
   // React element with children
-  const props = (node as any)?.props;
+  const props = (node as { props?: { children?: ReactNode } } | null)?.props;
   return props ? textOf(props.children) : "";
 }
 

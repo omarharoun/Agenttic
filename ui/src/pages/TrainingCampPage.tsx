@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
-import { api, downloadBlob } from "../api";
+import { api, downloadBlob, errMessage } from "../api";
+import type {
+  CampRun, CampTask, CampGate, CampRound, CampReviewItem, CampEpisode,
+  CampReportBlock,
+} from "../api";
 import { EmptyState, PageHeader, Skeleton, Spinner } from "../components/ui";
 import { Term } from "../components/Term";
 import { IconCheck, IconClose, IconTarget, IconPen, IconPackage, StatusIcon } from "../icons";
 
 const TERMINAL = new Set(["succeeded", "failed"]);
 
-function StatusChip({ run }: { run: any }) {
+function StatusChip({ run }: { run: CampRun }) {
   const s = run.status;
   if (s === "running") {
     const p = run.total_episodes
@@ -60,7 +64,7 @@ function Stat({ label, value, tone }: {
   );
 }
 
-function GateBadge({ gate }: { gate: any }) {
+function GateBadge({ gate }: { gate: CampGate | undefined }) {
   const promoted = gate?.promoted;
   const cls = promoted ? "succeeded" : gate?.floor_met ? "waiting_approval" : "failed";
   const label = promoted ? "PROMOTED"
@@ -69,9 +73,9 @@ function GateBadge({ gate }: { gate: any }) {
 }
 
 export function TrainingCampPage() {
-  const [runs, setRuns] = useState<any[] | null>(null);
-  const [detail, setDetail] = useState<any | null>(null);
-  const [tasks, setTasks] = useState<{ task_id: string; name: string }[]>([]);
+  const [runs, setRuns] = useState<CampRun[] | null>(null);
+  const [detail, setDetail] = useState<CampRun | null>(null);
+  const [tasks, setTasks] = useState<CampTask[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -136,8 +140,8 @@ export function TrainingCampPage() {
       setMsg({ kind: "ok", text: `Camp ${run.run_id} started — running…` });
       load();
       setDetail(run);
-    } catch (e: any) {
-      setMsg({ kind: "err", text: `Could not start camp: ${String(e?.message ?? e)}` });
+    } catch (e) {
+      setMsg({ kind: "err", text: `Could not start camp: ${errMessage(e)}` });
     } finally { setBusy(false); }
   };
 
@@ -153,8 +157,8 @@ export function TrainingCampPage() {
           : "Sign-off recorded, but the hard accuracy floor is not met — "
             + "promotion is blocked. The floor is non-overridable.",
       });
-    } catch (e: any) {
-      setMsg({ kind: "err", text: `Approve failed: ${String(e?.message ?? e)}` });
+    } catch (e) {
+      setMsg({ kind: "err", text: `Approve failed: ${errMessage(e)}` });
     }
   };
 
@@ -162,8 +166,8 @@ export function TrainingCampPage() {
     try {
       const blob = await api.exportCampDistillation(id);
       downloadBlob(blob, `camp-${id}-distillation.jsonl`);
-    } catch (e: any) {
-      setMsg({ kind: "err", text: `Export failed: ${String(e?.message ?? e)}` });
+    } catch (e) {
+      setMsg({ kind: "err", text: `Export failed: ${errMessage(e)}` });
     }
   };
 
@@ -189,7 +193,7 @@ export function TrainingCampPage() {
           <div className="card-body">
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
               <label>Kind<br />
-                <select value={kind} onChange={(e) => setKind(e.target.value as any)}>
+                <select value={kind} onChange={(e) => setKind(e.target.value as "single" | "improve")}>
                   <option value="single">Single camp</option>
                   <option value="improve">Self-improving loop</option>
                 </select>
@@ -301,7 +305,7 @@ export function TrainingCampPage() {
   );
 }
 
-function RunningView({ run }: { run: any }) {
+function RunningView({ run }: { run: CampRun }) {
   const total = run.total_episodes || 0;
   const done = run.episodes_completed || 0;
   const frac = total ? Math.min(1, done / total) : 0;
@@ -333,7 +337,7 @@ function RunningView({ run }: { run: any }) {
   );
 }
 
-function FailedView({ run }: { run: any }) {
+function FailedView({ run }: { run: CampRun }) {
   return (
     <div style={{ marginTop: 26 }}>
       <h2 style={{ marginBottom: 4 }}>
@@ -351,12 +355,12 @@ function FailedView({ run }: { run: any }) {
 }
 
 function CampDetail({ run, onApprove, onExport }: {
-  run: any; onApprove: (id: string) => void; onExport: (id: string) => void;
+  run: CampRun; onApprove: (id: string) => void; onExport: (id: string) => void;
 }) {
   if (run.status === "running" || run.status === "queued") return <RunningView run={run} />;
   if (run.status === "failed") return <FailedView run={run} />;
-  const g = run.gate ?? {};
-  const rep = run.report ?? {};
+  const g: CampGate = run.gate ?? {};
+  const rep: CampReportBlock = run.report ?? {};
   const floorPromoteHint = !g.floor_met
     ? "The hard accuracy floor (Wilson lower bound) is not met. A human sign-off "
       + "cannot override it — this is by design."
@@ -442,7 +446,7 @@ function CampDetail({ run, onApprove, onExport }: {
                     <th>ratchet</th><th>note</th>
                   </tr></thead>
                   <tbody>
-                    {run.rounds.map((rd: any) => (
+                    {run.rounds.map((rd: CampRound) => (
                       <tr key={rd.round}>
                         <td>{rd.round}</td>
                         <td>gen{rd.champion_gen} · {pct(rd.champion_rate)}</td>
@@ -463,7 +467,7 @@ function CampDetail({ run, onApprove, onExport }: {
                   <table className="data">
                     <thead><tr><th>message</th><th>agent action</th><th>correct</th></tr></thead>
                     <tbody>
-                      {run.review_queue.slice(0, 20).map((q: any, i: number) => (
+                      {run.review_queue.slice(0, 20).map((q: CampReviewItem, i: number) => (
                         <tr key={i}>
                           <td>{q.message}</td>
                           <td className="mono">{q.agent_action?.action ?? "—"}</td>
@@ -491,7 +495,7 @@ function CampDetail({ run, onApprove, onExport }: {
               <table className="data">
                 <thead><tr><th></th><th>input</th><th>action</th><th>score</th></tr></thead>
                 <tbody>
-                  {run.episode_sample.map((ep: any) => (
+                  {run.episode_sample.map((ep: CampEpisode) => (
                     <tr key={ep.episode_id}>
                       <td>{ep.passed
                         ? <IconCheck size={14} className="ic-ok" />

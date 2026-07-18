@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, downloadBlob } from "../api";
+import type { ExecutionCaseRow, ExecutionResults, ExecutionScorecardSummary, JsonValue } from "../api";
 import { Uncertainty } from "../components/ui";
 import { money, ms } from "../stats";
 import { PASS_MEANING, PASS_THRESHOLD } from "../workflow/templates";
@@ -9,15 +10,24 @@ import { IconRefresh, IconWarning, IconCheck, IconHalf, IconClose, IconArrowRigh
 /** Post-run scoreboard: scorecard summary + one row per test case showing
  * the agent's prediction vs expected, expandable to per-criterion scores
  * and judge rationales. */
-export function ResultsPanel({ results }: { results: any }) {
+/** A test case's `expected` payload is genuinely dynamic (`JsonValue`); this
+ *  reads its optional `final_output` field when present, narrowing safely. */
+function expectedFinalOutput(expected: ExecutionCaseRow["expected"]): JsonValue | undefined {
+  if (expected && typeof expected === "object" && !Array.isArray(expected)) {
+    return expected.final_output;
+  }
+  return undefined;
+}
+
+export function ResultsPanel({ results }: { results: ExecutionResults }) {
   const [open, setOpen] = useState<string | null>(null);
   const [report, setReport] = useState<string>("");
   if (!results) return null;
   const { scorecards, cases } = results;
   if (!scorecards.length && !cases.length) return null;
-  const errored = cases.filter((c: any) => c.scoring_error);
-  const scored = cases.filter((c: any) => !c.scoring_error);
-  const passed = scored.filter((c: any) => c.passed).length;
+  const errored = cases.filter((c) => c.scoring_error);
+  const scored = cases.filter((c) => !c.scoring_error);
+  const passed = scored.filter((c) => c.passed).length;
 
   const failed = scored.length - passed;
   const total = scored.length + errored.length;
@@ -25,9 +35,9 @@ export function ResultsPanel({ results }: { results: any }) {
 
   return (
     <div className="results">
-      {scorecards.map((sc: any) => {
+      {scorecards.map((sc: ExecutionScorecardSummary) => {
         const allIn = (sc.total_cost_usd ?? 0) + (sc.total_scoring_cost_usd ?? 0);
-        const passThreshold = sc.pass_threshold ?? PASS_THRESHOLD;
+        const passThreshold = PASS_THRESHOLD;
         return (
         <div key={sc.scorecard_id}>
           {sc.cached && (
@@ -116,7 +126,7 @@ export function ResultsPanel({ results }: { results: any }) {
           <Markdown>{report}</Markdown>
         </div>
       )}
-      {cases.map((c: any) => (
+      {cases.map((c: ExecutionCaseRow) => (
         <div key={`${c.node_id}-${c.test_id}`} className="case-row">
           <div className="case-head"
                onClick={() => setOpen(open === c.test_id ? null : c.test_id)}>
@@ -132,9 +142,9 @@ export function ResultsPanel({ results }: { results: any }) {
                 <span className="pred" title={c.prediction}>
                   <IconArrowRight size={12} /> {c.prediction || "(no output)"}
                 </span>
-                {c.expected?.final_output !== undefined && !c.passed && (
+                {expectedFinalOutput(c.expected) !== undefined && !c.passed && (
                   <span className="want" title="expected">
-                    want: {String(c.expected.final_output)}
+                    want: {String(expectedFinalOutput(c.expected))}
                   </span>
                 )}
               </>
@@ -146,7 +156,7 @@ export function ResultsPanel({ results }: { results: any }) {
                 <div className="kv">expected:
                   <code>{JSON.stringify(c.expected)}</code></div>
               )}
-              {c.criteria.map((cr: any) => (
+              {c.criteria.map((cr) => (
                 <div key={cr.criterion_id} className="kv">
                   <span className={cr.score >= 1 ? "ok" : "err"}>
                     {cr.score >= 1 ? <IconCheck size={13} /> : cr.score > 0 ? <IconHalf size={13} /> : <IconClose size={13} />}

@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { api, downloadBlob } from "../api";
+import {
+  api, downloadBlob, type ScorecardSummary, type Span, type SuiteSummary,
+} from "../api";
 import { DataView, EmptyState, PageHeader, RawToggle, Skeleton } from "../components/ui";
 import { IconDownload } from "../icons";
-import { shortTraceId, traceId } from "../traces";
+import { shortTraceId, traceId, type TraceRow } from "../traces";
 import { Markdown } from "../components/Markdown";
 
 type Tab = "suites" | "scorecards" | "traces";
+/** A row in the Resources table — one of the three list-endpoint shapes, keyed
+ *  by the active tab. */
+type ResourceRow = SuiteSummary | ScorecardSummary | TraceRow;
 
 const TAB_LABEL: Record<Tab, string> = {
   suites: "Suites", scorecards: "Scorecards", traces: "Traces",
@@ -18,11 +23,11 @@ const EMPTY: Record<Tab, { icon: string; title: string; hint: string }> = {
 
 export function ResourcesPage() {
   const [tab, setTab] = useState<Tab>("suites");
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<ResourceRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [doc, setDoc] = useState<string>("");
   const [report, setReport] = useState<{ id: string; text: string } | null>(null);
-  const [spans, setSpans] = useState<any[] | null>(null);
+  const [spans, setSpans] = useState<Span[] | null>(null);
   const reportRef = useRef<HTMLDivElement>(null);
   const spansRef = useRef<HTMLDivElement>(null);
 
@@ -31,7 +36,7 @@ export function ResourcesPage() {
     (t === "suites" ? api.listSuites()
       : t === "scorecards" ? api.listScorecards()
       : api.listTraces())
-      .then((r) => { setRows(r); setLoaded(true); })
+      .then((r) => { setRows(r as ResourceRow[]); setLoaded(true); })
       .catch(() => { setRows([]); setLoaded(true); });
   };
   useEffect(() => refresh(tab), [tab]);
@@ -85,7 +90,7 @@ export function ResourcesPage() {
                 <thead><tr><th>suite</th><th>version</th><th className="num">cases</th>
                            <th>status</th><th></th></tr></thead>
                 <tbody>
-                  {rows.map((s) => (
+                  {(rows as SuiteSummary[]).map((s) => (
                     <tr key={s.suite_id}>
                       <td>{s.suite_id}</td>
                       <td>v{s.version}</td>
@@ -118,7 +123,7 @@ export function ResourcesPage() {
                 <thead><tr><th>scorecard</th><th>agent</th><th>suite</th>
                            <th className="num">success</th><th className="num">mean cost</th><th>tier</th><th></th></tr></thead>
                 <tbody>
-                  {rows.map((s) => (
+                  {(rows as ScorecardSummary[]).map((s) => (
                     <tr key={s.scorecard_id}>
                       <td className="mono">{s.scorecard_id}</td>
                       <td>{s.agent_id}</td>
@@ -148,7 +153,7 @@ export function ResourcesPage() {
                 <thead><tr><th>trace</th><th>agent</th><th>case</th><th className="num">spans</th>
                            <th>output</th><th></th></tr></thead>
                 <tbody>
-                  {rows.map((t, i) => {
+                  {(rows as TraceRow[]).map((t, i) => {
                     const id = traceId(t);
                     return (
                     <tr key={id || `trace-${i}`}>
@@ -192,15 +197,18 @@ export function ResourcesPage() {
             {spans.length === 0 ? (
               <p className="muted-sm">This trace has no spans.</p>
             ) : (
-              spans.map((s, i) => (
+              spans.map((s, i) => {
+                const sr = s as Span & { span_type?: string; type?: string };
+                return (
                 <div className="no-card" key={i}>
                   <div className="no-head mono">
-                    {s.name ?? s.span_type ?? s.type ?? `span ${i + 1}`}
+                    {sr.name ?? sr.span_type ?? sr.type ?? `span ${i + 1}`}
                   </div>
                   <DataView value={s} />
                   <RawToggle value={s} />
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

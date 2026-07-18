@@ -103,18 +103,20 @@ export function MethodologyPage() {
 
   useEffect(() => {
     api.standardMetrics()
-      .then((c: any) => {
-        if (Array.isArray(c?.metrics) && c.metrics.length) {
-          setMetrics(c.metrics);
-          setWeights(c.index_weights ?? null);
+      .then((c) => {
+        const metrics = c?.metrics;
+        if (Array.isArray(metrics) && metrics.length) {
+          setMetrics(metrics as Metric[]);
+          const weights = c.index_weights;
+          setWeights((weights as Record<string, number> | undefined) ?? null);
           setLive((s) => ({ ...s, metrics: true }));
         }
       })
       .catch(() => { /* keep static fallback */ });
     api.standardDatasets()
-      .then((d: any) => {
+      .then((d) => {
         if (Array.isArray(d?.datasets) && d.datasets.length) {
-          setDatasets(d.datasets);
+          setDatasets(d.datasets as Dataset[]);
           setLive((s) => ({ ...s, datasets: true }));
         }
       })

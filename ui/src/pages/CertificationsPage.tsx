@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api } from "../api";
-import { certIdOf, embedSnippets, gradeColor, isValidCertId, statusView } from "../cert";
+import { api, type CertificationRecord, errMessage } from "../api";
+import { type CertStatus, certIdOf, embedSnippets, gradeColor, isValidCertId, statusView } from "../cert";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 import { Seal } from "../components/Seal";
 import { IconCheck, IconExternal, IconResults, IconCertificate, IconInfo, StatusIcon } from "../icons";
@@ -51,12 +51,12 @@ function CopyRow({ label, value }: { label: string; value: string }) {
 
 /** The publish panel for one issued certificate: live badge preview + the three
  *  copy-paste embed snippets. */
-function CertEmbed({ cert, id }: { cert: any; id: string }) {
+function CertEmbed({ cert, id }: { cert: CertificationRecord; id: string }) {
   const snip = embedSnippets(id, cert.agent_name ?? cert.agent_id ?? "agent");
   return (
     <div className="embed-block">
       <div className="embed-preview">
-        <Seal grade={cert.grade} size={84} />
+        <Seal grade={cert.grade ?? undefined} size={84} />
         <div>
           <div className="embed-grade" style={{ color: gradeColor(cert.grade ?? "") }}>
             Grade {cert.grade ?? "—"}
@@ -140,7 +140,7 @@ function ContinuousCertification() {
 
 export function CertificationsPage() {
   const [params, setParams] = useSearchParams();
-  const [certs, setCerts] = useState<any[] | null>(null);
+  const [certs, setCerts] = useState<CertificationRecord[] | null>(null);
   const [scorecards, setScorecards] = useState<Scorecard[] | null>(null);
   const [picked, setPicked] = useState<string>(params.get("scorecard") ?? "");
   const [agentName, setAgentName] = useState("");
@@ -179,9 +179,9 @@ export function CertificationsPage() {
       setPicked(""); setAgentName("");
       setParams({}, { replace: true });
       load();
-    } catch (e: any) {
+    } catch (e) {
       setMsg({ kind: "err",
-        text: `Could not issue certificate: ${String(e?.message ?? e)}. ` +
+        text: `Could not issue certificate: ${errMessage(e)}. ` +
           "Run a safety scorecard first, or check that certification is enabled." });
     } finally { setBusy(false); }
   };
@@ -189,7 +189,7 @@ export function CertificationsPage() {
   const revoke = async (id: string) => {
     if (!confirm("Revoke this certificate? The public page will show it as revoked.")) return;
     try { await api.revokeCertification(id); load(); }
-    catch (e: any) { setMsg({ kind: "err", text: `Revoke failed: ${String(e?.message ?? e)}` }); }
+    catch (e) { setMsg({ kind: "err", text: `Revoke failed: ${errMessage(e)}` }); }
   };
 
   return (
@@ -254,7 +254,7 @@ export function CertificationsPage() {
             {certs.map((c, i) => {
               const id = certIdOf(c);
               const hasId = isValidCertId(id);
-              const sv = statusView(c.status ?? "valid");
+              const sv = statusView((c.status ?? "valid") as CertStatus);
               const open = hasId && justIssued === id;
               const superseded = c.superseded === true;
               const version = c.config_hash ? String(c.config_hash) : "";
@@ -262,7 +262,7 @@ export function CertificationsPage() {
                 <div className={`cert-item${open ? " open" : ""}${superseded ? " superseded" : ""}`}
                      key={id || `cert-${i}`}>
                   <div className="cert-item-head">
-                    <Seal grade={c.grade} size={56} />
+                    <Seal grade={c.grade ?? undefined} size={56} />
                     <div className="cert-item-id">
                       <div className="cert-item-name">
                         {c.agent_name ?? c.agent_id ?? "agent"}

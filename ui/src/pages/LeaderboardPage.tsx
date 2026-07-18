@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api";
+import { api, errMessage } from "../api";
+import type {
+  Leaderboard, LeaderboardRow, StandardDataset, StandardLeaderboard,
+  StandardLeaderboardRow,
+} from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 import { Term } from "../components/Term";
 import { IconLeaderboard, IconPlay } from "../icons";
@@ -49,8 +53,8 @@ function ComponentCell({ value }: { value: number | null | undefined }) {
 }
 
 function StandardBenchmarks() {
-  const [board, setBoard] = useState<any | null | undefined>(undefined);
-  const [datasets, setDatasets] = useState<any[]>([]);
+  const [board, setBoard] = useState<StandardLeaderboard | null | undefined>(undefined);
+  const [datasets, setDatasets] = useState<StandardDataset[]>([]);
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -66,22 +70,22 @@ function StandardBenchmarks() {
   };
   const ingest = async (id: string) => {
     setBusy("ingest-" + id); setMsg(null);
-    try { const r = await api.ingestDataset(id); setMsg({ kind: "ok", text: `Ingested ${id} (${r.ingested ?? 0} cases).` }); load(); }
-    catch (e: any) { setMsg({ kind: "err", text: `Ingest failed: ${String(e.message ?? e)}` }); }
+    try { const r = await api.ingestDataset(id); setMsg({ kind: "ok", text: `Ingested ${id} (${String(r.ingested ?? 0)} cases).` }); load(); }
+    catch (e) { setMsg({ kind: "err", text: `Ingest failed: ${errMessage(e)}` }); }
     finally { setBusy(""); }
   };
   const runBench = async () => {
     setBusy("run"); setMsg(null);
-    try { const r = await api.runStandard({ k: 3 }); setMsg({ kind: "ok", text: r.note || "Standard run started." }); }
-    catch (e: any) {
-      const d = e?.message ?? e;
-      setMsg(String(d).includes("Anthropic API key")
+    try { const r = await api.runStandard({ k: 3 }); setMsg({ kind: "ok", text: String(r.note || "Standard run started.") }); }
+    catch (e) {
+      const d = errMessage(e);
+      setMsg(d.includes("Anthropic API key")
         ? { kind: "err", text: "Add your Anthropic API key in Settings to run the standard benchmarks." }
-        : { kind: "err", text: `Could not start: ${String(d)}` });
+        : { kind: "err", text: `Could not start: ${d}` });
     } finally { setBusy(""); }
   };
 
-  const agents: any[] = board?.agents ?? [];
+  const agents: StandardLeaderboardRow[] = board?.agents ?? [];
   const present = new Set<string>(agents.flatMap((a) => Object.keys(a.components ?? {})));
   const cols = COMPONENT_COLS.filter(([k]) => present.has(k));
 
@@ -200,7 +204,7 @@ const COLUMNS: [string, string, 1 | -1, boolean][] = [
 ];
 
 export function LeaderboardPage() {
-  const [board, setBoard] = useState<any | null | undefined>(undefined);
+  const [board, setBoard] = useState<Leaderboard | null | undefined>(undefined);
   const [filter, setFilter] = useState<string[]>([]);
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>(
     { key: "index", dir: -1 });
@@ -217,11 +221,11 @@ export function LeaderboardPage() {
       ? { key, dir: (cur.dir * -1) as 1 | -1 }   // toggle direction
       : { key, dir: def });
 
-  const agents = board ? [...board.agents].sort((a: any, b: any) => {
+  const agents: LeaderboardRow[] = board ? [...board.agents].sort((a, b) => {
     const va = a[sort.key], vb = b[sort.key];
     const cmp = typeof va === "string"
-      ? String(va).localeCompare(String(vb))
-      : (va ?? 0) - (vb ?? 0);
+      ? va.localeCompare(String(vb))
+      : (typeof va === "number" ? va : 0) - (typeof vb === "number" ? vb : 0);
     return cmp * sort.dir;
   }) : [];
 
@@ -236,11 +240,11 @@ export function LeaderboardPage() {
 
         {board === undefined ? <Skeleton rows={6} /> : (
           <>
-            {board && board.suites.length > 1 && (
+            {board && (board.suites?.length ?? 0) > 1 && (
               <div style={{ margin: "0 0 12px", display: "flex", alignItems: "center",
                             gap: 6, flexWrap: "wrap" }}>
                 <span className="eyebrow" style={{ marginRight: 2 }}>Common set</span>
-                {board.suites.map((s: string) => (
+                {(board.suites ?? []).map((s: string) => (
                   <button key={s}
                           className={filter.includes(s) || !filter.length ? "active" : ""}
                           onClick={() => toggle(s)}>{s}</button>
@@ -274,25 +278,25 @@ export function LeaderboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {agents.map((a: any) => (
+                      {agents.map((a: LeaderboardRow) => (
                         <tr key={a.agent_id}>
                           <td className="num">{a.rank}</td>
                           <td>{a.agent_id}</td>
                           <td style={a.agent_type === "discovered"
                             ? { color: "var(--muted)" } : undefined}>{a.agent_type}</td>
                           <td>
-                            <IndexBar value={a.index} small />
+                            <IndexBar value={a.index ?? 0} small />
                             {(a.n_scored ?? a.n ?? a.n_cases) != null &&
                               <div className="muted-sm">{a.n_scored ?? a.n ?? a.n_cases} test cases</div>}
                           </td>
-                          <td className="num">${a.mean_cost_usd.toFixed(4)}</td>
+                          <td className="num">${(a.mean_cost_usd ?? 0).toFixed(4)}</td>
                           <td className="num" title="execution + judge cost per case">
                             {a.all_in_cost_per_case_usd == null
                               ? <span style={{ color: "var(--muted)" }}>n/a</span>
                               : `$${a.all_in_cost_per_case_usd.toFixed(4)}`}</td>
-                          <td className="num">{Math.round(a.p95_latency_ms)}</td>
+                          <td className="num">{Math.round(a.p95_latency_ms ?? 0)}</td>
                           <td className="num">{a.coverage}/{a.total_suites}</td>
-                          <td>{a.visibility_tier.replace("_", "-")}</td>
+                          <td>{(a.visibility_tier ?? "").replace("_", "-")}</td>
                           <td className="num">{a.n_errored || ""}</td>
                         </tr>
                       ))}
@@ -309,9 +313,9 @@ export function LeaderboardPage() {
 }
 
 /** Lightweight Index-vs-cost scatter (no charting dep). Higher + left is better. */
-function Scatter({ agents }: { agents: any[] }) {
+function Scatter({ agents }: { agents: LeaderboardRow[] }) {
   const W = 560, H = 240, pad = 40;
-  const costs = agents.map((a) => a.mean_cost_usd);
+  const costs = agents.map((a) => a.mean_cost_usd ?? 0);
   const maxCost = Math.max(...costs, 0.0001) * 1.1;
   const x = (c: number) => pad + (c / maxCost) * (W - 2 * pad);
   const y = (idx: number) => H - pad - (idx / 100) * (H - 2 * pad);
@@ -330,9 +334,9 @@ function Scatter({ agents }: { agents: any[] }) {
       <text x={12} y={16} fill="var(--muted)" fontSize="10">Index ↑</text>
       {agents.map((a) => (
         <g key={a.agent_id}>
-          <circle cx={x(a.mean_cost_usd)} cy={y(a.index)} r={6}
-                  fill={barColor(a.index)} opacity={0.85} />
-          <text x={x(a.mean_cost_usd) + 9} y={y(a.index) + 4}
+          <circle cx={x(a.mean_cost_usd ?? 0)} cy={y(a.index ?? 0)} r={6}
+                  fill={barColor(a.index ?? 0)} opacity={0.85} />
+          <text x={x(a.mean_cost_usd ?? 0) + 9} y={y(a.index ?? 0) + 4}
                 fill="var(--text)" fontSize="11">{a.agent_id}</text>
         </g>
       ))}

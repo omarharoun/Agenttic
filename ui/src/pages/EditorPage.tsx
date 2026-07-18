@@ -1,7 +1,10 @@
 import { ReactFlowProvider } from "@xyflow/react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api";
+import { api, errMessage } from "../api";
+import type {
+  BudgetContext, CostEstimate, ExecutionResults, WorkflowDoc, WorkflowSummary,
+} from "../api";
 import { Canvas } from "../canvas/Canvas";
 import { ConfigPanel } from "../panels/ConfigPanel";
 import { Palette } from "../panels/Palette";
@@ -17,7 +20,7 @@ import { buildDoc, type Template } from "../workflow/templates";
 import { IconClose, IconDownload, IconHand, IconKey, IconPlay, IconPlus, IconTrash, IconWarning } from "../icons";
 
 /** Free-form starter graph, kept for the advanced canvas. */
-const STARTER = {
+const STARTER: WorkflowDoc = {
   workflow_id: "my-workflow",
   name: "Benchmark pipeline",
   nodes: [
@@ -64,9 +67,9 @@ export function EditorPage() {
   const store = useFlowStore();
   const [mode, setMode] = useState<Mode>(getMode);
   const [problems, setProblems] = useState<string[]>([]);
-  const [workflows, setWorkflows] = useState<any[]>([]);
-  const [results, setResults] = useState<any | null>(null);
-  const [estimate, setEstimate] = useState<any | null>(null);
+  const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
+  const [results, setResults] = useState<ExecutionResults | null>(null);
+  const [estimate, setEstimate] = useState<CostEstimate | null>(null);
   // Detect a missing Anthropic key UP FRONT so the user is prompted before
   // building a whole evaluation and hitting a 400 wall at Run.
   const [keySet, setKeySet] = useState<boolean | null>(null);
@@ -103,7 +106,7 @@ export function EditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.exec.status, store.exec.executionId]);
 
-  const load = (doc: any) => {
+  const load = (doc: WorkflowDoc) => {
     const { nodes, edges } = fromWorkflowDoc(doc);
     store.setWorkflowMeta(doc.workflow_id, doc.name);
     store.setGraph(nodes, edges);
@@ -171,19 +174,21 @@ export function EditorPage() {
   };
 
   const importWorkflow = async (file: File) => {
-    let doc: any;
-    try { doc = JSON.parse(await file.text()); }
+    let parsed: unknown;
+    try { parsed = JSON.parse(await file.text()); }
     catch { setProblems([`${file.name}: not valid JSON`]); return; }
-    if (!doc?.workflow_id || !Array.isArray(doc.nodes) || !Array.isArray(doc.edges)) {
+    const cand = parsed as Partial<WorkflowDoc> | null;
+    if (!cand?.workflow_id || !Array.isArray(cand.nodes) || !Array.isArray(cand.edges)) {
       setProblems([`${file.name}: not a workflow document (needs workflow_id, nodes[], edges[])`]);
       return;
     }
+    const doc = cand as WorkflowDoc;
     if (workflows.some((w) => w.workflow_id === doc.workflow_id))
       doc.workflow_id = `${doc.workflow_id}-imported-${Date.now() % 1000}`;
     load(doc);
     store.markDirty(true);
     try { setProblems((await api.saveWorkflow(doc, true)).problems); }
-    catch (e: any) { setProblems([String(e.message ?? e)]); }
+    catch (e) { setProblems([errMessage(e)]); }
   };
 
   const deleteWorkflow = async () => {
@@ -222,8 +227,8 @@ export function EditorPage() {
     try {
       const { execution_id } = await api.startExecution(store.workflowId);
       store.setExec({ ...emptyExec(), executionId: execution_id, status: "running" });
-    } catch (e: any) {
-      setProblems([String(e.message ?? e)]);
+    } catch (e) {
+      setProblems([errMessage(e)]);
     }
   };
 
@@ -286,7 +291,8 @@ export function EditorPage() {
           <button className="approve" onClick={() => api.approve(store.exec.executionId!)}><IconHand size={15} /> Approve</button>
         )}
         {estimate?.estimate && (() => {
-          const e = estimate.estimate, b = estimate.budget || {};
+          const e = estimate.estimate;
+          const b: BudgetContext = estimate.budget ?? {};
           const over = b.would_exceed_run || b.would_exceed_daily;
           const note = e.notes?.length ? "\n" + e.notes.join("\n") : "";
           return (
@@ -294,7 +300,7 @@ export function EditorPage() {
                   title={`projected: agent $${e.projected_agent_usd}, judge ` +
                          `$${e.projected_judge_usd} over ${e.n_cases} cases` +
                          (over ? "\nexceeds budget cap" : "") + note}>
-              ~${e.projected_usd.toFixed(4)}{over && <> <IconWarning size={12} /> over budget</>}
+              ~${(e.projected_usd ?? 0).toFixed(4)}{over && <> <IconWarning size={12} /> over budget</>}
             </span>
           );
         })()}
@@ -330,7 +336,7 @@ export function EditorPage() {
           <ReactFlowProvider>
             <Canvas />
           </ReactFlowProvider>
-          <ConfigPanel results={results} />
+          <ConfigPanel results={results ?? undefined} />
         </div>
       )}
     </div>
@@ -341,9 +347,9 @@ export function EditorPage() {
  *  numbers (this-run estimate, spend so far, quota) into a single panel. Fed by
  *  the workflow estimate response, whose `budget` bundles projected + spent +
  *  quota from one backend source. */
-function CostSummary({ estimate }: { estimate: any }) {
+function CostSummary({ estimate }: { estimate: CostEstimate | null }) {
   const e = estimate?.estimate;
-  const b = estimate?.budget ?? {};
+  const b: BudgetContext = estimate?.budget ?? {};
   if (!e) return null;
   const money = (x: number | null | undefined) => `$${(x ?? 0).toFixed(4)}`;
   const over = b.would_exceed_run || b.would_exceed_daily

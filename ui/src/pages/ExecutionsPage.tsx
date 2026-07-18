@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import { api, type Execution, type ExecutionResults } from "../api";
 import { ReplayCanvas } from "../canvas/ReplayCanvas";
 import { DataView, EmptyState, PageHeader, RawToggle, Skeleton } from "../components/ui";
 import { IconPlay } from "../icons";
@@ -15,10 +15,10 @@ const STATE_COLOR: Record<string, string> = {
 };
 
 export function ExecutionsPage() {
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<Execution[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [detail, setDetail] = useState<any | null>(null);
-  const [results, setResults] = useState<any | null>(null);
+  const [detail, setDetail] = useState<Execution | null>(null);
+  const [results, setResults] = useState<ExecutionResults | null>(null);
 
   const inspect = (executionId: string) => {
     api.getExecution(executionId).then(setDetail);
@@ -64,7 +64,7 @@ export function ExecutionsPage() {
                       </div>
                     )}
                   </td>
-                  <td>{new Date(r.started_at).toLocaleTimeString()}</td>
+                  <td>{new Date(r.started_at ?? "").toLocaleTimeString()}</td>
                   <td>{Object.entries(r.node_states as Record<string, string>)
                     .map(([n, s]) => `${n}:${s}`).join("  ")}</td>
                   <td>

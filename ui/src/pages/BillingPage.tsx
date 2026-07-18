@@ -3,6 +3,7 @@ import {
   api,
   type BillingOverview,
   type BillingProviderConfig,
+  errMessage,
   type Invoice,
   type LedgerEntry,
   type PricingCatalog,
@@ -55,7 +56,7 @@ export function BillingPage() {
         setLedger(led);
         setErr(null);
       })
-      .catch((e: any) => setErr(e?.message || "Failed to load billing"))
+      .catch((e) => setErr(errMessage(e) || "Failed to load billing"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -71,8 +72,8 @@ export function BillingPage() {
       const fn = provider === "stripe" ? api.checkoutStripe : api.checkoutPaypal;
       const { url } = await fn(body);
       window.location.href = url;   // redirect to the hosted checkout
-    } catch (e: any) {
-      setErr(e?.message || `Couldn't start ${provider} checkout`);
+    } catch (e) {
+      setErr(errMessage(e) || `Couldn't start ${provider} checkout`);
       setBusy(null);
     }
   };

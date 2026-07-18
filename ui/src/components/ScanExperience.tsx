@@ -32,9 +32,10 @@ const POLL_MS = 700;
 const INTENT_KEY = "agenttic_scan_intent";
 
 /** Friendly mapping of a failed scan-start to what the user should do next. */
-function explainError(e: any): { kind: "auth" | "key" | "other"; msg: string } {
-  const status = e?.status;
-  const detail = String(e?.detail ?? e?.message ?? e ?? "");
+function explainError(e: unknown): { kind: "auth" | "key" | "other"; msg: string } {
+  const err = (e ?? {}) as { status?: number; detail?: string; message?: string };
+  const status = err.status;
+  const detail = String(err.detail ?? err.message ?? e ?? "");
   if (status === 401) {
     return { kind: "auth", msg: "Create a free account to run your scan — it takes about ten seconds." };
   }
@@ -484,8 +485,8 @@ function GradedActions({ job, onReset }: { job: ScanJob; onReset: () => void }) 
       </div>
     );
   }
-  const page = certUrl(crt.cert_id);
-  const badge = badgeUrl(crt.cert_id);
+  const page = certUrl(crt.cert_id ?? "");
+  const badge = badgeUrl(crt.cert_id ?? "");
   const md = `[![Tested with Agenttic — ${name}](${badge})](${page})`;
   return (
     <div className="scan-actions">

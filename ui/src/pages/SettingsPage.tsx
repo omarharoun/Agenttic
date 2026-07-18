@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, type Me } from "../api";
+import { api, errMessage, type Me } from "../api";
 import { PageHeader, Spinner } from "../components/ui";
 import { type ThemePref, useThemePref } from "../theme";
 import { IconKey, IconLock, IconMonitor, IconMoon, IconSun } from "../icons";
@@ -110,7 +110,7 @@ function ApiKeysSection() {
       const r = await api.testAnthropicKey(key.trim());
       setMsg(r.valid ? { kind: "ok", text: "Key is valid" }
                      : { kind: "err", text: r.error || "Key is not valid" });
-    } catch (e: any) { setMsg({ kind: "err", text: String(e.message ?? e) }); }
+    } catch (e) { setMsg({ kind: "err", text: errMessage(e) }); }
     finally { setBusy(""); }
   };
   const save = async () => {
@@ -119,8 +119,8 @@ function ApiKeysSection() {
       await api.setAnthropicKey(key.trim());
       setKey(""); await load();
       setMsg({ kind: "ok", text: "Saved" });
-    } catch (e: any) {
-      setMsg({ kind: "err", text: String(e.message ?? e).replace(/^\d+\s*/, "") });
+    } catch (e) {
+      setMsg({ kind: "err", text: errMessage(e).replace(/^\d+\s*/, "") });
     } finally { setBusy(""); }
   };
   const remove = async () => {
@@ -190,8 +190,8 @@ function PersonalTokensCard() {
       const r = await api.createToken(name.trim());
       setFresh({ name: r.name, token: r.token });   // shown once
       setName(""); await load();
-    } catch (e: any) {
-      setErr(String(e.message ?? e).replace(/^\d+\s*/, ""));
+    } catch (e) {
+      setErr(errMessage(e).replace(/^\d+\s*/, ""));
     } finally { setBusy(false); }
   };
   const revoke = async (id: number) => {
