@@ -184,6 +184,7 @@ class LLMJudge:
         cfg: dict | None = None,
         retry_policy=None,
         reg=None,
+        pinned_config=None,
     ):
         if model == agent_model:
             raise ValueError(
@@ -210,6 +211,11 @@ class LLMJudge:
         # built-in ``build_judge_prompt`` (unchanged behaviour for every existing
         # LLMJudge construction that does not pass ``reg``).
         self.reg = reg
+        # Optional pinned JudgeConfig: when set, the judge renders THIS specific
+        # config for its criterion instead of resolving the registry's active one
+        # (SPEC-3 Step 15.3 — how ``judge_optimizer.evaluate`` scores a *candidate*
+        # config that is not yet active). It overrides the ``reg`` lookup entirely.
+        self.pinned_config = pinned_config
         from agenttic.retry import RetryPolicy
         self.retry_policy = retry_policy or (
             RetryPolicy.from_cfg(cfg) if cfg else RetryPolicy())
@@ -268,7 +274,9 @@ class LLMJudge:
         config's ``system_prompt`` governs only the plain (non-advisor) call."""
         fence = _new_fence()
         active = None
-        if self.reg is not None:
+        if self.pinned_config is not None:
+            active = self.pinned_config
+        elif self.reg is not None:
             try:
                 active = self.reg.active_judge_config(criterion.criterion_id)
             except Exception:  # noqa: BLE001 — a registry hiccup must not break scoring
