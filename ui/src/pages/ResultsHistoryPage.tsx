@@ -74,7 +74,7 @@ export function ResultsHistoryPage() {
                   <tr>
                     <th>result</th><th>agent</th><th>suite</th>
                     <th className="num" title={PASS_MEANING}>success</th><th className="num">cost</th>
-                    <th>when</th><th></th>
+                    <th>when</th><th><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>

@@ -100,11 +100,11 @@ function AppearanceCard() {
   const [pref, setPref] = useThemePref();
   return (
     <Card title="Appearance" desc="Choose how Agenttic looks. Applies on all your devices.">
-      <div className="seg appearance-seg">
+      <div className="seg appearance-seg" role="group" aria-label="Appearance">
         {APPEARANCE.map((a) => (
           <button key={a.key} className={pref === a.key ? "on" : ""}
-                  onClick={() => setPref(a.key)}>
-            <span style={{ marginRight: 6 }}>{a.icon}</span>{a.label}
+                  aria-pressed={pref === a.key} onClick={() => setPref(a.key)}>
+            <span style={{ marginRight: 6 }} aria-hidden>{a.icon}</span>{a.label}
           </button>
         ))}
       </div>
@@ -179,8 +179,8 @@ function ApiKeysSection() {
         </PageData>
       </div>
 
-      <label>{status?.set ? "Replace key" : "Add your key"}</label>
-      <input type="password" value={key} placeholder="sk-ant-…"
+      <label htmlFor="settings-anthropic-key">{status?.set ? "Replace key" : "Add your key"}</label>
+      <input id="settings-anthropic-key" type="password" value={key} placeholder="sk-ant-…"
              autoComplete="off" onChange={(e) => setKey(e.target.value)} />
       <p className="key-safety" style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <IconLock size={14} /> Your API key is <b>encrypted at rest, never logged, never shared</b>, and only used to run your own tests.
@@ -253,7 +253,7 @@ function PersonalTokensCard() {
 
       <div className="key-actions" style={{ marginBottom: 12 }}>
         <input value={name} placeholder="Token name (e.g. ci-pipeline)"
-               onChange={(e) => setName(e.target.value)} />
+               aria-label="Token name" onChange={(e) => setName(e.target.value)} />
         <button className="primary" disabled={busy} onClick={create}>
           {busy ? "Creating…" : "Create token"}
         </button>

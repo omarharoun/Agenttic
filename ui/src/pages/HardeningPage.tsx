@@ -6,7 +6,7 @@ import type {
   HardeningHistoryEntry, HardeningCandidate, HardeningLiveCandidate,
   HardeningSuiteSummary,
 } from "../api";
-import { EmptyState, PageHeader, Skeleton } from "../components/ui";
+import { EmptyState, Field, PageHeader, Skeleton } from "../components/ui";
 import { Term } from "../components/Term";
 import { IconCheck, IconWarning, IconLive, IconShield, IconArrowRight, IconArrowLeft } from "../icons";
 
@@ -70,42 +70,46 @@ function RerunForm({ suiteId, onStarted }: {
       <div className="policy-title">re-run to prove the fix held</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <div>
-          <label>kind</label>
-          <select value={cfg.variant} onChange={(e) => set({ variant: e.target.value })}>
-            <option value="reference">Built-in reference agent</option>
-            <option value="blackbox">Your API agent (external endpoint)</option>
-            <option value="managed">Managed agent (deployed)</option>
-          </select>
+          <Field label="kind">
+            <select value={cfg.variant} onChange={(e) => set({ variant: e.target.value })}>
+              <option value="reference">Built-in reference agent</option>
+              <option value="blackbox">Your API agent (external endpoint)</option>
+              <option value="managed">Managed agent (deployed)</option>
+            </select>
+          </Field>
         </div>
         {cfg.variant === "reference" && (
           <div>
-            <label>model <small>(optional)</small></label>
-            <input value={cfg.model} placeholder="blank = default"
-                   onChange={(e) => set({ model: e.target.value })} />
+            <Field label={<>model <small>(optional)</small></>}>
+              <input value={cfg.model} placeholder="blank = default"
+                     onChange={(e) => set({ model: e.target.value })} />
+            </Field>
           </div>
         )}
         {cfg.variant === "reference" && (
           <div style={{ gridColumn: "1 / -1" }}>
-            <label>system_prompt <small>(the fixed instructions under test)</small></label>
-            <textarea value={cfg.system_prompt} rows={3}
-                      onChange={(e) => set({ system_prompt: e.target.value })} />
+            <Field label={<>system_prompt <small>(the fixed instructions under test)</small></>}>
+              <textarea value={cfg.system_prompt} rows={3}
+                        onChange={(e) => set({ system_prompt: e.target.value })} />
+            </Field>
           </div>
         )}
         {cfg.variant === "blackbox" && (
           <div style={{ gridColumn: "1 / -1" }}>
-            <label>url *</label>
-            <input value={cfg.url} placeholder="https://…/agent"
-                   onChange={(e) => set({ url: e.target.value })} />
+            <Field label="url *">
+              <input value={cfg.url} placeholder="https://…/agent"
+                     onChange={(e) => set({ url: e.target.value })} />
+            </Field>
           </div>
         )}
         {cfg.variant === "managed" && (
           <>
-            <div><label>managed_agent_id *</label>
+            <div><Field label="managed_agent_id *">
               <input value={cfg.managed_agent_id}
-                     onChange={(e) => set({ managed_agent_id: e.target.value })} /></div>
-            <div><label>environment_id *</label>
+                     onChange={(e) => set({ managed_agent_id: e.target.value })} /></Field></div>
+            <div><Field label="environment_id *">
               <input value={cfg.environment_id}
-                     onChange={(e) => set({ environment_id: e.target.value })} /></div>
+                     onChange={(e) => set({ environment_id: e.target.value })} /></Field></div>
           </>
         )}
       </div>
@@ -298,8 +302,8 @@ function LiveCatches({ onPromoted }: { onPromoted: (note: { ok: boolean; text: s
         live regression suite — approve it after verifying the input and rubric.
       </p>
       <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "8px 0 10px" }}>
-        <label style={{ fontSize: 12, color: "var(--muted)" }}>rubric_id <small>(applied to promoted cases)</small></label>
-        <input value={rubric} placeholder="rubric the reconstructed case runs on"
+        <label htmlFor="harden-rubric" style={{ fontSize: 12, color: "var(--muted)" }}>rubric_id <small>(applied to promoted cases)</small></label>
+        <input id="harden-rubric" value={rubric} placeholder="rubric the reconstructed case runs on"
                onChange={(e) => setRubric(e.target.value)}
                style={{ maxWidth: 320 }} />
       </div>

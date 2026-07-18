@@ -91,11 +91,11 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
           {signup ? "Create your workspace and run your first safety scorecard."
                   : "Log in to your Agenttic workspace."}
         </p>
-        <label>Email</label>
-        <input type="email" autoComplete="email" required value={email}
+        <label htmlFor="auth-email">Email</label>
+        <input id="auth-email" type="email" autoComplete="email" required value={email}
                onChange={(e) => setEmail(e.target.value)} />
-        <label>Password</label>
-        <input type="password" required minLength={8}
+        <label htmlFor="auth-password">Password</label>
+        <input id="auth-password" type="password" required minLength={8}
                autoComplete={signup ? "new-password" : "current-password"}
                value={password} onChange={(e) => setPassword(e.target.value)} />
         {signup && <p className="muted" style={{ marginTop: 6 }}>At least 8 characters.</p>}
