@@ -10,7 +10,7 @@ import { useFlowStore } from "./store";
 import {
   IconWorkflow, IconRuns, IconResults, IconLeaderboard, IconCompare, IconIssues,
   IconTarget, IconShield, IconOptimize, IconCertificate, IconAgent, IconResources,
-  IconBilling, IconSettings, IconHome, IconKey, IconBook, IconChat, IconCompass,
+  IconBilling, IconSettings, IconHome, IconKey, IconBook, IconCompass,
   IconClose, IconBeaker, IconHand, IconArrowRight, HexMark, type IconProps,
 } from "./icons";
 import { AgentsPage } from "./pages/AgentsPage";
@@ -27,7 +27,6 @@ import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { OptimizePage } from "./pages/OptimizePage";
 import { ResourcesPage } from "./pages/ResourcesPage";
 import { SettingsPage } from "./pages/SettingsPage";
-import { StyleguidePage } from "./pages/StyleguidePage";
 import { TrainingCampPage } from "./pages/TrainingCampPage";
 import { LineagePage } from "./pages/LineagePage";
 import { CalibrationPage } from "./pages/CalibrationPage";
@@ -294,8 +293,6 @@ export function AppShell() {
         <div className="nav-group">
           <div className="nav-group-title">More</div>
           <Link to="/api-docs"><span className="ic"><IconBook /></span> API docs</Link>
-          <Link to="/assistant"><span className="ic"><IconChat /></span> Safe assistant</Link>
-          <NavLink to="/app/styleguide"><span className="ic"><HexMark size={18} /></span> Style guide</NavLink>
         </div>
         <div className="nav-foot"><TokenControl /></div>
       </nav>
@@ -347,7 +344,6 @@ export function AppShell() {
             <Route path="resources" element={<ResourcesPage />} />
             <Route path="billing" element={<BillingPage />} />
             <Route path="settings" element={<SettingsPage />} />
-            <Route path="styleguide" element={<StyleguidePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
           </ErrorBoundary>

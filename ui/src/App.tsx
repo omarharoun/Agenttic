@@ -4,20 +4,19 @@ import { ApiDocsPage } from "./pages/ApiDocsPage";
 import { CertifiedDirectoryPage } from "./pages/CertifiedDirectoryPage";
 import { LandingPage } from "./pages/LandingPage";
 import { MethodologyPage } from "./pages/MethodologyPage";
+import { NotFoundPublicPage } from "./pages/NotFoundPublicPage";
 import { PricingPage } from "./pages/PricingPage";
 import { StatusPage } from "./pages/StatusPage";
 
 /* The public content routes below are imported eagerly because they are emitted
    as static HTML at build time (renderToString can't resolve a lazy chunk).
-   Everything else — the interactive scanner, auth, the certificate detail, the
-   assistant, and the heavy React Flow console — is code-split so the public /
+   Everything else — the interactive scanner, auth, the certificate detail,
+   and the heavy React Flow console — is code-split so the public /
    landing bundle stays small and the canvas chunk only loads at /app. */
 const ScanPage = lazy(() =>
   import("./pages/ScanPage").then((m) => ({ default: m.ScanPage })));
 const CertificatePage = lazy(() =>
   import("./pages/CertificatePage").then((m) => ({ default: m.CertificatePage })));
-const AssistantPage = lazy(() =>
-  import("./pages/AssistantPage").then((m) => ({ default: m.AssistantPage })));
 const AppShell = lazy(() =>
   import("./AppShell").then((m) => ({ default: m.AppShell })));
 const LoginPage = lazy(() =>
@@ -44,8 +43,6 @@ export const routes: RouteRecord[] = [
   { path: "/", element: <LandingPage />, entry: "src/pages/LandingPage.tsx" },
   // the live scanner (interactive — client-rendered, not prerendered)
   { path: "/scan", element: suspense(<ScanPage />) },
-  // flagship consumer surface — the safe personal assistant (heavy, lazy)
-  { path: "/assistant", element: suspense(<AssistantPage />) },
   { path: "/login", element: suspense(<LoginPage />) },
   { path: "/signup", element: suspense(<SignupPage />) },
   { path: "/verify", element: suspense(<VerifyPage />) },
@@ -60,4 +57,6 @@ export const routes: RouteRecord[] = [
   { path: "/certified/:id", element: suspense(<CertificatePage />) },
   // the app canvas, behind auth — client-only, never prerendered
   { path: "/app/*", element: suspense(<AppShell />) },
+  // public catch-all — retired/unknown paths get a branded 404, not a raw crash
+  { path: "*", element: <NotFoundPublicPage /> },
 ];
