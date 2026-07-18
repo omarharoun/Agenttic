@@ -1,0 +1,157 @@
+/* ============================================================================
+   Command palette — SPEC-4 Step 18.
+
+   A ⌘K / Ctrl+K overlay: one search input over the console's named entities
+   (agents, suites, runs, scorecards) plus quick actions, with grouped results,
+   arrow-key navigation, and Enter to jump. Chronometer aesthetic — every colour
+   is a theme.css token, no raw hex; the frame reuses --panel / --border / the
+   accent metal so it reads as one instrument set with the rest of the app.
+   ========================================================================== */
+
+.cmdk-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh 16px 16px;
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.cmdk-dialog {
+  width: 100%;
+  max-width: 640px;
+  max-height: 72vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--border-strong, var(--border));
+  border-radius: var(--r-xl, 12px);
+  box-shadow: var(--shadow-lg, var(--shadow));
+}
+
+/* --- search row --------------------------------------------------------- */
+.cmdk-search {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3, 10px);
+  padding: var(--sp-4, 14px) var(--sp-5, 16px);
+  border-bottom: 1px solid var(--border-soft, var(--border));
+}
+.cmdk-search-ic {
+  display: inline-flex;
+  color: var(--muted);
+  flex: none;
+}
+.cmdk-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.4;
+}
+.cmdk-input::placeholder { color: var(--muted); }
+.cmdk-hint {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--border-soft, var(--border));
+  border-radius: var(--r-sm, 6px);
+  padding: 2px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* --- results ------------------------------------------------------------ */
+.cmdk-results {
+  overflow-y: auto;
+  padding: var(--sp-2, 6px) 0;
+  flex: 1 1 auto;
+}
+.cmdk-group-label {
+  padding: var(--sp-2, 6px) var(--sp-5, 16px) 2px;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.cmdk-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3, 10px);
+  width: 100%;
+  padding: var(--sp-2, 8px) var(--sp-5, 16px);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  text-align: left;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+}
+.cmdk-item.is-active {
+  background: var(--accent-soft, var(--panel-2));
+}
+.cmdk-item-ic {
+  display: inline-flex;
+  color: var(--muted);
+  flex: none;
+}
+.cmdk-item.is-active .cmdk-item-ic { color: var(--accent, currentColor); }
+.cmdk-item-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.cmdk-item-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmdk-item-sub {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmdk-item-title mark {
+  background: transparent;
+  color: var(--accent, var(--text));
+  font-weight: 700;
+}
+
+/* --- states ------------------------------------------------------------- */
+.cmdk-status {
+  padding: var(--sp-4, 14px) var(--sp-5, 16px);
+  color: var(--muted);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2, 8px);
+}
+.cmdk-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border-strong, var(--border));
+  border-top-color: var(--accent, var(--text));
+  border-radius: 50%;
+  animation: cmdk-spin 0.7s linear infinite;
+  flex: none;
+}
+@keyframes cmdk-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .cmdk-spinner { animation: none; }
+}

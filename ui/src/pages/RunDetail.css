@@ -1,0 +1,130 @@
+/* Run detail live view (SPEC-4 Step 19.2). Chronometer tokens only — every
+   colour and every gap is a var(--…) from theme.css; no raw hex here. Scoped
+   under .run-detail so nothing leaks into the shared stylesheet. */
+
+.run-detail { max-width: 980px; margin: 0 auto; padding: var(--sp-8) var(--sp-6) var(--sp-20); }
+
+.run-header-actions { display: flex; align-items: center; gap: var(--sp-3); }
+
+.run-status-chip {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  font: 500 var(--t-sm) / 1 var(--font-mono);
+  padding: 6px 12px; border-radius: var(--card-radius);
+  border: var(--card-border); background: var(--card-bg);
+  text-transform: capitalize;
+}
+.run-cancel { display: inline-flex; align-items: center; gap: var(--sp-2); }
+
+/* tones — colour is always paired with an icon/shape, never colour alone */
+.run-tone-ok      { color: var(--ok); }
+.run-tone-fail    { color: var(--fail); }
+.run-tone-waiting { color: var(--wait); }
+.run-tone-running { color: var(--cat-input); }
+.run-tone-muted   { color: var(--muted); }
+
+.run-meta { margin: var(--sp-2) 0 var(--sp-4); font-size: var(--t-sm); }
+.run-muted { color: var(--muted); }
+
+.run-error-banner {
+  display: flex; align-items: center; gap: var(--sp-2);
+  border: var(--card-border); border-left: 4px solid var(--fail);
+  border-radius: var(--card-radius); background: var(--card-bg);
+  padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-4);
+  color: var(--fail); font-size: var(--t-sm);
+}
+
+.run-section { margin-top: var(--sp-6); }
+.run-h2 { font: 500 var(--t-h3) / 1.15 var(--font-serif); margin: 0 0 var(--sp-3); }
+.run-h3 { font: 500 var(--t-lg) / 1.2 var(--font-serif); margin: 0 0 var(--sp-3); }
+
+/* live state pill inside table cells */
+.run-state {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  font-size: var(--t-sm); text-transform: capitalize;
+}
+
+/* running spinner + idle dot — motion/shape carries meaning without colour */
+.run-spinner {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid var(--border); border-top-color: var(--cat-input);
+  display: inline-block; animation: run-spin 0.7s linear infinite;
+}
+@keyframes run-spin { to { transform: rotate(360deg); } }
+.run-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--neutral); display: inline-block;
+}
+@media (prefers-reduced-motion: reduce) {
+  .run-spinner { animation: none; }
+}
+
+/* progress bar per node */
+.run-bar {
+  display: block; width: 120px; height: 6px; border-radius: 999px;
+  background: var(--panel-2); overflow: hidden;
+}
+.run-bar-fill {
+  display: block; height: 100%; border-radius: 999px;
+  background: var(--cat-input); transition: width 0.3s ease;
+}
+.run-bar-fill.run-tone-ok      { background: var(--ok); }
+.run-bar-fill.run-tone-fail    { background: var(--fail); }
+.run-bar-fill.run-tone-waiting { background: var(--wait); }
+.run-bar-fill.run-tone-muted   { background: var(--neutral); }
+
+/* split: case table + trace preview */
+.run-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-5); }
+@media (max-width: 780px) { .run-split { grid-template-columns: 1fr; } }
+
+.run-cases tr[role="button"] { cursor: pointer; }
+.run-cases tr[role="button"]:hover { background: var(--panel-2); }
+.run-cases tr:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: -2px;
+}
+.run-case-selected, .run-case-selected:hover { background: var(--panel-2); }
+
+.run-link { color: var(--accent); text-decoration: none; font-size: var(--t-sm); }
+.run-link:hover { text-decoration: underline; }
+
+.run-trace-panel {
+  border: var(--card-border); border-radius: var(--card-radius);
+  background: var(--card-bg); padding: var(--sp-4);
+}
+
+/* span timeline — kinds as coloured rows on a shared time axis */
+.run-timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.run-span-row { display: grid; grid-template-columns: 160px 1fr; gap: var(--sp-3); align-items: center; }
+.run-span-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.run-span-kind {
+  font: 500 var(--t-xs) / 1 var(--font-mono); text-transform: uppercase;
+  letter-spacing: 0.03em; color: var(--muted);
+}
+.run-span-name {
+  font-size: var(--t-xs); color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.run-span-track {
+  position: relative; display: block; height: 12px;
+  background: var(--panel-2); border-radius: 999px;
+}
+.run-span-bar {
+  position: absolute; top: 0; bottom: 0; border-radius: 999px;
+  background: var(--cat-input); min-width: 3px;
+}
+.run-span-bar.kind-tool_call { background: var(--cat-agents); }
+.run-span-bar.kind-error     { background: var(--fail); }
+.run-span-bar.kind-retrieval { background: var(--cat-benchmark); }
+.run-span-bar.kind-escalation { background: var(--wait); }
+.run-span-bar.kind-final_output { background: var(--ok); }
+.run-span-kind.kind-error { color: var(--fail); }
+
+/* completion handoff cards */
+.run-scorecards { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+.run-scorecard-card {
+  border: var(--card-border); border-radius: var(--card-radius);
+  background: var(--card-bg); padding: var(--sp-4);
+  display: flex; flex-direction: column; gap: var(--sp-3); min-width: 240px;
+}
+.run-sc-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-3); }
+.run-sc-rate { font: 500 var(--t-base) / 1 var(--font-mono); color: var(--ok); }
+.run-view-scorecard { align-self: flex-start; text-decoration: none; }

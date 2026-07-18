@@ -31,6 +31,10 @@ import { TrainingCampPage } from "./pages/TrainingCampPage";
 import { LineagePage } from "./pages/LineagePage";
 import { CalibrationPage } from "./pages/CalibrationPage";
 import { EscalationsPage } from "./pages/EscalationsPage";
+import { TraceViewerPage } from "./pages/TraceViewerPage";
+import { ScorecardDetailPage } from "./pages/ScorecardDetailPage";
+import { RunDetailPage } from "./pages/RunDetailPage";
+import { CommandPalette } from "./components/CommandPalette";
 
 /* The Copilot panel is code-split: its chunk (chat + Markdown renderer) loads
    only when the user first opens the drawer, so it never weighs on the public
@@ -95,17 +99,17 @@ function TokenControl() {
  *  one demoted "New evaluation" entry, not the front door. */
 type NavIcon = (p: IconProps) => JSX.Element;
 const NAV_GROUPS: { title: string; items: { to: string; icon: NavIcon; label: string }[] }[] = [
-  { title: "Score", items: [
+  { title: "Measure", items: [
     { to: "/app/build", icon: IconWorkflow, label: "New evaluation" },
     { to: "/app/executions", icon: IconRuns, label: "Runs" },
     { to: "/app/results", icon: IconResults, label: "Results" },
     { to: "/app/leaderboard", icon: IconLeaderboard, label: "Leaderboard" },
     { to: "/app/compare", icon: IconCompare, label: "Compare" },
   ]},
-  { title: "Issues", items: [
+  { title: "Diagnose", items: [
     { to: "/app/issues", icon: IconIssues, label: "Issues report" },
   ]},
-  { title: "Fix", items: [
+  { title: "Improve", items: [
     { to: "/app/training-camp", icon: IconTarget, label: "Training Camp" },
     { to: "/app/hardening", icon: IconShield, label: "Hardening" },
     { to: "/app/optimize", icon: IconOptimize, label: "Optimize" },
@@ -145,6 +149,35 @@ function EscalationBadge() {
       <IconHand size={15} />
       <span>{count} waiting</span>
       <IconArrowRight size={13} />
+    </Link>
+  );
+}
+
+/** Global run indicator: a live count of running/waiting executions, visible
+ *  from every screen (SPEC-4 Step 18). Polls the executions list; links to Runs.
+ *  Hidden when nothing is in flight so it never adds noise. */
+function RunIndicator() {
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const load = () => api.listExecutions()
+      .then((rows) => {
+        if (!alive) return;
+        setActive(rows.filter((r) =>
+          r.status === "running" || r.status === "waiting_approval").length);
+      })
+      .catch(() => { /* stay silent */ });
+    load();
+    const t = setInterval(load, 4000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+  if (active <= 0) return null;
+  return (
+    <Link to="/app/executions" className="run-indicator"
+          aria-live="polite"
+          aria-label={`${active} execution${active === 1 ? "" : "s"} running now`}>
+      <span className="run-indicator-dot" aria-hidden />
+      <span>{active} running</span>
     </Link>
   );
 }
@@ -261,6 +294,7 @@ export function AppShell() {
             <span className="topbar-ws-name mono">{me?.tenant ?? "default"}</span>
           </div>
           <span style={{ flex: 1 }} />
+          <RunIndicator />
           <EscalationBadge />
           <AccountMenu me={me} onLogout={logout} />
         </header>
@@ -292,6 +326,9 @@ export function AppShell() {
             <Route path="optimize/lineage" element={<LineagePage />} />
             <Route path="calibration" element={<CalibrationPage />} />
             <Route path="escalations" element={<EscalationsPage />} />
+            <Route path="traces/:id" element={<TraceViewerPage />} />
+            <Route path="scorecards/:id" element={<ScorecardDetailPage />} />
+            <Route path="runs/:id" element={<RunDetailPage />} />
             <Route path="agents" element={<AgentsPage />} />
             <Route path="resources" element={<ResourcesPage />} />
             <Route path="billing" element={<BillingPage />} />
@@ -302,6 +339,7 @@ export function AppShell() {
         </div>
       </div>
       <CopilotDock />
+      <CommandPalette />
     </div>
   );
 }

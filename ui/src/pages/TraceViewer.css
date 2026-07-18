@@ -1,0 +1,257 @@
+/* ============================================================================
+   Trace viewer — SPEC-4 Step 19.4.
+
+   A trace is a timeline: every span is a row on a shared time axis, nested by
+   parent, and coloured by kind so the reader can see WHERE the time (and cost)
+   went at a glance, then expand any span for its input/output. A black-box
+   trace has no internals to draw — it renders as a single honest row plus a
+   tier note, never a broken/empty tree.
+
+   All colour is via theme.css tokens (no raw hex). The kind palette reuses the
+   existing status/category tokens so the viewer reads as one instrument set.
+   ========================================================================== */
+
+.trace-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin: 4px 0 14px;
+}
+.trace-total {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.trace-total .tt-val {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.trace-total .tt-lbl {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* --- black-box tier note ------------------------------------------------- */
+.trace-tier-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--info);
+  background: var(--info-soft);
+  border-radius: var(--card-radius);
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  color: var(--text);
+  font-size: 13px;
+}
+.trace-tier-note .ttn-ico { color: var(--info); flex: 0 0 auto; margin-top: 1px; }
+
+/* --- the timeline -------------------------------------------------------- */
+.trace-timeline {
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  overflow: hidden;
+}
+
+.trace-axis {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--muted);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.trace-row-shell {
+  border-top: 1px solid var(--border-soft);
+}
+.trace-row-shell:first-of-type { border-top: none; }
+
+/* the clickable header line: label column + timing-bar track */
+.trace-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) 1fr;
+  gap: 10px;
+  width: 100%;
+  align-items: center;
+  padding: 7px 12px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  font: inherit;
+}
+.trace-row:hover { background: var(--panel-2); }
+.trace-row.is-error { background: var(--fail-soft); }
+.trace-row.is-error:hover { background: var(--fail-soft); }
+
+.trace-row-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.trace-caret {
+  flex: 0 0 auto;
+  color: var(--muted);
+  display: inline-flex;
+  transition: transform 0.12s ease;
+}
+.trace-row[aria-expanded="true"] .trace-caret { transform: rotate(90deg); }
+
+.trace-kind-dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--k-color, var(--border-strong));
+}
+.trace-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.trace-row-kind {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex: 0 0 auto;
+}
+
+/* the timing-bar track — a bar positioned by start/end within the trace window */
+.trace-bar-track {
+  position: relative;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--border-soft);
+}
+.trace-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 3px;
+  border-radius: 3px;
+  background: var(--k-color, var(--border-strong));
+  opacity: 0.85;
+}
+.trace-bar.is-error { background: var(--fail); opacity: 1; }
+.trace-bar-dur {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  padding: 0 5px;
+  white-space: nowrap;
+}
+
+/* --- expanded detail ----------------------------------------------------- */
+.trace-detail {
+  padding: 10px 12px 14px 30px;
+  background: var(--panel-2);
+  border-top: 1px solid var(--border-soft);
+}
+.trace-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.trace-anno {
+  font-size: 12px;
+  color: var(--muted);
+}
+.trace-anno b {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.trace-anno.is-error-anno { color: var(--fail); }
+.trace-anno.is-error-anno b { color: var(--fail); }
+
+.trace-json-block { margin-top: 8px; }
+.trace-json-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.trace-json-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.trace-json {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md, 8px);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+  max-height: 340px;
+  overflow-y: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.trace-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm, 6px);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.trace-copy-btn:hover { color: var(--text); border-color: var(--border-strong); }
+
+/* --- loading skeleton (timeline-shaped) ---------------------------------- */
+.trace-skel {
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  overflow: hidden;
+}
+.trace-skel-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 12px;
+  border-top: 1px solid var(--border-soft);
+}
+.trace-skel-row:first-child { border-top: none; }
+.trace-skel-bar {
+  height: 14px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--border-soft), var(--panel-2), var(--border-soft));
+  background-size: 200% 100%;
+  animation: trace-shimmer 1.3s ease-in-out infinite;
+}
+@keyframes trace-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
