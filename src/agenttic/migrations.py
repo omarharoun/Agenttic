@@ -271,6 +271,63 @@ def _agent_config_table(conn) -> None:
     AgentConfigRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _seed_judge_configs(conn) -> None:
+    """v26 — judge configs become versioned artifacts (SPEC-3 Step 15.1).
+
+    Create the ``judgeconfigrow`` table, then EAGERLY seed one v1
+    ``status='active'`` :class:`JudgeConfig` for every judge-scored criterion
+    discoverable in existing rubrics (RubricRow payloads). The seed config
+    reproduces today's judge prompt byte-for-byte. Idempotent: a criterion that
+    already has ANY config row is skipped, so re-running (or seeding a criterion
+    the live judge already persisted lazily) never double-inserts. Fresh DBs
+    have no rubrics yet, so this simply creates the table; the live judge then
+    seeds lazily on first use via ``LLMJudge``."""
+    import json as _json
+
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers JudgeConfigRow)
+    from agenttic.registry.sqlite_store import JudgeConfigRow
+    from agenttic.schema.judge_config import seed_config_for
+
+    JudgeConfigRow.__table__.create(bind=conn, checkfirst=True)
+
+    from sqlalchemy import inspect
+    insp = inspect(conn)
+    if "rubricrow" not in insp.get_table_names():
+        return
+
+    # (tenant_id, criterion_id) pairs of judge-scored criteria across all rubrics.
+    seen: set[tuple[str, str]] = set()
+    for tenant_id, payload in conn.execute(text(
+            "SELECT tenant_id, payload FROM rubricrow")):
+        try:
+            rubric = _json.loads(payload)
+        except Exception:  # noqa: BLE001 — a bad row must not abort the migration
+            continue
+        for crit in rubric.get("criteria", []) or []:
+            if crit.get("scorer") == "judge":
+                seen.add((tenant_id or "default", crit.get("criterion_id")))
+
+    for tenant_id, criterion_id in sorted(seen):
+        if not criterion_id:
+            continue
+        # Idempotent: skip if this (tenant, criterion) already has any config.
+        exists = conn.execute(text(
+            "SELECT 1 FROM judgeconfigrow WHERE tenant_id = :t "
+            "AND criterion_id = :c LIMIT 1"),
+            {"t": tenant_id, "c": criterion_id}).first()
+        if exists:
+            continue
+        cfg = seed_config_for(criterion_id)
+        conn.execute(text(
+            "INSERT INTO judgeconfigrow "
+            "(tenant_id, judge_config_id, criterion_id, version, status, "
+            " created_at, payload) VALUES "
+            "(:t, :jid, :c, :v, :s, :ca, :p)"),
+            {"t": tenant_id, "jid": cfg.judge_config_id, "c": criterion_id,
+             "v": cfg.version, "s": cfg.status,
+             "ca": cfg.created_at.isoformat(), "p": cfg.model_dump_json()})
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -298,6 +355,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (23, "copilot_sessions_table", _copilot_sessions_table),
     (24, "feedback_table", _feedback_table),
     (25, "agent_config_table", _agent_config_table),
+    (26, "seed_judge_configs", _seed_judge_configs),
 ]
 
 
