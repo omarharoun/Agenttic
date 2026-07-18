@@ -3626,3 +3626,18 @@ a.btn-primary, button.btn-primary,
   text-decoration: none; transition: background var(--dur-fast, 120ms) var(--ease-escape, ease);
 }
 .esc-badge:hover { background: var(--wait-soft, rgba(200,160,40,0.18)); }
+
+/* Global run indicator (AppShell top bar) — live running/waiting count → Runs. */
+.run-indicator {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 4px 10px; margin-right: 10px; border-radius: var(--r-pill, 999px);
+  font: 500 var(--t-sm)/1 var(--font-ui); color: var(--cat-input, var(--accent));
+  background: var(--panel-2, rgba(255,255,255,0.04));
+  border: 1px solid var(--border); text-decoration: none;
+}
+.run-indicator-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--cat-input, var(--accent)); animation: run-pulse 1.4s ease-in-out infinite;
+}
+@keyframes run-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .run-indicator-dot { animation: none; } }
