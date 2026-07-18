@@ -353,6 +353,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     from agenttic.server.routes.ingest import router as ingest_router
     from agenttic.server.routes.leaderboard import router as leaderboard_router
     from agenttic.server.routes.live import router as live_router
+    from agenttic.server.routes.moat import router as moat_router
     from agenttic.server.routes.optimize import router as optimize_router
     from agenttic.server.routes.quickstart import router as quickstart_router
     from agenttic.server.routes.resources import router as resources_router
@@ -427,6 +428,7 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(standard_router, prefix="/api", dependencies=protected)
     app.include_router(hardening_router, prefix="/api", dependencies=protected)
     app.include_router(optimize_router, prefix="/api", dependencies=protected)
+    app.include_router(moat_router, prefix="/api", dependencies=protected)
     app.include_router(quickstart_router, prefix="/api", dependencies=protected)
     app.include_router(scan_router, prefix="/api", dependencies=protected)
     app.include_router(connect_router, prefix="/api", dependencies=protected)

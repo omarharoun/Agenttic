@@ -1527,3 +1527,187 @@ export interface CopilotHandlers {
   onDone?: (info: { session_id: string; status: string }) => void;
   onError?: (err: CopilotErrorInfo) => void;
 }
+
+/* ===========================================================================
+ * The "moat" surface (SPEC-4 Step 20) — the differentiators made visible:
+ * agent-config lineage + gate receipts, judge lineage, calibration + labeling,
+ * and the human-in-the-loop escalation inbox. Mirrored field-for-field from
+ * server/routes/moat.py.
+ * ========================================================================= */
+
+/** The FULL promote/reject verdict for one ledger node, verbatim as the
+ *  optimizer recorded it. `reason` is the compare_scorecards string (per-
+ *  criterion deltas, epsilon-drop / cost / latency vetoes); `diff_summary` is
+ *  the human changelog; `payload` carries the config + any structured detail. */
+export interface GateReceipt {
+  reason: string;
+  diff_summary: string;
+  payload: JsonObject;
+}
+
+export type LineageNodeStatus = "promoted" | "rejected" | "pending_approval";
+
+/** One entry in an agent's promotion ledger (SPEC-2 Step 14). */
+export interface AgentLineageNode {
+  hash: string;
+  parent_hash: string | null;
+  status: LineageNodeStatus;
+  created_at: string;
+  diff_summary: string;
+  scorecard_ids: string[];
+  approved_by: string | null;
+  /** task_success_rate of the scorecard this config was gated on, or null. */
+  task_success_rate: number | null;
+  gate_receipt: GateReceipt;
+}
+
+export interface AgentLineageEdge {
+  from: string;
+  to: string;
+}
+
+/** GET /api/lineage/agents/{agent_id} — the config family tree. */
+export interface AgentLineage {
+  agent_id: string;
+  nodes: AgentLineageNode[];
+  edges: AgentLineageEdge[];
+}
+
+/** The train/holdout agreement before/after one judge-optimization round,
+ *  parsed from a JudgeConfig's changelog. Null when a config carries no round
+ *  record (e.g. the seed v1). */
+export interface JudgeRoundRecord {
+  round: number | null;
+  promoted: boolean | null;
+  reason: string;
+  train_before: number | null;
+  train_after: number | null;
+  holdout_before: number | null;
+  holdout_after: number | null;
+  n_holdout_scored: number;
+}
+
+export type JudgeLineageStatus = "candidate" | "active" | "rejected" | "retired";
+
+export interface JudgeLineageNode {
+  judge_config_id: string;
+  version: number;
+  parent_id: string | null;
+  status: JudgeLineageStatus;
+  changelog: string;
+  created_at: string;
+  round_record: JudgeRoundRecord | null;
+}
+
+/** GET /api/lineage/judges/{criterion_id} — the judge-config lineage v1→vN. */
+export interface JudgeLineage {
+  criterion_id: string;
+  active_version: number | null;
+  nodes: JudgeLineageNode[];
+}
+
+export type CalibrationStatus =
+  | "calibrated"
+  | "PROVISIONAL"
+  | "insufficient_labels";
+
+/** One criterion's calibration standing on a suite. `agreement` is null until
+ *  a judge score and a human label pair up. */
+export interface CalibrationRow {
+  criterion_id: string;
+  suite_id: string;
+  agreement: number | null;
+  label_count: number;
+  paired_count: number;
+  threshold: number;
+  min_labels: number;
+  status: CalibrationStatus;
+}
+
+/** An open judge-optimization request as the calibration surface projects it
+ *  (SPEC-3 Step 15.4) — a subset of the full JudgeOptimizationRequest. */
+export interface OpenJudgeOptimizationRequest {
+  request_id: string;
+  criterion_id: string;
+  suite_id: string;
+  reason: string;
+  status: string;
+  created_at: string;
+}
+
+/** GET /api/calibration — per-criterion status + the open optimization asks. */
+export interface CalibrationReport {
+  criteria: CalibrationRow[];
+  open_requests: OpenJudgeOptimizationRequest[];
+}
+
+/** One anchor on the shared {0, 0.5, 1} label scale. */
+export interface LabelAnchor {
+  score: number;
+  label: string;
+}
+
+/** The criterion a labeling task is about. */
+export interface LabelCriterion {
+  criterion_id: string;
+  description: string;
+  scale: "binary" | "three_point" | string;
+}
+
+/** GET /api/calibration/{criterion_id}/next-unlabeled — one unit of labeling
+ *  work: a trace awaiting a human score, the criterion, and its anchors.
+ *  `exhausted` is true when every scored trace already has a label. */
+export interface NextUnlabeled {
+  exhausted: boolean;
+  criterion: LabelCriterion;
+  trace: Trace | null;
+  suite_id: string | null;
+  anchors: LabelAnchor[];
+}
+
+/** POST /api/calibration/labels — the appended label's effect. `criterion` is
+ *  the updated calibration row (null when it can't be recomputed yet). */
+export interface LabelResult {
+  ok: boolean;
+  suite_id: string;
+  labels_path: string;
+  label_count: number;
+  criterion: CalibrationRow | null;
+}
+
+/** One unresolved escalation: the agent's question, the trace context, and the
+ *  autonomy policy that halted the run (SPEC-2 Step 12). */
+export interface PendingEscalation {
+  trace_id: string;
+  agent_id: string;
+  test_case_id: string | null;
+  question: string;
+  context: JsonObject;
+  autonomy_policy: {
+    tool: JsonValue;
+    tool_input: JsonValue;
+    policy: JsonValue;
+  };
+}
+
+/** One resolved escalation — the human decision, persisted append-only. */
+export interface ResolvedEscalation {
+  feedback_id: string;
+  trace_id: string;
+  agent_id: string;
+  response: string;
+  created_at: string;
+}
+
+/** GET /api/escalations — the human-in-the-loop inbox + resolved history. */
+export interface EscalationInbox {
+  pending: PendingEscalation[];
+  pending_count: number;
+  resolved: ResolvedEscalation[];
+}
+
+/** POST /api/escalations/{trace_id}/respond — the newly resolved item. */
+export interface EscalationRespondResult {
+  resolved: ResolvedEscalation;
+  pending_count: number;
+}

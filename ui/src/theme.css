@@ -3615,3 +3615,14 @@ a.btn-primary, button.btn-primary,
 .sg-token-name { font-size: var(--t-sm); color: var(--text); }
 .sg-token-var { font-size: 11px; color: var(--muted); margin-left: auto; }
 .styleguide button { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Top-bar escalation indicator (AppShell) — pending HITL count → the inbox. */
+.esc-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; margin-right: 10px; border-radius: var(--r-pill, 999px);
+  font: 500 var(--t-sm)/1 var(--font-ui); color: var(--wait);
+  background: var(--wait-soft, rgba(200,160,40,0.10));
+  border: 1px solid var(--wait-border, rgba(200,160,40,0.35));
+  text-decoration: none; transition: background var(--dur-fast, 120ms) var(--ease-escape, ease);
+}
+.esc-badge:hover { background: var(--wait-soft, rgba(200,160,40,0.18)); }
