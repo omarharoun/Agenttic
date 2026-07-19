@@ -393,6 +393,14 @@ def gate(candidate_sc: Scorecard, baseline_sc: Scorecard, cfg: dict
                 f"exceeds {max_lat_mult:g}x baseline "
                 f"{baseline_sc.p95_latency_ms:.0f}ms")
 
+    # (5) reliability floor (SPEC-7 31, opt-in via learning.gate_on_pass_k): a
+    # candidate that raises pass^1 but lowers pass^k is a flakiness regression.
+    if lc.get("gate_on_pass_k"):
+        from agenttic.reliability import pass_k_regression
+        reliability_reason = pass_k_regression(baseline_sc, candidate_sc)
+        if reliability_reason:
+            return False, reliability_reason
+
     return True, reason
 
 

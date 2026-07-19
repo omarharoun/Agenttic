@@ -228,6 +228,12 @@ async def certify(
 
     _check_abort("start")
     k = int(k or profile.min_k)
+    # SPEC-7 34: a certificate that makes a reliability (pass^k) claim needs
+    # k >= 4 trials. Opt-in per deployment (default off keeps existing single-
+    # trial and k=2 flows working); when on, issuance refuses below the floor.
+    if (cfg.get("certification") or {}).get("require_reliability"):
+        from agenttic.reliability import require_certification_grade
+        require_certification_grade(k)
     suite_ids = [ref.suite_id for ref in profile.suite_refs]
 
     # BYO-key billing ceiling (SPEC-2 T15.5): enforce the tenant's spend cap

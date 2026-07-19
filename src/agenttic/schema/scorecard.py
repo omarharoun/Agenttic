@@ -66,6 +66,11 @@ class Scorecard(BaseModel):
     errored_test_ids: list[str] = Field(default_factory=list)
     visibility_tier: Literal["glass_box", "black_box"]
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # --- reliability (SPEC-7 Step 31) ----------------------------------------
+    #: trials run per case (k). 1 = single-trial (labelled as such everywhere).
+    trials_per_case: int = 1
+    #: suite-level pass^k' for k' in {1,2,4,8} where k permits; None when k == 1
+    pass_k_curve: dict[int, float] | None = None
 
     # --- sample size + confidence (additive; derived from run_scores) --------
     # task_success_rate is a point estimate; on its own it hides how much data
@@ -138,6 +143,18 @@ class Scorecard(BaseModel):
             for c in r.criterion_scores:
                 per_crit.setdefault(c.criterion_id, []).append(c.score)
         means = {cid: sum(v) / len(v) for cid, v in per_crit.items()}
+
+        # reliability: group scored runs by case; when cases were run multiple
+        # times, compute the suite pass^k curve (SPEC-7 Step 31).
+        trials: dict[str, list[bool]] = {}
+        for r in scored:
+            trials.setdefault(r.test_id, []).append(r.passed)
+        k = min((len(v) for v in trials.values()), default=1)
+        pass_k_curve = None
+        if k >= 2:
+            from agenttic.reliability import pass_k_curve as _curve
+            pass_k_curve = _curve(trials)
+
         return cls(
             scorecard_id=scorecard_id,
             agent_id=agent_id,
@@ -154,4 +171,6 @@ class Scorecard(BaseModel):
             per_criterion_means=means,
             errored_test_ids=errored_ids,
             visibility_tier=visibility_tier,
+            trials_per_case=k,
+            pass_k_curve=pass_k_curve,
         )
