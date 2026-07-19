@@ -45,6 +45,9 @@ class RunScore(BaseModel):
     latency_ms: float = 0.0
     steps: int = 0
     scoring_error: str | None = None
+    #: SPEC-7 30 — provenance of the user, from the trace ("simulated" for a
+    #: user-sim run); propagated so scorecards/reports can label it.
+    user_source: str = "none"
 
 
 class Scorecard(BaseModel):
@@ -71,6 +74,9 @@ class Scorecard(BaseModel):
     trials_per_case: int = 1
     #: suite-level pass^k' for k' in {1,2,4,8} where k permits; None when k == 1
     pass_k_curve: dict[int, float] | None = None
+    #: SPEC-7 30 — "simulated" when any run was against a simulated user (a proxy,
+    #: labelled everywhere — Hard Rule 31); else "none"/"human"
+    user_source: str = "none"
 
     # --- sample size + confidence (additive; derived from run_scores) --------
     # task_success_rate is a point estimate; on its own it hides how much data
@@ -173,4 +179,7 @@ class Scorecard(BaseModel):
             visibility_tier=visibility_tier,
             trials_per_case=k,
             pass_k_curve=pass_k_curve,
+            user_source=("simulated" if any(r.user_source == "simulated" for r in run_scores)
+                         else "human" if any(r.user_source == "human" for r in run_scores)
+                         else "none"),
         )

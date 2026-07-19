@@ -88,6 +88,11 @@ class Trace(BaseModel):
     # resolved with human guidance and completed, or persisted unresolved
     # (final_output=="ESCALATED_UNRESOLVED") when no human channel was available.
     escalated: bool = False
+    #: SPEC-7 Step 30 — provenance of the user in a conversational run. "none" for
+    #: single-shot; "simulated" for an LLM user sim (a PROXY, always labelled as
+    #: such — Hard Rule 31); "human" for pilot/client users (the calibration
+    #: ceiling for sim results).
+    user_source: Literal["none", "simulated", "human"] = "none"
     schema_version: str = SCHEMA_VERSION
 
     @model_validator(mode="after")

@@ -232,4 +232,5 @@ def score_run(
         scoring_cost_usd=sum(s.cost_usd for s in scores),
         latency_ms=trace.total_latency_ms,
         steps=trace.total_steps,
+        user_source=getattr(trace, "user_source", "none"),
     )
