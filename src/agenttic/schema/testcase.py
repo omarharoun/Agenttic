@@ -41,6 +41,8 @@ class TestCase(BaseModel):
     rubric_id: str
     #: reference solution proving solvability (SPEC-6 25.1); None until authored
     oracle: OracleSolution | None = None
+    #: per-case harness timeout override in seconds (SPEC-6 27, Harbor time limit)
+    timeout_sec: float | None = None
 
 
 class TestSuite(BaseModel):
@@ -58,3 +60,9 @@ class TestSuite(BaseModel):
     #: non-dataset suites (std seeds, hand-built). Coverage resolves a domain to
     #: assessed_real ONLY for a "real" dataset suite — never for a sample/seed one.
     dataset_provenance: str | None = None
+    #: import provenance, e.g. "harbor:swe-bench@2.0" (SPEC-6 Step 27); None for
+    #: generated / hand-built suites
+    origin: str | None = None
+    #: a benchmark canary string preserved verbatim from an imported artifact
+    #: (e.g. Terminal-Bench 2.0); NOT the per-tenant contamination canary (Step 28)
+    canary: str | None = None
