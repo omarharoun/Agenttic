@@ -29,6 +29,7 @@ from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from agenttic.schema.abc import ABCReport
 from agenttic.schema.agent import DeclaredAgent
+from agenttic.schema.environment import Environment
 from agenttic.schema.integrity import IntegrityReport
 from agenttic.schema.scorecard import Scorecard
 from agenttic.schema.testcase import TestCase, TestSuite
@@ -116,6 +117,16 @@ class ABCReportRow(SQLModel, table=True):
     version: int
     created_at: datetime
     payload: str          # JSON: ABCReport.model_dump_json()
+
+
+class EnvironmentRow(SQLModel, table=True):
+    """A versioned stateful environment (SPEC-7 Step 29). Append-only."""
+    __table_args__ = (UniqueConstraint("tenant_id", "env_id", "version"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    env_id: str = Field(index=True)
+    version: int
+    payload: str          # JSON: Environment.model_dump_json()
 
 
 class CanaryRow(SQLModel, table=True):
@@ -1164,6 +1175,31 @@ class Registry:
             s.add(RubricRow(tenant_id=self.tenant, rubric_id=rubric.rubric_id,
                             version=rubric.version, payload=rubric.model_dump_json()))
             s.commit()
+
+    # ---- stateful environments (SPEC-7 Step 29) --------------------------
+    def save_environment(self, env: Environment) -> None:
+        with Session(self.engine) as s:
+            exists = s.exec(select(EnvironmentRow).where(
+                EnvironmentRow.tenant_id == self.tenant,
+                EnvironmentRow.env_id == env.env_id,
+                EnvironmentRow.version == env.version)).first()
+            if exists:
+                raise DuplicateVersionError(
+                    f"environment {env.env_id} v{env.version} already stored")
+            s.add(EnvironmentRow(tenant_id=self.tenant, env_id=env.env_id,
+                                 version=env.version, payload=env.model_dump_json()))
+            s.commit()
+
+    def get_environment(self, env_id: str, version: int | None = None) -> Environment:
+        with Session(self.engine) as s:
+            q = select(EnvironmentRow).where(EnvironmentRow.tenant_id == self.tenant,
+                                             EnvironmentRow.env_id == env_id)
+            q = q.where(EnvironmentRow.version == version) if version is not None \
+                else q.order_by(EnvironmentRow.version.desc())
+            row = s.exec(q).first()
+            if not row:
+                raise NotFoundError(f"environment {env_id} v{version}")
+            return Environment.model_validate_json(row.payload)
 
     def get_rubric(self, rubric_id: str, version: int | None = None) -> Rubric:
         with Session(self.engine) as s:

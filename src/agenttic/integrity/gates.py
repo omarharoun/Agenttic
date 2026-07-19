@@ -54,11 +54,19 @@ def _code_pass(trace: Trace, tc: TestCase, rubric: Rubric,
     return (weighted >= threshold), scores
 
 
-def _oracle_trace(tc: TestCase) -> Trace:
-    """A synthetic trace standing in for the oracle's behaviour: its final
-    output plus a tool_call span per referenced tool (in order)."""
-    now = datetime.now(timezone.utc)
+def _oracle_trace(tc: TestCase, env=None) -> Trace:
+    """A synthetic trace standing in for the oracle's behaviour. For a stateful
+    case (SPEC-7 29) the oracle's tool CALLS are replayed through the environment
+    so the resulting trace carries the real end state; otherwise it is the final
+    output plus a tool_call span per referenced tool name."""
     oracle = tc.oracle
+    if env is not None and oracle and oracle.tool_calls:
+        from agenttic.envs.engine import env_trace
+        return env_trace(
+            env, [(c.get("name", ""), c.get("args", {})) for c in oracle.tool_calls],
+            final_output=oracle.final_output, agent_id="integrity-oracle",
+            test_case_id=tc.test_id)
+    now = datetime.now(timezone.utc)
     spans = [
         Span(span_id=f"o{i}", kind="tool_call", name=tool, start_time=now, end_time=now)
         for i, tool in enumerate(oracle.tool_sequence or [])
@@ -78,7 +86,8 @@ def _case_payload(tc: TestCase) -> dict:
 # --------------------------------------------------------------------------- #
 # gates
 # --------------------------------------------------------------------------- #
-def oracle_gate(cases: list[TestCase], rubric_of: Callable[[str], Rubric]) -> GateResult:
+def oracle_gate(cases: list[TestCase], rubric_of: Callable[[str], Rubric],
+                env_of: Callable[[str], object] | None = None) -> GateResult:
     failing, inconclusive = [], []
     missing = 0
     for tc in cases:
@@ -86,7 +95,8 @@ def oracle_gate(cases: list[TestCase], rubric_of: Callable[[str], Rubric]) -> Ga
             failing.append(tc.test_id)
             missing += 1
             continue
-        ok, _ = _code_pass(_oracle_trace(tc), tc, rubric_of(tc.rubric_id))
+        env = env_of(tc.env_id) if (env_of and tc.env_id) else None
+        ok, _ = _code_pass(_oracle_trace(tc, env), tc, rubric_of(tc.rubric_id))
         if ok is None:
             inconclusive.append(tc.test_id)   # judge-only: no code checks to prove
         elif not ok:
@@ -187,9 +197,19 @@ def run_integrity_gates(reg, suite: TestSuite, cases: list[TestCase],
             cache[rid] = reg.get_rubric(rid)
         return cache[rid]
 
+    env_cache: dict[str, object] = {}
+
+    def env_of(env_id: str):
+        if env_id not in env_cache:
+            try:
+                env_cache[env_id] = reg.get_environment(env_id)
+            except Exception:  # noqa: BLE001
+                env_cache[env_id] = None
+        return env_cache[env_id]
+
     exploit_complete = complete or heuristic_complete
     gates = [
-        oracle_gate(cases, rubric_of),
+        oracle_gate(cases, rubric_of, env_of),
         dummy_gate(cases, rubric_of),
         exploit_gate(cases, rubric_of, exploit_complete,
                      save_trace=lambda t: reg.save_trace(t, mode="integrity")),

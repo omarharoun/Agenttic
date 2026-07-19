@@ -23,7 +23,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-SCHEMA_VERSION = "0.3.0"  # 0.3.0: + escalation SpanKind & Trace.escalated (HITL, MINOR)
+SCHEMA_VERSION = "0.4.0"  # 0.4.0: + Span.state_change & user_message SpanKind (SPEC-7, MINOR)
 
 SpanKind = Literal[
     "llm_call",
@@ -33,6 +33,7 @@ SpanKind = Literal[
     "error",
     "final_output",
     "escalation",
+    "user_message",   # SPEC-7 Step 30: a simulated-user turn in a conversation
 ]
 
 
@@ -52,6 +53,9 @@ class Span(BaseModel):
     tokens_out: int | None = None
     cost_usd: float | None = None
     attributes: dict = Field(default_factory=dict)
+    #: SPEC-7 Step 29 — mutations a write tool made to the environment, each
+    #: {op, entity_type, id, before?, after?}. None on read/non-tool spans.
+    state_change: list[dict] | None = None
 
     @model_validator(mode="after")
     def _end_not_before_start(self) -> "Span":

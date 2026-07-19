@@ -23,6 +23,10 @@ class OracleSolution(BaseModel):
     final_output: str
     #: reference tool names, in order, for trajectory-checked cases
     tool_sequence: list[str] | None = None
+    #: for stateful cases (SPEC-7 29): reference tool CALLS ({name, args}) whose
+    #: replay through the environment reaches goal_state; the oracle gate replays
+    #: these to verify solvability against state, not just output
+    tool_calls: list[dict] | None = None
     authored_by: Literal["human", "generated", "generated_human_verified"] = "generated"
 
 
@@ -43,6 +47,9 @@ class TestCase(BaseModel):
     oracle: OracleSolution | None = None
     #: per-case harness timeout override in seconds (SPEC-6 27, Harbor time limit)
     timeout_sec: float | None = None
+    #: the stateful environment this case runs against (SPEC-7 Step 29); None for
+    #: stateless (degenerate read-only) cases
+    env_id: str | None = None
 
 
 class TestSuite(BaseModel):
