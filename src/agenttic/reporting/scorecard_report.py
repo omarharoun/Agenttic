@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from agenttic.coverage.targets import DEFAULT_CLOSURE_TARGET
+from agenttic.schema.abc import ABCReport
 from agenttic.schema.rubric import Rubric
 from agenttic.schema.scorecard import Scorecard
 
@@ -121,6 +122,7 @@ def render_markdown(
     *,
     harness: "HarnessEnforcementResult | None" = None,
     calibration_records: Mapping[str, CalibrationRecord] | None = None,
+    abc: ABCReport | None = None,
 ) -> str:
     crit_by_id = {c.criterion_id: c for c in rubric.criteria}
     records = (calibration_records if calibration_records is not None
@@ -298,6 +300,20 @@ def render_markdown(
             f"{', '.join(f'`{c}`' for c in sorted(provisional_ids))} — these scores "
             "are provisional until judge-human agreement is measured (>= 0.8)."
         )
+
+    # SPEC-6 26.1 — benchmark-rigor scorecard (the bureau certifying its own
+    # instrument). Items with no evidence read N/A, never estimated upward.
+    if abc is not None:
+        overall = abc.overall
+        headline = f"{overall:.2f}" if overall is not None else "N/A"
+        lines += ["", "## Benchmark rigor (ABC)", "",
+                  f"Benchmark rigor: **{headline}** (ABC) — how well this suite meets "
+                  "the Agentic Benchmark Checklist, from evidence we hold. Items we "
+                  "cannot evidence are shown N/A, never estimated upward.", "",
+                  "| Item | Aspect | Score | Evidence |", "|---|---|---|---|"]
+        for it in abc.items:
+            s = f"{it.score:.2f}" if it.score is not None else "N/A"
+            lines.append(f"| {it.item_id} | {it.name} | {s} | {it.evidence} |")
 
     return "\n".join(lines) + "\n"
 

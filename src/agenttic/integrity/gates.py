@@ -204,4 +204,10 @@ def verify_suite(reg, cfg, suite_id: str, version: int | None = None,
     suite, cases = reg.get_suite(suite_id, version)
     report = run_integrity_gates(reg, suite, cases, complete=complete)
     reg.save_integrity_report(report)
+    # SPEC-6 26.1: the ABC benchmark-rigor scorecard, now that gate evidence exists.
+    try:
+        from agenttic.integrity.abc import compute_abc_report
+        reg.save_abc_report(compute_abc_report(reg, suite_id, suite.version))
+    except Exception:  # noqa: BLE001 — the rigor report must never block verify
+        pass
     return report
