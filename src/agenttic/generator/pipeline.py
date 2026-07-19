@@ -20,7 +20,7 @@ from pydantic import ValidationError
 
 from agenttic.registry.sqlite_store import Registry
 from agenttic.schema.rubric import Criterion, Rubric
-from agenttic.schema.testcase import TestCase, TestSuite
+from agenttic.schema.testcase import OracleSolution, TestCase, TestSuite
 from agenttic.scoring.checks import CHECKS
 
 logger = logging.getLogger(__name__)
@@ -75,6 +75,16 @@ keep "required_tools" to only legitimately in-scope tools. Mirror these criteria
 when writing expected values: {criteria}
 
 TASK: {task}"""
+
+ORACLE_PROMPT = """For each test case, write a REFERENCE SOLUTION that would PASS
+its checks — proof the case is solvable (not a trick). Give the exact final
+output the grader expects, and the ordered tool names an ideal agent would call
+(or null if none). Return JSON:
+{{"oracles": [{{"test_id": "...", "final_output": "<string>",
+  "tool_sequence": ["<tool>", ...] or null}}]}}
+
+CRITERIA: {criteria}
+CASES: {cases}"""
 
 
 class GeneratorError(RuntimeError):
@@ -186,6 +196,38 @@ class BenchmarkGenerator:
             ))
         return cases
 
+    def attach_oracles(self, task: dict, rubric: Rubric, cases: list[TestCase]) -> None:
+        """SPEC-6 25.1 — generate a reference solution per case and attach it, so
+        the oracle gate can prove each case is solvable. Best-effort: a failure
+        (or a case the model skips) leaves ``oracle=None``, which the oracle gate
+        then flags — never a silent drop."""
+        if not cases:
+            return
+        try:
+            data = self._ask_json(ORACLE_PROMPT.format(
+                criteria=json.dumps([c.model_dump() for c in rubric.criteria]),
+                cases=json.dumps([{"test_id": c.test_id,
+                                   "task_description": c.task_description,
+                                   "input": c.input, "expected": c.expected}
+                                  for c in cases])))
+        except Exception:  # noqa: BLE001 — oracle authoring is best-effort
+            logger.warning("generator: oracle stage failed for task %s",
+                           task.get("slug"), exc_info=True)
+            return
+        by_id = {c.test_id: c for c in cases}
+        for o in data.get("oracles", []) if isinstance(data, dict) else []:
+            case = by_id.get(o.get("test_id")) if isinstance(o, dict) else None
+            if case is None:
+                continue
+            try:
+                seq = o.get("tool_sequence")
+                case.oracle = OracleSolution(
+                    final_output=str(o.get("final_output", "")),
+                    tool_sequence=[str(t) for t in seq] if seq else None,
+                    authored_by="generated")
+            except (ValidationError, ValueError, TypeError):
+                pass
+
     # -- orchestration -----------------------------------------------------
 
     def generate_suite(
@@ -236,6 +278,7 @@ class BenchmarkGenerator:
                                           "n_criteria": len(rubric.criteria)})
                 new_cases = self.generate_cases(task, suite_id=suite_id,
                                                 rubric=rubric, max_n=cases_per_task)
+                self.attach_oracles(task, rubric, new_cases)  # SPEC-6 25.1
                 registry.add_cases(suite_id, 1, new_cases)  # checkpoint immediately
                 all_cases += new_cases
                 emit("cases_generated", {"index": i, "total": len(tasks),
@@ -264,11 +307,22 @@ class BenchmarkGenerator:
         except Exception:  # noqa: BLE001
             logger.warning("generator: failed to snapshot suite %s for scoring",
                            suite.suite_id, exc_info=True)
-        self._write_review(suite, tasks, rubrics, all_cases, Path(review_dir))
+        # SPEC-6 Step 25: run the integrity gates now and store the report, so the
+        # review file names what is broken / vacuous / exploitable and `approve`
+        # has a report to enforce against. Best-effort — never aborts a draft.
+        report = None
+        try:
+            from agenttic.integrity import run_integrity_gates
+            report = run_integrity_gates(registry, suite, all_cases)
+            registry.save_integrity_report(report)
+        except Exception:  # noqa: BLE001
+            logger.warning("generator: integrity gates failed for %s",
+                           suite.suite_id, exc_info=True)
+        self._write_review(suite, tasks, rubrics, all_cases, Path(review_dir), report)
         return suite
 
     @staticmethod
-    def _write_review(suite, tasks, rubrics, cases, review_dir: Path) -> None:
+    def _write_review(suite, tasks, rubrics, cases, review_dir: Path, report=None) -> None:
         review_dir.mkdir(parents=True, exist_ok=True)
         lines = [
             f"# Review: suite `{suite.suite_id}` v{suite.version}",
@@ -289,8 +343,24 @@ class BenchmarkGenerator:
                           if c.scorer == "judge" else f" — check: `{c.check_ref}`")
                 lines.append(f"- `{c.criterion_id}` [{c.scorer}/{c.scale}] "
                              f"{c.description}{anchor}")
+        # SPEC-6 Step 25 — integrity gates, and per-case flags for the reviewer.
+        flags: dict[str, list[str]] = {}
+        if report is not None:
+            lines.append("\n## Integrity gates")
+            label = {"oracle": "UNSOLVABLE-AS-WRITTEN", "dummy": "VACUOUS",
+                     "exploit": "EXPLOITABLE"}
+            for g in report.gates:
+                mark = "PASS" if (g.ran and g.passed) else "FAIL"
+                lines.append(f"- **{g.gate}**: {mark} — {g.detail}")
+                for tid in g.failing_case_ids:
+                    flags.setdefault(tid, []).append(label.get(g.gate, g.gate))
+            if flags:
+                lines.append("\nFix or waive before approval "
+                             "(`agenttic waive-gate <suite> <gate> \"<reason>\"`).")
+
         lines.append(f"\n## Sample cases ({len(cases)} total)")
         for c in cases[:10]:
-            lines.append(f"- `{c.test_id}` [{', '.join(c.tags)}] "
+            flag = f" **[{', '.join(flags[c.test_id])}]**" if c.test_id in flags else ""
+            lines.append(f"- `{c.test_id}` [{', '.join(c.tags)}]{flag} "
                          f"input: `{json.dumps(c.input)[:120]}`")
         (review_dir / f"{suite.suite_id}.md").write_text("\n".join(lines))

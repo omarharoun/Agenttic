@@ -97,3 +97,53 @@ def test_waive_unknown_gate_raises(reg):
     verify_suite(reg, {}, "s")
     with pytest.raises(Exception):
         reg.waive_gate("s", 1, "not_a_gate", "x")
+
+
+# --------------------------------------------------------------------------- #
+# generator integration: the oracle stage flags UNSOLVABLE cases in the review
+# --------------------------------------------------------------------------- #
+import json as _json
+from types import SimpleNamespace as _NS
+
+from agenttic.generator.pipeline import BenchmarkGenerator
+
+
+def _reply(payload):
+    return _NS(content=[_NS(type="text", text=_json.dumps(payload))])
+
+
+class _FakeClient:
+    def __init__(self, replies):
+        self.replies = list(replies)
+        self.messages = _NS(create=lambda **kw: self.replies.pop(0))
+
+
+def test_generator_oracle_stage_flags_unsolvable_in_review(tmp_path):
+    tasks = {"tasks": [{"slug": "t", "name": "T", "description": "d"}]}
+    criteria = {"criteria": [{"criterion_id": "c", "description": "d", "scorer": "code",
+                              "scale": "binary", "check_ref": "final_output_matches_expected",
+                              "anchors": {}, "tags": []}]}
+    cases = {"cases": [
+        {"task_description": "case 0", "input": {}, "expected": {"final_output": "right-0"},
+         "tags": ["happy_path"]},
+        {"task_description": "case 1", "input": {}, "expected": {"final_output": "right-1"},
+         "tags": ["edge_case"]},
+    ]}
+    oracles = {"oracles": [
+        {"test_id": "intg-t-000", "final_output": "right-0", "tool_sequence": None},   # good
+        {"test_id": "intg-t-001", "final_output": "WRONG", "tool_sequence": None},      # broken
+    ]}
+    gen = BenchmarkGenerator(model="gen", client=_FakeClient(
+        [_reply(tasks), _reply(criteria), _reply(cases), _reply(oracles)]))
+    reg = Registry(tmp_path / "g.db")
+    gen.generate_suite("doc", suite_id="intg", registry=reg, review_dir=tmp_path / "review")
+
+    review = (tmp_path / "review" / "intg.md").read_text()
+    assert "Integrity gates" in review
+    assert "UNSOLVABLE-AS-WRITTEN" in review
+    assert "intg-t-001" in review
+
+    report = reg.get_integrity_report("intg", 1)
+    oracle = report.get("oracle")
+    assert "intg-t-001" in oracle.failing_case_ids       # broken oracle blocks
+    assert "intg-t-000" not in oracle.failing_case_ids   # good oracle solvable
