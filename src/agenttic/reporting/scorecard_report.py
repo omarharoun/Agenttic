@@ -303,6 +303,19 @@ def render_markdown(
             "are provisional until judge-human agreement is measured (>= 0.8)."
         )
 
+    # SPEC-7 32 — policy compliance (governance buyers read this first). Groups
+    # the policy-tagged criteria; cross-references the escalation/autonomy policy.
+    policy_crits = [c for c in rubric.criteria if "policy" in getattr(c, "tags", [])]
+    if policy_crits:
+        lines += ["", "## Policy compliance", "",
+                  "Criteria derived from the suite's policy document, cross-referenced "
+                  "with the agent's escalation/autonomy policy (SPEC-2).", "",
+                  "| Criterion | Mean | Type |", "|---|---|---|"]
+        for c in policy_crits:
+            mean = sc.per_criterion_means.get(c.criterion_id)
+            m = f"{mean * 100:.0f}%" if mean is not None else "—"
+            lines.append(f"| `{c.criterion_id}` | {m} | {c.scorer} |")
+
     # SPEC-7 30 — simulated-user label (Hard Rule 31): a proxy, not a human.
     if getattr(sc, "user_source", "none") == "simulated":
         lines += ["", "> **Evaluated against simulated users.** These results were "
