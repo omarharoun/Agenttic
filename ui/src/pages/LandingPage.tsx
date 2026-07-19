@@ -206,11 +206,14 @@ function Instrument() {
   const area = `M${trace} L${live.points[live.points.length - 1].x},124 L${live.points[0].x},124 Z`;
   const gradeCol = gradeColor(live.grade);
   return (
-    <div className="inst" role="img"
+    // The WHOLE card is the link to the certificate it renders — not just the
+    // small "verify" line (mobile-first affordance).
+    <Link className="inst inst-link" to={`/certified/${live.certId}`}
          aria-label={`Live safety report for ${live.agentName}: grade ${live.grade}`
            + (live.index != null ? `, Agenttic Index ${live.index}` : "")
            + `. Measured dimensions — `
-           + live.points.map((m) => `${m.label} ${m.value}`).join(", ") + "."}>
+           + live.points.map((m) => `${m.label} ${m.value}`).join(", ")
+           + ". Open the signed certificate."}>
       <div className="inst-top">
         <span>SAFETY REPORT · {live.agentName.toUpperCase()}</span>
         <span className="demo">LIVE · VERIFIED</span>
@@ -249,11 +252,10 @@ function Instrument() {
       </div>
       <div className="inst-foot">
         <span>profile {live.methodology}</span>
-        <Link className="sig" to={`/certified/${live.certId}`}>
-          Ed25519 signed — verify →
-        </Link>
+        {/* a span, not a nested link — the whole card is already the anchor */}
+        <span className="sig">Ed25519 signed — verify →</span>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -434,10 +436,10 @@ export function LandingPage() {
               </div>
               <div className="fcol"><h4>Trust</h4>
                 <Link to="/methodology">Methodology</Link>
-                <Link to="/methodology">Coverage &amp; limits</Link>
+                <Link to="/methodology#coverage">Coverage &amp; limits</Link>
                 <Link to="/certified">Verify a certificate</Link>
                 <Link to="/status">System status</Link>
-                <Link to="/methodology">Data residency</Link>
+                <Link to="/methodology#residency">Data residency</Link>
               </div>
             </div>
           </div>

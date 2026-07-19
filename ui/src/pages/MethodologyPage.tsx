@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { HexMark, IconLock, IconWarning, IconExternal, StatusIcon } from "../icons";
 import { SiteNav } from "../components/SiteNav";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { api } from "../api";
 import { GRADE_BANDS, gradeColor } from "../cert";
 import { Seal } from "../components/Seal";
@@ -98,6 +98,15 @@ const CATEGORY_LABEL: Record<string, string> = {
 const pct = (w: number) => `${Math.round(w * 100)}%`;
 
 export function MethodologyPage() {
+  // Footer links deep-link into this page (#coverage, #residency). React Router
+  // doesn't scroll to hashes on client-side navigation — do it ourselves.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!hash) return;
+    const el = document.getElementById(hash.slice(1));
+    if (el) el.scrollIntoView({ block: "start" });
+  }, [hash]);
+
   const [metrics, setMetrics] = useState<Metric[]>(FALLBACK_METRICS);
   const [weights, setWeights] = useState<Record<string, number> | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>(FALLBACK_DATASETS);
@@ -482,6 +491,73 @@ export function MethodologyPage() {
 
           </div>
         </details>
+
+        {/* ---------- coverage & limits (footer deep-link target) ---------- */}
+        <section className="meth-section" id="coverage">
+          <span className="eyebrow">Trust</span>
+          <h2>Coverage &amp; limits</h2>
+          <p>
+            A grade attests to <b>what was tested under a named profile</b> — no
+            more. Every certificate lists the exact suites and versions it was
+            earned on; a domain outside the profile's current suites is marked{" "}
+            <b>NOT ASSESSED</b>, never assumed safe.
+          </p>
+          <ul className="meth-callout-list">
+            <li>
+              <b>Quick screens vs. audits.</b> Some checks are fast screens (e.g.
+              tell-tale-word safety checks, an offline coding stand-in) rather than
+              exhaustive audits. The certificate says which is which — we state the
+              limit rather than overstate the measurement.
+            </li>
+            <li>
+              <b>Simulated users are a proxy.</b> Conversational results produced
+              with an LLM user simulator are labelled as such everywhere they
+              appear; human-user results are the calibration ceiling.
+            </li>
+            <li>
+              <b>Single-trial numbers are labelled.</b> Reliability claims require
+              k ≥ 4 repeated trials (pass^k); anything measured once says
+              "single-trial" next to it.
+            </li>
+            <li>
+              <b>Suites are themselves verified.</b> Before approval every suite
+              must pass three integrity gates — provably solvable (oracle),
+              non-vacuous (a do-nothing agent fails everything), and
+              cheat-resistant (an explicit exploit agent passes nothing).
+            </li>
+          </ul>
+        </section>
+
+        {/* ---------- data residency (footer deep-link target) ---------- */}
+        <section className="meth-section" id="residency">
+          <span className="eyebrow">Trust</span>
+          <h2>Data residency</h2>
+          <p>
+            Evaluations run <b>in your environment</b> — your CI or your VPC —
+            against your own API keys. Agent traffic goes directly from your
+            infrastructure to your model provider; <b>nothing leaves your
+            environment</b> except the signed certificate you choose to publish.
+          </p>
+          <ul className="meth-callout-list">
+            <li>
+              <b>Bring your own key.</b> Model calls are billed to your provider
+              account; Agenttic never proxies or stores your prompts through a
+              shared endpoint.
+            </li>
+            <li>
+              <b>Private suites stay private.</b> Client suites are generated from
+              your business context, stored per-tenant, and never published. Each
+              suite version carries a per-tenant canary so exposure is detectable,
+              not deniable.
+            </li>
+            <li>
+              <b>Self-hosting.</b> The full platform (registry, harness, console)
+              runs from a single self-hosted deployment; the SQLite/Postgres
+              registry lives on your disk. Only the public certificate directory
+              is a shared surface.
+            </li>
+          </ul>
+        </section>
 
         {/* ---------- close ---------- */}
         <section className="meth-section meth-cta" id="cta">

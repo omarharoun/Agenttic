@@ -2769,6 +2769,14 @@ a.btn-primary, button.btn-primary,
   position: relative; background: var(--panel); border: 1px solid var(--border);
   border-radius: var(--r); box-shadow: var(--shadow-lg); overflow: hidden;
 }
+/* The hero card as a whole is the link to its certificate (SPEC feedback:
+   "make the certificate click"). Reset link chrome; hover/focus shows intent. */
+.agx a.inst-link { display: block; color: inherit; text-decoration: none;
+  transition: border-color 0.15s ease; cursor: pointer; }
+.agx a.inst-link:hover, .agx a.inst-link:focus-visible {
+  border-color: var(--accent-line); }
+.agx a.inst-link:hover .inst-foot .sig { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .agx a.inst-link { transition: none; } }
 .agx .inst-top {
   display: flex; justify-content: space-between; align-items: center; padding: 14px 20px;
   border-bottom: 1px solid var(--border-soft); font-family: var(--font-mono);
