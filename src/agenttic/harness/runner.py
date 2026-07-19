@@ -163,6 +163,7 @@ async def run_suite(
     resume: bool = True,  # reuse successful persisted traces (don't re-spend)
     trial: int = 0,       # which repetition of this suite this is (pass^k)
     human: HumanChannel | None = None,  # HITL (Step 12): resolves escalations
+    trials_per_case: int = 1,  # SPEC-7 31: run each case k times for pass^k
 ) -> list[Trace]:
     """Run every test case; return traces in test-case order.
 
@@ -187,6 +188,16 @@ async def run_suite(
             f"suite {suite.suite_id} v{suite.version} is not approved; "
             "run `uv run agenttic approve` first (Step 8 human gate)"
         )
+    # SPEC-7 31: reliability as consistency. Run each case k independent times
+    # (fresh env per trial; resume off so trials don't reuse each other), and let
+    # the scorecard aggregate the trials into a pass^k curve.
+    if trials_per_case > 1:
+        traces: list[Trace] = []
+        for _ in range(trials_per_case):
+            traces += await run_suite(
+                adapter, suite, test_cases, store, config, transport_errors,
+                on_event, budget, resume=False, human=human, trials_per_case=1)
+        return traces
     unknown = [tc.test_id for tc in test_cases if tc.suite_id != suite.suite_id]
     if unknown:
         raise ValueError(f"test cases not in suite {suite.suite_id}: {unknown}")

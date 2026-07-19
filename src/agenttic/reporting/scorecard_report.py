@@ -303,6 +303,26 @@ def render_markdown(
             "are provisional until judge-human agreement is measured (>= 0.8)."
         )
 
+    # SPEC-7 31 — reliability as consistency (pass^k) with the flakiness gap named.
+    if sc.pass_k_curve:
+        curve = {int(k): v for k, v in sc.pass_k_curve.items()}
+        kmax = max(curve)
+        lines += ["", "## Reliability (pass^k)", "",
+                  f"Trials per case: **{sc.trials_per_case}**.", "",
+                  "| k | pass^k |", "|---|---|"]
+        for kp in sorted(curve):
+            lines.append(f"| {kp} | {curve[kp] * 100:.0f}% |")
+        if 1 in curve:
+            gap = curve[1] - curve[kmax]
+            lines += ["", f"Succeeds **{curve[1] * 100:.0f}%** of the time once; "
+                      f"**{curve[kmax] * 100:.0f}%** of the time consistently across "
+                      f"{kmax} attempts. The **flakiness gap** is "
+                      f"{gap * 100:.0f} points."]
+    else:
+        lines += ["", "## Reliability (pass^k)", "",
+                  "single-trial (k=1) — reliability across repeated attempts was not "
+                  "measured. Certification-grade claims recommend k >= 4."]
+
     # SPEC-6 26.1 — benchmark-rigor scorecard (the bureau certifying its own
     # instrument). Items with no evidence read N/A, never estimated upward.
     if abc is not None:
