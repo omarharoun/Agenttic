@@ -385,6 +385,26 @@ def verify_suite_cmd(suite_id: str, version: int = 1, config: str = "config.yaml
     console.print(f"[green]All gates clear[/] for {suite_id} v{version}.")
 
 
+@app.command(name="contamination-check")
+def contamination_check_cmd(suite: str, agent: str = "reference", version: int = 1,
+                            config: str = "config.yaml"):
+    """Probe an agent for suite contamination: canary regurgitation + a
+    memorisation (perturbation) gap. Stores the report with the latest scorecard
+    for (agent, suite) and prints the one-line verdict (SPEC-6 Step 28)."""
+    from agenttic import ops
+    from agenttic.integrity.contamination import contamination_check
+    cfg, reg = _ctx(config)
+    adapter = ops.build_adapter(cfg, variant="reference", agent_id=agent)
+    report = contamination_check(reg, adapter, suite, version)
+    # attach to the most recent scorecard for this (agent, suite), if any
+    history = reg.scorecards_for(adapter.agent_id, suite)
+    if history:
+        reg.save_contamination_report(history[-1].scorecard_id, report)
+    console.print(report.report_line())
+    if report.exposed:
+        console.print("[yellow]Plausible exposure[/] — investigate before trusting the score.")
+
+
 @app.command(name="waive-gate")
 def waive_gate_cmd(suite_id: str, gate: str, reason: str,
                    version: int = 1, config: str = "config.yaml"):

@@ -1156,7 +1156,8 @@ def report_op(reg: Registry, scorecard_id: str) -> str:
     ABC benchmark-rigor scorecard when one has been computed for the suite)."""
     sc, rubric, previous = _scorecard_with_context(reg, scorecard_id)
     abc = reg.get_abc_report(sc.suite_id, sc.suite_version)
-    return render_markdown(sc, rubric, previous, abc=abc)
+    contamination = reg.get_contamination_report(scorecard_id)
+    return render_markdown(sc, rubric, previous, abc=abc, contamination=contamination)
 
 
 def report_pdf_op(reg: Registry, scorecard_id: str) -> bytes:

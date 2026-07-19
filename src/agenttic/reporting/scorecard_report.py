@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 from agenttic.coverage.targets import DEFAULT_CLOSURE_TARGET
 from agenttic.schema.abc import ABCReport
+from agenttic.schema.contamination import ContaminationReport
 from agenttic.schema.rubric import Rubric
 from agenttic.schema.scorecard import Scorecard
 
@@ -123,6 +124,7 @@ def render_markdown(
     harness: "HarnessEnforcementResult | None" = None,
     calibration_records: Mapping[str, CalibrationRecord] | None = None,
     abc: ABCReport | None = None,
+    contamination: ContaminationReport | None = None,
 ) -> str:
     crit_by_id = {c.criterion_id: c for c in rubric.criteria}
     records = (calibration_records if calibration_records is not None
@@ -314,6 +316,10 @@ def render_markdown(
         for it in abc.items:
             s = f"{it.score:.2f}" if it.score is not None else "N/A"
             lines.append(f"| {it.item_id} | {it.name} | {s} | {it.evidence} |")
+
+    # SPEC-6 28 — the standard contamination line: origin, canary, exposure.
+    if contamination is not None:
+        lines += ["", "## Contamination", "", contamination.report_line()]
 
     return "\n".join(lines) + "\n"
 
