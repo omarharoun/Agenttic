@@ -49,6 +49,15 @@ def cases_payload(slug, n=5):
         for i in range(n)
     ]}
 
+def oracles_payload(slug, suite_id="support-v1", n=5):
+    # SPEC-6 25.1 — a reference solution per case whose output matches the case's
+    # expected, so the oracle gate proves the case solvable.
+    return {"oracles": [
+        {"test_id": f"{suite_id}-{slug}-{i:03d}",
+         "final_output": f"{slug} answer {i}", "tool_sequence": None}
+        for i in range(n)
+    ]}
+
 
 class FakeGenClient:
     def __init__(self, replies):
@@ -62,7 +71,9 @@ def make_generator(replies):
 
 SCRIPT = [reply(TASKS),
           reply(criteria_payload("triage")), reply(cases_payload("triage")),
-          reply(criteria_payload("policy_qa")), reply(cases_payload("policy_qa"))]
+          reply(oracles_payload("triage")),
+          reply(criteria_payload("policy_qa")), reply(cases_payload("policy_qa")),
+          reply(oracles_payload("policy_qa"))]
 
 
 class TestGeneration:

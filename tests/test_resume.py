@@ -52,13 +52,15 @@ class GenClient:
     def _c(self, **kw):
         p = kw["messages"][0]["content"]
         kind = ("extract" if "extract the discrete" in p
-                else "criteria" if "Design scoring criteria" in p else "cases")
+                else "criteria" if "Design scoring criteria" in p
+                else "oracle" if "REFERENCE SOLUTION" in p else "cases")
         slug = next((s for s in ("triage", "policy_qa") if f'"{s}"' in p), None)
         self.calls.append((kind, slug))
         if kind == self.fail_kind and (self.fail_slug is None or slug == self.fail_slug):
             raise _Transient()
         payload = (TASKS if kind == "extract"
-                   else _criteria(slug) if kind == "criteria" else _cases(slug))
+                   else _criteria(slug) if kind == "criteria"
+                   else {"oracles": []} if kind == "oracle" else _cases(slug))
         return NS(content=[NS(type="text", text=json.dumps(payload))],
                   usage=NS(input_tokens=1000, output_tokens=500))
 
@@ -89,17 +91,18 @@ class TestGeneratorResume:
         # no triage rework: run 2 only re-ran extract + policy_qa criteria+cases
         assert ("criteria", "triage") not in c2.calls
         assert ("cases", "triage") not in c2.calls
+        # extract + policy_qa criteria/cases/oracle; triage fully skipped (resumed)
         assert c2.calls == [("extract", None), ("criteria", "policy_qa"),
-                            ("cases", "policy_qa")]
+                            ("cases", "policy_qa"), ("oracle", None)]
 
     def test_spend_recorded_even_on_failure(self, tmp_path):
         reg = Registry(tmp_path / "g.db")
         with pytest.raises(_Transient):
             _gen(GenClient(fail_kind="cases", fail_slug="policy_qa")).generate_suite(
                 JOB, suite_id="s1", registry=reg, review_dir=tmp_path / "r")
-        # 4 successful calls (extract, triage criteria+cases, policy criteria)
-        # were billed before the failure → ledger non-zero
-        assert reg.spend_today() == pytest.approx((4 * 1000 * 3 + 4 * 500 * 15) / 1e6)
+        # 5 successful calls (extract, triage criteria+cases+oracle, policy
+        # criteria) were billed before the failure at policy cases → ledger
+        assert reg.spend_today() == pytest.approx((5 * 1000 * 3 + 5 * 500 * 15) / 1e6)
 
 
 class TestAgentPartialTrace:
