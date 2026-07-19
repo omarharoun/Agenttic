@@ -23,7 +23,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-SCHEMA_VERSION = "0.5.0"  # 0.5.0: + escalation SpanKind & Trace.escalated (HITL, MINOR)
+SCHEMA_VERSION = "0.6.0"  # 0.6.0: + Span.state_change & user_message SpanKind (SPEC-7, MINOR)
 #
 # 0.3.0 added the ``user_turn``/``env_step`` span kinds. Why both kinds landed in
 # ONE bump: a new ``SpanKind`` member is MINOR by the rule above, and every stored
@@ -49,6 +49,10 @@ SCHEMA_VERSION = "0.5.0"  # 0.5.0: + escalation SpanKind & Trace.escalated (HITL
 # schemas sharing a version is exactly what the rule at the top forbids. Both
 # additions are MINOR — a new ``SpanKind`` member and an optional field — so this
 # lands as one bump past 0.4.0 rather than reopening a spent one.
+#
+# 0.6.0 adds ``Span.state_change`` and the ``user_message`` span kind (SPEC-7
+# Step 29, stateful environments). The local line issued these as 0.4.0 —
+# spent on ``session_id`` — so they land here instead. Both are MINOR.
 
 SpanKind = Literal[
     "llm_call",
@@ -83,6 +87,7 @@ SpanKind = Literal[
     # something the agent did.
     "env_step",
     "escalation",
+    "user_message",   # SPEC-7 Step 30: a simulated-user turn in a conversation
 ]
 
 
@@ -102,6 +107,9 @@ class Span(BaseModel):
     tokens_out: int | None = None
     cost_usd: float | None = None
     attributes: dict = Field(default_factory=dict)
+    #: SPEC-7 Step 29 — mutations a write tool made to the environment, each
+    #: {op, entity_type, id, before?, after?}. None on read/non-tool spans.
+    state_change: list[dict] | None = None
 
     @model_validator(mode="after")
     def _end_not_before_start(self) -> "Span":
