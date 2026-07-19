@@ -262,4 +262,5 @@ def score_run(
         latency_ms=trace.total_latency_ms,
         steps=trace.total_steps,
         na_criteria=na_criteria,
+        user_source=getattr(trace, "user_source", "none"),
     )

@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from agenttic.schema.user_scenario import UserScenario
+
 Tag = str  # conventional values: "happy_path", "edge_case", "adversarial"
 
 
@@ -50,6 +52,9 @@ class TestCase(BaseModel):
     #: the stateful environment this case runs against (SPEC-7 Step 29); None for
     #: stateless (degenerate read-only) cases
     env_id: str | None = None
+    #: a simulated-user brief for conversational cases (SPEC-7 Step 30); None for
+    #: single-shot cases
+    user_scenario: UserScenario | None = None
 
 
 class TestSuite(BaseModel):

@@ -303,6 +303,12 @@ def render_markdown(
             "are provisional until judge-human agreement is measured (>= 0.8)."
         )
 
+    # SPEC-7 30 — simulated-user label (Hard Rule 31): a proxy, not a human.
+    if getattr(sc, "user_source", "none") == "simulated":
+        lines += ["", "> **Evaluated against simulated users.** These results were "
+                  "produced with an LLM user simulator — a proxy, not a human. Treat "
+                  "them as provisional; human-user results are the calibration ceiling."]
+
     # SPEC-7 31 — reliability as consistency (pass^k) with the flakiness gap named.
     if sc.pass_k_curve:
         curve = {int(k): v for k, v in sc.pass_k_curve.items()}
