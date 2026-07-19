@@ -350,8 +350,11 @@ def _scorecard_with_context(reg: Registry, scorecard_id: str):
 
 
 def report_op(reg: Registry, scorecard_id: str) -> str:
-    """Render a scorecard to client-ready Markdown (with regression diff)."""
-    return render_markdown(*_scorecard_with_context(reg, scorecard_id))
+    """Render a scorecard to client-ready Markdown (with regression diff and the
+    ABC benchmark-rigor scorecard when one has been computed for the suite)."""
+    sc, rubric, previous = _scorecard_with_context(reg, scorecard_id)
+    abc = reg.get_abc_report(sc.suite_id, sc.suite_version)
+    return render_markdown(sc, rubric, previous, abc=abc)
 
 
 def report_pdf_op(reg: Registry, scorecard_id: str) -> bytes:

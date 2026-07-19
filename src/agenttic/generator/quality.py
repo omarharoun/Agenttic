@@ -37,6 +37,10 @@ class GeneratorReport:
     coverage_balance: dict           # {"actual": {...}, "target": {...}, "deltas": {...}}
     n_cases: int
     n_agent_configs: int
+    # SPEC-6 26.2 — predicted-vs-empirical difficulty agreement (None if the
+    # generator predicted no difficulty tags) and cases with zero discrimination.
+    difficulty_agreement: float | None = None
+    zero_discrimination_ids: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
 
 
@@ -147,6 +151,19 @@ def compute_generator_report(reg: Registry, suite_id: str, cfg=None
     # -- coverage balance vs configured TAG_MIX -----------------------------
     coverage = _coverage_balance(cases)
 
+    # -- empirical difficulty (>=3 configs) + generator's difficulty calibration
+    from agenttic.integrity.difficulty import case_difficulty, predicted_vs_empirical
+    difficulty, diff_note = case_difficulty(reg, suite_id)
+    if diff_note:
+        notes.append(diff_note)
+    zero_disc = sorted(tid for tid, d in difficulty.items() if d["zero_discrimination"])
+    if zero_disc:
+        notes.append(f"{len(zero_disc)} zero-discrimination case(s) — every config "
+                     f"gives the same verdict; consider replacing next version")
+    agreement, agr_note = predicted_vs_empirical(cases, difficulty)
+    if agr_note:
+        notes.append(agr_note)
+
     return GeneratorReport(
         suite_id=suite_id,
         edit_rate=edit_rate,
@@ -154,5 +171,7 @@ def compute_generator_report(reg: Registry, suite_id: str, cfg=None
         coverage_balance=coverage,
         n_cases=len(cases),
         n_agent_configs=n_configs,
+        difficulty_agreement=agreement,
+        zero_discrimination_ids=zero_disc,
         notes=notes,
     )

@@ -27,6 +27,7 @@ from pathlib import Path
 from sqlalchemy import UniqueConstraint, event, func
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
+from agenttic.schema.abc import ABCReport
 from agenttic.schema.agent import DeclaredAgent
 from agenttic.schema.integrity import IntegrityReport
 from agenttic.schema.scorecard import Scorecard
@@ -104,6 +105,17 @@ class IntegrityReportRow(SQLModel, table=True):
     version: int
     created_at: datetime
     payload: str          # JSON: IntegrityReport.model_dump_json()
+
+
+class ABCReportRow(SQLModel, table=True):
+    """The ABC benchmark-rigor scorecard for one suite version (SPEC-6 26.1)."""
+    __table_args__ = (UniqueConstraint("tenant_id", "suite_id", "version"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    suite_id: str = Field(index=True)
+    version: int
+    created_at: datetime
+    payload: str          # JSON: ABCReport.model_dump_json()
 
 
 class RubricRow(SQLModel, table=True):
@@ -940,6 +952,32 @@ class Registry:
                 IntegrityReportRow.suite_id == suite_id,
                 IntegrityReportRow.version == version)).first()
             return IntegrityReport.model_validate_json(row.payload) if row else None
+
+    # ---- ABC benchmark-rigor report (SPEC-6 Step 26) ---------------------
+    def save_abc_report(self, report: ABCReport) -> None:
+        with Session(self.engine) as s:
+            row = s.exec(select(ABCReportRow).where(
+                ABCReportRow.tenant_id == self.tenant,
+                ABCReportRow.suite_id == report.suite_id,
+                ABCReportRow.version == report.version)).first()
+            if row:
+                row.payload = report.model_dump_json()
+                row.created_at = _now()
+            else:
+                row = ABCReportRow(
+                    tenant_id=self.tenant, suite_id=report.suite_id,
+                    version=report.version, created_at=_now(),
+                    payload=report.model_dump_json())
+            s.add(row)
+            s.commit()
+
+    def get_abc_report(self, suite_id: str, version: int) -> ABCReport | None:
+        with Session(self.engine) as s:
+            row = s.exec(select(ABCReportRow).where(
+                ABCReportRow.tenant_id == self.tenant,
+                ABCReportRow.suite_id == suite_id,
+                ABCReportRow.version == version)).first()
+            return ABCReport.model_validate_json(row.payload) if row else None
 
     def waive_gate(self, suite_id: str, version: int, gate: str, reason: str) -> None:
         """Record a human waiver of a named gate, with its reason (Hard Rule 27)."""
