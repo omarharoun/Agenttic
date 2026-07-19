@@ -118,6 +118,26 @@ class ABCReportRow(SQLModel, table=True):
     payload: str          # JSON: ABCReport.model_dump_json()
 
 
+class CanaryRow(SQLModel, table=True):
+    """The per-tenant contamination canary for one suite version (SPEC-6 28)."""
+    __table_args__ = (UniqueConstraint("tenant_id", "suite_id", "version"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    suite_id: str = Field(index=True)
+    version: int
+    canary: str
+
+
+class ContaminationReportRow(SQLModel, table=True):
+    """A contamination report, stored with its scorecard (SPEC-6 28)."""
+    __table_args__ = (UniqueConstraint("tenant_id", "scorecard_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    scorecard_id: str = Field(index=True)
+    created_at: datetime
+    payload: str          # JSON: ContaminationReport.model_dump_json()
+
+
 class RubricRow(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("tenant_id", "rubric_id", "version"),)
     id: int | None = Field(default=None, primary_key=True)
@@ -978,6 +998,47 @@ class Registry:
                 ABCReportRow.suite_id == suite_id,
                 ABCReportRow.version == version)).first()
             return ABCReport.model_validate_json(row.payload) if row else None
+
+    # ---- contamination stance (SPEC-6 Step 28) ---------------------------
+    def get_or_create_canary(self, suite_id: str, version: int) -> str:
+        """The per-tenant canary for a suite version — created once, then stable
+        and distinct across tenants."""
+        from agenttic.integrity.contamination import make_canary
+        with Session(self.engine) as s:
+            row = s.exec(select(CanaryRow).where(
+                CanaryRow.tenant_id == self.tenant,
+                CanaryRow.suite_id == suite_id,
+                CanaryRow.version == version)).first()
+            if row:
+                return row.canary
+            canary = make_canary(self.tenant, suite_id, version)
+            s.add(CanaryRow(tenant_id=self.tenant, suite_id=suite_id,
+                            version=version, canary=canary))
+            s.commit()
+            return canary
+
+    def save_contamination_report(self, scorecard_id: str, report) -> None:
+        with Session(self.engine) as s:
+            row = s.exec(select(ContaminationReportRow).where(
+                ContaminationReportRow.tenant_id == self.tenant,
+                ContaminationReportRow.scorecard_id == scorecard_id)).first()
+            if row:
+                row.payload = report.model_dump_json()
+                row.created_at = _now()
+            else:
+                row = ContaminationReportRow(
+                    tenant_id=self.tenant, scorecard_id=scorecard_id,
+                    created_at=_now(), payload=report.model_dump_json())
+            s.add(row)
+            s.commit()
+
+    def get_contamination_report(self, scorecard_id: str):
+        from agenttic.schema.contamination import ContaminationReport
+        with Session(self.engine) as s:
+            row = s.exec(select(ContaminationReportRow).where(
+                ContaminationReportRow.tenant_id == self.tenant,
+                ContaminationReportRow.scorecard_id == scorecard_id)).first()
+            return ContaminationReport.model_validate_json(row.payload) if row else None
 
     def waive_gate(self, suite_id: str, version: int, gate: str, reason: str) -> None:
         """Record a human waiver of a named gate, with its reason (Hard Rule 27)."""
