@@ -30,6 +30,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from agenttic.schema.agent import DeclaredAgent
+from agenttic.schema.integrity import IntegrityReport
 from agenttic.schema.scorecard import Scorecard
 from agenttic.schema.testcase import TestCase, TestSuite
 from agenttic.schema.rubric import Rubric
@@ -78,6 +79,9 @@ def already_seeded():
         yield
     except DuplicateVersionError:
         pass
+class IntegrityError(RuntimeError):
+    """A suite cannot be approved because an integrity gate is unmet (SPEC-6
+    Hard Rule 27): a gate failed and was not waived, or was never run."""
 
 
 class SuiteRow(SQLModel, table=True):
@@ -119,6 +123,21 @@ class GeneratedSuiteSnapshotRow(SQLModel, table=True):
     created_at: datetime
     payload: str          # JSON: list of generated cases (model_dump)
     review_diff: str | None = None  # JSON diff, filled on approve (best-effort)
+
+
+class IntegrityReportRow(SQLModel, table=True):
+    """The three-gate integrity report for one suite version (SPEC-6 Step 25).
+
+    Written by ``verify-suite`` / the generator, updated in place when a human
+    waives a gate. ``approve_suite`` reads it and refuses unless every gate is
+    clear (passed or waived)."""
+    __table_args__ = (UniqueConstraint("tenant_id", "suite_id", "version"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    suite_id: str = Field(index=True)
+    version: int
+    created_at: datetime
+    payload: str          # JSON: IntegrityReport.model_dump_json()
 
 
 class RubricRow(SQLModel, table=True):
@@ -1504,6 +1523,64 @@ class Registry:
             if not row or not row.review_diff:
                 return None
             return json.loads(row.review_diff)
+
+    # ---- integrity gates (SPEC-6 Step 25) --------------------------------
+    def save_integrity_report(self, report: IntegrityReport) -> None:
+        """Store (or replace) the integrity report for a suite version."""
+        with Session(self.engine) as s:
+            row = s.exec(select(IntegrityReportRow).where(
+                IntegrityReportRow.tenant_id == self.tenant,
+                IntegrityReportRow.suite_id == report.suite_id,
+                IntegrityReportRow.version == report.version)).first()
+            if row:
+                row.payload = report.model_dump_json()
+                row.created_at = _now()
+            else:
+                row = IntegrityReportRow(
+                    tenant_id=self.tenant, suite_id=report.suite_id,
+                    version=report.version, created_at=_now(),
+                    payload=report.model_dump_json())
+            s.add(row)
+            s.commit()
+
+    def get_integrity_report(self, suite_id: str, version: int
+                             ) -> IntegrityReport | None:
+        with Session(self.engine) as s:
+            row = s.exec(select(IntegrityReportRow).where(
+                IntegrityReportRow.tenant_id == self.tenant,
+                IntegrityReportRow.suite_id == suite_id,
+                IntegrityReportRow.version == version)).first()
+            return IntegrityReport.model_validate_json(row.payload) if row else None
+
+    def waive_gate(self, suite_id: str, version: int, gate: str, reason: str) -> None:
+        """Record a human waiver of a named gate, with its reason (Hard Rule 27)."""
+        report = self.get_integrity_report(suite_id, version)
+        if report is None:
+            raise NotFoundError(
+                f"no integrity report for suite {suite_id} v{version}; "
+                "run `ascore verify-suite` first")
+        gr = report.get(gate)  # type: ignore[arg-type]
+        if gr is None:
+            raise NotFoundError(f"no gate {gate!r} in the report for {suite_id} v{version}")
+        gr.waived = True
+        gr.waiver_reason = reason
+        self.save_integrity_report(report)
+
+    def assert_integrity_clear(self, suite_id: str, version: int) -> None:
+        """Raise :class:`IntegrityError` unless every gate is clear (SPEC-6 Hard
+        Rule 27). Enforced at the approve command boundary (CLI + API), so
+        ``approve_suite`` itself stays a pure state flip for internal callers."""
+        report = self.get_integrity_report(suite_id, version)
+        if report is None:
+            raise IntegrityError(
+                f"suite {suite_id} v{version} has no integrity report — run "
+                "`ascore verify-suite` before approving (SPEC-6 Hard Rule 27)")
+        blocking = report.blocking()
+        if blocking:
+            raise IntegrityError(
+                f"suite {suite_id} v{version} cannot be approved: integrity "
+                f"gate(s) {blocking} not clear. Fix the flagged cases, or waive a "
+                f"named gate with a recorded reason (`ascore waive-gate`).")
 
     def approve_suite(self, suite_id: str, version: int) -> None:
         with Session(self.engine) as s:

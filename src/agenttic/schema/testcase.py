@@ -2,9 +2,28 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 Tag = str  # conventional values: "happy_path", "edge_case", "adversarial"
+
+
+class OracleSolution(BaseModel):
+    """A reference solution that PROVES a case is solvable (SPEC-6 Step 25.1).
+
+    Executed through the scoring engine's *code* checks during the oracle gate:
+    a case whose own oracle fails its own code checks is a defect, not
+    difficulty (Hard Rule 28). Judge criteria are exempt — they are not
+    mechanically decidable from a reference output alone.
+    """
+
+    __test__ = False  # not a pytest class
+
+    final_output: str
+    #: reference tool names, in order, for trajectory-checked cases
+    tool_sequence: list[str] | None = None
+    authored_by: Literal["human", "generated", "generated_human_verified"] = "generated"
 
 
 class TestCase(BaseModel):
@@ -20,6 +39,8 @@ class TestCase(BaseModel):
     expected: dict | None = None  # ground truth, when deterministically checkable
     tags: list[Tag] = Field(default_factory=list)
     rubric_id: str
+    #: reference solution proving solvability (SPEC-6 25.1); None until authored
+    oracle: OracleSolution | None = None
 
 
 class TestSuite(BaseModel):
