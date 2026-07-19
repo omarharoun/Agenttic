@@ -267,10 +267,47 @@ def honeypot(
             _render(Registry(str(Path(tmp) / "honeypot.db")))
 
 
+@app.command(name="verify-suite")
+def verify_suite_cmd(suite_id: str, version: int = 1, config: str = "config.yaml"):
+    """Run the three integrity gates (oracle, dummy, exploit) over a suite and
+    store the report. A suite must pass (or waive) all three before approval."""
+    from agenttic.integrity import verify_suite
+    cfg, reg = _ctx(config)
+    report = verify_suite(reg, cfg, suite_id, version)
+    for g in report.gates:
+        mark = "[green]PASS[/]" if (g.ran and g.passed) else (
+            "[yellow]WAIVED[/]" if g.waived else "[red]FAIL[/]")
+        console.print(f"  {mark} {g.gate}: {g.detail}")
+        if g.failing_case_ids:
+            console.print(f"       cases: {', '.join(g.failing_case_ids[:10])}")
+    blocking = report.blocking()
+    if blocking:
+        console.print(f"[red]Blocked[/] — gate(s) {blocking} not clear. Fix the "
+                      f"flagged cases, or `ascore waive-gate {suite_id} <gate> \"<reason>\"`.")
+        raise typer.Exit(1)
+    console.print(f"[green]All gates clear[/] for {suite_id} v{version}.")
+
+
+@app.command(name="waive-gate")
+def waive_gate_cmd(suite_id: str, gate: str, reason: str,
+                   version: int = 1, config: str = "config.yaml"):
+    """Waive a named integrity gate with a recorded reason (Hard Rule 27)."""
+    _, reg = _ctx(config)
+    reg.waive_gate(suite_id, version, gate, reason)
+    console.print(f"[yellow]Waived[/] {gate} gate for {suite_id} v{version}: {reason}")
+
+
 @app.command()
 def approve(suite_id: str, version: int = 1, config: str = "config.yaml"):
-    """Human gate: mark a reviewed suite as runnable."""
+    """Human gate: mark a reviewed suite as runnable. Refuses unless the three
+    integrity gates are clear or explicitly waived (SPEC-6 Hard Rule 27)."""
+    from agenttic.registry.sqlite_store import IntegrityError
     _, reg = _ctx(config)
+    try:
+        reg.assert_integrity_clear(suite_id, version)
+    except IntegrityError as e:
+        console.print(f"[red]Refused:[/] {e}")
+        raise typer.Exit(1)
     reg.approve_suite(suite_id, version)
     console.print(f"[green]Approved[/] suite {suite_id} v{version}.")
 
