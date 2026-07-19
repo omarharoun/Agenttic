@@ -65,7 +65,7 @@ def _oracle_trace(tc: TestCase, env=None) -> Trace:
         return env_trace(
             env, [(c.get("name", ""), c.get("args", {})) for c in oracle.tool_calls],
             final_output=oracle.final_output, agent_id="integrity-oracle",
-            test_case_id=tc.test_id)
+            test_case_id=tc.test_id, confirm=True)
     now = datetime.now(timezone.utc)
     spans = [
         Span(span_id=f"o{i}", kind="tool_call", name=tool, start_time=now, end_time=now)

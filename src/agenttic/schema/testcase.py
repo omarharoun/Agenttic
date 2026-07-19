@@ -72,9 +72,17 @@ class TestSuite(BaseModel):
     #: non-dataset suites (std seeds, hand-built). Coverage resolves a domain to
     #: assessed_real ONLY for a "real" dataset suite — never for a sample/seed one.
     dataset_provenance: str | None = None
+    #: the domain policy this suite tests as a contract (SPEC-7 Step 32): refund
+    #: windows, confirmation-before-action rules, forbidden actions. Rendered into
+    #: the agent's context by adapters that support it; attached to the review file.
+    policy_doc: str | None = None
     #: import provenance, e.g. "harbor:swe-bench@2.0" (SPEC-6 Step 27); None for
     #: generated / hand-built suites
     origin: str | None = None
     #: a benchmark canary string preserved verbatim from an imported artifact
     #: (e.g. Terminal-Bench 2.0); NOT the per-tenant contamination canary (Step 28)
     canary: str | None = None
+    #: license + attribution preserved verbatim at import (SPEC-7 Step 33); import
+    #: refuses when a license cannot be determined
+    license: str | None = None
+    attribution: str | None = None

@@ -81,11 +81,16 @@ def replay(env: Environment, tool_calls: list[tuple[str, dict]]
 
 def env_trace(env: Environment, tool_calls: list[tuple[str, dict]], *,
               final_output: str = "", agent_id: str = "env-scripted",
-              test_case_id: str | None = None) -> Trace:
+              test_case_id: str | None = None, confirm: bool = False) -> Trace:
     """A trace that ran `tool_calls` through `env`, carrying the end state on its
-    final_output span so goal-state checks can verify it deterministically."""
+    final_output span so goal-state checks can verify it deterministically.
+    `confirm=True` prepends an affirmative user turn (an ideal oracle confirms
+    before it writes — satisfies confirmation_before_write)."""
     end_state, spans, _ = replay(env, tool_calls)
     now = _now()
+    if confirm:
+        spans.insert(0, Span(span_id="uconfirm", kind="user_message", name="user",
+                             start_time=now, end_time=now, output={"text": "yes, go ahead"}))
     spans.append(Span(span_id="final", kind="final_output", name="final_output",
                       start_time=now, end_time=now,
                       output={"text": final_output, "end_state": end_state}))
