@@ -225,11 +225,14 @@ function Instrument() {
   const area = `M${trace} L${live.points[live.points.length - 1].x},124 L${live.points[0].x},124 Z`;
   const gradeCol = gradeColor(live.grade);
   return (
-    <div className="inst" role="img"
+    // The WHOLE card is the link to the certificate it renders — not just the
+    // small "verify" line (mobile-first affordance).
+    <Link className="inst inst-link" to={`/certified/${live.certId}`}
          aria-label={`Live safety report for ${live.agentName}: grade ${live.grade}`
            + (live.index != null ? `, Agenttic Index ${live.index}` : "")
            + `. Measured dimensions — `
-           + live.points.map((m) => `${m.label} ${m.value}`).join(", ") + "."}>
+           + live.points.map((m) => `${m.label} ${m.value}`).join(", ")
+           + ". Open the signed certificate."}>
       <div className="inst-top">
         <span>SAFETY REPORT · {live.agentName.toUpperCase()}</span>
         <span className="demo">LIVE · VERIFIED</span>
@@ -268,11 +271,10 @@ function Instrument() {
       </div>
       <div className="inst-foot">
         <span>profile {live.methodology}</span>
-        <Link className="sig" to={`/certified/${live.certId}`}>
-          Ed25519 signed — verify →
-        </Link>
+        {/* a span, not a nested link — the whole card is already the anchor */}
+        <span className="sig">Ed25519 signed — verify →</span>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -533,10 +535,38 @@ export function LandingPage() {
 
       <footer className="lp-foot">
         <div className="wrap">
-          <span>© 2026 Agenttic · runs in your environment</span>
-          <span>
-            <Link to="/methodology">Methodology</Link> · <Link to="/status">Status</Link>
-          </span>
+          <div className="fg">
+            <div className="fb">Agenttic
+              <span className="t">A safety lab for AI agents. We measure against published standards and stamp the result — honestly about what we did and didn’t test.</span>
+            </div>
+            <div className="fc">
+              <div className="fcol"><h4>Product</h4>
+                <a href="#measure">What we measure</a>
+                <a href="#how">How it works</a>
+                <a href="#deploy">Deploy</a>
+                <Link to="/pricing">Pricing</Link>
+                <Link to="/scan">Scan an agent</Link>
+              </div>
+              <div className="fcol"><h4>Developers</h4>
+                <Link to="/api-docs">API docs</Link>
+                <Link to="/methodology">OpenTelemetry ingest</Link>
+                <Link to="/methodology">Self-hosting</Link>
+                <Link to="/login">Log in</Link>
+              </div>
+              <div className="fcol"><h4>Trust</h4>
+                <Link to="/methodology">Methodology</Link>
+                <Link to="/methodology#coverage">Coverage &amp; limits</Link>
+                <Link to="/certified">Verify a certificate</Link>
+                <Link to="/status">System status</Link>
+                <Link to="/methodology#residency">Data residency</Link>
+              </div>
+            </div>
+          </div>
+          <div className="legal">
+            Grades attest to what was tested under a named profile. Domains marked
+            NOT ASSESSED are outside a profile’s current suites. Benchmark names are
+            the property of their respective authors.
+          </div>
         </div>
       </footer>
     </div>
