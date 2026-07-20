@@ -383,7 +383,10 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
         suite: str = typer.Option(..., "--suite", "-s", help="suite id to run"),
         url: str = "",
         managed_agent_id: str = "", environment_id: str = "",
-        system_prompt: str = "", model: str = "", config: str = "config.yaml"):
+        system_prompt: str = "", model: str = "", config: str = "config.yaml",
+        trials: int = typer.Option(1, "--trials", "-k",
+            help="run each case k times for pass^k reliability (SPEC-7; k>=4 "
+                 "for certification-grade claims — MULTIPLIES run cost)")):
     """Run a suite against an agent.
 
     If --agent matches a name in the declared catalog (`agenttic agents add`), its
@@ -421,8 +424,12 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
     except ValueError as exc:
         raise typer.BadParameter(str(exc))
     from agenttic.budget import BudgetExceededError
+    if trials > 1:
+        console.print(f"[yellow]pass^k:[/] running each case {trials}x — "
+                      f"cost multiplies accordingly.")
     try:
-        sc = asyncio.run(ops.run_and_score_op(cfg, reg, adapter, suite))
+        sc = asyncio.run(ops.run_and_score_op(cfg, reg, adapter, suite,
+                                              trials_per_case=trials))
     except BudgetExceededError as exc:
         console.print(f"[red]Budget cap:[/] {exc}")
         raise typer.Exit(2)
@@ -430,6 +437,11 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
                   f"{sc.task_success_rate:.0%}, mean exec cost "
                   f"${sc.mean_cost_usd:.4f}, total run cost "
                   f"${sc.total_cost_usd + sc.total_scoring_cost_usd:.4f}")
+    if sc.pass_k_curve:
+        curve = {int(k): v for k, v in sc.pass_k_curve.items()}
+        pts = " · ".join(f"pass^{k} {curve[k]:.0%}" for k in sorted(curve))
+        gap = curve.get(1, 0) - curve[max(curve)]
+        console.print(f"Reliability: {pts}  (flakiness gap {gap:.0%})")
 
 
 @app.command()
