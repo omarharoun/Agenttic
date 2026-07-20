@@ -147,3 +147,43 @@ def test_generator_oracle_stage_flags_unsolvable_in_review(tmp_path):
     oracle = report.get("oracle")
     assert "intg-t-001" in oracle.failing_case_ids       # broken oracle blocks
     assert "intg-t-000" not in oracle.failing_case_ids   # good oracle solvable
+
+
+def test_continuous_check_scores_are_snapped_to_scale(tmp_path):
+    """First light 2026-07-20: answer_accuracy returned token-F1 0.041 and
+    crashed CriterionScore (Hard Rule 3 scale). The engine must snap."""
+    from agenttic.scoring.engine import score_run
+    from agenttic.scoring.judge import LLMJudge
+    from agenttic.schema.trace import Trace, Span, SCHEMA_VERSION
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    rubric = _rubric("rb_cont", "acc", "answer_accuracy")
+    tc = TestCase(test_id="c", suite_id="s", task_description="t", rubric_id="rb_cont",
+                  expected={"answer": "the correct full answer with many words"})
+    trace = Trace(trace_id="t1", agent_id="a", agent_config_hash="h",
+                  spans=[], visibility="black_box",
+                  final_output="answer",  # tiny overlap -> continuous F1, not {0,.5,1}
+                  schema_version=SCHEMA_VERSION)
+    rs = score_run(trace, tc, rubric, judge=None)
+    assert rs.scoring_error is None                      # no ValidationError
+    assert rs.criterion_scores[0].score in (0.0, 0.5, 1.0)
+
+
+def test_gate_fails_case_whose_check_cannot_run(tmp_path):
+    """A case whose check config-errors (missing expected field) must FAIL the
+    oracle gate — at runtime the engine errors the whole case."""
+    r = Registry(tmp_path / "cfg.db")
+    r.save_rubric(Rubric(rubric_id="rb_goal", version=1,
+                         weights={"goal": 1.0, "ok": 1.0}, criteria=[
+        Criterion(criterion_id="goal", description="d", scorer="code",
+                  scale="binary", check_ref="end_state_matches_goal"),
+        Criterion(criterion_id="ok", description="d", scorer="code",
+                  scale="binary", check_ref="final_output_matches_expected")]))
+    # expected LACKS goal_state -> the check cannot run on this case
+    tc = TestCase(test_id="cg", suite_id="sg", task_description="t",
+                  expected={"final_output": "x"}, rubric_id="rb_goal",
+                  oracle=OracleSolution(final_output="x"))
+    r.save_suite(TestSuite(suite_id="sg", version=1, business_context="b",
+                           test_ids=["cg"]), [tc])
+    oracle = verify_suite(r, {}, "sg").get("oracle")
+    assert "cg" in oracle.failing_case_ids

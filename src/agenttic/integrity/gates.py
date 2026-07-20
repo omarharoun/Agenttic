@@ -24,7 +24,7 @@ from agenttic.schema.integrity import GateResult, IntegrityReport
 from agenttic.schema.rubric import Rubric
 from agenttic.schema.testcase import TestCase, TestSuite
 from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
-from agenttic.scoring.checks import run_check
+from agenttic.scoring.checks import CheckConfigError, run_check
 from agenttic.scoring.engine import DEFAULT_PASS_THRESHOLD
 
 #: cap on how many cases the (paid) exploit gate exercises per suite
@@ -46,6 +46,13 @@ def _code_pass(trace: Trace, tc: TestCase, rubric: Rubric,
     for c in code:
         try:
             scores[c.criterion_id] = float(run_check(c.check_ref, trace, tc))
+        except CheckConfigError:
+            # The check cannot even RUN on this case (missing expected field).
+            # At scoring time the engine errors the whole case — so the gate
+            # must fail it outright, not fold the defect into a passing mean.
+            # (First light 2026-07-20: a goal_state-less case cleared the gate
+            # then errored on every real run.)
+            return False, {c.criterion_id: 0.0, "__config_error__": 0.0}
         except Exception:  # noqa: BLE001
             scores[c.criterion_id] = 0.0
     weights = {c.criterion_id: rubric.weights.get(c.criterion_id, 1.0) for c in code}

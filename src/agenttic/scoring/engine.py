@@ -239,6 +239,18 @@ def score_run(
     for criterion in criteria:
         if criterion.scorer == "code":
             value = run_check(criterion.check_ref, trace, tc)
+            # Continuous checks (token-F1, ROUGE, similarity, ...) return 0..1;
+            # CriterionScore enforces the {0, 0.5, 1} scale (Hard Rule 3). Snap
+            # continuous values to the criterion's scale (same convention as
+            # fi_eval._discretize); exact scale values pass through untouched.
+            # First light 2026-07-20: unsnapped answer_accuracy=0.041 crashed
+            # scoring on 15/37 real cases.
+            if value not in (0.0, 0.5, 1.0):
+                if criterion.scale == "three_point":
+                    value = (1.0 if value >= DEFAULT_PASS_THRESHOLD
+                             else 0.5 if value >= DEFAULT_PASS_THRESHOLD / 2 else 0.0)
+                else:
+                    value = 1.0 if value >= DEFAULT_PASS_THRESHOLD else 0.0
             cs = CriterionScore(
                 criterion_id=criterion.criterion_id, score=value, scorer="code"
             )
