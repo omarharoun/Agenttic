@@ -203,9 +203,16 @@ async def score_op(
             evaluate_fn=fi_evaluate_fn)
     from agenttic.scoring.corpus import uncalibrated_criteria
     runs: list[RunScore] = []
-    total = len(cases)
+    # Pair every trace to its case by id — NEVER zip positionally. With
+    # trials_per_case > 1 the harness returns k traces per case; zip silently
+    # truncated to the case count, so k-1 of every case's trials were paid for
+    # and never scored (first light 2026-07-20, the k=8 run).
+    by_id = {c.test_id: c for c in cases}
+    scorable = [t for t in traces if t.test_case_id in by_id]
+    total = len(scorable)
     _uncal_cache: dict[str, set[str]] = {}
-    for i, (trace, case) in enumerate(zip(traces, cases)):
+    for i, trace in enumerate(scorable):
+        case = by_id[trace.test_case_id]
         rubric = rubric_override or reg.get_rubric(case.rubric_id)
         # Hard Rule 6: mark provisional every criterion whose calibration isn't
         # demonstrated — all judge criteria, plus heuristic checks not proven by

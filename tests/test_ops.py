@@ -248,3 +248,24 @@ class TestAggregatePartial:
             visibility_tier="glass_box")
         assert sc.task_success_rate == 0.0 and sc.per_criterion_means == {}
         assert set(sc.errored_test_ids) == {"a", "b"}
+
+
+class TestTrialsScoring:
+    def test_k_trials_score_every_trace_not_a_zip_truncation(self, pilot_registry):
+        """First light 2026-07-20 (the k=8 run): score_op zipped 296 traces
+        against 37 cases and silently scored only the first 37 — k-1 of every
+        case's trials were paid for and never scored. Every returned trace must
+        be scored and the scorecard must carry the pass^k curve."""
+        reg, suite_id = pilot_registry
+        adapter = AnthropicSimpleAgent(model="agent-model",
+                                       kb_path=PILOT / "kb.json",
+                                       client=RoutingFakeClient(),
+                                       agent_id="ref-agent")
+        sc = asyncio.run(ops.run_and_score_op(
+            {**CFG, "harness": dict(CFG["harness"])}, reg, adapter, suite_id,
+            judge_client=ProfessionalToneJudgeClient(),
+            trials_per_case=3))
+        n_cases = len({r.test_id for r in sc.run_scores})
+        assert len(sc.run_scores) == 3 * n_cases       # every trial scored
+        assert sc.trials_per_case == 3
+        assert sc.pass_k_curve and 2 in {int(k) for k in sc.pass_k_curve}
