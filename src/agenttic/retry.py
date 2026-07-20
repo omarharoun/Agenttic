@@ -73,13 +73,24 @@ def with_retry(fn, policy: RetryPolicy | None = None, *, op: str = "anthropic",
     """Call ``fn()`` with retry on transient errors. Re-raises the last error
     when attempts are exhausted or the error is non-retryable. ``sleep`` is
     injectable so tests don't actually wait."""
+    from agenttic.api_errors import RUN_TERMINAL, TerminalAPIError, as_terminal, classify
     policy = policy or RetryPolicy()
     last: BaseException | None = None
     for attempt in range(policy.max_attempts):
         try:
             return fn()
+        except TerminalAPIError:
+            raise                     # already classified — propagate untouched
         except BaseException as exc:  # noqa: BLE001 — classify, then re-raise
             last = exc
+            # Run-terminal (auth / billing / permission / bad config): no retry
+            # can help and no OTHER call will succeed either — surface a typed
+            # signal so the harness halts the run instead of grinding on
+            # (first light 2026-07-20: 296 calls attempted against a dead API).
+            if classify(exc) == RUN_TERMINAL:
+                logger.error("op=%s terminal upstream error: %s: %s",
+                             op, type(exc).__name__, exc)
+                raise as_terminal(exc) from exc
             if not is_retryable(exc) or attempt + 1 >= policy.max_attempts:
                 if is_retryable(exc):
                     logger.warning("op=%s exhausted %d attempts: %s",

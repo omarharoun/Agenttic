@@ -52,6 +52,7 @@ from datetime import datetime, timezone
 from typing import Callable, Protocol
 
 from agenttic.adapters.base import AgentAdapter, EscalationRequired, HumanChannel
+from agenttic.api_errors import TerminalAPIError
 from agenttic.schema.testcase import TestCase, TestSuite
 from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
@@ -203,6 +204,8 @@ async def run_suite(
         raise ValueError(f"test cases not in suite {suite.suite_id}: {unknown}")
 
     sem = asyncio.Semaphore(config.max_parallel)
+    #: run-level halt latch (terminal upstream error) — see the kill-switch below
+    halted: dict = {"reason": None}
     total = len(test_cases)
 
     # Resume: map test_case_id -> a prior SUCCESSFUL trace for this exact agent
@@ -257,6 +260,19 @@ async def run_suite(
                                           "trace_id": done[tc.test_id].trace_id})
             return done[tc.test_id]
         async with sem:
+            # terminal-API kill-switch (SPEC-8 discovered gap): once ANY case
+            # hits an auth/billing/permission/config error, no further call can
+            # succeed — short-circuit remaining cases to a clean run_halted
+            # trace instead of grinding against a dead API. Everything already
+            # completed stays persisted (Hard Rule 5).
+            if halted["reason"] is not None:
+                trace = _failure_trace(adapter, tc, "run_halted", halted["reason"])
+                store.save_trace(trace)
+                if on_event:
+                    on_event("run_halted", {
+                        "index": index, "total": total, "test_id": tc.test_id,
+                        "reason": halted["reason"]})
+                return trace
             # budget kill-switch: once the per-run cap is hit, don't start new
             # runs — short-circuit to a clean budget_exceeded trace (no spend).
             if budget is not None and budget.exhausted:
@@ -351,6 +367,19 @@ async def run_suite(
                         adapter, tc, "transport_failure",
                         f"{type(exc).__name__}: {exc} (after {attempt + 1} attempts)",
                     )
+                except TerminalAPIError as exc:
+                    # Auth/billing/permission/config: trip the run-level latch —
+                    # this case records the terminal error; every not-yet-started
+                    # case short-circuits to run_halted (no further API calls).
+                    halted["reason"] = (
+                        f"terminal upstream error: {exc}"
+                        + (f" (request_id {exc.request_id})" if exc.request_id else ""))
+                    trace = _failure_trace(
+                        adapter, tc, "terminal_api_error", halted["reason"])
+                    if on_event:
+                        on_event("run_halted", {
+                            "index": index, "total": total, "test_id": tc.test_id,
+                            "reason": halted["reason"]})
                 except Exception as exc:  # noqa: BLE001 — adapter bug: persist, don't lose the run
                     trace = _failure_trace(
                         adapter, tc, "harness_error", f"{type(exc).__name__}: {exc}"

@@ -20,6 +20,7 @@ from typing import Callable, Literal
 
 from agenttic.adapters.anthropic_simple import AnthropicSimpleAgent
 from agenttic.adapters.base import AgentAdapter
+from agenttic.api_errors import TerminalAPIError
 from agenttic.adapters.blackbox_http import BlackBoxHTTPAgent
 from agenttic.adapters.managed_agent import ManagedAgentAdapter
 from agenttic.generator.pipeline import BenchmarkGenerator
@@ -411,7 +412,9 @@ async def score_op(
         cfg, reg, traces, cases, agent_model, judge_client=judge_client,
         rubric_override=rubric_override, fi_evaluator=fi_evaluator,
         fi_evaluate_fn=fi_evaluate_fn)
-    total = len(cases)
+    # len(prepared), not len(cases): with trials_per_case > 1 there are k traces
+    # per case, so the case count would under-report progress by a factor of k.
+    total = len(prepared)
 
     # Scoring a case costs one judge call per judge criterion, and cases are
     # independent of each other — so run them concurrently instead of one after
@@ -420,12 +423,31 @@ async def score_op(
     # else, and unbounded fan-out only trades slowness for 429s.
     sem = asyncio.Semaphore(scoring_parallelism(cfg))
 
+    # Auth/billing/permission failures are TERMINAL: once one judge call has hit
+    # one, no later call can succeed, so every remaining case would spend a
+    # round-trip to be told the same thing. Checked INSIDE the semaphore, so
+    # tasks still queued when it trips never reach the API — the concurrent
+    # equivalent of the sequential loop's halt latch.
+    halted: list[str] = []
+
     async def score_one(i: int, trace, case, rubric, uncal) -> RunScore:
         async with sem:
+            if halted:
+                return _errored_score(trace, case,
+                                      f"scoring halted: {halted[0]}")
             try:
                 rs = await asyncio.to_thread(
                     score_run, trace, case, rubric, judge, uncalibrated=uncal,
                     pass_threshold=pass_threshold, fi_evaluator=fi_evaluator)
+            except TerminalAPIError as exc:
+                halted.append(str(exc))
+                if on_progress:
+                    on_progress("scoring_halted", {
+                        "index": i, "total": total, "test_id": case.test_id,
+                        "reason": str(exc),
+                    })
+                return _errored_score(trace, case,
+                                      f"terminal upstream error: {exc}")
             except Exception as exc:  # noqa: BLE001 — scoring failure is data, not fatal
                 err = f"{type(exc).__name__}: {exc}"
                 if on_progress:

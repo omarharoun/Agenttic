@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from agenttic.adapters.base import AgentAdapter, EscalationRequired
+from agenttic.api_errors import TerminalAPIError
 from agenttic.schema.trace import SCHEMA_VERSION, Span, Trace
 
 SYSTEM_PROMPT = (
@@ -188,6 +189,10 @@ class AnthropicSimpleAgent(AgentAdapter):
                     tools=TOOLS,
                     messages=list(messages),
                 ), self.retry_policy, op="agent")
+            except TerminalAPIError:
+                # Auth/billing/permission/config: NO further call can succeed —
+                # propagate so the harness halts the whole run (api_errors.py).
+                raise
             except Exception as exc:  # noqa: BLE001 — retries exhausted: persist partial work
                 # Don't discard earlier steps (and their token cost): record an
                 # error span and finish the trace with what we have.
