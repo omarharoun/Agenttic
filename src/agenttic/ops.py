@@ -242,6 +242,7 @@ async def run_suite_op(
     on_progress: ProgressFn | None = None,
     *,
     trial: int = 0,
+    trials_per_case: int = 1,   # SPEC-7 31: k>1 => pass^k (multiplies cost)
 ) -> tuple[TestSuite, list[TestCase], list[Trace]]:
     """Harness step: execute every case of a suite, persisting all traces.
 
@@ -264,10 +265,16 @@ async def run_suite_op(
                            model=getattr(adapter, "model", None),
                            bb_call_cost=getattr(adapter, "cost_per_call_usd", 0.0),
                            version=version)
-    warnings = check_pre_run(cfg, reg, est.projected_usd)  # may raise
+    # k trials multiply the projected spend — price it visibly, never
+    # surprise-bill (SPEC-7 Step 31), and gate on the MULTIPLIED figure.
+    projected = est.projected_usd * max(1, trials_per_case)
+    warnings = check_pre_run(cfg, reg, projected)  # may raise
+    if trials_per_case > 1 and on_progress:
+        on_progress("trials_notice", {"trials_per_case": trials_per_case,
+                                      "projected_usd": projected})
     if warnings and on_progress:
         on_progress("budget_warning", {"warnings": warnings,
-                                       "projected_usd": est.projected_usd})
+                                       "projected_usd": projected})
 
     max_run = float(cfg.get("budget", {}).get("max_run_cost_usd", 0) or 0)
     h = cfg["harness"]
@@ -284,6 +291,8 @@ async def run_suite_op(
         # silently turned every pass^k into pass@1.
         resume=True,
         trial=trial,
+        resume=True,  # resilience is mandatory — resume is always on
+        trials_per_case=trials_per_case,
     )
     return suite, cases, traces
 
@@ -766,6 +775,7 @@ async def run_and_score_op(
     version: int | None = None,
     on_progress: ProgressFn | None = None,
     judge_client=None,
+    trials_per_case: int = 1,   # SPEC-7 31: k>1 => scorecard gains pass^k curve
 ) -> Scorecard:
     """The full run → score → aggregate chain (CLI `run`/`regress` behavior).
 
@@ -776,7 +786,8 @@ async def run_and_score_op(
     from agenttic.server.tracing import span
     with span("run.suite", suite_id=suite_id, agent_id=adapter.agent_id):
         suite, cases, traces = await run_suite_op(
-            cfg, reg, adapter, suite_id, version, on_progress)
+            cfg, reg, adapter, suite_id, version, on_progress,
+            trials_per_case=trials_per_case)
         runs = await score_op(cfg, reg, traces, cases, agent_model_of(adapter),
                               on_progress, judge_client=judge_client)
         rubric = reg.get_rubric(cases[0].rubric_id)
