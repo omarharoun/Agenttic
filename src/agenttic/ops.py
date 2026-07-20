@@ -330,8 +330,17 @@ def _prepare_scoring(cfg: dict, reg: Registry, traces: list[Trace],
         fi_evaluator = FiEvaluator(
             threshold=cfg.get("scoring", {}).get("fi_threshold", 0.5),
             evaluate_fn=fi_evaluate_fn)
+    # Pair every trace to its case BY ID — never positionally. With
+    # trials_per_case > 1 the harness returns k traces per case, and `zip`
+    # silently truncated to the case count: k-1 of every case's trials were paid
+    # for and never scored (first light 2026-07-20, the k=8 run). A trace with no
+    # matching case is dropped rather than mispaired.
     prepared, cache = [], {}
-    for trace, case in zip(traces, cases):
+    by_id = {c.test_id: c for c in cases}
+    for trace in traces:
+        case = by_id.get(trace.test_case_id)
+        if case is None:
+            continue
         rubric = rubric_override or reg.get_rubric(case.rubric_id)
         # Hard Rule 6: mark provisional every criterion whose calibration isn't
         # demonstrated — all judge criteria, plus heuristic checks not proven by
