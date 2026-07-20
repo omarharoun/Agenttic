@@ -18,6 +18,7 @@ from typing import Callable, Literal
 
 from agenttic.adapters.anthropic_simple import AnthropicSimpleAgent
 from agenttic.adapters.base import AgentAdapter
+from agenttic.api_errors import TerminalAPIError
 from agenttic.adapters.blackbox_http import BlackBoxHTTPAgent
 from agenttic.adapters.managed_agent import ManagedAgentAdapter
 from agenttic.generator.pipeline import BenchmarkGenerator
@@ -211,8 +212,21 @@ async def score_op(
     scorable = [t for t in traces if t.test_case_id in by_id]
     total = len(scorable)
     _uncal_cache: dict[str, set[str]] = {}
+    #: terminal-API halt latch: once the judge hits an auth/billing/permission
+    #: error, stop calling the API — remaining runs are recorded as halted, not
+    #: attempted (SPEC-8 discovered gap: 199 judge calls against a dead API).
+    halted_reason: str | None = None
     for i, trace in enumerate(scorable):
         case = by_id[trace.test_case_id]
+        if halted_reason is not None:
+            runs.append(RunScore(
+                trace_id=trace.trace_id, test_id=case.test_id,
+                criterion_scores=[], passed=False,
+                cost_usd=trace.total_cost_usd, latency_ms=trace.total_latency_ms,
+                steps=trace.total_steps,
+                scoring_error=f"scoring halted: {halted_reason}",
+                user_source=getattr(trace, "user_source", "none")))
+            continue
         rubric = rubric_override or reg.get_rubric(case.rubric_id)
         # Hard Rule 6: mark provisional every criterion whose calibration isn't
         # demonstrated — all judge criteria, plus heuristic checks not proven by
@@ -233,6 +247,23 @@ async def score_op(
                 on_progress("case_scored", {
                     "index": i, "total": total, "test_id": case.test_id,
                     "passed": rs.passed,
+                })
+        except TerminalAPIError as exc:
+            # Judge hit an auth/billing/permission error: no further judge call
+            # can succeed. Record THIS run's terminal error and trip the latch —
+            # the loop marks the rest halted without touching the API.
+            halted_reason = str(exc)
+            err = f"terminal upstream error: {exc}"
+            runs.append(RunScore(
+                trace_id=trace.trace_id, test_id=case.test_id,
+                criterion_scores=[], passed=False,
+                cost_usd=trace.total_cost_usd, latency_ms=trace.total_latency_ms,
+                steps=trace.total_steps, scoring_error=err,
+                user_source=getattr(trace, "user_source", "none")))
+            if on_progress:
+                on_progress("scoring_halted", {
+                    "index": i, "total": total, "test_id": case.test_id,
+                    "reason": halted_reason,
                 })
         except Exception as exc:  # noqa: BLE001 — scoring failure is data, not fatal
             err = f"{type(exc).__name__}: {exc}"
