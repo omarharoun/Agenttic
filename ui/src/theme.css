@@ -1297,6 +1297,19 @@ th.sortable:hover { color: var(--accent); }
 .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font: 600 11.5px/1.4 var(--font-ui); text-transform: capitalize; }
 .muted-sm { color: var(--muted); font-size: 12.5px; }
 
+/* Settings → Spend & limits (SPEC-8: the spend-governance decision) */
+.spend-layers { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 640px) { .spend-layers { grid-template-columns: 1fr; } }
+.spend-layer { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; background: var(--panel-2, var(--panel)); }
+.spend-layer h3 { display: flex; align-items: center; gap: 7px; margin: 0 0 6px; font: 600 14px/1.3 var(--font-ui); }
+.spend-layer p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.55; }
+.spend-layer .pill { margin-left: auto; }
+.limit-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 640px) { .limit-grid { grid-template-columns: 1fr 1fr; } }
+.limit-cell { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.limit-cap { font: 600 20px/1 var(--font-ui); color: var(--fg); }
+.limit-lbl { font-size: 11.5px; color: var(--faint); }
+
 /* api-key card */
 .key-status { margin-bottom: 14px; }
 .key-set { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

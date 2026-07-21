@@ -1,17 +1,18 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, errMessage, type Me } from "../api";
+import { api, errMessage, type Me, type SpendQuota } from "../api";
 import { PageHeader, Skeleton } from "../components/ui";
 import { PageData } from "../components/PageData";
 import { type ThemePref, useThemePref } from "../theme";
-import { IconKey, IconLock, IconMonitor, IconMoon, IconSun } from "../icons";
+import { IconKey, IconLock, IconMonitor, IconMoon, IconSun, IconShield } from "../icons";
 
 // Billing lives on its own page now (/app/billing) — plan, credit balance,
 // usage, upgrade/top-ups, and invoices. Settings stays account + API keys.
-type Section = "account" | "api-keys";
+type Section = "account" | "api-keys" | "spend";
 const SECTIONS: { key: Section; label: string; icon: ReactNode }[] = [
   { key: "account", label: "Account", icon: "◑" },
   { key: "api-keys", label: "API keys", icon: <IconKey size={16} /> },
+  { key: "spend", label: "Spend & limits", icon: <IconShield size={16} /> },
 ];
 
 export function SettingsPage() {
@@ -35,6 +36,7 @@ export function SettingsPage() {
           <div className="settings-panel">
             {section === "account" && <AccountSection />}
             {section === "api-keys" && <ApiKeysSection />}
+            {section === "spend" && <SpendSection />}
           </div>
         </div>
       </div>
@@ -86,6 +88,94 @@ function AccountSection() {
         </PageData>
       </Card>
       <AppearanceCard />
+    </>
+  );
+}
+
+const usd = (n: number | null | undefined) =>
+  n == null ? "—" : n === 0 ? "off" : `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+/** Spend & limits — the two-layer spend-governance decision, rendered with LIVE
+ *  config values (Hard Rule 36: no claim without the artifact behind it). */
+function SpendSection() {
+  const [q, setQ] = useState<SpendQuota | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<unknown | null>(null);
+  const load = useCallback(() => {
+    setLoading(true); setErr(null);
+    api.spendQuota().then(setQ).catch((e) => setErr(e)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => load(), [load]);
+
+  return (
+    <>
+      <Card title="How spend is governed"
+            desc="Two independent layers protect two different wallets. Evaluations
+                  cost real model calls, so both caps are enforced before a run —
+                  a projected overage is refused, never surprise-billed.">
+        <div className="spend-layers">
+          <div className="spend-layer">
+            <h3><IconShield size={15} /> Platform caps <span className="pill">us</span></h3>
+            <p>Bound whichever API key is executing. Today every run — the public
+               demo, the reference agent, first-light and calibration runs — uses
+               <b> our</b> server key, so these are the backstop against a runaway
+               loop or a hammered public endpoint.</p>
+          </div>
+          <div className="spend-layer">
+            <h3><IconLock size={15} /> Per-workspace quota <span className="pill">you</span></h3>
+            <p>A daily and monthly ceiling per workspace (tenant). Once you run on
+               your own Anthropic key, model usage bills to <b>you</b> directly —
+               this quota is what stops a surprise bill. Paying clients get room
+               by raising their tier, not the platform cap.</p>
+          </div>
+        </div>
+      </Card>
+
+      <Card title="Current limits"
+            desc="Live from the running server configuration.">
+        <PageData loading={loading} error={err} onRetry={load}
+                  errorTitle="Couldn't load spend limits" skeleton={<Skeleton rows={4} />}>
+          {q && (
+            <>
+              <div className="limit-grid">
+                <div className="limit-cell">
+                  <span className="limit-cap">{usd(q.platform.max_run_cost_usd)}</span>
+                  <span className="limit-lbl">Platform · per run</span>
+                </div>
+                <div className="limit-cell">
+                  <span className="limit-cap">{usd(q.platform.max_daily_cost_usd)}</span>
+                  <span className="limit-lbl">Platform · per day (our key)</span>
+                </div>
+                <div className="limit-cell">
+                  <span className="limit-cap">{usd(q.daily_usd)}</span>
+                  <span className="limit-lbl">Workspace · per day</span>
+                </div>
+                <div className="limit-cell">
+                  <span className="limit-cap">{usd(q.monthly_usd)}</span>
+                  <span className="limit-lbl">Workspace · per month</span>
+                </div>
+              </div>
+              <dl className="kv-grid" style={{ marginTop: 16 }}>
+                <dt>Spent today</dt>
+                <dd>{usd(q.spent_today_usd)}{q.remaining_daily_usd != null
+                  ? ` · ${usd(q.remaining_daily_usd)} left today` : ""}</dd>
+                <dt>Spent this month</dt>
+                <dd>{usd(q.spent_month_usd)}{q.remaining_monthly_usd != null
+                  ? ` · ${usd(q.remaining_monthly_usd)} left` : ""}</dd>
+                <dt>Enforcement</dt>
+                <dd>{q.platform.warn_only
+                  ? "warn-only (runs proceed, overage logged)"
+                  : "hard — a projected overage blocks the run"}</dd>
+              </dl>
+              <p className="muted-sm" style={{ marginTop: 12 }}>
+                Decision (2026-07-21): tight platform caps for the pre-revenue phase,
+                since the only spender is us. Changing them is a config edit +
+                redeploy — deliberate and versioned, never silent.
+              </p>
+            </>
+          )}
+        </PageData>
+      </Card>
     </>
   );
 }

@@ -14,9 +14,14 @@ router = APIRouter(tags=["cost"])
 
 @router.get("/quota")
 def quota(request: Request):
-    """This tenant's spend quota + current usage (today and rolling 30 days)."""
+    """This tenant's spend quota + current usage (today and rolling 30 days),
+    plus the two platform-wide spend caps. Two layers, two wallets: the
+    ``platform`` caps bound whichever key is executing (today, ours); the
+    per-tenant ``quota`` bounds an individual workspace. Read-only."""
     reg = request.state.reg
-    q = tenant_quota(request.state.cfg, reg.tenant)
+    cfg = request.state.cfg
+    q = tenant_quota(cfg, reg.tenant)
+    b = cfg.get("budget", {}) or {}
     today = reg.spend_today()
     month = reg.spend_since_days(29)
     def _remaining(cap, spent):
@@ -25,7 +30,11 @@ def quota(request: Request):
             "daily_usd": q["daily_usd"], "monthly_usd": q["monthly_usd"],
             "spent_today_usd": round(today, 6), "spent_month_usd": round(month, 6),
             "remaining_daily_usd": _remaining(q["daily_usd"], today),
-            "remaining_monthly_usd": _remaining(q["monthly_usd"], month)}
+            "remaining_monthly_usd": _remaining(q["monthly_usd"], month),
+            "platform": {
+                "max_run_cost_usd": float(b.get("max_run_cost_usd", 0) or 0),
+                "max_daily_cost_usd": float(b.get("max_daily_cost_usd", 0) or 0),
+                "warn_only": bool(b.get("warn_only", False))}}
 
 
 @router.get("/estimate")

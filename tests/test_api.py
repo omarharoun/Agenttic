@@ -427,6 +427,9 @@ class TestCostEstimateApi:
         r = client.get("/api/quota").json()
         assert r["tenant"] == "default"
         assert "spent_today_usd" in r and "remaining_daily_usd" in r
+        # SPEC-8: the two platform caps are surfaced for the Spend & limits page
+        assert "platform" in r
+        assert {"max_run_cost_usd", "max_daily_cost_usd", "warn_only"} <= r["platform"].keys()
 
     def test_workflow_estimate(self, client):
         wf = eval_workflow("pilot-support-triage").model_dump()

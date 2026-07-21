@@ -7,7 +7,7 @@ import type {
   // core schemas
   Scorecard, Trace, TestSuite, Rubric,
   // auth / settings
-  Me, AuthResult, AnthropicKeyStatus, KeyTestResult, TokenList, CreatedToken,
+  Me, AuthResult, AnthropicKeyStatus, SpendQuota, KeyTestResult, TokenList, CreatedToken,
   // workflows / executions
   NodeTypeSpec, WorkflowDoc, WorkflowSummary, WorkflowLoad, WorkflowSaveResult,
   StartExecutionResult, Execution, ExecutionResults, IssuesReport,
@@ -233,6 +233,7 @@ export const api = {
   anthropicKeyStatus: () =>
     afetch("/api/settings/anthropic-key").then((r) =>
       json<AnthropicKeyStatus>(r)),
+  spendQuota: () => afetch("/api/quota").then((r) => json<SpendQuota>(r)),
   testAnthropicKey: (key: string) =>
     afetch("/api/settings/anthropic-key/test", {
       method: "POST", headers: { "Content-Type": "application/json" },
