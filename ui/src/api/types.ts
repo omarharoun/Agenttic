@@ -280,6 +280,20 @@ export interface AnthropicKeyStatus {
   masked: string | null;
   updated_at: string | null;
 }
+export interface SpendQuota {
+  tenant: string;
+  daily_usd: number;
+  monthly_usd: number;
+  spent_today_usd: number;
+  spent_month_usd: number;
+  remaining_daily_usd: number | null;
+  remaining_monthly_usd: number | null;
+  platform: {
+    max_run_cost_usd: number;
+    max_daily_cost_usd: number;
+    warn_only: boolean;
+  };
+}
 export interface KeyTestResult {
   valid: boolean;
   error: string | null;
