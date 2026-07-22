@@ -1,7 +1,10 @@
 /* Landing layout (SPEC-11 Step 52). TOKEN-ONLY — no raw hex (lint-enforced).
  * Structure only; every styled surface is a shared ds-* component. */
 
-.lp { --lp-pad: clamp(48px, 7vw, 84px); }
+.lp { --lp-pad: clamp(48px, 7vw, 84px); overflow-x: clip; }
+/* nothing on the public route may cause a horizontal scroll (clean to 360px) —
+   wide content (the comparison table) scrolls inside its own overflow container. */
+.lp img, .lp svg { max-width: 100%; height: auto; }
 .lp .wrap { max-width: 1080px; margin: 0 auto; padding: 0 var(--sp-8); }
 .lp section { padding: var(--lp-pad) 0; border-top: 1px solid var(--border); }
 
