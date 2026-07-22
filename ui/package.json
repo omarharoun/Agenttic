@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite-react-ssg build",
+    "build": "npm run lint:tokens && tsc --noEmit && vite-react-ssg build",
     "build:spa": "tsc --noEmit && vite build",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint:tokens": "node scripts/check-tokens.mjs"
   },
   "dependencies": {
     "@xyflow/react": "^12.4.0",
