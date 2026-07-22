@@ -111,6 +111,11 @@
   /* inline code */
   --code-bg: #14171B; --code-text: var(--clay-200);
 
+  /* terminal surface — the CodeBlock stays dark in BOTH themes (an engraved
+     command readout), so these are defined once in :root and never overridden. */
+  --term-bg: #121417; --term-text: #E8E9E4; --term-prompt: #B8934C;
+  --term-comment: #6A7077; --term-out: #C9C2B2;
+
   /* shadows (dark) + focus ring — crisp, machined */
   --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.35);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.28);
