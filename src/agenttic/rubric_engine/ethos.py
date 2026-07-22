@@ -17,7 +17,7 @@ escalation criterion never lands where nothing should escalate.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from agenttic.schema.archetype import Severity
 from agenttic.schema.rubric import Criterion
