@@ -1,0 +1,188 @@
+/* ============================================================================
+   Agenttic — design tokens (SPEC-11 Step 50). THE ONE SOURCE OF TRUTH.
+
+   The console (ui/) and the marketing landing route draw every colour, type
+   size, radius, space step, and motion curve from this file and nowhere else
+   (Hard Rule 47). Raw hex in src/pages, src/components, or the landing route is
+   forbidden and caught by `npm run lint:tokens`.
+
+   Reconciled from two prior interpretations of the Chronometer language — the
+   console's obsidian/opaline tokens and the landing reference's warm-paper
+   sketch. Every conflict resolution is recorded in design/RECONCILIATION.md.
+
+   Two themes: obsidian case-back dark (the console default) and silvered-opaline
+   light (the landing default). The landing inherits both and defaults to light.
+   ========================================================================== */
+
+:root {
+  /* fonts — self-hosted (see theme.css @font-face); the landing's Google-Fonts
+     link is dropped in favour of the vendored subsets. */
+  --font-ui: "Geist", system-ui, -apple-system, sans-serif;
+  --font-serif: "Marcellus", "Times New Roman", serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* gold ramp — true metallic gold, hue-fixed, shared by both themes
+     (legacy clay names kept so the component layer retunes for free) */
+  --clay-50: #FAF3DC; --clay-100: #F1E3B1; --clay-200: #E5CF7F; --clay-300: #DBBE55;
+  --clay-400: #D4AF37; --clay: #C9A227; --clay-600: #A98618; --clay-700: #8A6D14; --clay-800: #6B5510;
+
+  /* radii — machined edges (the 2px family) */
+  --r-xs: 2px; --r-sm: 3px; --r-md: 5px; --r: 5px; --r-lg: 8px; --r-xl: 10px;
+  --r-2xl: 14px; --r-pill: 999px;
+
+  /* spacing (4px base) */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px;
+  --sp-8: 32px; --sp-10: 40px; --sp-12: 48px; --sp-16: 64px; --sp-20: 80px;
+
+  /* type scale */
+  --t-display: 56px; --t-h1: 34px; --t-h2: 26px; --t-h3: 20px; --t-title: 17px;
+  --t-lg: 16px; --t-base: 14px; --t-sm: 13px; --t-xs: 12px; --t-label: 11px;
+  --track-caps: 0.14em;
+
+  /* motion — escapement. Canonical curve; the landing reference's
+     cubic-bezier(.4,.1,.3,1) is reconciled to this. */
+  --ease-escape: cubic-bezier(0.3, 0, 0.1, 1);
+  --dur-fast: 0.16s; --dur-gauge: 0.8s;
+
+  /* ===== obsidian case-back dark (default) ===== */
+  --bg: #08090B;
+  --panel: #0E1013;
+  --panel-2: #14171B;
+  --field: #0B0D10;
+  --border: #242930;
+  --border-soft: #171B20;
+  --border-strong: #363D46;
+  --text: #E8E9E4;             /* silvered ink */
+  --muted: #99A0A7;            /* rhodium */
+  --faint: #6A7077;            /* engraved micro-labels */
+
+  /* accent — restrained gilt */
+  --accent: var(--clay);
+  --accent-hover: var(--clay-400);
+  --accent-soft: rgba(201, 162, 39, 0.14);
+  --accent-line: rgba(201, 162, 39, 0.45);
+  --accent-ink: #201A08;   /* near-black ink ON gold — dial lettering */
+
+  /* instrument metals + the one red */
+  --metal: #C7CBD1;                       /* rhodium detail */
+  --metal-soft: rgba(199, 203, 209, 0.14);
+  --live: #C8402F;                        /* seconds-hand vermillion — live/alert ONLY */
+  --live-soft: rgba(200, 64, 47, 0.16);
+  --hairline: rgba(232, 233, 228, 0.10);
+
+  /* status — cool, dial-tuned */
+  --ok: #6FA07A;   --ok-soft: rgba(111, 160, 122, 0.14);  --ok-border: rgba(111, 160, 122, 0.5);
+  --wait: #C9A34E; --wait-soft: rgba(201, 163, 78, 0.14); --wait-border: rgba(201, 163, 78, 0.5);
+  --fail: #C8503F; --fail-soft: rgba(200, 80, 63, 0.14);  --fail-border: rgba(200, 80, 63, 0.5);
+  --info: #7D96B8; --info-soft: rgba(125, 150, 184, 0.14); --info-border: rgba(125, 150, 184, 0.5);
+  --neutral: #A9AFB6; --neutral-soft: rgba(169, 175, 182, 0.12);
+
+  /* ===== semantic SCORE vocabulary (SPEC-11 Step 50) — the shared product
+     language. Defined once, used identically in the console scorecard and the
+     landing demo. Aliased onto the dial-tuned status ramp so there is exactly
+     one hue per meaning per theme (Hard Rule 48). ========================== */
+  --score-pass: var(--ok);
+  --score-pass-soft: var(--ok-soft);
+  --score-pass-border: var(--ok-border);
+  --score-provisional: var(--wait);
+  --score-provisional-soft: var(--wait-soft);
+  --score-provisional-border: var(--wait-border);
+  --score-deterministic: var(--info);          /* the "steel" of the reference */
+  --score-deterministic-soft: var(--info-soft);
+  --score-deterministic-border: var(--info-border);
+  --score-fail: var(--fail);
+  --score-fail-soft: var(--fail-soft);
+  --score-fail-border: var(--fail-border);
+
+  /* dataviz — gilt, steel, rhodium, verdigris */
+  --viz-1: #C9A227; --viz-2: #7D96B8; --viz-3: #C7CBD1; --viz-4: #6FA07A; --viz-grid: #262B31;
+
+  /* landing instrument (ruled readout field) — fine engraved lines */
+  --lp-grid: rgba(232, 233, 228, 0.055);
+  --lp-hair: rgba(232, 233, 228, 0.07);
+
+  /* category hues (advanced canvas) — mapped onto the family */
+  --cat-input: var(--info);
+  --cat-benchmark: var(--wait);
+  --cat-agents: var(--accent);
+  --cat-evaluation: var(--ok);
+  --cat-delivery: var(--clay-400);
+
+  /* inline code */
+  --code-bg: #14171B; --code-text: var(--clay-200);
+
+  /* shadows (dark) + focus ring — crisp, machined */
+  --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.28);
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.38);
+  --shadow-lg: 0 14px 44px rgba(0, 0, 0, 0.50);
+  --ring: 0 0 0 3px rgba(201, 162, 39, 0.30);
+
+  /* ===== shared card contract — the ONE surface look every boxed panel uses.
+     Radius/border/shadow stay identical page-to-page; padding is contextual. */
+  --card-radius: var(--r-lg);
+  --card-border: 1px solid var(--border);
+  --card-shadow: var(--shadow-sm);
+  --card-bg: var(--panel);
+  --content-max: 1400px;
+
+  /* readable ink on the amber "approve" button (theme-aware) */
+  --on-wait: #241B07;
+}
+
+/* ===== silvered-opaline light variant (the landing's default) ===== */
+html[data-theme="light"] {
+  --bg: #ECEDEA;
+  --panel: #F8F8F5;
+  --panel-2: #FFFFFF;
+  --field: #FFFFFF;
+  --border: #D8DAD4;
+  --border-soft: #E4E6E1;
+  --border-strong: #B8BBB4;
+  --text: #16181B;
+  --muted: #565B60;
+  --faint: #82878C;
+
+  --accent: #8A6D14;
+  --accent-hover: #6B5510;
+  --accent-soft: #F6EFD6;
+  --accent-line: #E5CF7F;
+  --accent-ink: #FFFFFF;
+
+  --metal: #7E858D;
+  --metal-soft: rgba(126, 133, 141, 0.14);
+  --live: #B23A2B;
+  --live-soft: rgba(178, 58, 43, 0.14);
+  --hairline: rgba(22, 24, 27, 0.10);
+
+  --ok: #45704F;   --ok-soft: #E7EFE6;   --ok-border: #C8DCC6;
+  --wait: #93701F; --wait-soft: #F4ECD8; --wait-border: #E4D3A3;
+  --fail: #A63E2E; --fail-soft: #F5E3DE; --fail-border: #E5C0B6;
+  --info: #3C5B82; --info-soft: #E5EBF2; --info-border: #C5D4E5;
+  --neutral: #565B60; --neutral-soft: #E9EBE6;
+
+  /* score vocabulary re-points to the light-tuned status ramp automatically
+     via the var() aliases below; the aliases themselves live in :root and
+     resolve per-theme, so they need not be repeated here. */
+
+  --viz-1: #8A6D14; --viz-2: #3C5B82; --viz-3: #6E747B; --viz-4: #45704F; --viz-grid: #E1E3DD;
+
+  --lp-grid: rgba(22, 24, 27, 0.05);
+  --lp-hair: rgba(22, 24, 27, 0.07);
+
+  --cat-input: #3C5B82;
+  --cat-benchmark: #93701F;
+  --cat-agents: #8F7644;
+  --cat-evaluation: #45704F;
+  --cat-delivery: #6E747B;
+
+  --code-bg: #EFF0EC; --code-text: #75603B;
+
+  --shadow-xs: 0 1px 2px rgba(20, 24, 28, 0.05);
+  --shadow-sm: 0 1px 2px rgba(20, 24, 28, 0.04), 0 2px 6px rgba(20, 24, 28, 0.05);
+  --shadow: 0 2px 4px rgba(20, 24, 28, 0.04), 0 8px 20px rgba(20, 24, 28, 0.07);
+  --shadow-lg: 0 10px 38px rgba(20, 24, 28, 0.12);
+  --ring: 0 0 0 3px rgba(138, 109, 20, 0.24);
+
+  --on-wait: #FFFFFF;
+}
