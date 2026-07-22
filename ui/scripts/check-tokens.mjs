@@ -9,7 +9,7 @@
  *
  *   node ui/scripts/check-tokens.mjs        # exits 1 on any violation
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, extname } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname; // ui/
@@ -72,4 +72,23 @@ try {
   }
 } catch { /* ds.css absent — nothing to assert */ }
 
-console.log(`✓ token lint: no raw hex in ${SCAN_DIRS.join(", ")} (${files.length} files scanned); DS score components wired to shared tokens`);
+// Production-bar CSS checks (SPEC-11 Step 53) — reduced-motion + overflow guard.
+const BAR = [
+  [join(ROOT, "src/components/ds/ds.css"),
+   /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.ds-escape__tick\s*\{\s*animation:\s*none/,
+   "ds.css must stop the escapement sweep under prefers-reduced-motion"],
+  [join(ROOT, "src/landing/landing.css"), /\.lp\s*\{[^}]*overflow-x:\s*clip/,
+   "landing.css must guard the public route against horizontal overflow"],
+];
+for (const [file, re, msg] of BAR) {
+  try {
+    if (!re.test(readFileSync(file, "utf8"))) { console.error("✗ " + msg); process.exit(1); }
+  } catch { /* file absent — skip */ }
+}
+// llms.txt mirror must exist and be current (served at /llms.txt).
+if (!existsSync(join(ROOT, "public/llms.txt"))) {
+  console.error("✗ SEO: public/llms.txt (assistant-readable mirror) is missing");
+  process.exit(1);
+}
+
+console.log(`✓ token lint: no raw hex in ${SCAN_DIRS.join(", ")} (${files.length} files scanned); DS wired to tokens; reduced-motion + overflow guards + llms.txt present`);
