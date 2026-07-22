@@ -49,4 +49,27 @@ if (violations.length) {
   console.error("\n(escape a genuine exception with a `tokens-allow` comment on the line)");
   process.exit(1);
 }
-console.log(`✓ token lint: no raw hex in ${SCAN_DIRS.join(", ")} (${files.length} files scanned)`);
+
+// Shared-system proof (SPEC-11 Step 51, Hard Rule 48): the DS score components
+// must read the shared score tokens, so swapping one token changes every surface
+// that uses them at once. Assert the wiring here (Node can read the stylesheet;
+// vitest stubs .css imports to empty).
+const DS_CSS = join(ROOT, "src/components/ds/ds.css");
+const WIRING = [
+  /\.ds-badge--det\s*\{[^}]*var\(--score-deterministic/,
+  /\.ds-badge--cal\s*\{[^}]*var\(--score-pass/,
+  /\.ds-badge--prov\s*\{[^}]*var\(--score-provisional/,
+  /\.ds-score--pass\s*\{[^}]*var\(--score-pass\)/,
+  /\.ds-score--fail\s*\{[^}]*var\(--score-fail\)/,
+];
+try {
+  const css = readFileSync(DS_CSS, "utf8");
+  const missing = WIRING.filter((re) => !re.test(css));
+  if (missing.length) {
+    console.error(`✗ token lint: ds.css score components are not wired to the shared score tokens:\n`);
+    for (const re of missing) console.error("  missing: " + re);
+    process.exit(1);
+  }
+} catch { /* ds.css absent — nothing to assert */ }
+
+console.log(`✓ token lint: no raw hex in ${SCAN_DIRS.join(", ")} (${files.length} files scanned); DS score components wired to shared tokens`);

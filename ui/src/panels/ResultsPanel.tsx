@@ -4,6 +4,7 @@ import { Uncertainty } from "../components/ui";
 import { money, ms } from "../stats";
 import { PASS_MEANING, PASS_THRESHOLD } from "../workflow/templates";
 import { Markdown } from "../components/Markdown";
+import { ProvenanceBadge } from "../components/ds";
 
 /** Post-run scoreboard: scorecard summary + one row per test case showing
  * the agent's prediction vs expected, expandable to per-criterion scores
@@ -150,8 +151,8 @@ export function ResultsPanel({ results }: { results: any }) {
                   <span className={cr.score >= 1 ? "ok" : "err"}>
                     {cr.score >= 1 ? "✓" : cr.score > 0 ? "½" : "✕"}
                   </span>{" "}
-                  {cr.criterion_id} <small>({cr.scorer}
-                  {cr.calibrated ? "" : ", PROVISIONAL"})</small>
+                  {cr.criterion_id}{" "}
+                  <ProvenanceBadge scorer={cr.scorer} calibrated={cr.calibrated} />
                   {cr.rationale && (
                     <div className="rationale">{cr.rationale}</div>
                   )}
