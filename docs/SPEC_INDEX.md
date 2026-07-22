@@ -35,8 +35,13 @@ Cross-links and status for the platform spec surfaces.
 | M26 | SPEC-9 Steps 40–41 — classify + synthesize | ✅ done | — |
 | M27 | SPEC-9 Step 42 — discrimination fit gate (the moat's proof) | ✅ done | — |
 | M28 | SPEC-9 Steps 43–44 — library flywheel + `evaluate` one-call flow | ✅ done | — |
+| M32 | SPEC-11 Step 50 — one token source of truth | ✅ done | — |
+| M33 | SPEC-11 Step 51 — shared component library | ✅ done | — |
+| M34 | SPEC-11 Step 52 — landing rebuilt as a real route | ✅ done | — |
+| M35 | SPEC-11 Step 53 — production bar for the public surface | ✅ done | — |
 
-See [docs/SPEC9_RUBRIC_ENGINE.md](SPEC9_RUBRIC_ENGINE.md) for the build record.
+See [docs/SPEC9_RUBRIC_ENGINE.md](SPEC9_RUBRIC_ENGINE.md) and
+[docs/SPEC11_DESIGN_SYSTEM.md](SPEC11_DESIGN_SYSTEM.md) for the build records.
 
 ## Key entry points
 - Profiles: `ascore profiles list|show` · `src/ascore/certification/profiles.py`
