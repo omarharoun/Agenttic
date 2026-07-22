@@ -1,155 +1,46 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { gradeColor } from "../cert";
-import { IcoRail, IcoBus, IcoShield } from "../components/Icons";
 import { SiteNav } from "../components/SiteNav";
+import {
+  Button, Eyebrow, SectionHeading, CodeBlock, StatTile, ComparisonTable,
+  FaqItem, EscapementMark, ScorecardCard, ProvenanceBadge,
+} from "../components/ds";
+import {
+  SHOW_SOCIAL_PROOF, ASSISTANTS, type TabKey, SAMPLE_METRICS, SAMPLE_ROWS,
+  COMPARISON, CONFIDENCE, TOOLKIT, TRUST, FAQ,
+} from "../landing/data";
+import "../landing/landing.css";
 
 /* ============================================================================
-   The public landing page — "the safety lab for AI agents".
-
-   Design language: the instrument readout. Not a metric dashboard — one
-   instrument with real hierarchy: the GRADE is the primary reading (engraved,
-   huge); the seven metrics are a single calibrated trace on a ruled field.
-   Ported into the Chronometer token system; all colour comes from CSS variables
-   (see the .agx block in theme.css). The page is fully static — it prerenders to
-   real HTML and works without JS. The metric trace draws in as a progressive
-   enhancement when motion is allowed.
+   The public landing route (SPEC-11 Step 52). Rebuilt from the shared design
+   tokens + the ds component library — no bespoke markup, no second style world.
+   The see-it scorecard is the SAME <ScorecardCard> the console renders. All
+   social proof is gated behind SHOW_SOCIAL_PROOF (OFF until real, Hard Rule 49),
+   so with the flag off the page ships clean with those sections simply absent.
+   Public route: SiteNav only, no authenticated data or console chrome.
    ========================================================================== */
 
-/** The seven metrics behind the Agenttic Index, in trace order. Each x/y is a
- *  point on the 0–340 × 0–132 ruled field (y inverted: lower y = higher score).
- *  Values are an ILLUSTRATIVE sample profile (not a real measurement), matching
- *  the hero aria-label; the hero is badged "ILLUSTRATIVE EXAMPLE" on screen. */
-const METRICS: { key: string; label: string; value: number; x: number; y: number }[] = [
-  { key: "tool-call", label: "tool-call", value: 93, x: 24, y: 32 },
-  { key: "reliability", label: "reliability", value: 88, x: 72, y: 44 },
-  { key: "faithful", label: "faithful", value: 90, x: 120, y: 37 },
-  { key: "refusal", label: "refusal", value: 99, x: 168, y: 9 },
-  { key: "injection", label: "injection", value: 95, x: 216, y: 21 },
-  { key: "calibration", label: "calibration", value: 86, x: 264, y: 50 },
-  { key: "cost", label: "cost", value: 78, x: 312, y: 68 },
-];
-
-const TRACE = METRICS.map((m) => `${m.x},${m.y}`).join(" L");
-const AREA = `M${TRACE} L312,124 L24,124 Z`;
-const LINE = `M${TRACE}`;
-
-/** Published methodologies referenced across the suites. Every one has a real
- *  dataset adapter in the engine (src/ascore/metrics/datasets/*); several run
- *  on seed/sample splits, disclosed on the methodology page. */
-const PROVENANCE = [
-  "BFCL", "τ-bench", "AgentHarm", "AgentDojo",
-  "InjecAgent", "AssistantBench", "GAIA", "SWE-bench Verified",
-];
-
-/** The three-step measurement procedure. */
-const PROCEDURE: { pk: string; h: string; p: string; code: string }[] = [
-  { pk: "01 · CALIBRATE", h: "Aim & pin",
-    p: "Give an endpoint, or wrap your agent in two lines. Everything binds to that exact version — model, prompt, tools.",
-    code: "graph = trace(graph)   # or --url" },
-  { pk: "02 · TEST", h: "Run the battery",
-    p: "Real safety and capability suites, many runs per case, with an elicitation probe that catches agents behaving differently when they sense a test.",
-    code: "agenttic certify -p cert-agent-safety-v1" },
-  { pk: "03 · STAMP", h: "Grade & sign",
-    p: "A grade, a coverage table, and a content-hashed, signed dossier — verifiable by anyone, tied to that agent version.",
-    code: "agenttic dossier verify ./dossier.json" },
-];
-
-/** The seven-row spec sheet: metric · method · weight. */
-const SPEC: { m: string; s: ReactNode; w: string }[] = [
-  { m: "Tool-call accuracy", w: "0.28",
-    s: <>Berkeley Function-Calling Leaderboard / τ-bench — selection, parameters, sequencing, abstention</> },
-  { m: "Reliability pass^k", w: "0.16",
-    s: <>τ-bench — a case passes only if it succeeds on <em>all</em> k runs</> },
-  { m: "Faithfulness", w: "0.15",
-    s: <>FActScore / RAGAS atomic-claim groundedness</> },
-  { m: "Harmful-refusal rate", w: "0.14",
-    s: <>AgentHarm — declines harmful requests, doesn’t fire forbidden tools</> },
-  { m: "Injection robustness", w: "0.14",
-    s: <>AgentDojo / InjecAgent — 1 − attack-success-rate</> },
-  { m: "Calibration (ECE)", w: "0.08",
-    s: <>Guo et al. 2017, with abstention</> },
-  { m: "Cost & latency", w: "—",
-    s: <>Measured per run — the price of the score</> },
-];
-
-/** The three deployment surfaces. */
-const DEPLOY: { icon: ReactNode; h: string; p: string; tag: string }[] = [
-  { icon: <IcoRail />, h: "In your CI", tag: "observe-only",
-    p: "A GitHub Action runs the battery on every pull request and blocks the merge if your agent’s grade regresses. No production access, no runtime cost." },
-  { icon: <IcoBus />, h: "On your bus", tag: "standards-native",
-    p: "Speaks OpenTelemetry. Ingest traces from the frameworks and pipelines you already run — LangGraph, the OpenAI Agents SDK, or any OTel exporter." },
-  { icon: <IcoShield />, h: "In your VPC", tag: "zero egress",
-    p: "Self-hosted and air-gapped modes. A boot-time check refuses to start if any path would call out. A statement of what stays where, for your security team." },
-];
-
-/** Draw the metric trace on mount as a progressive enhancement. Without JS the
- *  trace is already fully visible (CSS default); this only animates it in. */
-function useTraceDraw() {
-  const ref = useRef<SVGPathElement | null>(null);
-  useEffect(() => {
-    const tr = ref.current;
-    if (!tr || typeof tr.getTotalLength !== "function") return;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const len = tr.getTotalLength();
-    tr.style.strokeDasharray = String(len);
-    tr.style.strokeDashoffset = String(len);
-    // two rAFs so the initial (hidden) state paints before we animate to shown
-    const id = requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        tr.style.transition = "stroke-dashoffset 1.1s var(--ease-escape)";
-        tr.style.strokeDashoffset = "0";
-      }));
-    return () => cancelAnimationFrame(id);
-  }, []);
-  return ref;
-}
-
-function Instrument() {
-  const traceRef = useTraceDraw();
-  const gradeCol = gradeColor("A");
+function HowItWorks() {
+  const [asst, setAsst] = useState(ASSISTANTS[0]);
+  const [tab, setTab] = useState<TabKey>("install");
   return (
-    <div className="inst" role="img"
-         aria-label="Illustrative example of a safety report (a sample agent, not a real measurement): grade A, Agenttic Index 91. Seven sample metrics plotted — tool-call 93, reliability 88, faithfulness 90, harmful-refusal 99, injection 95, calibration 86, cost 78.">
-      <div className="inst-top">
-        <span>EXAMPLE REPORT · SAMPLE AGENT</span>
-        <span className="demo">ILLUSTRATIVE EXAMPLE</span>
-      </div>
-      <div className="inst-body">
-        <div className="grade-cell">
-          <span className="lbl">Grade</span>
-          <span className="g" style={{ color: gradeCol }}>A</span>
-          <span className="idx">Agenttic Index <b>91</b></span>
-        </div>
-        <div className="field">
-          <div className="cap"><span>Metric profile</span><span>0 — 100</span></div>
-          <svg className="trace-svg" viewBox="0 0 340 132" preserveAspectRatio="none" aria-hidden="true">
-            <g stroke="var(--lp-grid)" strokeWidth="1">
-              <line x1="0" y1="16" x2="340" y2="16" />
-              <line x1="0" y1="49" x2="340" y2="49" />
-              <line x1="0" y1="82" x2="340" y2="82" />
-              <line x1="0" y1="115" x2="340" y2="115" />
-            </g>
-            <g stroke="var(--lp-hair)" strokeWidth="1">
-              {METRICS.map((m) => <line key={m.key} x1={m.x} y1="8" x2={m.x} y2="124" />)}
-            </g>
-            <path d={AREA} fill="var(--accent-soft)" />
-            <path ref={traceRef} className="tr-draw" d={LINE} fill="none"
-                  stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-            <g fill="var(--panel)" stroke="var(--accent-hover)" strokeWidth="2">
-              {METRICS.map((m) => <circle key={m.key} cx={m.x} cy={m.y} r="3" />)}
-            </g>
-          </svg>
-        </div>
-      </div>
-      <div className="legend">
-        {METRICS.map((m) => (
-          <span key={m.key}><i>{m.label}</i> <b>{m.value}</b></span>
+    <div className="lp-picker">
+      <div className="lp-picker__q">What are you building with?</div>
+      <div className="lp-assts" role="tablist" aria-label="assistant">
+        {ASSISTANTS.map((a) => (
+          <button key={a.id} className="lp-asst" role="tab"
+                  aria-selected={a.id === asst.id}
+                  onClick={() => setAsst(a)}>{a.name}</button>
         ))}
       </div>
-      <div className="inst-foot">
-        <span>profile cert-agent-safety-v1</span>
-        <span className="sig">example signature — illustrative, not verifiable</span>
+      <div className="lp-tabs" role="tablist" aria-label="command">
+        {(["install", "eval", "mcp"] as TabKey[]).map((t) => (
+          <button key={t} className="lp-tab" role="tab" aria-selected={t === tab}
+                  onClick={() => setTab(t)}>{t}</button>
+        ))}
+      </div>
+      <div className="lp-picker__cmd">
+        <CodeBlock lines={asst.cmds[tab]} label={`${asst.name} ${tab} commands`} />
       </div>
     </div>
   );
@@ -157,192 +48,204 @@ function Instrument() {
 
 export function LandingPage() {
   return (
-    <div className="agx">
+    <div className="lp">
       <SiteNav />
 
-      {/* ===================== HERO ===================== */}
-      <header className="hero">
-        <div className="wrap">
+      {/* ---- HERO ---- */}
+      <header className="lp-hero">
+        <div className="wrap lp-hero__grid">
           <div>
-            <div className="eyebrow">The safety lab for AI agents</div>
-            <h1>Measure what your agent <em>actually does.</em></h1>
-            <p className="lede">
-              Grade any agent against real, published safety benchmarks — not a
-              vibe check. Get a signed, version-pinned certificate that says
-              exactly what was tested, and exactly what wasn’t.
+            <Eyebrow>Verifiable evals · Grounded verdicts</Eyebrow>
+            <h1>The evaluation your AI agent can't game.</h1>
+            <p className="lp-hero__lede">
+              Open-source and on-device. One command scores any agent against a
+              rubric fitted to what it actually does. Every score traces to a
+              check you can audit.
             </p>
-            <div className="cta-row">
-              <Link className="btn btn-g" to="/scan">Scan an agent</Link>
-              <a className="btn btn-o" href="#measure">See what we measure</a>
+            <div className="lp-cta">
+              <Button href="#setup">Get started</Button>
+              <Button variant="ghost" href="/methodology">Read the methodology</Button>
             </div>
-            {/* the funnel starts here: each chip answers the interview's first
-                question, so /scan opens already one turn in. Plain links —
-                prerenders as static HTML like the rest of the page. */}
-            <div className="hero-intake">
-              <span className="hi-lab">60-second intake — my agent…</span>
-              <Link to="/scan?does=support">handles support</Link>
-              <Link to="/scan?does=code">writes code</Link>
-              <Link to="/scan?does=research">does research</Link>
-              <Link to="/scan?does=ops">runs internal ops</Link>
-            </div>
-            <div className="hero-note">
-              No API key to try it · runs in your CI or your VPC<br />
-              nothing leaves your environment
-            </div>
+            <div className="lp-hero__meta">On-device · no telemetry · MIT</div>
           </div>
-          <Instrument />
+          <div className="lp-hero__art"><EscapementMark size={280} /></div>
         </div>
       </header>
 
-      {/* provenance */}
-      <section className="prov">
+      {/* ---- HOW IT WORKS ---- */}
+      <section id="how">
         <div className="wrap">
-          <div className="l">Scored with published, peer-reviewed agent-eval methodologies</div>
-          <div className="chips">
-            {PROVENANCE.map((c) => <span className="chip" key={c}>{c}</span>)}
+          <SectionHeading eyebrow="How it works" title="Install → fit → prove."
+            sub="Agenttic installs as a skill in the assistant you already use. Pick yours for the exact commands." />
+          <HowItWorks />
+        </div>
+      </section>
+
+      {/* ---- PAYOFF ---- */}
+      <section id="payoff">
+        <div className="wrap">
+          <SectionHeading eyebrow="The payoff" title="The result is a verdict, not a number."
+            sub="Each criterion is tagged with how it was measured, so you can check it instead of trusting it." />
+          <div className="lp-verdict">
+            <ProvenanceBadge scorer="code" />
+            <ProvenanceBadge scorer="judge" calibrated alpha={0.87} />
+            <ProvenanceBadge scorer="judge" calibrated={false} />
           </div>
         </div>
       </section>
 
-      <div className="divide"><div className="r" /></div>
-
-      {/* ===================== HOW ===================== */}
-      <section className="blk" id="how">
+      {/* ---- SEE IT (the SAME ScorecardCard as the console) ---- */}
+      <section id="see">
         <div className="wrap">
-          <div className="kick">The procedure</div>
-          <h2>Point it at an agent. Get a graded, signed report.</h2>
-          <p className="sub">
-            A measurement sequence, not a dashboard. Every step leaves evidence
-            you can inspect and re-run — each number traces back to individual
-            test cases.
-          </p>
-          <div className="proc">
-            {PROCEDURE.map((s) => (
-              <div className="pstep" key={s.pk}>
-                <span className="pn" />
-                <div className="pk">{s.pk}</div>
-                <h3>{s.h}</h3>
-                <p>{s.p}</p>
-                <code>{s.code}</code>
+          <SectionHeading eyebrow="See it" title="Your agent's whole run, on one screen."
+            sub="Each row is one criterion; the badge is how it was scored. This is the same component the console renders with your real data." />
+          <ScorecardCard bar="scorecard.html · support-triage · sample data"
+                         metrics={SAMPLE_METRICS} rows={SAMPLE_ROWS} />
+        </div>
+      </section>
+
+      {/* ---- WHY A RUBRIC / SIDE BY SIDE ---- */}
+      <section id="why">
+        <div className="wrap">
+          <SectionHeading eyebrow="Why a rubric, not a benchmark"
+            title="Every score traces to how it was measured."
+            sub="Leaderboards hand every agent the same test and one number. Real agents do different jobs, and a number you can't open is a number you can't trust." />
+          <ComparisonTable columns={COMPARISON.columns} rows={COMPARISON.rows} />
+        </div>
+      </section>
+
+      {/* ---- CONFIDENCE ---- */}
+      <section id="confidence">
+        <div className="wrap">
+          <SectionHeading eyebrow="Confidence" title="Every score says how it knows."
+            sub="Tell what was checked deterministically from what a model judged — and whether that judge has been calibrated against humans." />
+          <div className="lp-conf">
+            {CONFIDENCE.map((c) => (
+              <div className="lp-conf__item" key={c.name}>
+                <ProvenanceBadge scorer={c.scorer} calibrated={c.calibrated} alpha={c.alpha} />
+                <p><b>{c.name}</b> — {c.body}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ===================== MEASURE ===================== */}
-      <section className="blk" id="measure">
+      {/* ---- TOOLKIT ---- */}
+      <section id="toolkit">
         <div className="wrap">
-          <div className="kick">The instrument</div>
-          <h2>Seven metrics. One Agenttic Index.</h2>
-          <p className="sub">
-            Weighted, renormalized over whatever a run produces — every weight
-            traceable to a published method. The Index is the headline; the seven
-            are what it’s made of.
-          </p>
-          <div className="spec">
-            {SPEC.map((r) => (
-              <div className="srow" key={r.m}>
-                <span className="m">{r.m}</span>
-                <span className="s">{r.s}</span>
-                <span className="w">{r.w}</span>
+          <SectionHeading eyebrow="The toolkit" title="Built for the way you already work." />
+          <div className="lp-grid lp-grid--3">
+            {TOOLKIT.map((t) => (
+              <div className="lp-cell" key={t.code}>
+                <code>{t.code}</code><h3>{t.h}</h3><p>{t.p}</p>
               </div>
             ))}
-            <div className="snote">
-              <b>Honest by construction.</b> Domains a profile doesn’t cover are
-              stamped NOT ASSESSED, never guessed. A grade attests to what was
-              measured — the coverage table always travels with it.
+          </div>
+        </div>
+      </section>
+
+      {/* ---- DOORS ---- */}
+      <section id="doors">
+        <div className="wrap">
+          <SectionHeading eyebrow="Pick your door" title="Developers run it. The whole team reads it." />
+          <div className="lp-doors">
+            <div className="lp-door">
+              <Eyebrow>For developers</Eyebrow>
+              <h3>Score your agent in one command</h3>
+              <ul>
+                <li>Catch failures before your users do — including the ones that only show up 1 run in 8.</li>
+                <li>Every score opens to its evidence; no black-box numbers.</li>
+              </ul>
+              <Button href="#setup">Install in one command</Button>
+            </div>
+            <div className="lp-door">
+              <Eyebrow>For teams &amp; buyers</Eyebrow>
+              <h3>The scorecard is a file your team can share</h3>
+              <ul>
+                <li>Evaluate a vendor's agent black-box before you deploy it.</li>
+                <li>Reliability, policy compliance, and contamination — what procurement actually asks.</li>
+              </ul>
+              <Button variant="ghost" href="/pricing">See pricing</Button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ===================== DEPLOY ===================== */}
-      <section className="blk" id="deploy">
+      {/* ---- TRUST ---- */}
+      <section id="trust">
         <div className="wrap">
-          <div className="kick">Where it runs</div>
-          <h2>It comes to your environment.</h2>
-          <p className="sub">Meet your agents where they already live — and keep the data where it already is.</p>
-          <div className="c3">
-            {DEPLOY.map((c) => (
-              <div className="card" key={c.h}>
-                {c.icon}
-                <h3>{c.h}</h3>
-                <p>{c.p}</p>
-                <span className="t">{c.tag}</span>
-              </div>
+          <SectionHeading eyebrow="Trust" title="Your agent and data never leave your machine."
+            sub="Every hosted eval platform asks you to ship your agent, prompts, and traces to someone else's cloud first. Agenttic doesn't, because it can't: there is no server in the loop." />
+          <div className="lp-grid lp-grid--2">
+            {TRUST.map((t) => (
+              <div className="lp-cell" key={t.h}><h3>{t.h}</h3><p>{t.p}</p></div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ===================== CERTIFICATE ===================== */}
-      <section className="blk" id="certificate">
-        <div className="wrap">
-          <div className="cert">
-            <div className="st">Agent Safety Certification</div>
-            <h2>A grade you can hand someone.</h2>
-            <p>
-              Every certificate is content-hashed and signed with a published key,
-              pinned to the exact agent version tested. Change the model, prompt,
-              or tools and it lapses — so a passing grade always means <em>this</em>{" "}
-              agent, as measured.
-            </p>
-            <p className="hash">example dossier · Ed25519 · verify a real one at /.well-known/agenttic-cert-keys.json</p>
+      {/* ---- SOCIAL PROOF (gated OFF until real — Hard Rule 49) ---- */}
+      {SHOW_SOCIAL_PROOF && (
+        <section id="proof">
+          <div className="wrap">
+            <SectionHeading eyebrow="In the wild" title="In their words." />
+            <div className="lp-stats">
+              {/* bound to a real source before this flag is turned on */}
+              <StatTile tag="GitHub stars" value="—" />
+              <StatTile tag="PyPI downloads" value="—" />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ---- PRICING ---- */}
+      <section id="pricing">
+        <div className="wrap lp-price">
+          <Eyebrow>Pricing</Eyebrow>
+          <div className="lp-price__big">$0. MIT. Free forever.</div>
+          <p>Everything that scores an agent on your machine is open source: the
+            harness, the checks, the judge mechanism (bring your own key), the
+            reports, the MCP server. No limits, no account, no card.</p>
+          <div className="lp-cta" style={{ justifyContent: "center" }}>
+            <Button href="#setup">Install the CLI</Button>
+            <Button variant="ghost" href="/pricing">Pricing details</Button>
           </div>
         </div>
       </section>
 
-      {/* ===================== FINAL CTA ===================== */}
-      <section className="blk final" id="scan">
-        <div className="wrap">
-          <div className="kick" style={{ textAlign: "center" }}>Run one now</div>
-          <h2 style={{ maxWidth: "24ch" }}>Scan an agent in your next commit.</h2>
-          <p className="sub" style={{ maxWidth: "52ch" }}>
-            Start with the reference agent to see a full report, then point it at
-            your own. Nothing leaves your machine.
-          </p>
-          <div className="cta-row" style={{ justifyContent: "center" }}>
-            <Link className="btn btn-g" to="/scan">Scan an agent</Link>
-            <Link className="btn btn-o" to="/methodology">Read the methodology</Link>
+      {/* ---- FAQ ---- */}
+      <section id="faq">
+        <div className="wrap lp-faq">
+          <SectionHeading eyebrow="FAQ" title="The questions we get first." />
+          {FAQ.map((f, i) => (
+            <FaqItem key={f.q} q={f.q} open={i === 0}>{f.a}</FaqItem>
+          ))}
+        </div>
+      </section>
+
+      {/* ---- CLOSING ---- */}
+      <section id="setup">
+        <div className="wrap lp-closing">
+          <Eyebrow>Start in one command</Eyebrow>
+          <SectionHeading title="Try it on your own agent." />
+          <div style={{ maxWidth: 520, margin: "0 auto var(--sp-6)" }}>
+            <CodeBlock lines={[{ prompt: "$", text: "uv tool install agenttic" }]} />
+          </div>
+          <div className="lp-cta">
+            <Button href="/scan">Get started</Button>
+            <Button variant="ghost" href="/methodology">Read the docs</Button>
           </div>
         </div>
       </section>
 
-      {/* footer */}
+      {/* ---- FOOTER ---- */}
       <footer>
-        <div className="wrap">
-          <div className="fg">
-            <div className="fb">Agenttic
-              <span className="t">A safety lab for AI agents. We measure against published standards and stamp the result — honestly about what we did and didn’t test.</span>
-            </div>
-            <div className="fc">
-              <div className="fcol"><h4>Product</h4>
-                <a href="#measure">What we measure</a>
-                <a href="#how">How it works</a>
-                <a href="#deploy">Deploy</a>
-                <Link to="/pricing">Pricing</Link>
-                <Link to="/scan">Scan an agent</Link>
-              </div>
-              <div className="fcol"><h4>Developers</h4>
-                <Link to="/api-docs">API docs</Link>
-                <Link to="/methodology">OpenTelemetry ingest</Link>
-                <Link to="/methodology">Self-hosting</Link>
-                <Link to="/login">Log in</Link>
-              </div>
-              <div className="fcol"><h4>Trust</h4>
-                <Link to="/methodology">Methodology</Link>
-                <Link to="/methodology">Coverage &amp; limits</Link>
-                <Link to="/certified">Verify a certificate</Link>
-                <Link to="/status">System status</Link>
-                <Link to="/methodology">Data residency</Link>
-              </div>
-            </div>
-          </div>
-          <div className="legal">
-            Grades attest to what was tested under a named profile. Domains marked
-            NOT ASSESSED are outside a profile’s current suites. Benchmark names are
-            the property of their respective authors.
+        <div className="wrap" style={{ padding: "var(--sp-12) var(--sp-8)", color: "var(--muted)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "var(--sp-4)", fontFamily: "var(--font-mono)", fontSize: "var(--t-label)", letterSpacing: "0.06em" }}>
+            <span>© 2026 Agenttic · MIT · on-device</span>
+            <span>
+              <Link to="/methodology">Methodology</Link> · <Link to="/pricing">Pricing</Link> · <Link to="/status">Status</Link>
+            </span>
           </div>
         </div>
       </footer>
