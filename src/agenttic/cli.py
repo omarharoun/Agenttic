@@ -1672,5 +1672,60 @@ def ingest_otel(
         console.print(f"  live trace {tid}")
 
 
+@app.command()
+def evaluate(
+    inputs: str = typer.Argument(
+        ..., help="business doc / agent description — a file path or inline text"),
+    description: str = typer.Option(
+        "", "--description", "-d", help="extra agent description"),
+    threshold: float = typer.Option(0.5, help="classification confidence threshold"),
+    suite_id: str = typer.Option("eval-suite", help="id for the generated suite"),
+    out: str = typer.Option("", "--out", help="write the review markdown here"),
+    config: str = "config.yaml",
+):
+    """The Rubric Engine behind one command (SPEC-9 Step 44): classify the agent
+    into an archetype, synthesize its rubric (mostly reused proven criteria + a
+    small audited delta) and a matched suite, run the integrity gates, and present
+    a draft with its evidence for approval. Discrimination (the fit gate) runs when
+    a reference panel is available; without one, the draft is reported as
+    awaiting-discrimination and is NOT shippable (Hard Rule 39)."""
+    from pathlib import Path as _P
+
+    from agenttic.rubric_engine.classify import ClassifyInputs
+    from agenttic.rubric_engine.evaluate import AWAITING_APPROVAL
+    from agenttic.rubric_engine.evaluate import evaluate as _eval
+
+    p = _P(inputs)
+    doc = p.read_text(encoding="utf-8") if p.exists() else inputs
+    ci = ClassifyInputs(business_doc=doc, agent_description=description)
+    result = _eval(ci, business_context=doc, threshold=threshold, suite_id=suite_id)
+
+    console.print(f"[bold]state:[/] {result.state}")
+    if result.matches:
+        console.print("[bold]classification:[/]")
+        for m in result.matches:
+            console.print(f"  • {m.archetype_id} — {m.confidence:.2f} "
+                          f"[dim]({m.source})[/]")
+    if result.draft is not None:
+        s = result.draft.feature_summary()
+        console.print(
+            f"[bold]rubric:[/] {s['n_criteria']} criteria — "
+            f"[green]{s['reuse_ratio']*100:.0f}% reused[/] proven "
+            f"({s['n_core']} core + {s['n_ethos']} ethos + {s['n_delta']} delta)")
+        console.print(f"[bold]suite features:[/] "
+                      f"{', '.join(result.draft.required_suite_features)}")
+    if result.discrimination is not None:
+        v = "PASS" if result.discrimination.passes_gate else "FAIL"
+        console.print(f"[bold]discrimination gate:[/] {v} — "
+                      f"{result.discrimination.reason}")
+    for r in result.reasons:
+        console.print(f"[yellow]→[/] {r}")
+    if result.state == AWAITING_APPROVAL and result.fit_verified:
+        console.print("[green]fit-verified — awaiting approval[/]")
+    if out and result.review:
+        _P(out).write_text(result.review, encoding="utf-8")
+        console.print(f"[dim]review written to {out}[/]")
+
+
 if __name__ == "__main__":
     app()

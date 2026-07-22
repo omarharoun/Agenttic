@@ -14,7 +14,7 @@ import pytest
 from agenttic.adapters.base import AgentAdapter
 from agenttic.rubric_engine.discrimination import (
     CriterionDiscrimination, DiscriminationResult, MemberResult, NullAgent,
-    PanelMember, default_panel, discriminate, discrimination_gate,
+    default_panel, discriminate, discrimination_gate,
     drop_non_discriminating, render_discrimination_review, run_reference_panel)
 from agenttic.rubric_engine.synthesize import DraftRubric
 from agenttic.schema.rubric import Criterion, Rubric
