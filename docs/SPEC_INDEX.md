@@ -31,6 +31,12 @@ Cross-links and status for the platform spec surfaces.
 | M14–M15 | Staged release ladder + canaries/oversight | ✅ done | `v0.5.0-staged` |
 | — | Interactive RL oversight loop (opt-in addendum) | ✅ done | (in v0.5.0-staged) |
 | M16–M17 | Passport + receipts + verifier SDK + risk feed | ✅ done | `v0.6.0-passport` |
+| M25 | SPEC-9 Step 39 — archetype taxonomy + seed cores | ✅ done | — |
+| M26 | SPEC-9 Steps 40–41 — classify + synthesize | ✅ done | — |
+| M27 | SPEC-9 Step 42 — discrimination fit gate (the moat's proof) | ✅ done | — |
+| M28 | SPEC-9 Steps 43–44 — library flywheel + `evaluate` one-call flow | ✅ done | — |
+
+See [docs/SPEC9_RUBRIC_ENGINE.md](SPEC9_RUBRIC_ENGINE.md) for the build record.
 
 ## Key entry points
 - Profiles: `ascore profiles list|show` · `src/ascore/certification/profiles.py`
@@ -38,3 +44,4 @@ Cross-links and status for the platform spec surfaces.
 - Dossiers: `ascore dossier verify|revoke|show` · `src/ascore/certification/dossier.py`
 - Incidents: `ascore incidents …` · `src/ascore/live/incidents.py`
 - Public verify: `GET /certification/{dossier_id}` · `src/ascore/server/routes/dossiers.py`
+- Rubric engine: `agenttic evaluate <inputs>` · `src/agenttic/rubric_engine/` (classify → synthesize → discrimination gate → library)
