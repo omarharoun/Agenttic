@@ -10,7 +10,6 @@ Requires ANTHROPIC_API_KEY in the environment for commands that call models
 from __future__ import annotations
 
 import asyncio
-import os
 from pathlib import Path
 
 import typer
@@ -1571,7 +1570,6 @@ def airgap_check(config: str = "config.yaml"):
 
     Exits non-zero if air-gap mode is on and any blocking capability is enabled —
     the same gate the server runs at startup."""
-    import sys as _sys
 
     from agenttic.airgap import egress_self_check
     cfg = load_config(config)
@@ -1858,6 +1856,94 @@ def abom(
                   f"({len(doc['components'])} components)")
     console.print(f"sha256 {abom_sha256(doc)}")
     console.print("[dim]reference this hash from the manifest (--abom-sha256)[/]")
+
+
+@app.command("certify-mcp")
+def certify_mcp(
+    target: str = typer.Argument(
+        ..., help="stdio command (quoted) or an http(s):// endpoint"),
+    write_tool: str = typer.Option("", "--write-tool",
+                                   help="a mutating tool to probe for idempotency"),
+    gated_tool: str = typer.Option("", "--gated-tool",
+                                   help="a permission-gated tool to probe for authz"),
+    mutating: list[str] = typer.Option(
+        [], "--mutating",
+        help="tool that DOES mutate (operator ground truth, repeatable). Without "
+             "it the side-effect-disclosure check is skipped, never assumed."),
+    goldens: str = typer.Option("", "--goldens", help="pinned goldens JSON"),
+    record: str = typer.Option("", "--record-goldens",
+                               help="write goldens for THIS server version here"),
+    out: str = typer.Option("", "--out", help="write the server scorecard JSON here"),
+    attest_out: str = typer.Option("", "--attest",
+                                   help="also write a signed manifest here"),
+    config: str = "config.yaml",
+):
+    """Certify an MCP SERVER as the device under test (SPEC-12 Step 55).
+
+    Runs the battery — contract, golden responses, fuzzing, authorization, error
+    taxonomy, idempotency, rate limiting, side-effect disclosure, and the
+    tool-response injection probe — over stdio or HTTP."""
+    import json as _json
+    import shlex
+    from pathlib import Path as _P
+
+    from agenttic.adapters.mcp_server import connect_http, connect_stdio
+    from agenttic.certification.mcp_suite import (
+        certify_mcp_server, manifest_for_server, record_goldens, valid_args)
+
+    mk = (lambda: connect_http(target)) if target.startswith("http") \
+        else (lambda: connect_stdio(shlex.split(target)))
+
+    probes = [(write_tool or "", {})] if False else []
+    if record:
+        with mk() as c:
+            tools = c.list_tools()
+            probes = [(t.name, {}) for t in tools[:1]]
+            g = record_goldens(c, probes)
+        _P(record).write_text(_json.dumps(g, indent=2), encoding="utf-8")
+        console.print(f"[green]Goldens pinned[/] for v{g['server_version']} → {record}")
+        return
+
+    pinned = _json.loads(_P(goldens).read_text()) if goldens else None
+    with mk() as c:
+        tools = c.list_tools()
+        by_name = {t.name: t for t in tools}
+        # valid arguments for the write probe come from the tool's declared
+        # schema — otherwise idempotency fails on validation, not on duplication.
+        w_args = valid_args(by_name[write_tool]) if write_tool in by_name else {}
+        report = certify_mcp_server(
+            c, goldens=pinned,
+            golden_probes=[(tools[0].name, {})] if (pinned and tools) else [],
+            gated_calls=[(gated_tool, valid_args(by_name[gated_tool]))]
+                        if gated_tool in by_name else [],
+            write_tool=write_tool or None, write_args=w_args,
+            # NB: operator-declared ground truth. Deriving this from the server's
+            # own declarations would be circular — a server hiding its side
+            # effects would pass by definition.
+            known_mutating=list(mutating))
+
+    console.print(f"[bold]{report.server_name}[/] v{report.server_version} "
+                  f"({report.transport}) — {len(report.tools)} tool(s)")
+    for o in report.outcomes:
+        mark = ("[dim]skip[/]" if o.skipped
+                else "[green]pass[/]" if o.passed else "[red]FAIL[/]")
+        console.print(f"  {mark}  {o.check_id}: {o.detail}")
+    console.print(f"[bold]score {report.score:.2f}[/] — "
+                  + ("[green]certified[/]" if report.passed
+                     else f"[red]failed: {', '.join(report.failed)}[/]"))
+    if out:
+        _P(out).write_text(_json.dumps(report.as_dict(), indent=2), encoding="utf-8")
+        console.print(f"[dim]scorecard → {out}[/]")
+    if attest_out:
+        from agenttic.certification.attest import sign_manifest
+        cfg, _reg = _ctx(config)
+        signed = sign_manifest(
+            manifest_for_server(report, manifest_id=f"mcp-{report.server_name}"),
+            cfg=cfg)
+        _P(attest_out).write_text(signed.model_dump_json(indent=2), encoding="utf-8")
+        console.print(f"[dim]signed manifest → {attest_out}[/]")
+    if not report.passed:
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":
