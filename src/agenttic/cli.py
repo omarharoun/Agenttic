@@ -1727,5 +1727,138 @@ def evaluate(
         console.print(f"[dim]review written to {out}[/]")
 
 
+# ---------------------------------------------------------------------------
+# SPEC-12 Step 54 — attestation: sign the evidence, never the verdict
+# ---------------------------------------------------------------------------
+
+@app.command()
+def attest(
+    scorecard_id: str = typer.Argument(..., help="scorecard to attest"),
+    agent_config_hash: str = typer.Option(
+        "", "--config-hash",
+        help="the exact agent config hash the certificate binds to"),
+    tier: str = typer.Option("local_self_attested", "--tier",
+                             help="local_self_attested | assurance"),
+    k: int = typer.Option(1, "--k", help="trials per case behind this scorecard"),
+    expires_in: int = typer.Option(90, "--expires-in", help="days until expiry"),
+    out: str = typer.Option("manifest.json", "--out"),
+    config: str = "config.yaml",
+):
+    """Sign an evidence manifest for a scorecard (SPEC-12 Step 54).
+
+    Attests WHAT WAS MEASURED, under which conditions, by whom — never that the
+    agent is safe. The local tier proves integrity (nothing was altered), not
+    neutrality; the artifact says so."""
+    from pathlib import Path as _P
+
+    from agenttic.certification.attest import (
+        render_certificate, sign_manifest)
+    from agenttic.certification.attest import build_manifest as _build
+    _cfg, reg = _ctx(config)
+    try:
+        sc = reg.get_scorecard(scorecard_id)
+    except Exception as exc:
+        raise typer.BadParameter(f"unknown scorecard {scorecard_id}: {exc}")
+
+    sc_dict = sc.model_dump(mode="json")
+    manifest = _build(
+        manifest_id=f"manifest-{scorecard_id}",
+        agent_id=sc.agent_id,
+        agent_config_hash=agent_config_hash or f"unpinned:{sc.agent_id}",
+        suite_id=sc.suite_id, suite_version=sc.suite_version,
+        rubric_id=sc.rubric_id, rubric_version=sc.rubric_version,
+        scorecard=sc_dict, visibility_tier=sc.visibility_tier, k=k,
+        expires_in_days=expires_in, signing_tier=tier,
+        issuer=("agenttic-assurance" if tier == "assurance" else "local-self-attested"),
+    )
+    signed = sign_manifest(manifest, cfg=_cfg)
+    _P(out).write_text(signed.model_dump_json(indent=2), encoding="utf-8")
+    console.print(render_certificate(signed))
+    console.print(f"\n[green]Signed manifest written to {out}[/]")
+    if not agent_config_hash:
+        console.print("[yellow]→ no --config-hash given: the certificate is not "
+                      "pinned to an exact agent version (Hard Rule 53).[/]")
+
+
+@app.command()
+def verify(
+    manifest_path: str = typer.Argument(..., help="signed manifest JSON"),
+    config_hash: str = typer.Option("", "--config-hash",
+                                    help="the DEPLOYED agent's config hash"),
+    revocations: str = typer.Option("", "--revocations",
+                                    help="signed revocation list JSON"),
+    config: str = "config.yaml",
+):
+    """Verify a signed manifest: signature, recomputed evidence hashes, subject
+    binding, expiry and revocation — reporting a precise reason on failure."""
+    import json as _json
+    from pathlib import Path as _P
+
+    from agenttic.certification.attest import verify_manifest
+    from agenttic.schema.attestation import RevocationList, SignedManifest
+    _cfg, reg = _ctx(config)
+
+    signed = SignedManifest.model_validate_json(
+        _P(manifest_path).read_text(encoding="utf-8"))
+    # recompute the scorecard hash from the STORED scorecard where we can
+    scorecard = None
+    try:
+        sid = signed.manifest.manifest_id.replace("manifest-", "", 1)
+        scorecard = reg.get_scorecard(sid).model_dump(mode="json")
+    except Exception:
+        console.print("[dim]stored scorecard not found — verifying signature and "
+                      "manifest integrity only[/]")
+    rl = None
+    if revocations:
+        raw = _json.loads(_P(revocations).read_text(encoding="utf-8"))
+        rl = RevocationList.model_validate(raw.get("revocation_list", raw))
+
+    res = verify_manifest(signed, scorecard=scorecard, revocations=rl,
+                          current_config_hash=config_hash or None)
+    colour = {"valid": "green", "expired": "yellow",
+              "suspended": "yellow", "revoked": "red"}.get(res.status, "red")
+    console.print(f"[{colour}]{res.status.upper()}[/] — {res.reason}")
+    for p in res.problems:
+        console.print(f"  [red]•[/] {p}")
+    if not res.ok:
+        raise typer.Exit(1)
+
+
+@app.command()
+def abom(
+    agent: str = typer.Argument(..., help="agent id (the BOM subject)"),
+    model: list[str] = typer.Option([], "--model", help="model id (repeatable)"),
+    tool: list[str] = typer.Option([], "--tool", help="tool name[@version] (repeatable)"),
+    mcp: list[str] = typer.Option([], "--mcp", help="MCP server name[@version] (repeatable)"),
+    out: str = typer.Option("abom.json", "--out"),
+    config: str = "config.yaml",
+):
+    """Emit the Agent BOM (CycloneDX) — the supply chain behind the agent:
+    models, prompt hashes, tools, MCP servers, suite/rubric, harness, deps."""
+    from pathlib import Path as _P
+
+    from agenttic import __version__ as _hv
+    from agenttic.certification.abom import (
+        abom_json, abom_sha256, build_abom, validate_abom)
+
+    def _split(items):
+        out_ = []
+        for raw in items:
+            name, _, ver = raw.partition("@")
+            out_.append({"name": name, "version": ver})
+        return out_
+
+    doc = build_abom(
+        subject_name=agent, model_ids=list(model),
+        tools=_split(tool), mcp_servers=_split(mcp),
+        harness_version=str(_hv))
+    validate_abom(doc)
+    _P(out).write_text(abom_json(doc), encoding="utf-8")
+    console.print(f"[green]ABOM written to {out}[/] "
+                  f"({len(doc['components'])} components)")
+    console.print(f"sha256 {abom_sha256(doc)}")
+    console.print("[dim]reference this hash from the manifest (--abom-sha256)[/]")
+
+
 if __name__ == "__main__":
     app()
