@@ -39,9 +39,15 @@ Cross-links and status for the platform spec surfaces.
 | M33 | SPEC-11 Step 51 — shared component library | ✅ done | — |
 | M34 | SPEC-11 Step 52 — landing rebuilt as a real route | ✅ done | — |
 | M35 | SPEC-11 Step 53 — production bar for the public surface | ✅ done | — |
+| M36 | SPEC-12 Step 54 — attestation + ABOM + revocation | ✅ done | — |
+| M37 | SPEC-12 Step 55 — MCP server certification | ✅ done | — |
+| M38a | SPEC-12 Step 56 — tool certification (component tier) | ✅ done | — |
+| M38b | SPEC-12 Step 57 — memory testing | ⬜ not started | — |
+| M39 | SPEC-12 Step 58 — catalog conformance | ⬜ not started | — |
 
-See [docs/SPEC9_RUBRIC_ENGINE.md](SPEC9_RUBRIC_ENGINE.md) and
-[docs/SPEC11_DESIGN_SYSTEM.md](SPEC11_DESIGN_SYSTEM.md) for the build records.
+See [docs/SPEC9_RUBRIC_ENGINE.md](SPEC9_RUBRIC_ENGINE.md),
+[docs/SPEC11_DESIGN_SYSTEM.md](SPEC11_DESIGN_SYSTEM.md) and
+[docs/SPEC12_SUPPLY_CHAIN.md](SPEC12_SUPPLY_CHAIN.md) for the build records.
 
 ## Key entry points
 - Profiles: `ascore profiles list|show` · `src/ascore/certification/profiles.py`
