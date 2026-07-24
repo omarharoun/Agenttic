@@ -11,7 +11,7 @@ agents are derived from:
 
 ### How Agenttic uses it (honesty contract)
 - The card field registry is **generated deterministically** from the dataset
-  (`src/ascore/cards/fields.py`) — never hand-transcribed.
+  (`src/agenttic/cards/fields.py`) — never hand-transcribed.
 - Imported agent cards carry `source = "index_import"`, **documented** provenance,
   and preserve their citations (dataset DOI + the agent's own website).
 - Index-derived data is **Catalog-only**. It is **never** mixed into measured

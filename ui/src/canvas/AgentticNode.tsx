@@ -17,14 +17,14 @@ const STATE_ICON: Record<string, string> = {
   skipped: "–",
 };
 
-export function AscoreNode({ id, data }: { id: string; data: any }) {
+export function AgentticNode({ id, data }: { id: string; data: any }) {
   const spec = useFlowStore((s) => s.catalog[data.ntype]);
   const liveState = useFlowStore((s) => s.exec.nodeStates[id] ?? "idle");
   const liveProgress = useFlowStore((s) => s.exec.progress[id]);
   // replay canvases embed final states in node data; editor uses live store
   const state = (data.runState as string) ?? liveState;
   const progress = data.runState ? undefined : liveProgress;
-  if (!spec) return <div className="ascore-node">{data.ntype}?</div>;
+  if (!spec) return <div className="agenttic-node">{data.ntype}?</div>;
 
   const inPorts = Object.keys(spec.inputs);
   const outPorts = Object.keys(spec.outputs);
@@ -32,7 +32,7 @@ export function AscoreNode({ id, data }: { id: string; data: any }) {
     ? Math.round((progress.done / progress.total) * 100) : 0;
 
   return (
-    <div className={`ascore-node ${state}`}>
+    <div className={`agenttic-node ${state}`}>
       {state !== "idle" && (
         <div className="state-badge" title={state}>{STATE_ICON[state]}</div>
       )}

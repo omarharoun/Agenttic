@@ -10,9 +10,9 @@ into agenttic's canonical-metric system. Ends with a **prioritized adoption road
 for agents: test registry → adapter-driven harness → standard-schema traces →
 deterministic checks + LLM judge → scorecard + the **Agenttic Index**. We already
 ingest three real public datasets via the `DatasetAdapter` pattern
-(`src/ascore/metrics/datasets/`): **BFCL** (`bfcl-simple-v3`), **τ-bench**
+(`src/agenttic/metrics/datasets/`): **BFCL** (`bfcl-simple-v3`), **τ-bench**
 (`tau-bench-v1`), and **AgentHarm** (`agentharm-harmful-v1`). Our canonical metrics
-(`src/ascore/metrics/catalog.py`) are:
+(`src/agenttic/metrics/catalog.py`) are:
 
 | Metric id | Methodology anchor | Index weight |
 |---|---|---|
@@ -171,7 +171,7 @@ metric) · 🔴 hard (live environment + LLM-judged, nondeterministic).
 ### 5.1 FActScore
 - **Repo:** [shmsw25/FActScore](https://github.com/shmsw25/FActScore). **Paper:** Min et al., [arXiv:2305.14251](https://arxiv.org/abs/2305.14251), EMNLP 2023. **License:** MIT.
 - **Measures:** factual **precision** of long-form text. Decompose output into **atomic facts** → judge each supported/unsupported vs a knowledge source → score = supported fraction (`init_score`), plus a length-penalized `score`. Precision, not recall.
-- **Ingestion:** ✅ implemented — this is the model for our `faithfulness` metric over `final_output` (`src/ascore/metrics/faithfulness.py`), a live Index component at weight 0.15. Atomic-claim groundedness against `retrieval` spans / provided source.
+- **Ingestion:** ✅ implemented — this is the model for our `faithfulness` metric over `final_output` (`src/agenttic/metrics/faithfulness.py`), a live Index component at weight 0.15. Atomic-claim groundedness against `retrieval` spans / provided source.
 
 ### 5.2 RAGAS
 - **Repo:** [explodinggradients/ragas](https://github.com/explodinggradients/ragas). **License:** Apache-2.0.
@@ -227,7 +227,7 @@ checks. Items 1–4 are static-data adapters that reuse checks we already have.
 > **Status (update):** items **1–8 have since landed.** InjecAgent, AgentDojo, the
 > BFCL parallel/multiple/live splits, the real `faithfulness` metric, τ-bench
 > pass^k, AssistantBench (`answer_accuracy` + `answer_rate`), GAIA (gated), and
-> SWE-bench Verified all ship as adapters under `src/ascore/metrics/datasets/`
+> SWE-bench Verified all ship as adapters under `src/agenttic/metrics/datasets/`
 > (SWE-bench as an **offline proxy**, not the official Docker resolve-rate). The
 > table below is kept as the original prioritization rationale; see the
 > [README dataset table](../README.md#real-public-datasets) for current state.

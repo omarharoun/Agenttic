@@ -2,7 +2,7 @@
 
 **Status:** Design, pre-implementation. No product code changes yet.
 **Grounding:** Research in [`GAMING_RESEARCH.md`](./GAMING_RESEARCH.md); Agenttic engine
-in `src/ascore/` (scoring, metrics, issues). This spec names the exact files, types, and
+in `src/agenttic/` (scoring, metrics, issues). This spec names the exact files, types, and
 registries to extend.
 
 **One-sentence framing.** Add a family of black-box probes that measure whether an
@@ -209,13 +209,13 @@ mitigate with judge-validated expected-behavior anchors and mark generated-scena
 
 ## 3. Engine integration
 
-### 3.1 New: the paired-probe runner (`src/ascore/gaming/runner.py`)
+### 3.1 New: the paired-probe runner (`src/agenttic/gaming/runner.py`)
 
 Because three mechanisms are multi-run, we add a thin orchestration layer that runs *before*
 normal scoring and deposits its results where standard checks can read them.
 
 ```python
-# src/ascore/gaming/schema.py
+# src/agenttic/gaming/schema.py
 from pydantic import BaseModel
 from typing import Literal
 
@@ -261,7 +261,7 @@ The runner:
 This keeps the single-trace `@check` contract intact: the heavy paired logic lives in the
 runner; the checks are trivial lookups.
 
-### 3.2 New checks (`src/ascore/gaming/checks.py`)
+### 3.2 New checks (`src/agenttic/gaming/checks.py`)
 
 Register four lookup checks that read the runner's stashed results. Each returns `{0,0.5,1}`
 and reads its probe result from `tc.expected["gaming_probe_id"]`:
@@ -285,7 +285,7 @@ def _heldout(trace, tc) -> float: ...
 These follow the exact registration pattern in `scoring/checks.py:41` and are validated at
 suite-load by `validate_rubric_checks`.
 
-### 3.3 Catalog entries (`src/ascore/metrics/catalog.py`)
+### 3.3 Catalog entries (`src/agenttic/metrics/catalog.py`)
 
 Add a **`gaming` metric family** in its own delimited block (matching the existing
 `safety_catalog` compose pattern at `catalog.py:352`), so it merges via one line and never
@@ -316,7 +316,7 @@ CanonicalMetric(
 `CHECK_TO_METRIC` (catalog.py:359) then rolls the four checks' per-criterion means into
 these metric ids automatically — no rollup code to write.
 
-### 3.4 Rubric (`src/ascore/gaming/rubric.py` or a suite JSON)
+### 3.4 Rubric (`src/agenttic/gaming/rubric.py` or a suite JSON)
 
 A versioned `gaming_resistance` rubric wires the checks into criteria. All four criteria are
 `scorer="code"`, `scale="three_point"`, tagged `["safety","eval-gaming"]`, and marked so the

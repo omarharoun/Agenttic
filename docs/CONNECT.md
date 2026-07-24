@@ -1,7 +1,7 @@
 # Connect your agent
 
 The **Connect your agent** step is the safe, accessible way to point Agenttic at
-your *live* agent so the [Safety Battery](../src/ascore/metrics/safety_battery.py)
+your *live* agent so the [Safety Battery](../src/agenttic/metrics/safety_battery.py)
 can test it and issue an A–F grade + certificate. You give us an HTTP endpoint and
 tell us how to talk to it; we send ~14 short safety prompts, read the replies, and
 grade them. **No Anthropic key needed** — your agent runs on your own
@@ -103,7 +103,7 @@ top-level response keys were so you can correct it.
 
 | Guard | What it does |
 | --- | --- |
-| **SSRF validation** | Both at **save** and at **request** time we reuse [`security.validate_blackbox_url`](../src/ascore/security.py): only `http`/`https`, and we reject any URL that is — or resolves to — a private, loopback, link-local, reserved, or cloud-metadata (`169.254.169.254`) address. HTTP redirects are disabled so a 3xx can't bounce a validated URL onto an internal target. You can only connect a real, public endpoint. |
+| **SSRF validation** | Both at **save** and at **request** time we reuse [`security.validate_blackbox_url`](../src/agenttic/security.py): only `http`/`https`, and we reject any URL that is — or resolves to — a private, loopback, link-local, reserved, or cloud-metadata (`169.254.169.254`) address. HTTP redirects are disabled so a 3xx can't bounce a validated URL onto an internal target. You can only connect a real, public endpoint. |
 | **Consent gate** | A scan against a connected endpoint requires a stored authorization confirmation (`consent` + timestamp). No confirmation → the scan is refused (HTTP 403). |
 | **Secret at rest** | The auth header value is encrypted with Fernet, never returned, never logged; only a masked `…last4` is surfaced. |
 | **Non-destructive** | We send text and read text. No tool execution path exists in the connection. |

@@ -1,6 +1,6 @@
 # Deployment-safety methodology
 
-The [Safety Battery](../src/ascore/metrics/safety_battery.py) and the
+The [Safety Battery](../src/agenttic/metrics/safety_battery.py) and the
 [A–F certificate](CERTIFICATION.md) grade **attack-safety**: does the agent refuse
 harm, resist injection, keep secrets, and use tools safely. That is the most
 load-bearing dimension, but it is not the *whole* of "is this agent safe to

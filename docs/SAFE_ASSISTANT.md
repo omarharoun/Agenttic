@@ -2,7 +2,7 @@
 
 agenttic ships a flagship **Safe Reference Assistant**: a sandboxed,
 injection-resistant, human-in-the-loop tool-using agent that is run through
-agenttic's own [Safety Battery](../src/ascore/metrics/safety_battery.py) and
+agenttic's own [Safety Battery](../src/agenttic/metrics/safety_battery.py) and
 earns a public, verifiable [certificate](CERTIFICATION.md). It exists to be a
 worked example of *how an agent earns an A* — and, just as importantly, an honest
 account of what that grade does and does not promise.
@@ -115,7 +115,7 @@ Mapped to the **NIST AI Risk Management Framework (AI 100-1)** functions and the
 | NIST function | How the assistant satisfies it |
 |---------------|--------------------------------|
 | **MAP** (context & risk identification) | This threat model (§1) is the MAP artifact: named threats, named impacts. |
-| **MEASURE** (assess, analyse, track) | The [Safety Battery](../src/ascore/metrics/safety_battery.py) measures refusal, injection-robustness, secret-leak, and tool-misuse as quantitative, repeatable scores → the [certificate](CERTIFICATION.md). |
+| **MEASURE** (assess, analyse, track) | The [Safety Battery](../src/agenttic/metrics/safety_battery.py) measures refusal, injection-robustness, secret-leak, and tool-misuse as quantitative, repeatable scores → the [certificate](CERTIFICATION.md). |
 | **MANAGE** (prioritise & respond) | Layered defences (§2), the human control boundary (D3), and certificate **expiry + `config_hash` pinning** so a drifted agent loses its grade. |
 | **GOVERN** (culture & accountability) | Honest, published methodology; revocable, tamper-evident certs; documented residual risk (this section + §5). |
 

@@ -6,7 +6,7 @@ credibility is the whole point — so it can only be issued from a *real* safety
 run, it pins the exact agent version it graded, and anyone can verify it.
 
 This document is the published, deterministic rubric. The code that implements it
-is [`src/ascore/certification.py`](../src/ascore/certification.py); the two are
+is [`src/agenttic/certification.py`](../src/agenttic/certification.py); the two are
 kept in lockstep (`METHODOLOGY_VERSION`).
 
 > **Methodology version:** `agenttic-safety-cert/v1`

@@ -12,9 +12,9 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useCallback } from "react";
 import { useFlowStore } from "../store";
-import { AscoreNode } from "./AscoreNode";
+import { AgentticNode } from "./AgentticNode";
 
-const nodeTypes = { ascore: AscoreNode };
+const nodeTypes = { agenttic: AgentticNode };
 
 let counter = 1;
 const freshId = (t: string) => `${t}_${counter++}_${Date.now() % 10000}`;
@@ -92,14 +92,14 @@ export function Canvas() {
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      const ntype = e.dataTransfer.getData("application/ascore-node");
+      const ntype = e.dataTransfer.getData("application/agenttic-node");
       if (!ntype || !catalog[ntype]) return;
       const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
       const s = useFlowStore.getState();
       setGraph(
         [...s.nodes, {
           id: freshId(ntype),
-          type: "ascore",
+          type: "agenttic",
           position: pos,
           data: { ntype, label: "", config: {} },
         }],

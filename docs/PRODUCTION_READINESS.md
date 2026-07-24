@@ -93,7 +93,7 @@ per-user identity — see §1.2/§1.3 for roles and tenancy.
 
 #### Original finding
 `grep` for `Depends|CORS|Middleware|api_key|Authorization` across
-`src/ascore/server/` returns **nothing**. `create_app` (`server/app.py:27-74`)
+`src/agenttic/server/` returns **nothing**. `create_app` (`server/app.py:27-74`)
 mounts five routers under `/api` with zero auth dependency. Every endpoint —
 including `POST /api/workflows/{id}/executions` (spends Anthropic credits),
 `POST /api/suites/{id}/approve` (bypasses the human gate), `DELETE
@@ -393,7 +393,7 @@ OTel collector / push-gateway for aggregation.
 #### Original finding
 
 `grep` for `logging|getLogger|/health|/healthz|/metrics|prometheus` across
-`src/ascore/` returns **nothing**. There is:
+`src/agenttic/` returns **nothing**. There is:
 - **No application logging** (only uvicorn's default access log).
 - **No health/readiness endpoint** — a load balancer/orchestrator has nothing
   to probe.

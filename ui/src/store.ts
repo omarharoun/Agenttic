@@ -172,7 +172,7 @@ export const useFlowStore = create<FlowState>((set) => ({
       const k = s.nodes.length;
       const id = `${ntype}_${Date.now().toString(36)}_${Math.floor(Math.random() * 1000)}`;
       const node: Node = {
-        id, type: "ascore",
+        id, type: "agenttic",
         position: { x: 80 + (k * 48) % 480, y: 70 + (k * 56) % 360 },
         data: { ntype, label: "", config: {} },
       };
@@ -223,7 +223,7 @@ export function fromWorkflowDoc(wf: WorkflowDoc): { nodes: Node[]; edges: Edge[]
   return {
     nodes: wf.nodes.map((n) => ({
       id: n.node_id,
-      type: "ascore",
+      type: "agenttic",
       position: n.position ?? { x: 0, y: 0 },
       data: { ntype: n.type, label: n.label, config: n.config,
               retries: (n as any).retries ?? 0,

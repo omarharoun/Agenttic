@@ -56,9 +56,9 @@ See [docs/SPEC9_RUBRIC_ENGINE.md](SPEC9_RUBRIC_ENGINE.md),
 [docs/SPEC13_COVERAGE_DRIVEN.md](SPEC13_COVERAGE_DRIVEN.md) for the build records.
 
 ## Key entry points
-- Profiles: `ascore profiles list|show` · `src/ascore/certification/profiles.py`
-- Certify: `ascore certify` · `src/ascore/certification/certify.py`
-- Dossiers: `ascore dossier verify|revoke|show` · `src/ascore/certification/dossier.py`
-- Incidents: `ascore incidents …` · `src/ascore/live/incidents.py`
-- Public verify: `GET /certification/{dossier_id}` · `src/ascore/server/routes/dossiers.py`
+- Profiles: `ascore profiles list|show` · `src/agenttic/certification/profiles.py`
+- Certify: `ascore certify` · `src/agenttic/certification/certify.py`
+- Dossiers: `ascore dossier verify|revoke|show` · `src/agenttic/certification/dossier.py`
+- Incidents: `ascore incidents …` · `src/agenttic/live/incidents.py`
+- Public verify: `GET /certification/{dossier_id}` · `src/agenttic/server/routes/dossiers.py`
 - Rubric engine: `agenttic evaluate <inputs>` · `src/agenttic/rubric_engine/` (classify → synthesize → discrimination gate → library)

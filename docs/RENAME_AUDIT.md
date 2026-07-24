@@ -65,7 +65,7 @@ SQLite filename `ascore.db`:
 
 | File | Line | Literal |
 |------|-----:|---------|
-| `src/ascore/registry/sqlite_store.py` | 618 | `sqlite:///…'ascore.db'` (default when no `db_path`) |
+| `src/agenttic/registry/sqlite_store.py` | 618 | `sqlite:///…'ascore.db'` (default when no `db_path`) |
 | `tests/test_tenancy.py` | 28, 30 | test fixtures pin `ascore.db` |
 
 DB URLs are otherwise `sqlite:///<path>` / `postgresql+psycopg://…` built from
@@ -82,7 +82,7 @@ agenttic = "ascore.cli:app"   # public command → retarget to agenttic.cli:app
 ascore   = "ascore.cli:app"   # keep as working DEPRECATED ALIAS → agenttic.cli:app
 ```
 
-Plus `python -m ascore` via `src/ascore/__main__.py` (→ `src/agenttic/__main__.py`).
+Plus `python -m ascore` via `src/agenttic/__main__.py` (→ `src/agenttic/__main__.py`).
 The `ascore` CLI *verb* stays a working alias; only the module target moves.
 
 ## Build config (Stage 1)
@@ -119,8 +119,8 @@ been resolved.
 
 | Where | ~count | Nature |
 |-------|-------:|--------|
-| Secondary docs' `src/ascore/…` path references + `ascore <verb>` CLI examples (`docs/PRODUCTION_READINESS.md`, `BILLING.md`, `SPEC_INDEX.md`, `SPEC2_BASELINE.md`, `GAMING_SPEC.md`, `OTEL_INTEROP.md`, `INSPECT_INTEROP.md`, `OPERATIONS.md`, `CONNECT.md`, `CERTIFICATION.md`, `COPILOT.md`, `AIRGAP.md`, `RESEARCH_TESTING_SURVEY.md`, `adapters/README.md`, `cert-swe-v1/README.md`, example `.sh`/`.yaml`) | ~81 | The files moved to `src/agenttic/…`; the paths are now stale. The `ascore <verb>` examples still work via the alias. Non-functional — deferred to a doc sweep. Primary docs (README/SPEC/CAPABILITIES/PLAYBOOK) were fully updated in this stage. |
-| UI/JS comment path refs (`ui/src/*.ts(x)` "src/ascore/…", `verifier/js/sdk.js` "Mirrors ascore/verify/sdk.py") | ~6 | Stale source-path comments; no runtime effect. |
+| Secondary docs' `src/agenttic/…` path references + `ascore <verb>` CLI examples (`docs/PRODUCTION_READINESS.md`, `BILLING.md`, `SPEC_INDEX.md`, `SPEC2_BASELINE.md`, `GAMING_SPEC.md`, `OTEL_INTEROP.md`, `INSPECT_INTEROP.md`, `OPERATIONS.md`, `CONNECT.md`, `CERTIFICATION.md`, `COPILOT.md`, `AIRGAP.md`, `RESEARCH_TESTING_SURVEY.md`, `adapters/README.md`, `cert-swe-v1/README.md`, example `.sh`/`.yaml`) | ~81 | The files moved to `src/agenttic/…`; the paths are now stale. The `ascore <verb>` examples still work via the alias. Non-functional — deferred to a doc sweep. Primary docs (README/SPEC/CAPABILITIES/PLAYBOOK) were fully updated in this stage. |
+| UI/JS comment path refs (`ui/src/*.ts(x)` "src/agenttic/…", `verifier/js/sdk.js` "Mirrors ascore/verify/sdk.py") | ~6 | Stale source-path comments; no runtime effect. |
 | `uv.lock` root `name = "ascore"` | 1 | Generated lock predates the rename. The Docker image installs via `pip install .` (reads `pyproject.toml`, name `agenttic`), so the deploy is unaffected. Regenerate with `uv lock` in a follow-up. |
 
 ## Deploy-critical fixes made in Stage 6 (were true functional misses)

@@ -4,7 +4,7 @@
    The credibility thesis is "credibility of the numbers", so a headline
    percentage should never appear without the sample size and its uncertainty.
    The backend already computes a Wilson lower bound in the Training Camp track
-   (src/ascore/camp/trainer.py). This ports the SAME Wilson score interval to the
+   (src/agenttic/camp/trainer.py). This ports the SAME Wilson score interval to the
    client so every scorecard / results / leaderboard number can show `n` and a
    95% interval, even when the API payload only carries the point estimate + n.
 
