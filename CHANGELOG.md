@@ -1,5 +1,45 @@
 # Changelog
 
+## Unreleased — Coverage-driven verification (SPEC-13)
+
+### M40 — Assertions (Step 62)
+
+Continuous properties monitored on **every** trace — including runs that pass
+every criterion, and sampled live production traffic. This is a parallel
+verification path: it does not change the scoring engine or the Step 14
+promotion gate.
+
+#### Added
+- **`agenttic.verification`** — an assertion registry mirroring the `@check`
+  pattern, plus vacuity-aware temporal helpers over the span sequence
+  (`never`, `always`, `precedes`, `within`, `eventually`). Pure functions: no
+  model calls, no network, safe to run continuously.
+- **Built-in assertion library** (8 properties, severity-mapped): no write
+  without a prior read of the same entity; no tool call after the final output;
+  no PII after a redaction step; no secret or credential in any output span; no
+  identical tool call repeated beyond a limit; every irreversible action
+  preceded by explicit confirmation; every escalation preceded by an uncertainty
+  signal (where instrumented); no two tenant identifiers in one trace.
+- **`AssertionSet`** (`schema/assertion_set.py`) — the *versioned registry
+  artifact* pinning which properties a run monitored, stored append-only
+  (`save_assertion_set` / `get_assertion_set` / `list_assertion_sets`). The
+  implementations are code; the set in force is evidence, so dropping a property
+  is a version bump a human approves, never a silent edit.
+- **Scorecard**: a separate `assertions` block with `verification_status`,
+  `assertion_violations`, and `assertions_unexercised`. Assertion results never
+  enter criterion scores, the weighted mean, or `task_success_rate`.
+- **Live path**: `LiveMonitor.assert_trace()` evaluates assertions on 100% of
+  ingested production traces (not just the judge-sampled fraction) with zero
+  judge calls.
+
+#### New hard rules
+- **59.** Assertions run on every trace — batch and live — including traces that
+  pass every criterion. A violation is a failure regardless of scores: a run
+  scoring 1.0 on every criterion while violating a property reports **FAIL**,
+  with the property named.
+- **60.** Unexercised assertions are reported as `unexercised`, never as passed.
+  An assertion whose antecedent never occurred is not evidence of correctness.
+
 ## v1.0.0 — Distribution & plug-and-play (SPEC-8)
 
 The first version a stranger can adopt: `pip install agenttic`, add one line, and
