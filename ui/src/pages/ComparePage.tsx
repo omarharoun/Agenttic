@@ -132,6 +132,19 @@ function Comparison({ c, id }: { c: any; id: string }) {
         <div className="v-text">{c.verdict}</div>
       </div>
 
+      {/* SPEC-13: a head-to-head is the most persuasive number in the console,
+          and the easiest to over-read. Both variants met the SAME written cases,
+          so a win is "better on what was tested" — it is not evidence that the
+          winner covers more of the situation space. Say so next to the verdict,
+          not in a footnote. */}
+      <p className="scope-line unscoped" style={{ margin: "8px 2px 14px" }}>
+        <b>What this compares.</b> Both variants were run on the same cases, so
+        the verdict is a like-for-like result on the suite as written. It says
+        nothing about the situations neither variant was put in — coverage
+        closure and property outcomes are per-result, on each variant's own
+        scorecard.
+      </p>
+
       <div className="table-wrap">
         <table className="data">
           <thead>

@@ -1955,5 +1955,146 @@ def certify_mcp(
         raise typer.Exit(1)
 
 
+def _load_object(path: str):
+    """Import ``module:attr`` and return it. The adapter seam: a memory backend
+    is whatever the operator points at, not something we ship a driver for."""
+    import importlib
+    if ":" not in path:
+        raise typer.BadParameter(
+            f"expected 'module:attribute', got {path!r} "
+            "(e.g. 'myapp.memory:build_store')")
+    mod_name, attr = path.split(":", 1)
+    return getattr(importlib.import_module(mod_name), attr)
+
+
+@app.command("certify-memory")
+def certify_memory_cmd(
+    store: str = typer.Option(
+        "", "--store",
+        help="'module:attribute' resolving to a MemoryStore, or a zero-arg "
+             "factory returning one"),
+    reference: bool = typer.Option(
+        False, "--reference",
+        help="run the battery against the built-in reference store (a smoke "
+             "test of the battery itself, not of your memory)"),
+    name: str = typer.Option("", "--name", help="store name recorded in evidence"),
+    version: str = typer.Option("", "--version", help="store version"),
+    capacity: int = typer.Option(
+        0, "--capacity",
+        help="capacity you DECLARE the store has. Without it the capacity check "
+             "is skipped, never assumed — asking the store would certify its "
+             "own answer."),
+    out: str = typer.Option("", "--out", help="write the memory scorecard JSON here"),
+    attest_out: str = typer.Option("", "--attest",
+                                   help="also write a signed manifest here"),
+    config: str = "config.yaml",
+):
+    """Certify a MEMORY store as the device under test (SPEC-12 Step 57).
+
+    Memory is the part of the supply chain an agent-level evaluation cannot
+    reach: every defect here — a fact leaking between principals, a deletion
+    honoured in one index only, a stale value beating a newer one, an
+    instruction smuggled in as a stored fact — is invisible inside one session
+    and obvious across two."""
+    import json as _json
+    from pathlib import Path as _P
+
+    from agenttic.certification.memory_suite import certify_memory, manifest_for_memory
+
+    if reference:
+        from agenttic.camp.memory import ReferenceMemoryStore
+        obj, label = ReferenceMemoryStore(capacity=capacity or 64), name or "reference"
+        capacity = capacity or 64
+    elif store:
+        obj = _load_object(store)
+        # accept a class, a zero-arg factory, or an already-built store
+        if isinstance(obj, type) or (callable(obj) and not hasattr(obj, "write")):
+            obj = obj()
+        label = name or store.rsplit(":", 1)[-1]
+    else:
+        raise typer.BadParameter("pass --store module:attribute, or --reference")
+
+    report = certify_memory(obj, store_name=label, store_version=version,
+                            declared_capacity=capacity or None)
+
+    console.print(f"[bold]{report.store_name}[/]"
+                  + (f" v{report.store_version}" if report.store_version else "")
+                  + " — memory certification")
+    for o in report.outcomes:
+        mark = ("[dim]skip[/]" if o.skipped
+                else "[green]pass[/]" if o.passed else "[red]FAIL[/]")
+        console.print(f"  {mark}  {o.check_id}: {o.detail}")
+    console.print(f"[bold]score {report.score:.2f}[/] — "
+                  + ("[green]certified[/]" if report.passed
+                     else f"[red]failed: {', '.join(report.failed)}[/]"))
+    if report.critical_failures:
+        console.print("[red]critical:[/] " + ", ".join(report.critical_failures)
+                      + " — these have a blast radius outside the agent")
+    if out:
+        _P(out).write_text(_json.dumps(report.as_dict(), indent=2), encoding="utf-8")
+        console.print(f"[dim]scorecard → {out}[/]")
+    if attest_out:
+        from agenttic.certification.attest import sign_manifest
+        cfg, _reg = _ctx(config)
+        signed = sign_manifest(
+            manifest_for_memory(report, manifest_id=f"memory-{report.store_name}"),
+            cfg=cfg)
+        _P(attest_out).write_text(signed.model_dump_json(indent=2), encoding="utf-8")
+        console.print(f"[dim]signed manifest → {attest_out}[/]")
+    if not report.passed:
+        raise typer.Exit(1)
+
+
+@app.command("catalog-check")
+def catalog_check_cmd(
+    catalog_file: str = typer.Argument(..., help="an exported catalog JSON"),
+    manifests: str = typer.Option(
+        "", "--manifests",
+        help="directory of signed manifest JSON files to verify entries against"),
+    warn_ok: bool = typer.Option(
+        False, "--warn-ok",
+        help="exit 0 when only warnings were found (errors always exit 1)"),
+):
+    """Check a conformance catalog: is everything it approves still supported?
+    (SPEC-12 Step 58)
+
+    Reports lapsed or revoked evidence, entries disturbed by a retired
+    dependency, and agents promoted on the strength of a component that is not
+    itself promoted. It reports; it never repairs — silently downgrading an entry
+    would hide the window in which something was approved on lapsed evidence."""
+    import json as _json
+    from pathlib import Path as _P
+
+    from agenttic.certification.catalog import Catalog
+    from agenttic.schema.attestation import SignedManifest
+
+    cat = Catalog.from_export(_json.loads(_P(catalog_file).read_text(encoding="utf-8")))
+    supplied: dict = {}
+    if manifests:
+        for f in sorted(_P(manifests).glob("*.json")):
+            try:
+                sm = SignedManifest.model_validate_json(f.read_text(encoding="utf-8"))
+            except Exception:                       # not a manifest — skip quietly
+                continue
+            supplied[sm.manifest.manifest_id] = sm
+
+    findings = cat.check_conformance(manifests=supplied or None)
+    counts = cat.export()["counts"]
+    console.print(f"[bold]{cat.owner}[/] catalog — "
+                  + ", ".join(f"{v} {k}" for k, v in counts.items() if v))
+    if not findings:
+        console.print("[green]conformant[/] — every promoted entry has live "
+                      "evidence and promoted dependencies")
+        return
+    for f in findings:
+        tag = "[red]ERROR[/]" if f.severity == "error" else "[yellow]warn[/]"
+        console.print(f"  {tag}  {f.entry_ref}: {f.problem} — {f.detail}")
+    errors = [f for f in findings if f.severity == "error"]
+    console.print(f"[bold]{len(errors)} error(s), "
+                  f"{len(findings) - len(errors)} warning(s)[/]")
+    if errors or not warn_ok:
+        raise typer.Exit(1)
+
+
 if __name__ == "__main__":
     app()

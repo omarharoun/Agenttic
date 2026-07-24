@@ -12,8 +12,9 @@ a façade.
 | 54 — Attestation + ABOM + revocation | M36 | ✅ done | 18 tests, all 7 acceptance criteria |
 | 55 — MCP server certification | M37 | ✅ done | 9 tests, all 5 acceptance criteria |
 | 56 — Tool certification (component tier) | M38a | ✅ done | 7 tests, all 3 acceptance criteria |
-| 57 — Memory testing | M38b | ⬜ not started | needs a memory/multi-session layer on `camp/environment.py` |
-| 58 — Catalog conformance | M39 | ⬜ not started | catalog export, promotion record, shadow-mode challenger, retirement |
+| 57 — Memory testing | M38b | ✅ done | 16 tests, a 7-check battery run ACROSS session boundaries |
+| 58 — Catalog conformance | M39 | ✅ done | 28 tests, promotion gate + shadow mode + retirement cascade + conformance |
+| CLI + surface | — | ✅ done | `certify-memory`, `catalog-check`, 7 CLI tests; `/api/capabilities` enumerates both |
 
 ## What shipped
 
@@ -66,6 +67,92 @@ a façade.
   failure catalogue, so a failing agent's report says whether a tool it used was
   already known-weak.
 
+### Step 57 — memory testing (the third leg of Hard Rule 54)
+Memory is the component an agent-level evaluation structurally *cannot* reach: a
+tool call is one request/response, but memory is state that survives the session
+boundary, and every interesting memory defect is invisible inside one session.
+
+- `camp/memory.py` — `MemoryStore` (a four-operation Protocol: `write` / `read` /
+  `forget` / `stats`, small enough that adapting a vector DB or a hosted memory
+  API is a few lines) and **`MemorySessionEnv`**, an `Environment` (SPEC-7 Step 29
+  `reset`/`step`) whose `reset()` **ends the session and opens a new one against
+  the same store**. That is the whole mechanism: the session boundary becomes
+  something the harness crosses on purpose. `ReferenceMemoryStore` is the correct
+  implementation and the positive fixture; it is deterministic (an integer
+  sequence, never wall-clock) so probes always produce the same findings.
+- `certification/memory_suite.py` — the battery, declared once in `MEMORY_CHECKS`
+  so the capability surface enumerates it rather than restating it (a test pins
+  the declared list to the list `certify_memory` actually runs):
+
+  | check | the question | critical |
+  | --- | --- | --- |
+  | `persistence` | does a session-1 write survive into session 2? | ✓ |
+  | `principal_isolation` | can principal B retrieve A's memory? | ✓ |
+  | `deletion_honored` | is a forgotten record gone from **every** index? | ✓ |
+  | `memory_injection` | is recalled text returned as untrusted **data**? | ✓ |
+  | `contradiction` | does a newer write to a fact key beat the older? | ✓ |
+  | `retrieval_precision` | F1 over seeded probes (a floor, not a ranking) | |
+  | `capacity_bound` | at capacity, evict or refuse — and **disclose** it | ✓ |
+
+  The three with a blast radius outside the agent are isolation (a data breach),
+  deletion (a deletion request answered honestly and honoured falsely — the
+  classic "dropped from the primary map, still served by the vector index"), and
+  injection (memory is the one channel a system trusts completely, because it
+  looks like the agent's own prior thought). Injection does **not** require the
+  store to sanitise prose — that is a losing game — it requires the store to hand
+  content back *flagged*, so the prompt builder can place it as data.
+  Ground truth stays with the operator: `declared_capacity` and the principals are
+  supplied, never self-reported, and without a declared capacity that check is
+  **skipped rather than assumed**.
+- `LeakyMemoryStore` (negative fixture) carries five defects that ship in real
+  systems — no principal scoping, deletion from the primary map only, no
+  supersession, no untrusted marker, unbounded and undisclosed. It scores **0.14**
+  and names all six failures.
+- CLI: `agenttic certify-memory --store module:attr` (class, zero-arg factory or a
+  built store) or `--reference`; `--attest` writes a signed manifest whose subject
+  is `memory:<name>`. `link_memory_to_scorecard()` composes with Step 56's
+  `component_evidence` rather than clobbering it.
+
+### Step 58 — catalog conformance (the promotion gate)
+Steps 54–57 make individual subjects attestable. This is what an organisation
+running more than one of them needs: a register of what is approved, and a rule
+about how something enters and leaves it. The register is worth exactly as much
+as the rule, so the rule is **enforced in code**.
+
+- `certification/catalog.py` — `Catalog`, an append-only register of
+  `CatalogEntry` (agent / tool / mcp_server / memory) with statuses
+  `candidate → shadow → promoted → needs_reverification → retired`. Nothing is
+  ever deleted: "we used to approve this" is exactly the question an incident asks.
+- **Promotion refuses by default.** `promote()` raises `PromotionRefused` — an
+  exception, not a boolean, so a caller that ignores it fails loudly — unless the
+  signed manifest verifies, has not expired, has not been revoked, and a *named*
+  approver supplied a written rationale. There is no `force` argument. Registering
+  straight into `promoted` is refused too.
+- **Shadow mode.** `shadow_compare()` runs a challenger beside an incumbent on
+  identical stimulus and counts regressions **per case** — cases the incumbent
+  handled and the challenger did not. Promoting over an incumbent refuses while
+  any regression stands, *including when the average improved*, which is the
+  failure mode an aggregate hides. A superseded incumbent steps down to
+  `candidate` rather than staying silently approved.
+- **Retirement cascades.** `retire()` moves every dependent certified with the
+  subject to `needs_reverification` and appends to the revocation list —
+  `revoked` for the subject, `suspended` for each dependent, sourced
+  `catalog:retire_cascade`. This lives in the catalog because no single subject
+  knows who depended on it.
+- **Conformance reports, never repairs.** `check_conformance()` walks the register
+  and returns findings — `evidence_expired`, `evidence_revoked`,
+  `evidence_mismatch`, `evidence_unavailable` (a referenced-but-unsupplied
+  manifest is a *warning*, not a pass), `needs_reverification`,
+  `unregistered_dependency`, and `uncertified_dependency` (an agent approved on
+  the strength of a component that is not). Silently downgrading an entry would
+  hide the window in which something was approved on lapsed evidence.
+- **Export round-trips.** `export()` is canonical and hashable — so a catalog is
+  itself signable as Step-54 evidence — and `from_export()` rebuilds it, which is
+  what an export is *for*: checking someone else's register in CI or as an
+  auditor, without their process.
+- CLI: `agenttic catalog-check <catalog.json> --manifests <dir>` prints findings
+  and exits 1 on any error, so it gates a pipeline.
+
 ## Hard rules added (51–55)
 
 51. Sign the evidence, never the verdict — no artifact asserts an agent is
@@ -95,11 +182,21 @@ a façade.
 - **Cross-model behaviour** (Step 55's last bullet) is implemented through the
   injectable `selector` in Step 56; running it against ≥2 *real* models needs API
   keys and is not exercised in CI.
-- Steps 57–58 are not started; Step 57 needs a memory/multi-session layer built
-  on `camp/environment.py` (the SPEC-7 Step 29 engine, which does exist).
+- **The memory battery tests mechanics, not judgement.** It measures isolation,
+  deletion, contradiction, injection handling and capacity; it does not judge
+  whether what a store chose to remember was worth remembering. `/api/capabilities`
+  says so in `not_covered` rather than leaving the boundary implied.
+- **`retrieval_precision` is a floor, not a ranking.** It exists to catch a
+  retriever that is effectively random, not to rank embedding models — hence the
+  low default (F1 ≥ 0.7) and the deliberately simple token-overlap corpus.
+- **The catalog gate is only as good as its dependency edges.** `depends_on` is
+  operator-supplied; an agent whose dependencies were never recorded will pass
+  conformance while resting on uncertified components. The catalog reports what it
+  was told, and cannot report what it was not.
 
 ## Verification
 
-34 new tests (18 attestation + 9 MCP + 7 tool), 93 passing across SPEC-12 and the
-existing certification suite; new modules ruff-clean; CLI paths exercised end to
+85 new tests (18 attestation + 9 MCP + 7 tool + 16 memory + 28 catalog + 7 CLI),
+passing across SPEC-12 and the existing certification suite; new modules
+ruff-clean; CLI paths exercised end to
 end.

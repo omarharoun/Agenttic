@@ -29,6 +29,38 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _coverage_summary(payload: dict) -> dict:
+    """The verification headline for one scorecard, small enough to ship on
+    every row of a list.
+
+    SPEC-13 reframed the run view to lead with coverage closure and assertions
+    instead of the pass rate. A list that shows only the rate quietly undoes
+    that — the rate is a claim about the cases somebody wrote, and without the
+    scope beside it the reader cannot tell how much it is claiming. So the same
+    handful of fields travel with every row: whether a coverage model applied at
+    all, whether it was the baseline, how closed it is, and how the properties
+    came out. The full per-coverpoint detail stays on the scorecard itself.
+    """
+    cov = payload.get("coverage") or {}
+    if not cov:
+        return {}
+    out = {
+        "model_ref": cov.get("model_ref"),
+        "baseline": cov.get("baseline"),
+        "trace_closure": cov.get("trace_closure"),
+        "closure_target": cov.get("closure_target"),
+        "closed": cov.get("closed"),
+        "limits": cov.get("limits"),
+    }
+    a = cov.get("assertions") or {}
+    if a:
+        out["assertions"] = {
+            "total": a.get("total"), "violations": a.get("violations"),
+            "unexercised": a.get("unexercised"), "verdict": a.get("verdict"),
+        }
+    return out
+
+
 # Ordered (substring → plain-language reason) map. First match wins, so put the
 # more specific needles first. Used to turn a raw "ExcType: message" node error
 # into something a non-engineer can act on, shown inline on the Runs list.
@@ -400,6 +432,8 @@ class UIStore:
 
     def list_scorecards(self, agent_id: str | None = None,
                         suite_id: str | None = None) -> list[dict]:
+        """Results history. Each row carries a COMPACT verification summary
+        alongside the pass rate — see :func:`_coverage_summary`."""
         with Session(self.engine) as s:
             q = select(ScorecardRow).where(
                 ScorecardRow.tenant_id == self.tenant).order_by(
@@ -418,6 +452,11 @@ class UIStore:
                 n_passed = sum(1 for rs in scored if rs.get("passed"))
                 w_low, w_high = wilson_interval(n_passed, n_scored)
                 out.append({"scorecard_id": r.scorecard_id, "agent_id": r.agent_id,
+                            # SPEC-13: every list that shows a pass rate must be
+                            # able to show the scope that rate was measured in,
+                            # or the list re-introduces the unscoped claim the
+                            # run view was reframed to remove.
+                            "coverage": _coverage_summary(p),
                             "suite_id": r.suite_id, "suite_version": r.suite_version,
                             "task_success_rate": p.get("task_success_rate"),
                             "mean_cost_usd": p.get("mean_cost_usd"),

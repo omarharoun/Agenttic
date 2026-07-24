@@ -4,14 +4,19 @@ import { api } from "../api";
 import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
 import { Onboarding } from "../components/Onboarding";
 import { money } from "../stats";
+import { CoverageCell, ScopeChip, cov, hasVerification, scopeNote } from "../verification";
 
 /* ============================================================================
    Dashboard — the front door of the console.
 
-   A benchmark *authority* should open on the numbers, not on a blank workflow
-   canvas. This is the "one excellent dashboard" the roadmap's Phase 2 calls for:
-   a leaderboard snapshot, recent results (with their uncertainty), and the live
-   state of the workspace — all in the existing editorial design system.
+   A leaderboard snapshot, recent results, and the live state of the workspace.
+
+   SPEC-13: this screen is the most-visited surface in the console, so it is the
+   one most able to undo the run view's reframing. A dashboard whose "recent
+   results" column is a bare percentage teaches the reader that the percentage is
+   the answer. So the recent-results table leads with VERIFICATION — coverage
+   closure and whether the properties held — and shows the pass rate beside it,
+   carrying the scope it was measured in.
    ========================================================================== */
 
 function barColor(index: number): string {
@@ -61,6 +66,15 @@ export function DashboardPage() {
   const totalSpend = (results ?? []).reduce(
     (a, r) => a + (r.total_cost_usd ?? 0) + (r.total_scoring_cost_usd ?? 0), 0);
 
+  // Verification headlines, counted across the workspace. These are the two
+  // facts a pass-rate dashboard cannot show you: results that broke a property
+  // (a failure regardless of score), and results carrying no coverage model at
+  // all — whose rate is an unscoped claim.
+  const withBrokenProps = (results ?? []).filter(
+    (r) => (cov(r).assertions?.violations ?? 0) > 0).length;
+  const unscoped = (results ?? []).filter(
+    (r) => hasVerification(r) && !cov(r).model_ref).length;
+
   const loading = board === undefined || results === null || execs === null;
   const empty = !loading && agents.length === 0 && (results ?? []).length === 0;
 
@@ -70,9 +84,10 @@ export function DashboardPage() {
         <Onboarding />
         <PageHeader
           title="Dashboard"
-          subtitle={<>Score → Issues → Fix. Agents ranked on the Agenttic Index,
-            your latest results with their confidence intervals, and what's running
-            now. Every headline number carries its sample size and a Wilson 95% interval.</>}
+          subtitle={<>What held, what broke, and what nothing has looked at yet.
+            Results lead with coverage closure and property outcomes; the pass rate
+            sits beside them carrying the scope it was measured in. Every rate
+            carries its sample size and a Wilson 95% interval.</>}
           actions={
             <div className="dash-cta">
               <Link className="btn-primary" to="/app/build">＋ New evaluation</Link>
@@ -94,8 +109,12 @@ export function DashboardPage() {
         ) : (
           <>
             <div className="dash-stats">
-              <Stat label="agents ranked" value={agents.length}
-                    hint="Agents with a canonical Agenttic Index" />
+              <Stat label="properties broken"
+                    value={<span className={withBrokenProps ? "err" : "ok"}>{withBrokenProps}</span>}
+                    hint="Results where a property was violated. A violation is a failure regardless of the score." />
+              <Stat label="unscoped results"
+                    value={<span className={unscoped ? "wait" : "ok"}>{unscoped}</span>}
+                    hint="Results with no coverage model applied — their pass rate says nothing about what the suite never exercised." />
               <Stat label="results recorded" value={(results ?? []).length}
                     hint="Scorecards across this workspace" />
               <Stat label="running now" value={running}
@@ -114,9 +133,10 @@ export function DashboardPage() {
                 {topAgents.length === 0 ? (
                   <div className="dash-card-empty">
                     <p className="muted-sm">
-                      No ranked agents yet. A ranking is how you compare agents and
-                      show which is safer — run the standard benchmark to populate
-                      the Agenttic Index.
+                      No ranked agents yet. A ranking compares agents on the share
+                      of written cases each one passed — run the standard benchmark
+                      to populate the Agenttic Index. What an agent was never put
+                      through stays a per-result question.
                     </p>
                     <Link className="btn-primary" to="/app/leaderboard">Run standard benchmark</Link>
                   </div>
@@ -159,23 +179,42 @@ export function DashboardPage() {
                   </div>
                 ) : (
                   <table className="data">
-                    <thead><tr><th>agent</th><th>suite</th><th className="num">success</th></tr></thead>
+                    <thead>
+                      <tr>
+                        <th>agent</th>
+                        <th title="How much of the situation space these runs reached, and whether the properties held throughout.">
+                          verification
+                        </th>
+                        <th className="num"
+                            title="The share of written cases that passed. It says nothing about the cases nobody wrote.">
+                          pass rate
+                        </th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {recent.map((r) => {
                         const nScored = Math.max(0, (r.n_runs ?? 0) - (r.n_errored ?? 0));
                         return (
                           <tr key={r.scorecard_id}>
-                            <td>{r.agent_id}</td>
-                            <td className="mono">{r.suite_id}</td>
+                            <td>
+                              {r.agent_id}
+                              <div className="muted-sm mono">{r.suite_id}</div>
+                            </td>
+                            <td><CoverageCell sc={r} /></td>
                             <td className="num">
                               {r.task_success_rate == null
                                 ? <span className="muted-sm">—</span>
-                                : <>{Math.round(r.task_success_rate * 100)}%
+                                : <>
+                                    <span className="dash-rate">
+                                      {Math.round(r.task_success_rate * 100)}%
+                                    </span>
+                                    <ScopeChip sc={r} />
                                     {nScored > 0 && (
                                       <div className="cell-ci">
                                         <Uncertainty rate={r.task_success_rate} n={nScored} />
                                       </div>
-                                    )}</>}
+                                    )}
+                                  </>}
                             </td>
                           </tr>
                         );

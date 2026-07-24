@@ -5,6 +5,7 @@ import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui"
 import { Markdown } from "../components/Markdown";
 import { money } from "../stats";
 import { PASS_MEANING } from "../workflow/templates";
+import { CoverageCell, ScopeChip, type CoverageSummary } from "../verification";
 
 interface Row {
   scorecard_id: string;
@@ -20,6 +21,10 @@ interface Row {
   n_scored?: number;      // exact scored-case count (backend)
   n_passed?: number;      // exact passing-case count (backend)
   visibility_tier?: string;
+  /** Compact verification summary shipped with every row (server store
+   *  `_coverage_summary`) — so history can show the SCOPE of each rate
+   *  without fetching the whole scorecard. */
+  coverage?: CoverageSummary;
   cached?: boolean;
   created_at: string;
 }
@@ -51,7 +56,9 @@ export function ResultsHistoryPage() {
         <PageHeader
           title="Results"
           subtitle={
-            <>Every score you've run — browse and re-open without re-running. To see
+            <>Every result you've recorded. Each row leads with what was verified —
+            coverage closure and whether the properties held — and shows the pass
+            rate beside it, tagged with the scope it was measured in. To see
             what's wrong with a run, open its <Link to="/app/issues">Issues report</Link>.{" "}
             <span className="mono">♻</span> marks cached results: an identical re-run
             is served for free (no agent or judge calls).</>
@@ -72,7 +79,9 @@ export function ResultsHistoryPage() {
                 <thead>
                   <tr>
                     <th>result</th><th>agent</th><th>suite</th>
-                    <th className="num" title={PASS_MEANING}>success</th><th className="num">cost</th>
+                    <th title="How much of the situation space these runs reached, and whether the properties held throughout.">
+                      verification</th>
+                    <th className="num" title={PASS_MEANING}>pass rate</th><th className="num">cost</th>
                     <th>when</th><th></th>
                   </tr>
                 </thead>
@@ -93,10 +102,12 @@ export function ResultsHistoryPage() {
                         </td>
                         <td>{r.agent_id}</td>
                         <td className="mono">{r.suite_id} v{r.suite_version}</td>
+                        <td><CoverageCell sc={r} /></td>
                         <td className="num">
                           {r.task_success_rate == null
                             ? <span className="muted-sm">—</span>
                             : <>{Math.round(r.task_success_rate * 100)}%
+                                <ScopeChip sc={r} />
                                 {nScored > 0 && (
                                   <div className="cell-ci">
                                     <Uncertainty passes={r.n_passed} rate={r.task_success_rate} n={nScored} />

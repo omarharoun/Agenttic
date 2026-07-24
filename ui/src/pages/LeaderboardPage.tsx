@@ -249,7 +249,11 @@ const COLUMNS: [string, string, 1 | -1, boolean][] = [
   ["mean_cost_usd", "exec $/case", 1, true],
   ["all_in_cost_per_case_usd", "all-in $/case", 1, true],
   ["p95_latency_ms", "p95 ms", 1, true],
-  ["coverage", "coverage", -1, true],
+  // NB: the backend field is `coverage`, but it counts SUITES RUN. Labelling it
+  // "coverage" collides with the SPEC-13 meaning (how much of the situation
+  // space was reached) — two different claims under one word is precisely the
+  // confusion this console exists to remove. The key stays; the label does not.
+  ["coverage", "suites run", -1, true],
   ["visibility_tier", "tier", 1, false],
   ["n_errored", "errored", 1, true],
 ];
@@ -288,8 +292,18 @@ export function LeaderboardPage() {
         <PageHeader title="All suites — task-success leaderboard"
           subtitle={<>Composite score per agent across <i>all</i> suites (incl. your own) —
             weighted mean of per-suite task success (0–100), latest run per suite.
-            Cost and latency are blended across suites; coverage shows how many
-            suites each agent has run.</>} />
+            Cost and latency are blended across suites; <i>suites run</i> counts how
+            many suites each agent has been through.</>} />
+
+        {/* A ranking is the surface most able to launder an unscoped number: it
+            invites a reader to treat position as fitness. Say what it ranks. */}
+        <p className="scope-line unscoped" style={{ margin: "0 0 14px" }}>
+          <b>What this ranks.</b> Position here is the share of written cases an
+          agent passed. It is not a measure of how much of the situation space
+          each agent was put through, and two agents on this table may have been
+          tested to very different depths. Coverage closure and property outcomes
+          are per-result — open a result to see them.
+        </p>
 
         {board === undefined ? <Skeleton rows={6} /> : (
           <>

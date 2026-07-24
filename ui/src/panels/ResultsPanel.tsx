@@ -5,6 +5,7 @@ import { money, ms } from "../stats";
 import { PASS_MEANING, PASS_THRESHOLD } from "../workflow/templates";
 import { Markdown } from "../components/Markdown";
 import { ProvenanceBadge } from "../components/ds";
+import { VerificationStrip, cov, scopeNote, scopeTag } from "../verification";
 
 /** Post-run scoreboard: scorecard summary + one row per test case showing
  * the agent's prediction vs expected, expandable to per-criterion scores
@@ -39,7 +40,7 @@ export function ResultsPanel({ results }: { results: any }) {
           <VerificationStrip sc={sc} />
           <div className="score-strip">
             <div className="stat">
-              <span className="lab" title={SCOPE_NOTE(sc)}>Task success{SCOPE_TAG(sc)}</span>
+              <span className="lab" title={scopeNote(sc)}>Task success{scopeTag(sc)}</span>
               {scored.length === 0 ? (
                 <span className="val sm err" title="No cases could be scored — see errored cases">
                   Not scored
@@ -178,63 +179,12 @@ export function ResultsPanel({ results }: { results: any }) {
    Coverage and assertions are deterministic and cost nothing, so every run
    carries them; a pass rate reported without a fitted coverage model is an
    unscoped claim and says so.
+
+   The vocabulary itself lives in ../verification so the dashboard, history,
+   comparison and leaderboard say the same thing in the same words — a bare
+   percentage on any of those screens would put the unscoped claim straight back
+   in front of the reader.
    --------------------------------------------------------------------------- */
-
-function cov(sc: any) { return sc?.coverage || {}; }
-
-export function SCOPE_TAG(sc: any) {
-  const c = cov(sc);
-  if (!c.model_ref) return " (unscoped)";
-  if (c.baseline) return " (baseline scope)";
-  return "";
-}
-
-export function SCOPE_NOTE(sc: any) {
-  const c = cov(sc);
-  if (!c.model_ref)
-    return "No coverage model was applied, so this rate says nothing about what "
-      + "the suite never exercised. It is an unscoped claim.";
-  if (c.baseline) return c.limits || "Baseline coverage model only.";
-  return "Scoped to a fitted coverage model.";
-}
-
-function VerificationStrip({ sc }: { sc: any }) {
-  const c = cov(sc);
-  const a = c.assertions;
-  if (!c.model_ref && !a) return null;
-  const closure = Math.round((c.trace_closure ?? 0) * 100);
-  const target = Math.round((c.closure_target ?? 0.95) * 100);
-  return (
-    <div className="score-strip verif-strip">
-      <div className="stat">
-        <span className="lab" title={c.limits || ""}>Coverage closure</span>
-        <span className={`val ${c.closed ? "ok" : "err"}`}>
-          {c.model_ref ? `${closure}%` : "—"}
-          <span className="muted-sm"> / {target}%</span>
-        </span>
-      </div>
-      {a && (
-        <>
-          <div className="stat">
-            <span className="lab">Assertions</span>
-            <span className={`val sm ${a.violations ? "err" : "ok"}`}>
-              {a.verdict}
-              <span className="muted-sm"> {a.violations}/{a.total} broken</span>
-            </span>
-          </div>
-          <div className="stat">
-            <span className="lab"
-                  title="Properties whose antecedent never occurred. Not evidence of correctness.">
-              Never exercised
-            </span>
-            <span className="val sm wait">{a.unexercised}<span className="muted-sm"> of {a.total}</span></span>
-          </div>
-        </>
-      )}
-      <div className="spacer" />
-    </div>
-  );
-}
 
 function NeverExercised({ sc }: { sc: any }) {
   const c = cov(sc);

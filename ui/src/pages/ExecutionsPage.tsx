@@ -5,6 +5,7 @@ import { DataView, EmptyState, PageHeader, RawToggle, Skeleton } from "../compon
 import { IssuesReport } from "../components/IssuesReport";
 import { ResultsPanel } from "../panels/ResultsPanel";
 import { useFlowStore } from "../store";
+import { VerificationStrip } from "../verification";
 
 const STATE_COLOR: Record<string, string> = {
   succeeded: "var(--ok)", failed: "var(--fail)", cancelled: "var(--fail)",
@@ -92,7 +93,12 @@ export function ExecutionsPage() {
             <ReplayCanvas execution={detail} />
             {results && (results.cases?.length || results.scorecards?.length) ? (
               <div style={{ maxWidth: 820, marginTop: 14 }}>
-                {/* Issues first — the hero of a result. The full scoreboard follows. */}
+                {/* SPEC-13: verification is not a disclosure-triangle detail. What
+                    was reached and whether the properties held leads the run,
+                    above the issues and above the case-by-case scoreboard. */}
+                {(results.scorecards ?? []).map((sc: any) => (
+                  <VerificationStrip key={sc.scorecard_id} sc={sc} />
+                ))}
                 <IssuesReport executionId={detail.execution_id} />
                 <details className="results-raw" style={{ marginTop: 16 }}>
                   <summary>Full scoreboard — every case, pass or fail</summary>
