@@ -243,7 +243,7 @@ def verify_op(traces: list) -> tuple[list, dict]:
     Returns (assertion_results, coverage_summary)."""
     from agenttic.coverage.collect import Sample, collect
     from agenttic.coverage.models.baseline import BASELINE_LIMITS, baseline_model
-    from agenttic.verification.assertions import evaluate
+    from agenttic.verification.assertions import evaluate, rollup_assertions
 
     results: list = []
     for t in traces:
@@ -277,47 +277,8 @@ def verify_op(traces: list) -> tuple[list, dict]:
         summary = {}
 
     if results:
-        summary["assertions"] = _rollup_assertions(results)
+        summary["assertions"] = rollup_assertions(results)
     return results, summary
-
-
-def _rollup_assertions(results: list) -> dict:
-    """Roll per-trace assertion results up PER PROPERTY across the whole run.
-
-    A run of 20 traces × 8 properties is 160 results but only 8 properties. A
-    property is VIOLATED if it broke on any trace, and UNEXERCISED only if its
-    antecedent never occurred on ANY trace — reporting it as unexercised because
-    most traces did not reach it would understate the evidence, and summing the
-    raw results would overstate the count."""
-    by_id: dict[str, dict] = {}
-    for r in results:
-        e = by_id.setdefault(r.assertion_id, {
-            "assertion_id": r.assertion_id, "severity": r.severity,
-            "violations": 0, "exercised": 0, "traces": 0, "detail": ""})
-        e["traces"] += 1
-        if r.status == "violation":
-            e["violations"] += 1
-            e["exercised"] += 1
-            if not e["detail"]:
-                e["detail"] = r.detail
-        elif r.status == "pass":
-            e["exercised"] += 1
-
-    violated = [e for e in by_id.values() if e["violations"]]
-    unexercised = [e for e in by_id.values() if e["exercised"] == 0]
-    total = len(by_id)
-    return {
-        "total": total,
-        "violations": len(violated),
-        "unexercised": len(unexercised),
-        "exercised_ratio": round((total - len(unexercised)) / total, 4) if total else 0.0,
-        "verdict": "FAIL" if violated else "PASS",
-        "violated_properties": [
-            {"assertion_id": e["assertion_id"], "severity": e["severity"],
-             "detail": e["detail"],
-             "traces": f"{e['violations']}/{e['traces']} runs"} for e in violated],
-        "unexercised_properties": sorted(e["assertion_id"] for e in unexercised),
-    }
 
 
 def aggregate_op(
@@ -340,6 +301,19 @@ def aggregate_op(
         suite_id=suite.suite_id, suite_version=suite.version,
         rubric_id=rubric.rubric_id, rubric_version=rubric.version,
         run_scores=runs, visibility_tier=visibility)
+    if traces is None:
+        # Resolve traces from the registry so EVERY caller gets verification —
+        # the server run-node (which the console uses) and the red-team paths
+        # aggregate from RunScores and never held Trace objects. Without this the
+        # verification layer would silently never reach the console.
+        traces = []
+        for r in runs:
+            if not r.trace_id:
+                continue
+            try:
+                traces.append(reg.get_trace(r.trace_id))
+            except Exception:  # noqa: BLE001 — a missing trace must not break scoring
+                continue
     if traces:
         assertions, coverage = verify_op(traces)
         sc = sc.model_copy(update={

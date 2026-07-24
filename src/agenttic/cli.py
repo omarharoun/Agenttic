@@ -279,7 +279,10 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
         suite: str = typer.Option(..., "--suite", "-s", help="suite id to run"),
         url: str = "",
         managed_agent_id: str = "", environment_id: str = "",
-        system_prompt: str = "", model: str = "", config: str = "config.yaml"):
+        system_prompt: str = "", model: str = "",
+        mock: bool = typer.Option(False, "--mock",
+                                  help="offline deterministic provider (no API key)"),
+        config: str = "config.yaml"):
     """Run a suite against an agent.
 
     If --agent matches a name in the declared catalog (`agenttic agents add`), its
@@ -309,6 +312,11 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
                           f"(v{d.version}, {d.variant})[/]")
         except NotFoundError:
             pass
+    client = None
+    if mock:
+        from agenttic.certification.mock_provider import MockAnthropicClient
+        client = MockAnthropicClient()
+        bb = {**bb, "client": client}
     try:
         adapter = ops.build_adapter(cfg, variant=variant, agent_id=agent, url=url,
                                     managed_agent_id=managed_agent_id,
@@ -318,7 +326,8 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
         raise typer.BadParameter(str(exc))
     from agenttic.budget import BudgetExceededError
     try:
-        sc = asyncio.run(ops.run_and_score_op(cfg, reg, adapter, suite))
+        sc = asyncio.run(ops.run_and_score_op(cfg, reg, adapter, suite,
+                                              judge_client=client))
     except BudgetExceededError as exc:
         console.print(f"[red]Budget cap:[/] {exc}")
         raise typer.Exit(2)

@@ -139,3 +139,58 @@ def test_verification_never_breaks_a_run():
                    visibility="black_box", final_output="")
     results, cov = verify_op([broken])
     assert isinstance(results, list) and isinstance(cov, dict)
+
+
+# --- aggregate_op must reach EVERY caller, not just run_and_score_op -------- #
+
+def test_aggregate_op_resolves_traces_from_the_registry(tmp_path):
+    """The console's run-node aggregates from RunScores and never holds Trace
+    objects. If aggregate_op only verified when handed traces, the verification
+    layer would silently never reach the console — which is exactly the gap that
+    made a run still lead with a bare pass rate."""
+    from agenttic import ops
+    from agenttic.registry.sqlite_store import Registry
+    from agenttic.schema.testcase import TestCase, TestSuite
+
+    reg = Registry(str(tmp_path / "r.db"))
+    traces = [_happy(i) for i in range(3)]
+    cases = [TestCase(test_id=f"c{i}", suite_id="s", task_description="t",
+                      rubric_id="r") for i in range(3)]
+    suite = TestSuite(suite_id="s", version=1, business_context="b",
+                      test_ids=[c.test_id for c in cases], approved=True)
+    reg.save_suite(suite, cases)
+    reg.save_rubric(RUBRIC)
+    for t in traces:
+        reg.save_trace(t)
+
+    runs = [RunScore(trace_id=t.trace_id, test_id=f"c{i}", passed=True,
+                     criterion_scores=[CriterionScore(
+                         criterion_id="answer", score=1.0, scorer="judge")])
+            for i, t in enumerate(traces)]
+
+    # NOTE: traces are NOT passed — aggregate_op must find them itself
+    sc = ops.aggregate_op(reg, agent_id="a", suite=suite, rubric=RUBRIC,
+                          runs=runs, visibility="glass_box")
+    assert sc.coverage, "aggregate_op must verify even when not handed traces"
+    assert sc.coverage["model_ref"].startswith("coverage:cov-baseline")
+    assert sc.coverage["assertions"]["total"] == 8
+    assert sc.assertions, "assertion results must be attached to the scorecard"
+
+
+def test_a_missing_trace_does_not_break_aggregation(tmp_path):
+    from agenttic import ops
+    from agenttic.registry.sqlite_store import Registry
+    from agenttic.schema.testcase import TestCase, TestSuite
+
+    reg = Registry(str(tmp_path / "r.db"))
+    cases = [TestCase(test_id="c0", suite_id="s", task_description="t", rubric_id="r")]
+    suite = TestSuite(suite_id="s", version=1, business_context="b",
+                      test_ids=["c0"], approved=True)
+    reg.save_suite(suite, cases)
+    reg.save_rubric(RUBRIC)
+    runs = [RunScore(trace_id="does-not-exist", test_id="c0", passed=True,
+                     criterion_scores=[CriterionScore(
+                         criterion_id="answer", score=1.0, scorer="judge")])]
+    sc = ops.aggregate_op(reg, agent_id="a", suite=suite, rubric=RUBRIC,
+                          runs=runs, visibility="glass_box")
+    assert sc.task_success_rate == 1.0        # scoring is unaffected

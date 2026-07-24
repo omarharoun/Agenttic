@@ -203,13 +203,18 @@ def build_signoff(
             provisional_coverpoints=cr.provisional_coverpoints)
 
     if assertion_results is not None:
-        from agenttic.verification.assertions import summarize
-        summ = summarize(assertion_results)
+        # Roll up PER PROPERTY, not per trace: N traces x M properties is N*M
+        # results but only M properties. The same implementation the run path
+        # uses, so the report and the sign-off can never disagree.
+        from agenttic.verification.assertions import rollup_assertions
+        summ = rollup_assertions(assertion_results)
         s.assertions = AssertionLeg(
             status="populated", total=summ["total"],
             violations=summ["violations"], unexercised=summ["unexercised"],
             exercised_ratio=summ["exercised_ratio"],
-            violated_properties=[v["detail"] for v in summ["violated_properties"]],
+            violated_properties=[
+                f"{v['assertion_id']} ({v.get('traces', '')}) — {v['detail']}"
+                for v in summ["violated_properties"]],
             unexercised_properties=summ["unexercised_properties"])
 
     if proof_results is not None:

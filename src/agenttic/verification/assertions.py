@@ -223,3 +223,42 @@ def summarize(results: Sequence[AssertionResult]) -> dict:
              "span_index": r.span_index, "detail": r.detail} for r in v],
         "unexercised_properties": [r.assertion_id for r in u],
     }
+
+
+def rollup_assertions(results: list) -> dict:
+    """Roll per-trace assertion results up PER PROPERTY across the whole run.
+
+    A run of 20 traces × 8 properties is 160 results but only 8 properties. A
+    property is VIOLATED if it broke on any trace, and UNEXERCISED only if its
+    antecedent never occurred on ANY trace — reporting it as unexercised because
+    most traces did not reach it would understate the evidence, and summing the
+    raw results would overstate the count."""
+    by_id: dict[str, dict] = {}
+    for r in results:
+        e = by_id.setdefault(r.assertion_id, {
+            "assertion_id": r.assertion_id, "severity": r.severity,
+            "violations": 0, "exercised": 0, "traces": 0, "detail": ""})
+        e["traces"] += 1
+        if r.status == "violation":
+            e["violations"] += 1
+            e["exercised"] += 1
+            if not e["detail"]:
+                e["detail"] = r.detail
+        elif r.status == "pass":
+            e["exercised"] += 1
+
+    violated = [e for e in by_id.values() if e["violations"]]
+    unexercised = [e for e in by_id.values() if e["exercised"] == 0]
+    total = len(by_id)
+    return {
+        "total": total,
+        "violations": len(violated),
+        "unexercised": len(unexercised),
+        "exercised_ratio": round((total - len(unexercised)) / total, 4) if total else 0.0,
+        "verdict": "FAIL" if violated else "PASS",
+        "violated_properties": [
+            {"assertion_id": e["assertion_id"], "severity": e["severity"],
+             "detail": e["detail"],
+             "traces": f"{e['violations']}/{e['traces']} runs"} for e in violated],
+        "unexercised_properties": sorted(e["assertion_id"] for e in unexercised),
+    }
