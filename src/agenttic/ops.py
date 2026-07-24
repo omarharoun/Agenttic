@@ -232,6 +232,94 @@ async def score_op(
     return runs
 
 
+def verify_op(traces: list) -> tuple[list, dict]:
+    """Run the SPEC-13 verification layer over a batch of traces.
+
+    Deterministic and free: assertions (Step 62) and the baseline coverage model
+    (Step 59) make **zero model calls**, so this runs on the normal path for every
+    run. It is what lets a report lead with *what was never exercised* instead of
+    a pass rate that is silent about everything the suite never tried.
+
+    Returns (assertion_results, coverage_summary)."""
+    from agenttic.coverage.collect import Sample, collect
+    from agenttic.coverage.models.baseline import BASELINE_LIMITS, baseline_model
+    from agenttic.verification.assertions import evaluate
+
+    results: list = []
+    for t in traces:
+        try:
+            results.extend(evaluate(t))
+        except Exception:  # noqa: BLE001 — verification must never break a run
+            continue
+
+    summary: dict = {}
+    try:
+        report = collect(baseline_model(), [Sample(trace=t) for t in traces])
+        summary = {
+            "model_ref": report.model_ref,
+            "bins_fingerprint": report.bins_fingerprint,
+            "baseline": True,
+            "limits": BASELINE_LIMITS,
+            "trace_closure": round(report.trace_closure, 4),
+            "closure_target": report.closure_target,
+            "closed": report.closed,
+            "per_coverpoint": {
+                cp.coverpoint_id: {"closure": round(cp.trace_closure, 4),
+                                   "unhit": cp.unhit, "other_hits": cp.other_hits}
+                for cp in report.coverpoints.values()},
+            "crosses": {x.cross_id: round(x.closure, 4)
+                        for x in report.crosses.values()},
+            "holes": [{"kind": h.kind, "where": h.where, "what": h.what}
+                      for h in report.holes()[:24]],
+            "other_drift": report.other_drift(),
+        }
+    except Exception:  # noqa: BLE001
+        summary = {}
+
+    if results:
+        summary["assertions"] = _rollup_assertions(results)
+    return results, summary
+
+
+def _rollup_assertions(results: list) -> dict:
+    """Roll per-trace assertion results up PER PROPERTY across the whole run.
+
+    A run of 20 traces × 8 properties is 160 results but only 8 properties. A
+    property is VIOLATED if it broke on any trace, and UNEXERCISED only if its
+    antecedent never occurred on ANY trace — reporting it as unexercised because
+    most traces did not reach it would understate the evidence, and summing the
+    raw results would overstate the count."""
+    by_id: dict[str, dict] = {}
+    for r in results:
+        e = by_id.setdefault(r.assertion_id, {
+            "assertion_id": r.assertion_id, "severity": r.severity,
+            "violations": 0, "exercised": 0, "traces": 0, "detail": ""})
+        e["traces"] += 1
+        if r.status == "violation":
+            e["violations"] += 1
+            e["exercised"] += 1
+            if not e["detail"]:
+                e["detail"] = r.detail
+        elif r.status == "pass":
+            e["exercised"] += 1
+
+    violated = [e for e in by_id.values() if e["violations"]]
+    unexercised = [e for e in by_id.values() if e["exercised"] == 0]
+    total = len(by_id)
+    return {
+        "total": total,
+        "violations": len(violated),
+        "unexercised": len(unexercised),
+        "exercised_ratio": round((total - len(unexercised)) / total, 4) if total else 0.0,
+        "verdict": "FAIL" if violated else "PASS",
+        "violated_properties": [
+            {"assertion_id": e["assertion_id"], "severity": e["severity"],
+             "detail": e["detail"],
+             "traces": f"{e['violations']}/{e['traces']} runs"} for e in violated],
+        "unexercised_properties": sorted(e["assertion_id"] for e in unexercised),
+    }
+
+
 def aggregate_op(
     reg: Registry,
     *,
@@ -240,13 +328,24 @@ def aggregate_op(
     rubric: Rubric,
     runs: list[RunScore],
     visibility: str,
+    traces: list | None = None,
 ) -> Scorecard:
-    """Aggregate RunScores into an immutable, persisted Scorecard."""
+    """Aggregate RunScores into an immutable, persisted Scorecard.
+
+    When ``traces`` are supplied the SPEC-13 verification layer runs too, so the
+    scorecard carries coverage + assertion evidence and the report can lead with
+    it (Hard Rule 56: closure, not pass rate, is the headline)."""
     sc = Scorecard.aggregate(
         scorecard_id=uuid.uuid4().hex[:12], agent_id=agent_id,
         suite_id=suite.suite_id, suite_version=suite.version,
         rubric_id=rubric.rubric_id, rubric_version=rubric.version,
         run_scores=runs, visibility_tier=visibility)
+    if traces:
+        assertions, coverage = verify_op(traces)
+        sc = sc.model_copy(update={
+            "assertions": assertions,
+            "assertion_set_ref": "assertions:builtin-default@v1",
+            "coverage": coverage})
     reg.save_scorecard(sc)
     # record total spend (execution + scoring) for the daily budget ledger
     total_spend = sc.total_cost_usd + sc.total_scoring_cost_usd
@@ -278,7 +377,8 @@ async def run_and_score_op(
                               on_progress, judge_client=judge_client)
         rubric = reg.get_rubric(cases[0].rubric_id)
         return aggregate_op(reg, agent_id=adapter.agent_id, suite=suite,
-                            rubric=rubric, runs=runs, visibility=adapter.visibility)
+                            rubric=rubric, runs=runs, visibility=adapter.visibility,
+                            traces=traces)
 
 
 def generate_op(cfg: dict, reg: Registry, business_doc: str, suite_id: str,

@@ -61,11 +61,14 @@ def render_markdown(
             f"(task success rate {_pct(sc.task_success_rate)}).{err_note} {cost_note}")
 
     lines = [
-        f"# Agent Evaluation Scorecard — `{sc.agent_id}`",
+        f"# Agent Verification Report — `{sc.agent_id}`",
         "",
         f"Suite `{sc.suite_id}` v{sc.suite_version} · rubric `{sc.rubric_id}` "
         f"v{sc.rubric_version} · generated {sc.created_at:%Y-%m-%d %H:%M} UTC",
         "",
+    ]
+    lines += _verification_block(sc)
+    lines += [
         "## Executive summary",
         "",
         summary,
@@ -153,3 +156,78 @@ def render_markdown(
         )
 
     return "\n".join(lines) + "\n"
+
+
+def _verification_block(sc) -> list[str]:
+    """The headline (SPEC-13 Step 64): what was never exercised, which properties
+    held, and only then the pass rate — demoted to one line.
+
+    A pass rate reported without a coverage model is an unscoped claim and is
+    labelled as such (Hard Rule 56)."""
+    cov = getattr(sc, "coverage", None) or {}
+    asrt = cov.get("assertions") or {}
+    out: list[str] = ["## Verification", ""]
+
+    # --- 1. coverage: what was never exercised --------------------------------
+    if cov.get("model_ref"):
+        closure = cov.get("trace_closure", 0.0)
+        target = cov.get("closure_target", 0.95)
+        state = "CLOSED" if cov.get("closed") else "NOT CLOSED"
+        out.append(f"**Coverage closure {closure:.0%}** of target {target:.0%} — "
+                   f"{state}.")
+        if cov.get("baseline"):
+            out.append("")
+            out.append(f"> {cov.get('limits', '')}")
+        out.append("")
+        out.append("| Coverpoint | Closure | Never exercised |")
+        out.append("|---|---|---|")
+        for cp_id, cp in (cov.get("per_coverpoint") or {}).items():
+            unhit = ", ".join(f"`{u}`" for u in cp.get("unhit", [])) or "—"
+            out.append(f"| {cp_id} | {cp.get('closure', 0):.0%} | {unhit} |")
+        drift = cov.get("other_drift") or {}
+        if drift:
+            out.append("")
+            out.append("Unmodelled situations landed in `other` for: "
+                       + ", ".join(f"{k} ({v:.0%} of runs)" for k, v in drift.items())
+                       + " — the coverage model is missing a dimension.")
+    else:
+        out.append("**No coverage model was applied to this run.** Nothing here "
+                   "states what the suite never exercised.")
+    out.append("")
+
+    # --- 2. assertions --------------------------------------------------------
+    if asrt:
+        verdict = asrt.get("verdict", "PASS")
+        out.append(f"**Assertions: {verdict}** — {asrt.get('violations', 0)} "
+                   f"violation(s) of {asrt.get('total', 0)} properties; "
+                   f"{asrt.get('unexercised', 0)} never exercised "
+                   f"(unexercised is *not* evidence of correctness).")
+        for v in (asrt.get("violated_properties") or [])[:6]:
+            where = f" ({v['traces']})" if v.get("traces") else ""
+            out.append(f"- ❌ `{v.get('assertion_id', '')}`{where} — "
+                       f"{v.get('detail', '')}")
+        unex = asrt.get("unexercised_properties") or []
+        if unex:
+            out.append("- Unexercised: " + ", ".join(f"`{u}`" for u in unex[:8]))
+    else:
+        out.append("**Assertions: not run** on this scorecard.")
+    out.append("")
+
+    # --- 3. the pass rate, demoted -------------------------------------------
+    if sc.n_scored == 0:
+        # Nothing was scored. Reporting 0% here would read as "the agent failed
+        # everything" when in fact this is a scoring-configuration failure — the
+        # same invariant the Executive summary protects.
+        out.append("Pass rate (one line among several): **not available** — no "
+                   "case could be scored (a scoring-configuration failure, not an "
+                   "agent failure).")
+    else:
+        scoped = bool(cov.get("model_ref")) and not cov.get("baseline")
+        label = (f"{_pct(sc.task_success_rate)}" if scoped
+                 else f"{_pct(sc.task_success_rate)} — "
+                      + ("scoped to a BASELINE coverage model only"
+                         if cov.get("baseline")
+                         else "**unscoped** (no coverage model)"))
+        out.append(f"Pass rate (one line among several): {label}")
+    out.append("")
+    return out

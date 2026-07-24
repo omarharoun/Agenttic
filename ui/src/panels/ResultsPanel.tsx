@@ -36,9 +36,10 @@ export function ResultsPanel({ results }: { results: any }) {
               judge calls were made (<b>$0</b>). Re-run with refresh to recompute.
             </div>
           )}
+          <VerificationStrip sc={sc} />
           <div className="score-strip">
             <div className="stat">
-              <span className="lab">Task success</span>
+              <span className="lab" title={SCOPE_NOTE(sc)}>Task success{SCOPE_TAG(sc)}</span>
               {scored.length === 0 ? (
                 <span className="val sm err" title="No cases could be scored — see errored cases">
                   Not scored
@@ -108,6 +109,7 @@ export function ResultsPanel({ results }: { results: any }) {
               </div>
             </div>
           )}
+          <NeverExercised sc={sc} />
         </div>
         );
       })}
@@ -167,6 +169,119 @@ export function ResultsPanel({ results }: { results: any }) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   SPEC-13: the run leads with VERIFICATION, not the pass rate (Hard Rule 56).
+   Coverage and assertions are deterministic and cost nothing, so every run
+   carries them; a pass rate reported without a fitted coverage model is an
+   unscoped claim and says so.
+   --------------------------------------------------------------------------- */
+
+function cov(sc: any) { return sc?.coverage || {}; }
+
+export function SCOPE_TAG(sc: any) {
+  const c = cov(sc);
+  if (!c.model_ref) return " (unscoped)";
+  if (c.baseline) return " (baseline scope)";
+  return "";
+}
+
+export function SCOPE_NOTE(sc: any) {
+  const c = cov(sc);
+  if (!c.model_ref)
+    return "No coverage model was applied, so this rate says nothing about what "
+      + "the suite never exercised. It is an unscoped claim.";
+  if (c.baseline) return c.limits || "Baseline coverage model only.";
+  return "Scoped to a fitted coverage model.";
+}
+
+function VerificationStrip({ sc }: { sc: any }) {
+  const c = cov(sc);
+  const a = c.assertions;
+  if (!c.model_ref && !a) return null;
+  const closure = Math.round((c.trace_closure ?? 0) * 100);
+  const target = Math.round((c.closure_target ?? 0.95) * 100);
+  return (
+    <div className="score-strip verif-strip">
+      <div className="stat">
+        <span className="lab" title={c.limits || ""}>Coverage closure</span>
+        <span className={`val ${c.closed ? "ok" : "err"}`}>
+          {c.model_ref ? `${closure}%` : "—"}
+          <span className="muted-sm"> / {target}%</span>
+        </span>
+      </div>
+      {a && (
+        <>
+          <div className="stat">
+            <span className="lab">Assertions</span>
+            <span className={`val sm ${a.violations ? "err" : "ok"}`}>
+              {a.verdict}
+              <span className="muted-sm"> {a.violations}/{a.total} broken</span>
+            </span>
+          </div>
+          <div className="stat">
+            <span className="lab"
+                  title="Properties whose antecedent never occurred. Not evidence of correctness.">
+              Never exercised
+            </span>
+            <span className="val sm wait">{a.unexercised}<span className="muted-sm"> of {a.total}</span></span>
+          </div>
+        </>
+      )}
+      <div className="spacer" />
+    </div>
+  );
+}
+
+function NeverExercised({ sc }: { sc: any }) {
+  const c = cov(sc);
+  const per = c.per_coverpoint || {};
+  const a = c.assertions;
+  const rows = Object.entries(per).filter(([, v]: any) => (v.unhit || []).length);
+  const brokenProps = (a?.violated_properties || []) as any[];
+  if (!rows.length && !brokenProps.length) return null;
+  return (
+    <div className="never-exercised">
+      {brokenProps.length > 0 && (
+        <div className="ne-broken">
+          <b>Properties broken</b> — a violation is a failure regardless of score:
+          <ul>
+            {brokenProps.map((v) => (
+              <li key={v.assertion_id}>
+                <code>{v.assertion_id}</code> <span className="muted-sm">({v.traces})</span>
+                <div className="ne-detail">{v.detail}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {rows.length > 0 && (
+        <>
+          <div className="ne-head">
+            What this run never exercised
+            {c.baseline && <span className="muted-sm"> · baseline scope</span>}
+          </div>
+          <table className="ne-table">
+            <tbody>
+              {rows.map(([id, v]: any) => (
+                <tr key={id}>
+                  <td className="ne-cp">{id}</td>
+                  <td className="ne-closure">{Math.round((v.closure ?? 0) * 100)}%</td>
+                  <td className="ne-bins">
+                    {(v.unhit || []).map((b: string) => (
+                      <code key={b} className="ne-bin">{b}</code>
+                    ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {c.limits && <div className="ne-limits">{c.limits}</div>}
+        </>
+      )}
     </div>
   );
 }
