@@ -363,6 +363,10 @@ export interface ServiceStatus {
 }
 
 export const api = {
+  /** The verification surface — what this platform tests, enumerated from the
+   *  live registries so the page can never overstate what is implemented. */
+  capabilities: () => afetch("/api/capabilities").then((r) => json<any>(r)),
+
   // --- auth / session ---
   me: () => afetch("/api/me").then((r) => json<Me>(r)),
   signup: (email: string, password: string) =>

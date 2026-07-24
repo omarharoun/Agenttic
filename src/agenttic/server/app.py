@@ -376,6 +376,8 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     # Aggregate-only; no auth so uptime is visible even during an incident.
     from agenttic.server.routes.status import public_router as status_public_router
     app.include_router(status_public_router, prefix="/api")
+    from agenttic.server.routes.capabilities import router as capabilities_router
+    app.include_router(capabilities_router, prefix="/api")
 
     # Public billing surfaces (UNAUTHENTICATED): the pricing catalog for the
     # landing/pricing page, and the Stripe + PayPal webhooks (signature-verified,
