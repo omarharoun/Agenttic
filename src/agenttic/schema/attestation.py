@@ -141,6 +141,10 @@ class EvidenceManifest(BaseModel):
     environment: Environment = Field(default_factory=Environment)
     #: hash of the Agent BOM (SPEC-12 54.3); the ABOM is referenced, not inlined.
     abom_sha256: str | None = None
+    #: hash of the SPEC-13 verification sign-off (coverage/assertions/formal/…).
+    #: A certificate whose headline is a pass rate says so; one backed by a
+    #: sign-off names it here.
+    signoff_sha256: str | None = None
     issued_at: datetime
     expires_at: datetime                          # Hard Rule 52: never unbounded
     issuer: str

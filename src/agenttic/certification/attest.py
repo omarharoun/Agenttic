@@ -125,6 +125,7 @@ def build_manifest(
     contamination: dict | None = None,
     environment: dict | None = None,
     abom_sha256: str | None = None,
+    signoff_sha256: str | None = None,
     user_source: str = "simulated",
     issuer: str = "local-self-attested",
     signing_tier: str = "local_self_attested",
@@ -153,6 +154,7 @@ def build_manifest(
         user_source=user_source,                    # type: ignore[arg-type]
         environment=environment or {},
         abom_sha256=abom_sha256,
+        signoff_sha256=signoff_sha256,
         issued_at=issued,
         expires_at=issued + timedelta(days=expires_in_days),
         issuer=issuer,

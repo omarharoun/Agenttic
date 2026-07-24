@@ -2,6 +2,31 @@
 
 ## Unreleased — Coverage-driven verification (SPEC-13)
 
+### M44 — Sign-off + vPlan (Step 64)
+
+What replaces the pass rate. The deliverable stops being *"your agent scored 86%"*
+and becomes what a chip gets before tape-out.
+
+#### Added
+- **`VerificationSignoff`** (`schema/signoff.py`) — six legs plus provenance:
+  coverage, assertions, formal, convergence, regression pass^k, envelope, and the
+  calibration state of every judge and classifier used. **Every leg can say
+  "not run"** rather than quietly reading as success, and the sign-off verdict is
+  deny-by-default: a leg that did not run cannot contribute a pass.
+- **`verification/vplan.py`** — traceability: requirement → coverpoint(s) →
+  assertion(s) → criteria → results. **Requirements with nothing mapped to them
+  are flagged UNTESTED, loudly** — and "mapped but unexercised" is reported
+  separately, because the two have different fixes (write a test vs. run more
+  stimulus).
+- **`reporting/signoff_report.py`** — headline order **closure → assertions →
+  formal → convergence → regression → envelope**, with the pass rate demoted to
+  one line. A pass rate with no coverage model renders
+  `unscoped — no coverage model` (Hard Rule 56). The renderer reuses the formal
+  layer's honesty guard and refuses to emit an unqualified claim.
+- The SPEC-12 certificate now carries `signoff_sha256`, so a certificate backed by
+  a verification sign-off names it — and tampering with the sign-off breaks the
+  manifest hash.
+
 ### M43 — Formal verification of the authorization layer (Step 63)
 
 *For all inputs*, not *for 200 test cases* — over the one part of the system where
