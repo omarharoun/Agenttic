@@ -377,6 +377,20 @@ class CertProfileRow(SQLModel, table=True):
     payload: str
 
 
+class ScenarioSpaceRow(SQLModel, table=True):
+    """A pinned scenario-space version (SPEC-13 Step 60). Append-only: a generated
+    point is only reproducible against the exact space that produced it."""
+    __tablename__ = "scenario_spaces"
+    __table_args__ = (UniqueConstraint("tenant_id", "space_id", "version"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    space_id: str = Field(index=True)
+    version: int
+    fingerprint: str = ""
+    created_at: datetime
+    payload: str
+
+
 class CoverageModelRow(SQLModel, table=True):
     """A pinned coverage-model version (SPEC-13 Step 59). Append-only + versioned:
     bins are versioned artifacts, so widening one to hit the closure target is a
@@ -1315,6 +1329,47 @@ class Registry:
                 CertProfileRow.tenant_id == self.tenant
             ).order_by(CertProfileRow.profile_id, CertProfileRow.version)).all()
             return [{"profile_id": r.profile_id, "version": r.version} for r in rows]
+
+    # -- scenario spaces (versioned, append-only) ------------------------------
+
+    def save_scenario_space(self, space) -> None:
+        import json as _json
+        with Session(self.engine) as s:
+            exists = s.exec(select(ScenarioSpaceRow).where(
+                ScenarioSpaceRow.tenant_id == self.tenant,
+                ScenarioSpaceRow.space_id == space.space_id,
+                ScenarioSpaceRow.version == space.version)).first()
+            if exists:
+                raise DuplicateVersionError(
+                    f"scenario space {space.space_id} v{space.version} already stored")
+            s.add(ScenarioSpaceRow(
+                tenant_id=self.tenant, space_id=space.space_id,
+                version=space.version, fingerprint=space.fingerprint(),
+                created_at=_now(), payload=_json.dumps(space.to_dict())))
+            s.commit()
+
+    def get_scenario_space(self, space_id: str, version: int | None = None):
+        import json as _json
+
+        from agenttic.stimulus.space import ScenarioSpace
+        with Session(self.engine) as s:
+            q = select(ScenarioSpaceRow).where(
+                ScenarioSpaceRow.tenant_id == self.tenant,
+                ScenarioSpaceRow.space_id == space_id)
+            q = q.where(ScenarioSpaceRow.version == version) if version is not None \
+                else q.order_by(ScenarioSpaceRow.version.desc())
+            row = s.exec(q).first()
+            if not row:
+                raise NotFoundError(f"scenario space {space_id} v{version}")
+            return ScenarioSpace.from_dict(_json.loads(row.payload))
+
+    def list_scenario_spaces(self) -> list[dict]:
+        with Session(self.engine) as s:
+            rows = s.exec(select(ScenarioSpaceRow).where(
+                ScenarioSpaceRow.tenant_id == self.tenant
+            ).order_by(ScenarioSpaceRow.space_id, ScenarioSpaceRow.version)).all()
+            return [{"space_id": r.space_id, "version": r.version,
+                     "fingerprint": r.fingerprint} for r in rows]
 
     # -- coverage models (versioned, append-only) -----------------------------
 

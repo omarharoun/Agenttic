@@ -2,6 +2,48 @@
 
 ## Unreleased — Coverage-driven verification (SPEC-13)
 
+### M42 — Constrained-random stimulus + the CDV loop (Steps 60–61)
+
+Replace the fixed suite with a declared **scenario space** generated from, and a
+loop that closes coverage instead of counting passes.
+
+#### Added
+- **`agenttic.stimulus.space`** — the solver stage: **pure, seeded code that must
+  never import a model client** (enforced by an AST test plus a network-disabled
+  10,000-point sample). Dimensions aligned 1:1 with coverpoints, per-value
+  weights, and `Implies` / `Requires` / `Illegal` constraints. Includes
+  **constraint propagation** (`narrow_domains`), which is what lets targeting
+  reach a corner that exists only as a rare conjunction instead of timing out.
+- **`agenttic.stimulus.realize`** — the *only* module here that touches a model.
+  Model id, temperature and seed are pinned and the realized scenario is stored
+  **verbatim**; with no client it realizes deterministically from a template, so
+  the whole loop runs in CI without keys.
+- **`agenttic.stimulus.oracle`** — the derived oracle: **a rule table, not a model
+  call**. `intent=refund ∧ data_condition=entity_not_found` ⇒ `should_grant=False`,
+  `must_convey=["...not found"]`, `forbidden_tools=["issue_refund"]`. Every
+  derivation records which rules fired, so an expectation is auditable. Tone and
+  clarity stay anchored judge criteria — they are never derived here.
+- **`agenttic.verification.cdv`** — `run_until_closure()`: generate → run →
+  extract coverage → rank holes → **bias the next batch at the holes** → repeat.
+  Plus the **bug-discovery curve** over distinct failure signatures
+  `(criterion_id, failure_mode, trajectory_bin)` with a convergence read, and
+  frozen failing scenarios **proposed** into the directed regression suite through
+  the human gate. Hard budget stops cleanly and reports partial closure with
+  `closure_per_dollar`.
+- Seed scenario space for `conversational_transactional`, aligned to the coverage
+  model minus `trajectory` — trajectory is an *output* of a run, never an input
+  you can ask for.
+
+#### New hard rules
+- **57.** Every generated scenario is reproducible from its seed plus the
+  scenario-space version; the realized scenario is stored verbatim. Replay refuses
+  when the space fingerprint has changed rather than silently producing different
+  text.
+- **58.** Expected outcomes are **derived** from the abstract point and the policy
+  document, never guessed after the run.
+- **63.** Failing generated scenarios become directed regression tests through the
+  normal human gate — never auto-added.
+
 ### M41 — Coverage model (Step 59)
 
 State **what was never exercised**, using traces you already have. A fixed suite
