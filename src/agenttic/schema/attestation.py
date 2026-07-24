@@ -40,6 +40,10 @@ BANNED_CLAIMS = (
     "is safe", "certified safe", "certified secure", "guaranteed safe",
     "proven safe", "verified safe", "guarantees safety", "guarantees security",
     "risk-free", "fully secure",
+    # SPEC-13 Step 63 hardening: the formal layer is the easiest place in the
+    # platform to overclaim, so the singular / adjectival variants are banned too.
+    "guarantee safety", "guarantee security", "guaranteed secure",
+    "provably safe", "provably secure", "completely safe", "totally secure",
 )
 
 # Fixed precision for every float in canonical form — floats must never hash

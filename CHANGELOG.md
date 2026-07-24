@@ -2,6 +2,37 @@
 
 ## Unreleased — Coverage-driven verification (SPEC-13)
 
+### M43 — Formal verification of the authorization layer (Step 63)
+
+*For all inputs*, not *for 200 test cases* — over the one part of the system where
+that claim is honest.
+
+#### Added
+- **`agenttic.verification.formal`** — the tool-authorization guard layer as a
+  finite state machine `(permission, confirmation, entity, tenant, availability)`,
+  extracted from the compiled `EnforcementPolicy` (SPEC-2): `deny` removes an
+  edge, `require_approval` makes it need explicit confirmation,
+  `terminate_session`/`revoke_access` move to the revoked state.
+- A small **property language** — no tool without confirmation, no write from an
+  unauthenticated state, no write without a prior read, no cross-tenant exposure,
+  no tool after revocation. Each property carries its **scope and limit
+  sentences**, so there is no API that renders the claim without them.
+- **Four-valued discharge** — `proven` / `counterexample(path)` / `unbounded` /
+  `not_attempted`. Exhaustive reachability over a finite guard layer is a
+  decision procedure and yields `proven`; a **bounded** z3 check can refute but
+  **never** returns `proven`; an incomplete search, an unbounded domain, or a
+  missing solver each report themselves honestly. Silence is never read as safety.
+- `render_report` is the only renderer and **refuses to emit an artifact** that
+  makes an unqualified claim or mentions a proof without its limit.
+- `z3-solver` added as the optional `agenttic[formal]` extra — the base install
+  stays lean, and without it the z3 method reports `not_attempted`.
+
+#### New hard rules
+- **62.** Formal claims state their scope — the guard layer, not the model — in
+  the same sentence as the claim. No artifact says an agent is "proven safe".
+  (The shared banned-claims list was hardened with the singular/adjectival
+  variants it was missing.)
+
 ### M42 — Constrained-random stimulus + the CDV loop (Steps 60–61)
 
 Replace the fixed suite with a declared **scenario space** generated from, and a
