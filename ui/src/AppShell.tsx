@@ -15,6 +15,7 @@ import { EditorPage } from "./pages/EditorPage";
 import { ExecutionsPage } from "./pages/ExecutionsPage";
 import { IssuesPage } from "./pages/IssuesPage";
 import { ResultsHistoryPage } from "./pages/ResultsHistoryPage";
+import { CapabilitiesPage } from "./pages/CapabilitiesPage";
 import { HardeningPage } from "./pages/HardeningPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { OptimizePage } from "./pages/OptimizePage";
@@ -91,6 +92,7 @@ const NAV_GROUPS: { title: string; items: { to: string; icon: string; label: str
   ]},
   { title: "Issues", items: [
     { to: "/app/issues", icon: "🔎", label: "Issues report" },
+    { to: "/app/capabilities", icon: "◎", label: "What we test" },
   ]},
   { title: "Fix", items: [
     { to: "/app/training-camp", icon: "🎯", label: "Training Camp" },
@@ -236,6 +238,7 @@ export function AppShell() {
             <Route path="build" element={<EditorPage />} />
             <Route path="executions" element={<ExecutionsPage />} />
             <Route path="results" element={<ResultsHistoryPage />} />
+            <Route path="capabilities" element={<CapabilitiesPage />} />
             <Route path="issues" element={<IssuesPage />} />
             <Route path="compare" element={<ComparePage />} />
             <Route path="leaderboard" element={<LeaderboardPage />} />
