@@ -86,14 +86,14 @@ tenant). The certificate pins:
 
 The canonical certificate payload is serialized deterministically (sorted keys,
 compact) and signed with **Ed25519** — an asymmetric signature. The issuer holds
-the **private** signing key (`ASCORE_CERT_SIGNING_KEY`, a PKCS#8 PEM or base64
+the **private** signing key (`AGENTTIC_CERT_SIGNING_KEY`, a PKCS#8 PEM or base64
 raw 32-byte seed; generate one with `python -m ascore.certification gen-key`).
 The matching **public** key is *published* and is all anyone needs to verify. The
 payload embeds `signature_alg: "ed25519"` and a `public_key_id` naming the key;
 the base64 `signature` is stored on the certificate.
 
-**Fail-closed in production.** If `ASCORE_CERT_SIGNING_KEY` is unset in
-production (`ASCORE_ENV=production`), issuance *refuses* rather than signing with a
+**Fail-closed in production.** If `AGENTTIC_CERT_SIGNING_KEY` is unset in
+production (`AGENTTIC_ENV=production`), issuance *refuses* rather than signing with a
 default — there is no hard-coded fallback secret. Outside production a
 deterministic, publicly-known dev key is used so local runs and tests can issue
 and verify; a dev certificate is deliberately forgeable and must never be trusted
@@ -121,11 +121,11 @@ signature — independent verification and the issuer's own `signature_verified`
 both report false, and the badge renders `unverified`.
 
 **Key rotation.** Additional trusted public keys can be published via
-`ASCORE_CERT_PUBLIC_KEYS` (or `certification.public_keys` in config) so
+`AGENTTIC_CERT_PUBLIC_KEYS` (or `certification.public_keys` in config) so
 certificates signed by a retired key still verify after the signing key rotates.
 
 > **Legacy note.** Certificates issued before the Ed25519 switch were HMAC-signed;
-> those are still readable (verified against `ASCORE_SECRET_KEY`, fail-closed if
+> those are still readable (verified against `AGENTTIC_SECRET_KEY`, fail-closed if
 > unset). All new certificates are Ed25519.
 
 **Revocation** (`DELETE /api/certifications/{id}`, owner tenant) is immediate.

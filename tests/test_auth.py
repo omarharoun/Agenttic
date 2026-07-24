@@ -125,7 +125,7 @@ class TestStartupFailClosed:
         check_startup({"auth": {"required": True, "token": "x"}})
 
     def test_env_token_takes_precedence(self, monkeypatch):
-        monkeypatch.setenv("ASCORE_API_TOKEN", "fromenv")
+        monkeypatch.setenv("AGENTTIC_API_TOKEN", "fromenv")
         assert configured_token({"auth": {"token": "fromcfg"}}) == "fromenv"
-        monkeypatch.delenv("ASCORE_API_TOKEN")
+        monkeypatch.delenv("AGENTTIC_API_TOKEN")
         assert configured_token({"auth": {"token": "fromcfg"}}) == "fromcfg"

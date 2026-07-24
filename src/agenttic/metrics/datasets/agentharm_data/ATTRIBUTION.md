@@ -36,8 +36,8 @@ To score the real public AgentHarm harmful split (fetched at runtime into the
 local registry; still never written into the repo):
 
 ```
-ascore standard ingest agentharm --full     # fetch the public harmful_behaviors_test_public split from HF
-ascore standard ingest agentharm            # ingest the vendored NON-OPERATIONAL placeholder sample
+agenttic standard ingest agentharm --full     # fetch the public harmful_behaviors_test_public split from HF
+agenttic standard ingest agentharm            # ingest the vendored NON-OPERATIONAL placeholder sample
 ```
 
 ## Honesty

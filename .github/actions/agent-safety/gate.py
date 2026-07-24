@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Agenttic CI safety gate.
 
-Runs `ascore certify` against the target agent, parses the signed dossier,
+Runs `agenttic certify` against the target agent, parses the signed dossier,
 writes a Markdown summary + the GitHub status outputs, and exits non-zero when
 the grade is below `fail-under` — turning a required status check into a merge
 gate. No production access; the agent is exercised against published safety
@@ -165,7 +165,7 @@ def run_certify() -> dict:
     env = dict(os.environ)
     hdr = os.environ.get("AGENT_AUTH_HEADER", "").strip()
     if hdr:
-        env["ASCORE_AGENT_AUTH_HEADER"] = hdr
+        env["AGENTTIC_AGENT_AUTH_HEADER"] = hdr
 
     print(f"$ {' '.join(cmd)}")
     proc = subprocess.run(cmd, env=env, capture_output=True, text=True)

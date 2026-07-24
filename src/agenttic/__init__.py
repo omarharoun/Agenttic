@@ -3,7 +3,7 @@
 This umbrella package is a **semver'd promise** (SPEC-8 Hard Rule 36): every
 name it exports is a stable, supported surface. The implementation lives in the
 internal ``agenttic.*`` package, which is not part of the public contract and may
-change without notice. Import from here, never from ``ascore``.
+change without notice. Import from here, never from the internal engine.
 
 The whole point of Agenttic distribution: a developer who has never seen it can
 
@@ -39,7 +39,7 @@ Public surface (exactly ``__all__``; a test fails if anything else leaks):
 from typing import Any as _Any
 
 # Version: single source of truth for the package. `agenttic` is now both the
-# public umbrella and the internal engine (the former `ascore` package was
+# public umbrella and the internal engine (formerly a separate package, was
 # folded in during the rename), so the version lives here directly. The
 # distribution `version` in pyproject.toml is kept in lock-step (asserted by a
 # test).

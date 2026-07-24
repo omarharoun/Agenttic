@@ -36,7 +36,7 @@ def setup_tracing(cfg: dict) -> bool:
     provider = TracerProvider(resource=Resource.create({"service.name": "agenttic"}))
     provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
     trace.set_tracer_provider(provider)
-    _TRACER = trace.get_tracer("ascore")
+    _TRACER = trace.get_tracer("agenttic")
     return True
 
 

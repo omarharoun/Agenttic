@@ -116,8 +116,8 @@ def test_private_key_never_lands_in_registry_logs_or_exports():
 
 def test_passport_signing_fails_closed_in_production(monkeypatch):
     # No configured key + production => refuse to start (mirror cert signing).
-    monkeypatch.delenv("ASCORE_PASSPORT_SIGNING_KEY", raising=False)
-    monkeypatch.setenv("ASCORE_ENV", "production")
+    monkeypatch.delenv("AGENTTIC_PASSPORT_SIGNING_KEY", raising=False)
+    monkeypatch.setenv("AGENTTIC_ENV", "production")
     with pytest.raises(RuntimeError, match="fail closed"):
         PassportKeyManager(CFG)
 
@@ -125,9 +125,9 @@ def test_passport_signing_fails_closed_in_production(monkeypatch):
 def test_passport_signing_ephemeral_in_dev_and_reports_degraded(monkeypatch):
     # No configured key outside production => ephemeral key, flagged so the
     # health probe surfaces DEGRADED rather than a silent operational.
-    monkeypatch.delenv("ASCORE_PASSPORT_SIGNING_KEY", raising=False)
-    monkeypatch.delenv("ASCORE_ENV", raising=False)
-    monkeypatch.delenv("ASCORE_ENVIRONMENT", raising=False)
+    monkeypatch.delenv("AGENTTIC_PASSPORT_SIGNING_KEY", raising=False)
+    monkeypatch.delenv("AGENTTIC_ENV", raising=False)
+    monkeypatch.delenv("AGENTTIC_ENVIRONMENT", raising=False)
     km = PassportKeyManager(CFG)
     assert km.is_ephemeral() is True
     assert km.jwks()["keys"]  # still publishes a JWKS
@@ -145,7 +145,7 @@ def test_passport_signing_ephemeral_in_dev_and_reports_degraded(monkeypatch):
 
 def test_passport_signing_configured_key_is_not_ephemeral(monkeypatch):
     seed = private_seed_b64(generate_key())
-    monkeypatch.setenv("ASCORE_PASSPORT_SIGNING_KEY", seed)
-    monkeypatch.setenv("ASCORE_ENV", "production")  # configured => prod is fine
+    monkeypatch.setenv("AGENTTIC_PASSPORT_SIGNING_KEY", seed)
+    monkeypatch.setenv("AGENTTIC_ENV", "production")  # configured => prod is fine
     km = PassportKeyManager(CFG)
     assert km.is_ephemeral() is False

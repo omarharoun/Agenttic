@@ -1,5 +1,5 @@
 """Run the CLI with ``python -m agenttic`` (equivalent to the ``agenttic``
-console script; ``ascore`` remains as a deprecated alias)."""
+console script)."""
 from agenttic.cli import app
 
 if __name__ == "__main__":

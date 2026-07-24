@@ -166,7 +166,7 @@ def test_execution_harness_caveat_surfaced():
 # -- official resolve-rate interface is execution-gated --------------------
 
 def test_resolve_rate_requires_execution_harness(monkeypatch):
-    monkeypatch.delenv("ASCORE_SWEBENCH_HARNESS", raising=False)
+    monkeypatch.delenv("AGENTTIC_SWEBENCH_HARNESS", raising=False)
     assert harness_available() is False          # no infra configured here
     inst = ResolveInstance(instance_id="x__y-1", repo="x/y", base_commit="abc",
                            candidate_patch=_PATCH_ONE,
@@ -198,13 +198,13 @@ def test_harness_available_detects_configuration(monkeypatch):
     # Env-gated, not hard-coded: a docker harness needs docker + the swebench
     # package (absent here, so still False); a custom dotted path counts as
     # "configured".
-    monkeypatch.setenv("ASCORE_SWEBENCH_HARNESS", "docker")
+    monkeypatch.setenv("AGENTTIC_SWEBENCH_HARNESS", "docker")
     from agenttic.metrics import swebench_resolve as swe
     assert swe.harness_available() == (swe._docker_present()
                                        and swe._swebench_present())
-    monkeypatch.setenv("ASCORE_SWEBENCH_HARNESS", "mypkg.mod:make")
+    monkeypatch.setenv("AGENTTIC_SWEBENCH_HARNESS", "mypkg.mod:make")
     assert swe.harness_available() is True
-    monkeypatch.setenv("ASCORE_SWEBENCH_HARNESS", "off")
+    monkeypatch.setenv("AGENTTIC_SWEBENCH_HARNESS", "off")
     assert swe.harness_available() is False
 
 

@@ -57,14 +57,14 @@ class TestBackends:
         assert b._url == "redis://x:6379/0"
 
     def test_factory_redis_url_from_env(self, monkeypatch):
-        # redis_url commonly comes from ASCORE_REDIS_URL, not the config file
-        monkeypatch.setenv("ASCORE_REDIS_URL", "redis://envhost:6379/0")
+        # redis_url commonly comes from AGENTTIC_REDIS_URL, not the config file
+        monkeypatch.setenv("AGENTTIC_REDIS_URL", "redis://envhost:6379/0")
         b = make_rate_limiter({"security": {"rate_limit_backend": "redis",
                                             "redis_url": ""}})
         assert isinstance(b, RedisRateLimiter) and b._url == "redis://envhost:6379/0"
 
     def test_factory_redis_without_any_url_falls_back(self, monkeypatch):
-        monkeypatch.delenv("ASCORE_REDIS_URL", raising=False)
+        monkeypatch.delenv("AGENTTIC_REDIS_URL", raising=False)
         b = make_rate_limiter({"security": {"rate_limit_backend": "redis"}})
         assert isinstance(b, InMemoryRateLimiter)  # no url => safe fallback, no crash
 

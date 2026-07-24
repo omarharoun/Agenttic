@@ -7,7 +7,7 @@
 #                  -f deploy/airgap/docker-compose.airgap.yaml up
 #
 # The `agenttic-airgap` network is `internal: true` — Docker gives it no gateway,
-# so containers on it physically cannot reach the internet. ASCORE_AIRGAP=true
+# so containers on it physically cannot reach the internet. AGENTTIC_AIRGAP=true
 # makes the app run its egress self-check and refuse to boot if any enabled
 # capability would require outbound network, naming the offender (Hard Rule 34).
 #
@@ -17,14 +17,14 @@
 services:
   server:
     environment:
-      ASCORE_AIRGAP: "true"
+      AGENTTIC_AIRGAP: "true"
     networks:
       - agenttic-airgap
     # No published egress; only the host port mapping for local access remains.
 
   worker:
     environment:
-      ASCORE_AIRGAP: "true"
+      AGENTTIC_AIRGAP: "true"
     networks:
       - agenttic-airgap
 

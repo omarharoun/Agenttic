@@ -14,9 +14,9 @@ import { api } from "../api";
    collapsible (minimize), and it congratulates + hides itself once complete.
    ========================================================================== */
 
-const DISMISS_KEY = "ascore_onboarding_dismissed";
-const DONE_KEY = "ascore_onboarding_done";        // JSON string[] of step ids
-const COLLAPSE_KEY = "ascore_onboarding_collapsed";
+const DISMISS_KEY = "agenttic_onboarding_dismissed";
+const DONE_KEY = "agenttic_onboarding_done";        // JSON string[] of step ids
+const COLLAPSE_KEY = "agenttic_onboarding_collapsed";
 
 interface Step {
   id: string;

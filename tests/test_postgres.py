@@ -1,6 +1,6 @@
 """Postgres backend + row-level tenant isolation.
 
-Skipped unless ASCORE_TEST_PG points at a Postgres instance (CI sets it). The
+Skipped unless AGENTTIC_TEST_PG points at a Postgres instance (CI sets it). The
 same Registry code runs on SQLite (default) and Postgres; here we prove that on
 a *shared* database, tenants are isolated by tenant_id.
 """
@@ -10,9 +10,9 @@ import uuid
 
 import pytest
 
-PG = os.environ.get("ASCORE_TEST_PG")
+PG = os.environ.get("AGENTTIC_TEST_PG")
 pytestmark = pytest.mark.skipif(
-    not PG, reason="set ASCORE_TEST_PG to a Postgres URL to run")
+    not PG, reason="set AGENTTIC_TEST_PG to a Postgres URL to run")
 
 
 def test_migrations_and_row_level_isolation():

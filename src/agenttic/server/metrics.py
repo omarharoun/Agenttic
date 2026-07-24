@@ -14,15 +14,15 @@ _lock = threading.Lock()
 _counters: dict[tuple[str, tuple], float] = {}
 _summaries: dict[tuple[str, tuple], tuple[float, int]] = {}  # (sum, count)
 _HELP = {
-    "ascore_http_requests_total": "HTTP requests handled, by method and status.",
-    "ascore_http_request_duration_seconds": "HTTP request duration in seconds.",
-    "ascore_runs_total": "Completed scoring runs (scorecards), by outcome.",
-    "ascore_llm_cost_usd_total": "Total LLM spend recorded (execution + scoring).",
-    "ascore_llm_tokens_total": "LLM tokens used, by component (agent/judge) and kind.",
-    "ascore_judge_injection_attempts_total":
+    "agenttic_http_requests_total": "HTTP requests handled, by method and status.",
+    "agenttic_http_request_duration_seconds": "HTTP request duration in seconds.",
+    "agenttic_runs_total": "Completed scoring runs (scorecards), by outcome.",
+    "agenttic_llm_cost_usd_total": "Total LLM spend recorded (execution + scoring).",
+    "agenttic_llm_tokens_total": "LLM tokens used, by component (agent/judge) and kind.",
+    "agenttic_judge_injection_attempts_total":
         "Agent outputs that tried to inject a judge verdict (e.g. a literal "
         "{\"score\":…}); counted and NOT trusted.",
-    "ascore_enforcement_fail_closed_total":
+    "agenttic_enforcement_fail_closed_total":
         "Enforcement decisions that FAILED CLOSED (denied) because handling a "
         "confirmed block raised, by origin (canary/stage_gate). Non-zero means "
         "the block path is erroring — the call was still denied, not allowed.",
@@ -49,35 +49,35 @@ def observe(name: str, value: float, labels: dict | None = None) -> None:
 # -- domain helpers ---------------------------------------------------------
 
 def record_http(method: str, status: int, duration_s: float) -> None:
-    inc_counter("ascore_http_requests_total",
+    inc_counter("agenttic_http_requests_total",
                 {"method": method, "status": str(status)})
-    observe("ascore_http_request_duration_seconds", duration_s,
+    observe("agenttic_http_request_duration_seconds", duration_s,
             {"method": method})
 
 
 def record_run(status: str) -> None:
-    inc_counter("ascore_runs_total", {"status": status})
+    inc_counter("agenttic_runs_total", {"status": status})
 
 
 def record_cost(usd: float) -> None:
     if usd:
-        inc_counter("ascore_llm_cost_usd_total", None, usd)
+        inc_counter("agenttic_llm_cost_usd_total", None, usd)
 
 
 def record_tokens(component: str, tokens_in: int | None,
                   tokens_out: int | None) -> None:
     if tokens_in:
-        inc_counter("ascore_llm_tokens_total",
+        inc_counter("agenttic_llm_tokens_total",
                     {"component": component, "kind": "input"}, tokens_in)
     if tokens_out:
-        inc_counter("ascore_llm_tokens_total",
+        inc_counter("agenttic_llm_tokens_total",
                     {"component": component, "kind": "output"}, tokens_out)
 
 
 def record_judge_injection() -> None:
     """One agent output attempted to inject a judge verdict — surfaced as a
     telemetry signal (it is evidence of gaming, never trusted as a score)."""
-    inc_counter("ascore_judge_injection_attempts_total")
+    inc_counter("agenttic_judge_injection_attempts_total")
 
 
 def record_enforcement_fail_closed(origin: str) -> None:
@@ -85,7 +85,7 @@ def record_enforcement_fail_closed(origin: str) -> None:
     error while opening its incident or logging its decision, and the gateway
     FAILED CLOSED (denied) instead of falling through to allow. Surfaced as a
     telemetry signal so an erroring block path is visible, never silent."""
-    inc_counter("ascore_enforcement_fail_closed_total", {"origin": origin})
+    inc_counter("agenttic_enforcement_fail_closed_total", {"origin": origin})
 
 
 def reset() -> None:  # tests

@@ -1,6 +1,6 @@
 """Pluggable event transport: in-memory delivery + the make_transport factory.
 The Redis path is selected by config (exercised against a live Redis in CI via
-ASCORE_TEST_REDIS); here we cover selection + the in-memory transport."""
+AGENTTIC_TEST_REDIS); here we cover selection + the in-memory transport."""
 
 import asyncio
 import os
@@ -60,18 +60,18 @@ class TestFactory:
         assert isinstance(asyncio.run(main()), RedisTransport)
 
     def test_redis_without_url_falls_back_to_memory(self, monkeypatch):
-        monkeypatch.delenv("ASCORE_REDIS_URL", raising=False)
+        monkeypatch.delenv("AGENTTIC_REDIS_URL", raising=False)
         async def main():
             return make_transport(
                 {"events": {"backend": "redis"}}, asyncio.get_running_loop())
         assert isinstance(asyncio.run(main()), InMemoryTransport)
 
 
-@pytest.mark.skipif(not os.environ.get("ASCORE_TEST_REDIS"),
-                    reason="set ASCORE_TEST_REDIS to run against live Redis")
+@pytest.mark.skipif(not os.environ.get("AGENTTIC_TEST_REDIS"),
+                    reason="set AGENTTIC_TEST_REDIS to run against live Redis")
 def test_redis_roundtrip_live():
     async def main():
-        t = RedisTransport(os.environ["ASCORE_TEST_REDIS"])
+        t = RedisTransport(os.environ["AGENTTIC_TEST_REDIS"])
         sub = await t.open_subscription("live1")
         got = []
 

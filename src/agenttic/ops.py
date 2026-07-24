@@ -374,7 +374,7 @@ def generate_op(cfg: dict, reg: Registry, business_doc: str, suite_id: str,
                               cases_per_task=cases_per_task)
 
 
-def deploy_op(spec: dict, env_name: str = "ascore-workflows", client=None) -> dict:
+def deploy_op(spec: dict, env_name: str = "agenttic-workflows", client=None) -> dict:
     """Deploy/update a Managed Agents workflow agent. Create-once semantics:
     matching agent name updates (new immutable version); environment reused
     by name."""

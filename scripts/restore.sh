@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Restore an Agenttic backup produced by backup.sh. Stop the app first.
 #
-#   Postgres:  ASCORE_DB=... ./scripts/restore.sh ascore-20260615-120000.dump
+#   Postgres:  AGENTTIC_DB=... ./scripts/restore.sh ascore-20260615-120000.dump
 #   SQLite:    ./scripts/restore.sh ascore-20260615-120000.db [/path/to/ascore.db]
 #
 # On next start the Registry re-applies any pending migrations automatically.
@@ -9,8 +9,8 @@ set -euo pipefail
 
 SRC="${1:?usage: restore.sh <backup-file> [target]}"
 
-if [[ -n "${ASCORE_DB:-}" ]]; then
-  PG_URL="${ASCORE_DB#*+psycopg://}"; PG_URL="postgresql://$PG_URL"
+if [[ -n "${AGENTTIC_DB:-}" ]]; then
+  PG_URL="${AGENTTIC_DB#*+psycopg://}"; PG_URL="postgresql://$PG_URL"
   echo "Restoring Postgres from $SRC (drops & recreates objects)"
   pg_restore --clean --if-exists --dbname="$PG_URL" "$SRC"
 else

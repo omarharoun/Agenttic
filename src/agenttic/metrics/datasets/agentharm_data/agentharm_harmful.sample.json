@@ -1,5 +1,5 @@
 {
-  "_comment": "NON-OPERATIONAL PLACEHOLDER SAMPLE. This file intentionally contains NO genuine harmful AgentHarm instructions. Each record mirrors the real AgentHarm record schema (id, id_original, name, category, prompt, target_functions, grading_function) and preserves a real harm category, but the `prompt` text is redacted/sanitized and the `target_functions` are generic tool names. It exists so the AgentHarmAdapter and the harmful-action refusal-rate metric can be exercised without vendoring harmful content. To score real AgentHarm tasks, run: `ascore standard ingest agentharm --full` (fetches the public set from HuggingFace). See ATTRIBUTION.md.",
+  "_comment": "NON-OPERATIONAL PLACEHOLDER SAMPLE. This file intentionally contains NO genuine harmful AgentHarm instructions. Each record mirrors the real AgentHarm record schema (id, id_original, name, category, prompt, target_functions, grading_function) and preserves a real harm category, but the `prompt` text is redacted/sanitized and the `target_functions` are generic tool names. It exists so the AgentHarmAdapter and the harmful-action refusal-rate metric can be exercised without vendoring harmful content. To score real AgentHarm tasks, run: `agenttic standard ingest agentharm --full` (fetches the public set from HuggingFace). See ATTRIBUTION.md.",
   "behaviors": [
     {
       "id": "placeholder-fraud-1",
@@ -8,7 +8,7 @@
       "hint_included": false,
       "name": "Placeholder harmful task (Fraud)",
       "category": "Fraud",
-      "prompt": "[REDACTED PLACEHOLDER — a Fraud-category AgentHarm task. The real harmful instruction is intentionally NOT vendored. Run `ascore standard ingest agentharm --full` to fetch the public dataset.]",
+      "prompt": "[REDACTED PLACEHOLDER — a Fraud-category AgentHarm task. The real harmful instruction is intentionally NOT vendored. Run `agenttic standard ingest agentharm --full` to fetch the public dataset.]",
       "target_functions": ["send_email", "transfer_money"],
       "grading_function": "placeholder_grade"
     },
@@ -19,7 +19,7 @@
       "hint_included": false,
       "name": "Placeholder harmful task (Cybercrime)",
       "category": "Cybercrime",
-      "prompt": "[REDACTED PLACEHOLDER — a Cybercrime-category AgentHarm task. The real harmful instruction is intentionally NOT vendored. Run `ascore standard ingest agentharm --full` to fetch the public dataset.]",
+      "prompt": "[REDACTED PLACEHOLDER — a Cybercrime-category AgentHarm task. The real harmful instruction is intentionally NOT vendored. Run `agenttic standard ingest agentharm --full` to fetch the public dataset.]",
       "target_functions": ["execute_shell_command", "download_file"],
       "grading_function": "placeholder_grade"
     },
@@ -30,7 +30,7 @@
       "hint_included": false,
       "name": "Placeholder harmful task (Disinformation)",
       "category": "Disinformation",
-      "prompt": "[REDACTED PLACEHOLDER — a Disinformation-category AgentHarm task. The real harmful instruction is intentionally NOT vendored. Run `ascore standard ingest agentharm --full` to fetch the public dataset.]",
+      "prompt": "[REDACTED PLACEHOLDER — a Disinformation-category AgentHarm task. The real harmful instruction is intentionally NOT vendored. Run `agenttic standard ingest agentharm --full` to fetch the public dataset.]",
       "target_functions": ["post_to_social_media", "create_account"],
       "grading_function": "placeholder_grade"
     },
@@ -41,7 +41,7 @@
       "hint_included": false,
       "name": "Placeholder harmful task (Harassment)",
       "category": "Harassment",
-      "prompt": "[REDACTED PLACEHOLDER — a Harassment-category AgentHarm task. The real harmful instruction is intentionally NOT vendored. Run `ascore standard ingest agentharm --full` to fetch the public dataset.]",
+      "prompt": "[REDACTED PLACEHOLDER — a Harassment-category AgentHarm task. The real harmful instruction is intentionally NOT vendored. Run `agenttic standard ingest agentharm --full` to fetch the public dataset.]",
       "target_functions": ["send_message"],
       "grading_function": "placeholder_grade"
     },
@@ -52,7 +52,7 @@
       "hint_included": false,
       "name": "Placeholder harmful task (Drugs)",
       "category": "Drugs",
-      "prompt": "[REDACTED PLACEHOLDER — a Drugs-category AgentHarm task. The real harmful instruction is intentionally NOT vendored. Run `ascore standard ingest agentharm --full` to fetch the public dataset.]",
+      "prompt": "[REDACTED PLACEHOLDER — a Drugs-category AgentHarm task. The real harmful instruction is intentionally NOT vendored. Run `agenttic standard ingest agentharm --full` to fetch the public dataset.]",
       "target_functions": ["query_dark_web", "place_order"],
       "grading_function": "placeholder_grade"
     },
@@ -63,7 +63,7 @@
       "hint_included": false,
       "name": "Placeholder harmful task (Copyright)",
       "category": "Copyright",
-      "prompt": "[REDACTED PLACEHOLDER — a Copyright-category AgentHarm task. The real harmful instruction is intentionally NOT vendored. Run `ascore standard ingest agentharm --full` to fetch the public dataset.]",
+      "prompt": "[REDACTED PLACEHOLDER — a Copyright-category AgentHarm task. The real harmful instruction is intentionally NOT vendored. Run `agenttic standard ingest agentharm --full` to fetch the public dataset.]",
       "target_functions": ["download_file", "upload_file"],
       "grading_function": "placeholder_grade"
     }

@@ -35,11 +35,10 @@ from agenttic.server.observability import ObservabilityMiddleware, configure_log
 from agenttic.server.ratelimit import RateLimitMiddleware
 from agenttic.server.store import UIStore
 
-# UI_DIST: env override (ASCORE_UI_DIST) for installed/container layouts where
+# UI_DIST: env override (AGENTTIC_UI_DIST) for installed/container layouts where
 # the package lives in site-packages; falls back to the repo-relative path for
 # local/dev runs.
-from agenttic._env import get_env as _get_env
-UI_DIST = Path(_get_env("ASCORE_UI_DIST")
+UI_DIST = Path(os.environ.get("AGENTTIC_UI_DIST")
                or Path(__file__).resolve().parents[3] / "ui" / "dist")
 
 _TENANT_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -138,7 +137,7 @@ class Workspace:
 class Workspaces:
     """Lazily builds and caches a Workspace per tenant.
 
-    Backend is chosen once: if a Postgres URL is configured (``ASCORE_DB`` env
+    Backend is chosen once: if a Postgres URL is configured (``AGENTTIC_DB`` env
     or ``database.url``), all tenants share one engine and isolate by
     ``tenant_id`` (row-level). Otherwise SQLite is used DB-per-tenant — the
     ``default`` tenant uses ``paths.registry_db`` (or an injected registry, for
@@ -152,7 +151,7 @@ class Workspaces:
         self._default_registry = default_registry
         self.loop = loop  # captured at startup so per-tenant EventBus works
         self._ws: dict[str, Workspace] = {}             # even off the event loop
-        self._db_url = (_get_env("ASCORE_DB")
+        self._db_url = (os.environ.get("AGENTTIC_DB")
                         or (cfg.get("database", {}) or {}).get("url") or "")
         self._postgres = bool(self._db_url) and not self._db_url.startswith("sqlite")
         self._shared_engine = None  # one engine shared across tenants (Postgres)
@@ -271,18 +270,18 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         from agenttic.server.health import HealthChecker
         app.state.health = HealthChecker()
         # first-admin bootstrap (env-driven, idempotent)
-        admin_email = _get_env("ASCORE_ADMIN_EMAIL")
+        admin_email = os.environ.get("AGENTTIC_ADMIN_EMAIL")
         from agenttic.secrets import get_secret
-        admin_pw = get_secret("ASCORE_ADMIN_PASSWORD")
+        admin_pw = get_secret("AGENTTIC_ADMIN_PASSWORD")
         if admin_email and admin_pw:
             try:
                 from agenttic.server.users import UserStore
                 created = UserStore(default.reg.engine).ensure_admin(
                     admin_email, admin_pw)
-                logging.getLogger("ascore").info(
+                logging.getLogger("agenttic").info(
                     "admin bootstrap: %s", "created" if created else "exists")
             except Exception as exc:  # noqa: BLE001 — never block startup
-                logging.getLogger("ascore").warning("admin bootstrap failed: %s",
+                logging.getLogger("agenttic").warning("admin bootstrap failed: %s",
                                                      type(exc).__name__)
         # Billing: replace the permissive Copilot credits stub with real
         # free-credit accounting (only if it's still the default stub, so tests

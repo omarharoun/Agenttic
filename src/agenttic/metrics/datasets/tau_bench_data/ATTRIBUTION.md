@@ -15,8 +15,8 @@ tool-trajectory correctness.
   tasks (115 retail + 50 airline). Ingest more where network allows:
 
   ```
-  ascore standard ingest tau-bench --full     # fetch+parse full retail+airline test splits from GitHub
-  ascore standard ingest tau-bench            # ingest the vendored 20-task real sample
+  agenttic standard ingest tau-bench --full     # fetch+parse full retail+airline test splits from GitHub
+  agenttic standard ingest tau-bench            # ingest the vendored 20-task real sample
   ```
 
 ## What we map vs. what we do NOT reproduce

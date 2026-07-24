@@ -17,7 +17,7 @@ airgap:
   # allow: [otel_remote_export]        # explicit, logged escape hatch (discouraged)
 ```
 
-or `ASCORE_AIRGAP=true` in the environment (the Helm chart sets this when
+or `AGENTTIC_AIRGAP=true` in the environment (the Helm chart sets this when
 `airgap.enabled=true`).
 
 ## The startup self-check

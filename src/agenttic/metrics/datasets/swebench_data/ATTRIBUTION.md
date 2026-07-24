@@ -38,7 +38,7 @@ surface. They are a tractable static signal that the agent localized the bug —
 **NOT** verification that the hidden tests pass. We do **not** report or claim any
 official SWE-bench numbers.
 
-The official metric's *interface* lives in `ascore/metrics/swebench_resolve.py`
+The official metric's *interface* lives in `agenttic/metrics/swebench_resolve.py`
 (`resolve_rate` + `ExecutionHarnessRequired`); it documents exactly what the real
 metric needs and **raises** if asked to score without the Docker harness. The
 `DatasetInfo` for this suite sets `requires_execution_harness=True` so the
@@ -59,8 +59,8 @@ tracked FUTURE INFRA task.**
 ## Ingesting the data
 
 ```
-ascore standard ingest swebench           # vendored REAL sample (offline)
-ascore standard ingest swebench --full     # whole 500-instance Verified split from HF
+agenttic standard ingest swebench           # vendored REAL sample (offline)
+agenttic standard ingest swebench --full     # whole 500-instance Verified split from HF
 ```
 
 `--full` pulls the split via HuggingFace's public datasets-server rows API (no

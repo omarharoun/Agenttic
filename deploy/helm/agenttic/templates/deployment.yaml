@@ -31,25 +31,25 @@ spec:
             - name: http
               containerPort: 8700
           env:
-            - name: ASCORE_HOST
+            - name: AGENTTIC_HOST
               value: "0.0.0.0"
-            - name: ASCORE_API_TOKEN
+            - name: AGENTTIC_API_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: {{ include "agenttic.secretName" . }}
                   key: api-token
-            - name: ASCORE_SESSION_SECRET
+            - name: AGENTTIC_SESSION_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "agenttic.secretName" . }}
                   key: session-secret
-            - name: ASCORE_DB
+            - name: AGENTTIC_DB
               valueFrom:
                 secretKeyRef:
                   name: {{ include "agenttic.secretName" . }}
                   key: database-url
             {{- if .Values.airgap.enabled }}
-            - name: ASCORE_AIRGAP
+            - name: AGENTTIC_AIRGAP
               value: "true"
             {{- end }}
           volumeMounts:

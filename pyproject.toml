@@ -81,10 +81,7 @@ agenttic-gen = "agenttic.evaluators.agenttic_gen:AgenttixGenAdapter"
 inspect = "agenttic.evaluators.inspect_adapter:InspectAdapter"
 
 [project.scripts]
-# `agenttic` is the public command. `ascore` stays as a deprecated back-compat
-# alias: same Typer app, but it prints a one-line deprecation nudge to stderr.
 agenttic = "agenttic.cli:app"
-ascore = "agenttic.cli:_ascore_alias"
 
 [project.urls]
 Homepage = "https://agenttic.io"

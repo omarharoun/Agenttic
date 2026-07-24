@@ -33,6 +33,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from agenttic.copilot.agent import CopilotAgent, new_session
+from agenttic.server.auth import SESSION_COOKIE
 from agenttic.copilot.credits import check_credits, check_daily_cap, record_usage
 from agenttic.copilot.errors import (
     DAILY_LIMIT, NOT_CONFIGURED, OUT_OF_CREDITS, RATE_LIMITED, with_message,
@@ -67,7 +68,7 @@ def _rl_key(request: Request) -> str:
     auth = request.headers.get("authorization", "")
     if auth.lower().startswith("bearer "):
         return f"copilot:tok:{auth[7:].strip()}"
-    sid = request.cookies.get("ascore_session")
+    sid = request.cookies.get(SESSION_COOKIE)
     if sid:
         return f"copilot:sess:{sid}"
     client = request.client

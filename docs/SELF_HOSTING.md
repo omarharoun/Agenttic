@@ -9,12 +9,12 @@ Helm) and the resources they need. For zero-egress installs see
 ## Option A — Docker Compose (single host)
 
 ```bash
-cp deploy/.env.example deploy/.env      # set ASCORE_API_TOKEN (+ ASCORE_DB for BYO-Postgres)
+cp deploy/.env.example deploy/.env      # set AGENTTIC_API_TOKEN (+ AGENTTIC_DB for BYO-Postgres)
 docker compose -f deploy/docker-compose.yaml up
 ```
 
 That stands up the server (scanner + certify + verify) on `:8700` against SQLite
-in a named volume — no code edits. Bring your own Postgres by setting `ASCORE_DB`
+in a named volume — no code edits. Bring your own Postgres by setting `AGENTTIC_DB`
 in `deploy/.env`; run the bundled Postgres for evaluation with
 `--profile bundled-db`. Add `--profile redis --profile worker` to scale out.
 
@@ -49,7 +49,7 @@ verifiers at that URL; offline, the CLI/SDK verify against a JWKS file directly.
 | Backend | When | How |
 |---|---|---|
 | SQLite (default) | single host, evaluation | data volume / PVC; zero config |
-| Postgres (BYO) | production, HA | `ASCORE_DB=postgresql+psycopg://…` |
+| Postgres (BYO) | production, HA | `AGENTTIC_DB=postgresql+psycopg://…` |
 
 Migrations run automatically on boot. Back up the Postgres database (or the
 SQLite volume) on your normal schedule; that volume is the entire state.
@@ -68,9 +68,9 @@ and CI-gate loads comfortably.
 
 ## Secrets checklist
 
-- `ASCORE_API_TOKEN` — admin bootstrap; set `auth.required: true` in prod.
-- `ASCORE_SESSION_SECRET` — signs session cookies.
-- `ASCORE_DB` — Postgres URL (via Secret in Helm).
+- `AGENTTIC_API_TOKEN` — admin bootstrap; set `auth.required: true` in prod.
+- `AGENTTIC_SESSION_SECRET` — signs session cookies.
+- `AGENTTIC_DB` — Postgres URL (via Secret in Helm).
 - Passport signing keys — generated into the data volume on first boot, or
   supplied out-of-band; they never appear in logs, events, or exports.
 

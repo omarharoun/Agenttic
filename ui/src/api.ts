@@ -164,7 +164,7 @@ export interface IssuesReport {
   };
 }
 
-const TOKEN_KEY = "ascore_token";
+const TOKEN_KEY = "agenttic_token";
 
 /** API token store (shared bearer key). EventSource can't send headers, so
  * SSE URLs carry it as ?token= via sseUrl(). */
@@ -185,7 +185,7 @@ function authHeaders(method: string, extra: HeadersInit = {}): Record<string, st
   if (t) h.Authorization = `Bearer ${t}`;  // bearer (CI/power users) takes precedence
   // CSRF double-submit for cookie-authenticated mutations
   if (!t && !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase())) {
-    const csrf = readCookie("ascore_csrf");
+    const csrf = readCookie("agenttic_csrf");
     if (csrf) h["X-CSRF-Token"] = csrf;
   }
   return h;

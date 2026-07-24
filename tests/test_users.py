@@ -42,7 +42,7 @@ class TestSessions:
         assert verify_session(t, "secret") is None
 
     def test_secret_falls_back_to_api_token(self, monkeypatch):
-        monkeypatch.delenv("ASCORE_SESSION_SECRET", raising=False)
+        monkeypatch.delenv("AGENTTIC_SESSION_SECRET", raising=False)
         s = session_secret({"auth": {"token": "admintoken"}})
         assert "admintoken" in s
 

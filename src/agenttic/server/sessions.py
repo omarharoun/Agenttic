@@ -5,7 +5,7 @@ server secret, carrying the user id, email, role, tenant and an expiry. Being
 stateless means it works across workers with no shared session store; the token
 lives in an httponly cookie so XSS can't read it.
 
-The secret comes from ``ASCORE_SESSION_SECRET`` (or ``auth.session_secret``),
+The secret comes from ``AGENTTIC_SESSION_SECRET`` (or ``auth.session_secret``),
 falling back to the API admin token so a single-secret deployment still works.
 """
 
@@ -29,7 +29,7 @@ def _b64d(s: str) -> bytes:
 def session_secret(cfg: dict) -> str:
     """Resolve the signing secret (env > config > derived from the API token)."""
     from agenttic.secrets import get_secret
-    env = get_secret("ASCORE_SESSION_SECRET")
+    env = get_secret("AGENTTIC_SESSION_SECRET")
     if env:
         return env
     auth = cfg.get("auth", {}) or {}
@@ -37,7 +37,7 @@ def session_secret(cfg: dict) -> str:
         return str(auth["session_secret"])
     from agenttic.server.auth import configured_token
     tok = configured_token(cfg)
-    return f"session::{tok}" if tok else "ascore-dev-insecure-session-secret"
+    return f"session::{tok}" if tok else "agenttic-dev-insecure-session-secret"
 
 
 def sign_session(payload: dict, secret: str, ttl_seconds: int) -> str:

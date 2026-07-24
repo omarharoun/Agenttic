@@ -25,8 +25,8 @@ used by agenttic's `assistantbench-v1` standard suite to score web-agent
   from HuggingFace):
 
   ```
-  ascore standard ingest assistantbench           # vendored 16-record sample
-  ascore standard ingest assistantbench --full     # full 33-question dev split
+  agenttic standard ingest assistantbench           # vendored 16-record sample
+  agenttic standard ingest assistantbench --full     # full 33-question dev split
   ```
 
   The **test** split's gold answers are held out by the authors (the official
@@ -39,7 +39,7 @@ AssistantBench questions are realistic, time-consuming web tasks with short
 factual gold answers. Our `answer_accuracy` / `answer_attempted` canonical
 checks implement AssistantBench's own evaluation
 (`evaluation/evaluate_utils` in the AssistantBench leaderboard space),
-ported to pure Python in `ascore/metrics/answer_match.py`:
+ported to pure Python in `agenttic/metrics/answer_match.py`:
 
 - **strings / lists** — DROP-style token-F1 with optimal 1-1 bag alignment;
 - **numbers** — a symmetric log-ratio `max(0, 1 - |ln(pred/gold)|)`

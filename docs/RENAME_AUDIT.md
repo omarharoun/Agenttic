@@ -22,41 +22,41 @@ must be rewritten `ascore` → `agenttic`:
 | **distinct files containing `ascore`** | **349** | across `src/` + `tests/` |
 
 Rewrite scope is imports and dotted module paths ONLY. Stage 2 must NOT touch
-`ASCORE_` env names (Cat 2), the `ascore.db` on-disk literal (Cat 3), or the
+`AGENTTIC_` env names (Cat 2), the `ascore.db` on-disk literal (Cat 3), or the
 `ascore` CLI verb (Cat 4).
 
-## Category 2 — `ASCORE_*` env vars (LIVE PROD CONTRACT — shimmed in Stage 3)
+## Category 2 — `AGENTTIC_*` env vars (LIVE PROD CONTRACT — shimmed in Stage 3)
 
-node1's `.env` supplies `ASCORE_CERT_SIGNING_KEY` and
-`ASCORE_PASSPORT_SIGNING_KEY`. If the renamed code stops honoring `ASCORE_*`,
+node1's `.env` supplies `AGENTTIC_CERT_SIGNING_KEY` and
+`AGENTTIC_PASSPORT_SIGNING_KEY`. If the renamed code stops honoring `AGENTTIC_*`,
 cert/passport signing fails **closed** and the app 502s. These are NOT renamed
 on node1. Every read goes through a back-compat shim:
-`AGENTTIC_<NAME>` first → `ASCORE_<NAME>` fallback (DeprecationWarning) → default.
+`AGENTTIC_<NAME>` first → `AGENTTIC_<NAME>` fallback (DeprecationWarning) → default.
 
-Distinct `ASCORE_*` vars (`grep -Eoh 'ASCORE_[A-Z0-9_]+'`), 21 total:
+Distinct `AGENTTIC_*` vars (`grep -Eoh 'AGENTTIC_[A-Z0-9_]+'`), 21 total:
 
 ```
-ASCORE_ADMIN_EMAIL          ASCORE_ADMIN_PASSWORD       ASCORE_AIRGAP
-ASCORE_API_TOKEN            ASCORE_API_TOKEN_FILE       ASCORE_BUILD
-ASCORE_CERT_PUBLIC_KEYS     ASCORE_CERT_SIGNING_KEY *   ASCORE_DB
-ASCORE_ENV                  ASCORE_ENVIRONMENT          ASCORE_LLM_BASE_URL
-ASCORE_PASSPORT_SIGNING_KEY *  ASCORE_REDIS_URL         ASCORE_SECRET_KEY
-ASCORE_SESSION_SECRET       ASCORE_SWEBENCH_HARNESS     ASCORE_TENANT
-ASCORE_TEST_PG              ASCORE_TEST_REDIS           ASCORE_UI_DIST
+AGENTTIC_ADMIN_EMAIL          AGENTTIC_ADMIN_PASSWORD       AGENTTIC_AIRGAP
+AGENTTIC_API_TOKEN            AGENTTIC_API_TOKEN_FILE       AGENTTIC_BUILD
+AGENTTIC_CERT_PUBLIC_KEYS     AGENTTIC_CERT_SIGNING_KEY *   AGENTTIC_DB
+AGENTTIC_ENV                  AGENTTIC_ENVIRONMENT          AGENTTIC_LLM_BASE_URL
+AGENTTIC_PASSPORT_SIGNING_KEY *  AGENTTIC_REDIS_URL         AGENTTIC_SECRET_KEY
+AGENTTIC_SESSION_SECRET       AGENTTIC_SWEBENCH_HARNESS     AGENTTIC_TENANT
+AGENTTIC_TEST_PG              AGENTTIC_TEST_REDIS           AGENTTIC_UI_DIST
 ```
 `*` = signing keys; the production canary. Read sites: **51** across `src/`.
 
 Central read paths that the shim must cover:
 - `ascore/secrets.py::get_secret(name)` — env + `<name>_FILE` file fallback; used
-  for `ASCORE_API_TOKEN`, `ASCORE_SECRET_KEY`, `ASCORE_ADMIN_PASSWORD`,
-  `ASCORE_SESSION_SECRET`.
-- direct `os.environ.get("ASCORE_…")` (cli, server/app, server/crypto,
+  for `AGENTTIC_API_TOKEN`, `AGENTTIC_SECRET_KEY`, `AGENTTIC_ADMIN_PASSWORD`,
+  `AGENTTIC_SESSION_SECRET`.
+- direct `os.environ.get("AGENTTIC_…")` (cli, server/app, server/crypto,
   server/auth, server/health, server/events, server/ratelimit, airgap, …).
 - module-level constants naming the var:
-  `safety_cert.SIGNING_KEY_ENV = "ASCORE_CERT_SIGNING_KEY"`,
-  `safety_cert.PUBLIC_KEYS_ENV = "ASCORE_CERT_PUBLIC_KEYS"`,
-  `passport/keys._ENV_KEY = "ASCORE_PASSPORT_SIGNING_KEY"`,
-  `metrics/swebench_resolve.HARNESS_ENV = "ASCORE_SWEBENCH_HARNESS"`.
+  `safety_cert.SIGNING_KEY_ENV = "AGENTTIC_CERT_SIGNING_KEY"`,
+  `safety_cert.PUBLIC_KEYS_ENV = "AGENTTIC_CERT_PUBLIC_KEYS"`,
+  `passport/keys._ENV_KEY = "AGENTTIC_PASSPORT_SIGNING_KEY"`,
+  `metrics/swebench_resolve.HARNESS_ENV = "AGENTTIC_SWEBENCH_HARNESS"`.
 
 ## Category 3 — on-disk literals (fallback added in Stage 5)
 
@@ -69,7 +69,7 @@ SQLite filename `ascore.db`:
 | `tests/test_tenancy.py` | 28, 30 | test fixtures pin `ascore.db` |
 
 DB URLs are otherwise `sqlite:///<path>` / `postgresql+psycopg://…` built from
-`ASCORE_DB` or config — no hard-coded `ascore` brand. Stage 5: new installs
+`AGENTTIC_DB` or config — no hard-coded `ascore` brand. Stage 5: new installs
 prefer `agenttic.db`, but an existing `ascore.db` on disk is still loaded (no
 data loss).
 
@@ -105,7 +105,7 @@ been resolved.
 
 | Category | ~count | Why it stays `ascore` |
 |----------|-------:|-----------------------|
-| `ASCORE_*` env-var reads/mentions | ~249 | LIVE PROD CONTRACT. The Stage-3 shim reads `AGENTTIC_*` first, falls back to `ASCORE_*` (DeprecationWarning). node1's `.env` (incl. the cert/passport signing keys) is unchanged. |
+| `AGENTTIC_*` env-var reads/mentions | ~249 | LIVE PROD CONTRACT. The Stage-3 shim reads `AGENTTIC_*` first, falls back to `AGENTTIC_*` (DeprecationWarning). node1's `.env` (incl. the cert/passport signing keys) is unchanged. |
 | On-disk `ascore.db` / `ascore.<tenant>.db` / `ascore*.db` | ~38 | Stage-5 no-data-loss fallback. `config.prod.yaml registry_db: /app/data/ascore.db` MUST stay — it points at node1's existing data. Backup/restore globs operate on those real files. |
 | CLI alias (`_ascore_alias`, `ascore = "agenttic.cli:_ascore_alias"`, README/skill notes) | ~15 | The `ascore` command is a *deprecated but working* alias (Stage 4). |
 | Runtime identifiers: `logging.getLogger("ascore")`, OTel `get_tracer("ascore")`, Prometheus `ascore_*` metric names, cookies `ascore_session`/`ascore_csrf`, redis key prefix `ascore:events:`, dev-only secrets `ascore-dev-insecure-*`, managed-agent env name `ascore-workflows`, health dist tuple `("agenttic","ascore")` | ~56 | Renaming these changes a channel/metric/cookie/key/secret-derivation/deploy-name — an operational break, not a code cleanup. The health probe intentionally checks BOTH distribution names. |
@@ -125,7 +125,7 @@ been resolved.
 
 ## Deploy-critical fixes made in Stage 6 (were true functional misses)
 
-* `Dockerfile` `CMD` `uvicorn --factory ascore.server.app:create_app` → `agenttic.server.app:create_app` — **the module no longer exists; this would crash-loop / 502 the container.** Also `ENV ASCORE_UI_DIST` → `AGENTTIC_UI_DIST` (shim still honors the old name).
+* `Dockerfile` `CMD` `uvicorn --factory ascore.server.app:create_app` → `agenttic.server.app:create_app` — **the module no longer exists; this would crash-loop / 502 the container.** Also `ENV AGENTTIC_UI_DIST` → `AGENTTIC_UI_DIST` (shim still honors the old name).
 * `scripts/quickstart_check.sh`, `.github/actions/agent-safety/gate.py` — `python -m ascore` / `-m ascore.cli` → `agenttic` (module gone).
 * Copilot product knowledge (`copilot/knowledge.md`, `copilot/skill.py`) rebranded to `agenttic` (`ascore` noted as deprecated alias).
 
@@ -133,5 +133,5 @@ been resolved.
 
 * baseline green (1745 → see final gate); `import agenttic` works; **zero** intra-repo `import ascore` / `from ascore` / dotted `ascore.<module>` (only `ascore.db` on-disk literal remains).
 * both CLIs resolve: `agenttic --help` and `ascore --help` (alias warns) exit 0.
-* `AGENTTIC_*` preferred, `ASCORE_*` honored with a DeprecationWarning; the cert + passport signing keys still load from `ASCORE_*` (integration-tested — the deploy canary).
+* `AGENTTIC_*` preferred, `AGENTTIC_*` honored with a DeprecationWarning; the cert + passport signing keys still load from `AGENTTIC_*` (integration-tested — the deploy canary).
 * new installs default to `agenttic.db`; an existing `ascore.db` is still opened (no data loss).

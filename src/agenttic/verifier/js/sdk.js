@@ -1,7 +1,7 @@
 // Agenttic passport verifier SDK (JS) — SPEC-2 T33.2.
 //
 // Offline verification of passports / receipts / chains against a JWKS, using
-// Node's built-in Ed25519. Mirrors ascore/verify/sdk.py exactly (same canonical
+// Node's built-in Ed25519. Mirrors agenttic/verify/sdk.py exactly (same canonical
 // JSON, same distinct named errors) so a passport signed by the server verifies
 // identically in Python and JS.
 'use strict';

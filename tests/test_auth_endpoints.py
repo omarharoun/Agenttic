@@ -45,7 +45,7 @@ class TestEmailVerificationGate:
             r = c.post("/api/auth/signup",
                        json={"email": "v@x.com", "password": "password123"})
             assert r.status_code == 200 and r.json()["needs_verification"] is True
-            assert not c.cookies.get("ascore_session")     # no session yet
+            assert not c.cookies.get("agenttic_session")     # no session yet
 
             # login is blocked until verified
             r = c.post("/api/auth/login",
@@ -85,7 +85,7 @@ class TestSignupLogin:
             assert r.status_code == 200
             assert r.json()["role"] == "admin"
             assert r.json()["tenant"].startswith("a-")  # own workspace
-            assert c.cookies.get("ascore_session")        # cookie set
+            assert c.cookies.get("agenttic_session")        # cookie set
             me = c.get("/api/me").json()
             assert me["email"] == "a@b.com" and me["auth_method"] == "session"
 
@@ -127,7 +127,7 @@ class TestSessionAuthz:
         with _client(tmp_path, role="viewer") as c:
             c.post("/api/auth/signup", json={"email": "v@b.com", "password": "password123"})
             assert c.get("/api/agents").status_code == 200            # viewer can read
-            csrf = c.cookies.get("ascore_csrf")
+            csrf = c.cookies.get("agenttic_csrf")
             r = c.post("/api/agents/catalog", headers={"X-CSRF-Token": csrf},
                        json={"agent_id": "x", "variant": "reference"})
             assert r.status_code == 403                                # operator-only
@@ -135,7 +135,7 @@ class TestSessionAuthz:
     def test_operator_session_can_write_with_csrf(self, tmp_path):
         with _client(tmp_path, role="operator") as c:
             c.post("/api/auth/signup", json={"email": "o@b.com", "password": "password123"})
-            csrf = c.cookies.get("ascore_csrf")
+            csrf = c.cookies.get("agenttic_csrf")
             r = c.post("/api/agents/catalog", headers={"X-CSRF-Token": csrf},
                        json={"agent_id": "x", "variant": "reference"})
             assert r.status_code == 200
@@ -152,7 +152,7 @@ class TestSessionAuthz:
         # two signups -> two tenants -> isolated catalogs
         with _client(tmp_path, role="admin") as c1:
             c1.post("/api/auth/signup", json={"email": "a@b.com", "password": "password123"})
-            csrf = c1.cookies.get("ascore_csrf")
+            csrf = c1.cookies.get("agenttic_csrf")
             c1.post("/api/agents/catalog", headers={"X-CSRF-Token": csrf},
                     json={"agent_id": "a-bot", "variant": "reference"})
             mine = c1.get("/api/agents/catalog").json()["agents"]

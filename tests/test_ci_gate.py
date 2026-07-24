@@ -174,7 +174,7 @@ def _run_gate(tmp_path, tenant, env_extra):
     out_file.write_text("")
     env = dict(os.environ)
     env.update({
-        "ASCORE_TENANT": tenant,
+        "AGENTTIC_TENANT": tenant,
         "GITHUB_WORKSPACE": str(ws),
         "GITHUB_OUTPUT": str(out_file),
         "USE_MOCK": "true",

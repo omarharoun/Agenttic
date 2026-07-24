@@ -192,7 +192,7 @@ async def _run_agent(ctx: NodeContext, cfg: AgentConfig, inputs: dict) -> dict:
         import yaml
         spec = yaml.safe_load(Path(cfg.agent_yaml_path).read_text())
         result = await asyncio.to_thread(
-            ops.deploy_op, spec, "ascore-workflows", ctx.clients.get("anthropic"))
+            ops.deploy_op, spec, "agenttic-workflows", ctx.clients.get("anthropic"))
         ctx.emit("node_progress", {"message": f"{result['action']} managed agent "
                                               f"{result['agent_id']} v{result['version']}"})
         ref.update(variant="managed", managed_agent_id=result["agent_id"],

@@ -25,9 +25,9 @@ auth:
 
 def _app(tmp_path):
     cfg = tmp_path / "config.yaml"
-    cfg.write_text(CONFIG % {"db": tmp_path / "ascore.db", "r": tmp_path / "r",
+    cfg.write_text(CONFIG % {"db": tmp_path / "agenttic.db", "r": tmp_path / "r",
                              "c": tmp_path / "c"})
-    return create_app(str(cfg), registry=Registry(tmp_path / "ascore.db"))
+    return create_app(str(cfg), registry=Registry(tmp_path / "agenttic.db"))
 
 
 def _hdr(t):
@@ -55,9 +55,9 @@ def test_tenant_dbs_are_separate_files(tmp_path):
         c.post("/api/agents/catalog", headers=_hdr("acme_tok"),
                json={"agent_id": "a", "variant": "reference"})
     # acme's data lives in a sibling DB, not the default one. The base DB here
-    # is configured as ascore.db (see CONFIG), so the per-tenant sibling is
-    # derived as ascore.acme.db — an on-disk literal, NOT an import path.
-    assert (tmp_path / "ascore.acme.db").exists()
+    # is configured as agenttic.db (see CONFIG), so the per-tenant sibling is
+    # derived as agenttic.acme.db — an on-disk literal, NOT an import path.
+    assert (tmp_path / "agenttic.acme.db").exists()
 
 
 def test_workspace_normalize_rejects_bad_names():

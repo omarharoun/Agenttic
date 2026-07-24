@@ -23,12 +23,12 @@ def test_record_tokens_metric():
     metrics.record_tokens("agent", 100, 50)
     metrics.record_tokens("judge", 200, None)
     out = metrics.render()
-    assert 'ascore_llm_tokens_total{component="agent",kind="input"} 100' in out
-    assert 'ascore_llm_tokens_total{component="agent",kind="output"} 50' in out
-    assert 'ascore_llm_tokens_total{component="judge",kind="input"} 200' in out
+    assert 'agenttic_llm_tokens_total{component="agent",kind="input"} 100' in out
+    assert 'agenttic_llm_tokens_total{component="agent",kind="output"} 50' in out
+    assert 'agenttic_llm_tokens_total{component="judge",kind="input"} 200' in out
 
 
 def test_record_tokens_ignores_zero_none():
     metrics.reset()
     metrics.record_tokens("agent", None, 0)
-    assert "ascore_llm_tokens_total" not in metrics.render()
+    assert "agenttic_llm_tokens_total" not in metrics.render()

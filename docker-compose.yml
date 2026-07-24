@@ -15,9 +15,9 @@ services:
       - .env
     environment:
       # uncomment when running the matching profile:
-      # ASCORE_DB: postgresql+psycopg://ascore:ascore@postgres:5432/ascore
-      # ASCORE_REDIS_URL: redis://redis:6379/0
-      ASCORE_HOST: "0.0.0.0"
+      # AGENTTIC_DB: postgresql+psycopg://ascore:ascore@postgres:5432/ascore
+      # AGENTTIC_REDIS_URL: redis://redis:6379/0
+      AGENTTIC_HOST: "0.0.0.0"
     volumes:
       - ./config.yaml:/app/config.yaml:ro
       - ascore-data:/app/data        # SQLite DBs live here (paths.registry_db)

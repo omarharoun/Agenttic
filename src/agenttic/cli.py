@@ -1,13 +1,15 @@
 """agenttic CLI — the operator surface (SPEC.md `CLI surface`).
 
 Exposed as the ``agenttic`` console script (and ``python -m agenttic``). The
-legacy ``ascore`` command remains as a deprecated alias that forwards here.
+This is the single public entry point.
 
 Requires ANTHROPIC_API_KEY in the environment for commands that call models
 (generate, run with judge criteria, monitor with sampling).
 """
 
 from __future__ import annotations
+
+import os
 
 import asyncio
 from pathlib import Path
@@ -26,24 +28,13 @@ app = typer.Typer(help="Agentic scoring & benchmarking platform")
 console = Console()
 
 
-def _ascore_alias() -> None:
-    """Deprecated ``ascore`` console-script entry point.
-
-    ``ascore`` is the pre-rename command name. It still works — it forwards to
-    the identical ``agenttic`` CLI — but prints a one-line deprecation nudge to
-    stderr so operators migrate. Same behavior, same exit codes."""
-    import sys
-    print("warning: the `ascore` command is deprecated; use `agenttic` instead "
-          "(identical behavior).", file=sys.stderr)
-    app()
-
-# Global --tenant (or ASCORE_TENANT) selects the workspace for every command.
+# Global --tenant (or AGENTTIC_TENANT) selects the workspace for every command.
 _STATE: dict[str, str | None] = {"tenant": None}
 
 
 @app.callback()
 def _main(tenant: str = typer.Option(
-        None, "--tenant", envvar=["AGENTTIC_TENANT", "ASCORE_TENANT"],
+        None, "--tenant", envvar=["AGENTTIC_TENANT", "AGENTTIC_TENANT"],
         help="workspace/tenant to operate on (default: 'default')")):
     """Agenttic CLI. The CLI operates directly on the registry DB (admin-level);
     --tenant selects the workspace, matching the server's tenancy model."""
@@ -54,9 +45,8 @@ def _ctx(config_path: str = "config.yaml"):
     from agenttic.secrets import hydrate_env_secrets
     hydrate_env_secrets()  # pull *_FILE secrets into the environment
     cfg = load_config(config_path)
-    from agenttic._env import get_env
-    tenant = _STATE.get("tenant") or get_env("ASCORE_TENANT") or "default"
-    db_url = get_env("ASCORE_DB") or (cfg.get("database", {}) or {}).get("url") or ""
+    tenant = _STATE.get("tenant") or os.environ.get("AGENTTIC_TENANT") or "default"
+    db_url = os.environ.get("AGENTTIC_DB") or (cfg.get("database", {}) or {}).get("url") or ""
     if db_url and not db_url.startswith("sqlite"):
         from agenttic.registry.sqlite_store import make_engine
         return cfg, Registry(engine=make_engine(db_url), tenant=tenant)
@@ -338,7 +328,7 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
 
 
 @app.command()
-def deploy(workflow: Path, env_name: str = "ascore-workflows",
+def deploy(workflow: Path, env_name: str = "agenttic-workflows",
            config: str = "config.yaml"):
     """Deploy a business-workflow agent to Anthropic Managed Agents (beta).
 
@@ -859,7 +849,7 @@ def ui(host: str = "", port: int = 0,
             console.print(
                 "[yellow]Warning:[/] no API token set — anyone on this network "
                 "can edit workflows, approve suites, and trigger runs that spend "
-                "your Anthropic credits. Set ASCORE_API_TOKEN (or auth.token) "
+                "your Anthropic credits. Set AGENTTIC_API_TOKEN (or auth.token) "
                 "before exposing to a network.")
     uvicorn.run(create_app(config), host=host, port=port, log_level="info")
 

@@ -129,7 +129,7 @@ otherwise — good for "is it actually serving" checks.
 # Backups, restore, retention
 
 State lives entirely in the database (SQLite files by default, or Postgres when
-`ASCORE_DB` is set). Uploaded business docs live under `paths.uploads_dir`.
+`AGENTTIC_DB` is set). Uploaded business docs live under `paths.uploads_dir`.
 
 ## Backups
 
@@ -150,9 +150,9 @@ dbs:
     replicas: [{ type: s3, bucket: my-bucket, path: ascore/ascore.db }]
 ```
 
-**Postgres (this is what `node1` runs).** `deploy.sh` sets `ASCORE_DB`, so the
+**Postgres (this is what `node1` runs).** `deploy.sh` sets `AGENTTIC_DB`, so the
 live store is the dockerized `postgres:16-alpine` on the `pg-data` volume.
-`backup.sh` runs `pg_dump --format=custom` when `ASCORE_DB` is set. On `node1`
+`backup.sh` runs `pg_dump --format=custom` when `AGENTTIC_DB` is set. On `node1`
 the simplest consistent dump runs `pg_dump` **inside the postgres container** (no
 client install needed) and is safe while the app is live:
 
@@ -201,7 +201,7 @@ docker compose exec -T postgres \
 docker compose start app                                  # re-applies migrations
 ```
 
-(Off-host, with a Postgres client on PATH and `ASCORE_DB` exported, the same
+(Off-host, with a Postgres client on PATH and `AGENTTIC_DB` exported, the same
 dump restores via `./scripts/restore.sh ascore-XXXX.dump`.)
 
 **Volume tarball restore (full data-volume rollback):**

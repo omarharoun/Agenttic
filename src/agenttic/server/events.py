@@ -14,6 +14,8 @@ from worker threads via asyncio.to_thread).
 
 from __future__ import annotations
 
+import os
+
 import asyncio
 import json
 import threading
@@ -28,7 +30,7 @@ _SENTINEL = object()
 
 
 def _channel(execution_id: str) -> str:
-    return f"ascore:events:{execution_id}"
+    return f"agenttic:events:{execution_id}"
 
 
 # -- in-memory transport (default) ------------------------------------------
@@ -136,11 +138,9 @@ class RedisTransport:
 
 
 def make_transport(cfg: dict, loop: asyncio.AbstractEventLoop):
-    import os
     ev = cfg.get("events", {}) or {}
     backend = str(ev.get("backend", "memory")).lower()
-    from agenttic._env import get_env
-    url = get_env("ASCORE_REDIS_URL") or ev.get("redis_url", "")
+    url = os.environ.get("AGENTTIC_REDIS_URL") or ev.get("redis_url", "")
     if backend == "redis" and url:
         return RedisTransport(url)
     return InMemoryTransport(loop)

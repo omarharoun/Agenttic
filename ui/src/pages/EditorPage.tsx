@@ -57,7 +57,7 @@ const EMPTY = { workflow_id: "new-benchmark", name: "New benchmark", nodes: [], 
 
 type Mode = "guided" | "advanced";
 const getMode = (): Mode =>
-  (localStorage.getItem("ascore_editor_mode") as Mode) === "advanced" ? "advanced" : "guided";
+  (localStorage.getItem("agenttic_editor_mode") as Mode) === "advanced" ? "advanced" : "guided";
 
 export function EditorPage() {
   const store = useFlowStore();
@@ -86,7 +86,7 @@ export function EditorPage() {
 
   const setEditorMode = (m: Mode) => {
     setMode(m);
-    localStorage.setItem("ascore_editor_mode", m);
+    localStorage.setItem("agenttic_editor_mode", m);
   };
 
   const refreshEstimate = (id: string) =>

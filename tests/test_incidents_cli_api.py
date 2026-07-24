@@ -58,7 +58,7 @@ def test_incidents_cli(tmp_path, monkeypatch):
     from typer.testing import CliRunner
 
     from agenttic.cli import app
-    monkeypatch.setenv("ASCORE_TENANT", "inccli")
+    monkeypatch.setenv("AGENTTIC_TENANT", "inccli")
     monkeypatch.chdir(Path(__file__).resolve().parents[1])
     runner = CliRunner()
     try:
