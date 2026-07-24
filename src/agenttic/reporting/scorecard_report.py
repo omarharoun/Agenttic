@@ -187,9 +187,12 @@ def _verification_block(sc) -> list[str]:
         drift = cov.get("other_drift") or {}
         if drift:
             out.append("")
-            out.append("Unmodelled situations landed in `other` for: "
+            out.append("Landed in `other` for: "
                        + ", ".join(f"{k} ({v:.0%} of runs)" for k, v in drift.items())
-                       + " — the coverage model is missing a dimension.")
+                       + " — either the model lacks a bin for what happened, or "
+                       "that dimension never applied to this run (e.g. a "
+                       "tool condition when the agent called no tools). A rising "
+                       "`other` count is a finding either way.")
     else:
         out.append("**No coverage model was applied to this run.** Nothing here "
                    "states what the suite never exercised.")
