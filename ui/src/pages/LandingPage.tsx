@@ -7,7 +7,7 @@ import {
 } from "../components/ds";
 import {
   SHOW_SOCIAL_PROOF, ASSISTANTS, type TabKey, SAMPLE_METRICS, SAMPLE_ROWS,
-  COMPARISON, CONFIDENCE, TOOLKIT, TRUST, FAQ,
+  COMPARISON, CONFIDENCE, COVERAGE_CLAIMS, TRUST, FAQ,
 } from "../landing/data";
 import "../landing/landing.css";
 
@@ -22,11 +22,11 @@ import "../landing/landing.css";
 
 function HowItWorks() {
   const [asst, setAsst] = useState(ASSISTANTS[0]);
-  const [tab, setTab] = useState<TabKey>("install");
+  const [tab, setTab] = useState<TabKey>("run");
   return (
     <div className="lp-picker">
-      <div className="lp-picker__q">What are you building with?</div>
-      <div className="lp-assts" role="tablist" aria-label="assistant">
+      <div className="lp-picker__q">Where does it need to run?</div>
+      <div className="lp-assts" role="tablist" aria-label="deployment surface">
         {ASSISTANTS.map((a) => (
           <button key={a.id} className="lp-asst" role="tab"
                   aria-selected={a.id === asst.id}
@@ -34,13 +34,13 @@ function HowItWorks() {
         ))}
       </div>
       <div className="lp-tabs" role="tablist" aria-label="command">
-        {(["install", "eval", "mcp"] as TabKey[]).map((t) => (
+        {(["run", "integrate", "isolate"] as TabKey[]).map((t) => (
           <button key={t} className="lp-tab" role="tab" aria-selected={t === tab}
                   onClick={() => setTab(t)}>{t}</button>
         ))}
       </div>
       <div className="lp-picker__cmd">
-        <CodeBlock lines={asst.cmds[tab]} label={`${asst.name} ${tab} commands`} />
+        <CodeBlock lines={asst.cmds[tab]} label={`${asst.name} — ${tab}`} />
       </div>
     </div>
   );
@@ -55,18 +55,21 @@ export function LandingPage() {
       <header className="lp-hero">
         <div className="wrap lp-hero__grid">
           <div>
-            <Eyebrow>Verifiable evals · Grounded verdicts</Eyebrow>
-            <h1>The evaluation your AI agent can't game.</h1>
+            <Eyebrow>Agent verification</Eyebrow>
+            <h1>Everyone tells you what passed. We tell you what was never tested.</h1>
             <p className="lp-hero__lede">
-              Open-source and on-device. One command scores any agent against a
-              rubric fitted to what it actually does. Every score traces to a
-              check you can audit.
+              A pass rate is a report on the cases somebody thought to write. We
+              measure the space your agent was actually put through, hold it to its
+              properties on every run, and prove what can be proven — then lead with
+              what is still untested.
             </p>
             <div className="lp-cta">
-              <Button href="#setup">Get started</Button>
-              <Button variant="ghost" href="/methodology">Read the methodology</Button>
+              <Button href="#access">Request a briefing</Button>
+              <Button variant="ghost" href="#cover">See what we cover</Button>
             </div>
-            <div className="lp-hero__meta">On-device · no telemetry · MIT</div>
+            <div className="lp-hero__meta">
+              Runs in your environment · your keys · nothing leaves it
+            </div>
           </div>
           <div className="lp-hero__art"><EscapementMark size={280} /></div>
         </div>
@@ -75,8 +78,8 @@ export function LandingPage() {
       {/* ---- HOW IT WORKS ---- */}
       <section id="how">
         <div className="wrap">
-          <SectionHeading eyebrow="How it works" title="Install → fit → prove."
-            sub="Agenttic installs as a skill in the assistant you already use. Pick yours for the exact commands." />
+          <SectionHeading eyebrow="Where it runs" title="It comes to your environment."
+            sub="Your agent, prompts and traces stay where they already are. Pick the surface that matches your constraints." />
           <HowItWorks />
         </div>
       </section>
@@ -130,14 +133,16 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ---- TOOLKIT ---- */}
-      <section id="toolkit">
+      {/* ---- WHAT WE COVER THAT OTHERS DON'T ---- */}
+      <section id="cover">
         <div className="wrap">
-          <SectionHeading eyebrow="The toolkit" title="Built for the way you already work." />
+          <SectionHeading eyebrow="What we cover"
+            title="The questions other evaluations structurally cannot answer."
+            sub="Not a scoring website. Six things a pass rate cannot express, and we lead with all of them." />
           <div className="lp-grid lp-grid--3">
-            {TOOLKIT.map((t) => (
-              <div className="lp-cell" key={t.code}>
-                <code>{t.code}</code><h3>{t.h}</h3><p>{t.p}</p>
+            {COVERAGE_CLAIMS.map((t) => (
+              <div className="lp-cell" key={t.h}>
+                <h3>{t.h}</h3><p>{t.p}</p>
               </div>
             ))}
           </div>
@@ -191,24 +196,24 @@ export function LandingPage() {
             <SectionHeading eyebrow="In the wild" title="In their words." />
             <div className="lp-stats">
               {/* bound to a real source before this flag is turned on */}
-              <StatTile tag="GitHub stars" value="—" />
-              <StatTile tag="PyPI downloads" value="—" />
+              <StatTile tag="Agents verified" value="—" />
+              <StatTile tag="Engagements" value="—" />
             </div>
           </div>
         </section>
       )}
 
-      {/* ---- PRICING ---- */}
-      <section id="pricing">
+      {/* ---- ACCESS ---- */}
+      <section id="access">
         <div className="wrap lp-price">
-          <Eyebrow>Pricing</Eyebrow>
-          <div className="lp-price__big">$0. MIT. Free forever.</div>
-          <p>Everything that scores an agent on your machine is open source: the
-            harness, the checks, the judge mechanism (bring your own key), the
-            reports, the MCP server. No limits, no account, no card.</p>
+          <Eyebrow>Access</Eyebrow>
+          <div className="lp-price__big">Sold as an engagement.</div>
+          <p>We scope the agent, stand the verification up against it, and hand back
+            evidence your risk function can actually read. Availability is limited
+            while we work with a small number of teams.</p>
           <div className="lp-cta" style={{ justifyContent: "center" }}>
-            <Button href="#setup">Install the CLI</Button>
-            <Button variant="ghost" href="/pricing">Pricing details</Button>
+            <Button href="#access">Request a briefing</Button>
+            <Button variant="ghost" href="/methodology">Read the methodology</Button>
           </div>
         </div>
       </section>
@@ -226,14 +231,15 @@ export function LandingPage() {
       {/* ---- CLOSING ---- */}
       <section id="setup">
         <div className="wrap lp-closing">
-          <Eyebrow>Start in one command</Eyebrow>
-          <SectionHeading title="Try it on your own agent." />
-          <div style={{ maxWidth: 520, margin: "0 auto var(--sp-6)" }}>
-            <CodeBlock lines={[{ prompt: "$", text: "uv tool install agenttic" }]} />
-          </div>
+          <Eyebrow>Start the conversation</Eyebrow>
+          <SectionHeading title="Find out what your agent was never tested for." />
+          <p style={{ color: "var(--muted)", maxWidth: "52ch", margin: "0 auto var(--sp-6)" }}>
+            Bring one agent you already believe is ready. We will show you the part
+            of its behaviour nothing has looked at yet.
+          </p>
           <div className="lp-cta">
-            <Button href="/scan">Get started</Button>
-            <Button variant="ghost" href="/methodology">Read the docs</Button>
+            <Button href="#access">Request a briefing</Button>
+            <Button variant="ghost" href="/methodology">Read the methodology</Button>
           </div>
         </div>
       </section>
@@ -242,9 +248,9 @@ export function LandingPage() {
       <footer>
         <div className="wrap" style={{ padding: "var(--sp-12) var(--sp-8)", color: "var(--muted)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "var(--sp-4)", fontFamily: "var(--font-mono)", fontSize: "var(--t-label)", letterSpacing: "0.06em" }}>
-            <span>© 2026 Agenttic · MIT · on-device</span>
+            <span>© 2026 Agenttic · runs in your environment</span>
             <span>
-              <Link to="/methodology">Methodology</Link> · <Link to="/pricing">Pricing</Link> · <Link to="/status">Status</Link>
+              <Link to="/methodology">Methodology</Link> · <Link to="/status">Status</Link>
             </span>
           </div>
         </div>

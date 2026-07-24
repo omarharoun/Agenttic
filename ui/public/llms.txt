@@ -1,69 +1,45 @@
 # Agenttic
 
-> The evaluation your AI agent can't game. Open-source and on-device: one command
-> scores any agent against a rubric fitted to what it actually does, and every
-> score traces to a check you can audit. Not a leaderboard — a measurement
-> instrument. MIT-licensed.
+> Agent verification. Everyone else reports what passed; we report what was never
+> tested. A pass rate describes the cases somebody thought to write. We measure the
+> space an agent was actually put through, hold it to its properties on every run,
+> prove what can be proven, and lead with what is still unexercised.
 
-Agenttic runs entirely on your hardware. Your agent, prompts, and traces never
-leave your machine; the only calls that leave are the ones your own judge and
-generator steps make to the model provider you configure, under your own keys
-(point them at a local model like Ollama to stay fully on-device). No telemetry.
+Agenttic runs inside your environment. Your agent, prompts and traces stay where
+they already are; the only calls that leave are the ones your own model provider
+already receives, under your own keys. Air-gapped operation is supported.
 
-## How it works
+## What we cover that other evaluations structurally cannot
 
-Install → fit → prove. Agenttic installs as a skill in the assistant you already
-use (Claude Code, Cursor, Copilot, Codex, Gemini CLI, Aider) and as an MCP server.
+- **What was never exercised.** Coverage of the situation space, not a score over
+  a fixed suite — and an explicit refusal to treat an untested corner as a pass.
+- **Properties, watched throughout.** Behaviour held to its rules across the whole
+  run, including the runs that scored perfectly.
+- **Proof where proof is possible.** Where a question about the system is
+  decidable, it is decided for every path rather than sampled — with the boundary
+  of that claim stated in the same breath.
+- **The supply chain, not just the agent.** The tools, servers and memory an agent
+  depends on are tested as subjects in their own right.
+- **A test built for your agent.** A suite fitted to what the agent actually does,
+  and rejected unless it can distinguish a good agent from a bad one.
+- **Evidence with an expiry date.** Signed, scoped, revocable, bound to the exact
+  version tested, and explicit about what it did not measure.
 
-```
-uv tool install agenttic
-agenttic install            # add the skill
-agenttic eval ./my-agent    # or /agenttic eval inside your assistant
-```
+## What it is not
 
-One run classifies your agent into an archetype and fits a rubric to it — proven
-criteria for that kind of agent plus the specifics of yours — then refuses to ship
-that rubric until it proves the rubric separates good agents from bad. Your agent
-runs the fitted suite and every criterion is scored with its evidence attached.
+Not a leaderboard. Not a dashboard. Not a scoring website. The output is not a
+number to feel good about — it is a statement of what was verified, what was not,
+and what nothing has looked at yet.
 
-## The verdict, not a number
+## Access
 
-Every criterion is tagged with how it was measured:
-
-- deterministic — a code check on the trace; same input, same result, no model in
-  the loop.
-- judged · calibrated (α) — an LLM judge that agrees with human reviewers at a
-  measured agreement α against a known human ceiling.
-- provisional — scored by a judge not yet calibrated on this criterion; shown,
-  flagged, never counted as certain.
-
-A judge is never allowed to be more confident than the humans it is measured
-against.
-
-## Why a rubric, not a benchmark
-
-- Fit: a rubric fitted to the agent's archetype and proven to discriminate, not
-  one fixed test for all agents.
-- Provenance: every score traces to a check, a trace, and a rationale you can open
-  — not an opaque aggregate.
-- Reliability: pass^k measures consistency across k independent runs, not a lucky
-  single run. The gap between pass^1 and pass^8 is the flakiness number, named in
-  every report.
-- Contamination: private suites with per-tenant canaries, not public repos that
-  models were likely trained on.
-
-## Pricing
-
-The core is free and open source under the MIT license: the harness, the
-deterministic checks, the LLM-judge mechanism (bring your own key), the reports,
-and the MCP server. No account, no card. A separate early-access layer — the
-rubric engine, the improvement loop, calibration at scale, and neutral
-certification — is Agenttic Assurance, for teams.
+Agenttic is delivered as an engagement rather than a download. We scope the agent,
+stand the verification up against it, and hand back evidence a risk function can
+read. Availability is limited while we work with a small number of teams.
 
 ## Links
 
 - Methodology: https://agenttic.io/methodology
-- Pricing: https://agenttic.io/pricing
-- Scan an agent: https://agenttic.io/scan
+- Request a briefing: https://agenttic.io/#access
 - System status: https://agenttic.io/status
 - Verify a certificate: https://agenttic.io/certified
