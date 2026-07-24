@@ -377,6 +377,21 @@ class CertProfileRow(SQLModel, table=True):
     payload: str
 
 
+class CoverageModelRow(SQLModel, table=True):
+    """A pinned coverage-model version (SPEC-13 Step 59). Append-only + versioned:
+    bins are versioned artifacts, so widening one to hit the closure target is a
+    diff a human approves, never a silent edit (anti-pattern §7.7)."""
+    __tablename__ = "coverage_models"
+    __table_args__ = (UniqueConstraint("tenant_id", "model_id", "version"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    model_id: str = Field(index=True)
+    version: int
+    bins_fingerprint: str = ""
+    created_at: datetime
+    payload: str
+
+
 class AssertionSetRow(SQLModel, table=True):
     """A pinned assertion-set version (SPEC-13 Step 62). Append-only + versioned
     like suites/rubrics/profiles: which properties were in force is evidence."""
@@ -1300,6 +1315,46 @@ class Registry:
                 CertProfileRow.tenant_id == self.tenant
             ).order_by(CertProfileRow.profile_id, CertProfileRow.version)).all()
             return [{"profile_id": r.profile_id, "version": r.version} for r in rows]
+
+    # -- coverage models (versioned, append-only) -----------------------------
+
+    def save_coverage_model(self, model) -> None:
+        """Persist a coverage-model version. Append-only: re-saving an existing
+        (model_id, version) raises, so bins cannot be silently widened."""
+        with Session(self.engine) as s:
+            exists = s.exec(select(CoverageModelRow).where(
+                CoverageModelRow.tenant_id == self.tenant,
+                CoverageModelRow.model_id == model.model_id,
+                CoverageModelRow.version == model.version)).first()
+            if exists:
+                raise DuplicateVersionError(
+                    f"coverage model {model.model_id} v{model.version} already stored")
+            s.add(CoverageModelRow(
+                tenant_id=self.tenant, model_id=model.model_id,
+                version=model.version, bins_fingerprint=model.bins_fingerprint(),
+                created_at=_now(), payload=model.model_dump_json()))
+            s.commit()
+
+    def get_coverage_model(self, model_id: str, version: int | None = None):
+        from agenttic.coverage.model import CoverageModel
+        with Session(self.engine) as s:
+            q = select(CoverageModelRow).where(
+                CoverageModelRow.tenant_id == self.tenant,
+                CoverageModelRow.model_id == model_id)
+            q = q.where(CoverageModelRow.version == version) if version is not None \
+                else q.order_by(CoverageModelRow.version.desc())
+            row = s.exec(q).first()
+            if not row:
+                raise NotFoundError(f"coverage model {model_id} v{version}")
+            return CoverageModel.model_validate_json(row.payload)
+
+    def list_coverage_models(self) -> list[dict]:
+        with Session(self.engine) as s:
+            rows = s.exec(select(CoverageModelRow).where(
+                CoverageModelRow.tenant_id == self.tenant
+            ).order_by(CoverageModelRow.model_id, CoverageModelRow.version)).all()
+            return [{"model_id": r.model_id, "version": r.version,
+                     "bins_fingerprint": r.bins_fingerprint} for r in rows]
 
     # -- assertion sets (versioned, append-only) ------------------------------
 
