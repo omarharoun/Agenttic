@@ -227,16 +227,16 @@ secondary belt-and-suspenders bound; the credit gate is now the primary control.
 
 | path | responsibility |
 |---|---|
-| `src/ascore/billing/models.py` | SQLModel tables (tenant + global) |
-| `src/ascore/billing/plans.py` | plan/credit config reads + USD↔credits math |
-| `src/ascore/billing/store.py` | `BillingStore` (tenant) + `GlobalBillingStore` |
-| `src/ascore/billing/service.py` | free-trial grant, metering, the 402 gate, dashboard payload |
-| `src/ascore/billing/credits_provider.py` | wires the real provider into the Copilot seam |
-| `src/ascore/billing/invoices.py` | invoice HTML render |
-| `src/ascore/billing/gateways/stripe_gateway.py` | Stripe checkout + webhook verify |
-| `src/ascore/billing/gateways/paypal_gateway.py` | PayPal orders/subs + webhook verify |
-| `src/ascore/billing/webhooks.py` | idempotent apply-event logic (both providers) |
-| `src/ascore/server/routes/billing.py` | protected dashboard + public pricing + webhooks |
+| `src/agenttic/billing/models.py` | SQLModel tables (tenant + global) |
+| `src/agenttic/billing/plans.py` | plan/credit config reads + USD↔credits math |
+| `src/agenttic/billing/store.py` | `BillingStore` (tenant) + `GlobalBillingStore` |
+| `src/agenttic/billing/service.py` | free-trial grant, metering, the 402 gate, dashboard payload |
+| `src/agenttic/billing/credits_provider.py` | wires the real provider into the Copilot seam |
+| `src/agenttic/billing/invoices.py` | invoice HTML render |
+| `src/agenttic/billing/gateways/stripe_gateway.py` | Stripe checkout + webhook verify |
+| `src/agenttic/billing/gateways/paypal_gateway.py` | PayPal orders/subs + webhook verify |
+| `src/agenttic/billing/webhooks.py` | idempotent apply-event logic (both providers) |
+| `src/agenttic/server/routes/billing.py` | protected dashboard + public pricing + webhooks |
 | `ui/src/pages/PricingPage.tsx` | public pricing page |
 | `ui/src/pages/BillingPage.tsx` | in-app billing dashboard |
 | `tests/test_billing.py` | 19 tests (credits, debits, 402, idempotent webhooks, invoices, lifecycle) |

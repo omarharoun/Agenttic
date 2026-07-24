@@ -22,7 +22,7 @@ reasonable defaults. If an authoritative spec later surfaces, reconcile these:
 - Deviations file was created during the initial setup step (before T0.3) with content
   rather than empty; T0.3's "add empty docs/SPEC2_DEVIATIONS.md" is satisfied by ensuring
   the file exists.
-- T0.3: existing flat module `src/ascore/certification.py` collided with the required
+- T0.3: existing flat module `src/agenttic/certification.py` collided with the required
   `certification/` package. Moved it to `certification/safety_cert.py` (git mv, history
   preserved) and re-export its full namespace from `certification/__init__.py`; added
   `certification/__main__.py` so `python -m ascore.certification gen-key` still works. All
@@ -178,7 +178,7 @@ regression all green. Suite: **1536 passed, 4 skipped**.
   `helm lint`/`helm template` when present and falls back to structural checks
   (files present, metadata valid, only-defined helpers referenced, balanced
   control blocks) otherwise.
-- T38.3 src/ascore/airgap.py egress self-check (declarative append-only
+- T38.3 src/agenttic/airgap.py egress self-check (declarative append-only
   capability table), wired into the server lifespan BEFORE tracing setup; refuses
   boot naming offenders; `ascore airgap check` CLI; deploy/airgap overlay uses an
   internal (no-gateway) Docker network.

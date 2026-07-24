@@ -27,7 +27,7 @@ interface Dataset {
   present?: boolean; gated?: boolean; caveat?: string;
 }
 
-/** Static mirror of the canonical catalog (src/ascore/metrics/catalog.py) —
+/** Static mirror of the canonical catalog (src/agenttic/metrics/catalog.py) —
  *  used verbatim as the fallback when /api/standard/metrics is unreachable so
  *  the page never goes blank. Kept honest: same names + methodology text. */
 const FALLBACK_METRICS: Metric[] = [

@@ -233,7 +233,7 @@ mode layered on the SPEC-4 gateway, so a customer sees a clean shadow run before
 anything blocks.
 
 ### Added
-- **Enforcement ramp** (`src/ascore/enforce/ramp.py`): a strictly-ordered
+- **Enforcement ramp** (`src/agenttic/enforce/ramp.py`): a strictly-ordered
   per-agent mode — `observe` → `shadow` → `enforce_reads` → `enforce_all`.
   Shadow computes the decision the gateway *would* make and logs the would-be
   block, but lets everything through; enforce_reads blocks only read-class;
@@ -263,7 +263,7 @@ private networks regulated data can't leave.
   posts a PR status check + summary. Per-dimension deltas vs the base branch and
   **regression gating** fail the merge when a dimension erodes even if the letter
   grade holds. Fully offline/self-contained (mock provider, no hosted account).
-- **OTel-GenAI ingest** (`src/ascore/ingest/`): an OTLP/HTTP `POST /v1/traces`
+- **OTel-GenAI ingest** (`src/agenttic/ingest/`): an OTLP/HTTP `POST /v1/traces`
   receiver + `ascore ingest otel <file>` batch importer. Spans following the
   GenAI semantic conventions map to `Trace` (tools + I/O hashes, tokens,
   `agent_config_hash` preserved) and enforcement spans to `Decision`. Provenance

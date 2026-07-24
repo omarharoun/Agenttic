@@ -21,14 +21,14 @@ ui/src/copilot/markdown.tsx       tiny dependency-free Markdown → React (safe;
 ui/src/AppShell.tsx               right-edge launcher + lazily-mounted <CopilotPanel>
 ui/src/api.ts                     api.copilotStatus(); copilotChat()/copilotApprove() SSE clients
 
-src/ascore/copilot/skill.py       agentic persona + guardrails (the "skill"), system-prompt builder
-src/ascore/copilot/knowledge.md   curated, grounded platform knowledge injected each turn
-src/ascore/copilot/tools.py       the tool registry = the real Agenttic API, tenant/role scoped
-src/ascore/copilot/agent.py       streaming tool-use loop + confirmation gate + guards
-src/ascore/copilot/service.py     server-side key resolution, config, plain-stream helpers
-src/ascore/copilot/store.py       tenant-scoped session persistence (resumes the confirm gate)
-src/ascore/copilot/credits.py     credits / cost accounting integration seam (stub)
-src/ascore/server/routes/copilot.py  GET /status, POST /chat (SSE), POST /approve (SSE)
+src/agenttic/copilot/skill.py       agentic persona + guardrails (the "skill"), system-prompt builder
+src/agenttic/copilot/knowledge.md   curated, grounded platform knowledge injected each turn
+src/agenttic/copilot/tools.py       the tool registry = the real Agenttic API, tenant/role scoped
+src/agenttic/copilot/agent.py       streaming tool-use loop + confirmation gate + guards
+src/agenttic/copilot/service.py     server-side key resolution, config, plain-stream helpers
+src/agenttic/copilot/store.py       tenant-scoped session persistence (resumes the confirm gate)
+src/agenttic/copilot/credits.py     credits / cost accounting integration seam (stub)
+src/agenttic/server/routes/copilot.py  GET /status, POST /chat (SSE), POST /approve (SSE)
 ```
 
 ## The agent loop

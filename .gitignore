@@ -2,6 +2,12 @@ __pycache__/
 *.pyc
 .venv/
 ascore.db
+# disposable SQLite test artifacts (CLI/e2e runs drop these in the repo root).
+# They were tracked by accident, which made `git status` permanently dirty and
+# carried ~4.7 MB of binary churn per run.
+*.db
+*.db-shm
+*.db-wal
 report.md
 # build artifacts (scripts/release/pypi.sh writes here)
 dist/

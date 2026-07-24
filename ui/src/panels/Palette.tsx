@@ -38,7 +38,7 @@ export function Palette() {
                 if (e.key === "Enter" || e.key === " ") { e.preventDefault(); addNode(spec.type); }
               }}
               onDragStart={(e) =>
-                e.dataTransfer.setData("application/ascore-node", spec.type)
+                e.dataTransfer.setData("application/agenttic-node", spec.type)
               }
             >
               <span className="cat-dot" style={{ background: CAT_COLOR[cat] }} />

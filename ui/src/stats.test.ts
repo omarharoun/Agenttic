@@ -16,7 +16,7 @@ describe("wilsonInterval", () => {
   });
 
   it("matches the backend wilson_lower_bound formula (7/10)", () => {
-    // Reference value from src/ascore/camp/trainer.py at z=1.96.
+    // Reference value from src/agenttic/camp/trainer.py at z=1.96.
     expect(wilsonLower(7, 10)).toBeCloseTo(0.3968, 3);
   });
 

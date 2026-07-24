@@ -20,9 +20,9 @@ Rule 33).
   Request` (JSON encoding). Spans following the GenAI conventions map to
   `Trace` objects — tools and I/O hashes populated, `agent_config_hash`
   preserved, provenance `source="otel_ingest"`. A batch dump imports via
-  `ascore ingest otel <file>`. See `src/ascore/ingest/`.
+  `ascore ingest otel <file>`. See `src/agenttic/ingest/`.
 - **Export (out).** Enforcement decisions and traces serialize back to OTel
-  spans (`GET /api/enforce/export?fmt=otel`; `src/ascore/enforce/export.py`), so
+  spans (`GET /api/enforce/export?fmt=otel`; `src/agenttic/enforce/export.py`), so
   Agenttic's own signals flow onto the same Datadog/Grafana/collector bus you
   already run.
 

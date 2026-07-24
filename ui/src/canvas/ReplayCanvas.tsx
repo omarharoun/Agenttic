@@ -1,8 +1,8 @@
 import { Background, ReactFlow } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { AscoreNode } from "./AscoreNode";
+import { AgentticNode } from "./AgentticNode";
 
-const nodeTypes = { ascore: AscoreNode };
+const nodeTypes = { agenttic: AgentticNode };
 
 /** Read-only canvas of an execution's frozen workflow snapshot, each node
  * painted with its final run state. */
@@ -11,7 +11,7 @@ export function ReplayCanvas({ execution }: { execution: any }) {
   const states: Record<string, string> = execution.node_states ?? {};
   const nodes = (wf?.nodes ?? []).map((n: any) => ({
     id: n.node_id,
-    type: "ascore",
+    type: "agenttic",
     position: n.position ?? { x: 0, y: 0 },
     draggable: false,
     selectable: false,

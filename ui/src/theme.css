@@ -559,28 +559,28 @@ html[data-theme="light"] select {
 .exec-log .ok { color: var(--ok); } .exec-log .err { color: var(--fail); }
 
 /* ============================== canvas node =============================== */
-.ascore-node {
+.agenttic-node {
   background: var(--panel-2); border: 1.5px solid var(--border); border-radius: var(--r);
   min-width: 172px; font-size: 12.5px; position: relative; box-shadow: var(--shadow-sm);
 }
-.ascore-node .head {
+.agenttic-node .head {
   display: flex; align-items: center; gap: var(--sp-2); padding: 9px var(--sp-3);
   border-bottom: 1px solid var(--border); font-weight: 600;
 }
-.ascore-node .ports { padding: 7px var(--sp-3) 9px; color: var(--muted); font-size: 10.5px; }
-.ascore-node .state-badge {
+.agenttic-node .ports { padding: 7px var(--sp-3) 9px; color: var(--muted); font-size: 10.5px; }
+.agenttic-node .state-badge {
   position: absolute; top: -9px; right: -9px; width: 20px; height: 20px;
   border-radius: 50%; display: grid; place-items: center; font-size: 10px;
   background: var(--panel); border: 1.5px solid var(--border);
 }
-.ascore-node.running { border-color: var(--info); animation: pulse 1.2s ease-in-out infinite; }
-.ascore-node.waiting { border-color: var(--wait); animation: pulse 1.2s ease-in-out infinite; }
-.ascore-node.succeeded { border-color: var(--ok); }
-.ascore-node.failed { border-color: var(--fail); }
-.ascore-node.skipped { opacity: 0.45; }
+.agenttic-node.running { border-color: var(--info); animation: pulse 1.2s ease-in-out infinite; }
+.agenttic-node.waiting { border-color: var(--wait); animation: pulse 1.2s ease-in-out infinite; }
+.agenttic-node.succeeded { border-color: var(--ok); }
+.agenttic-node.failed { border-color: var(--fail); }
+.agenttic-node.skipped { opacity: 0.45; }
 @keyframes pulse { 50% { box-shadow: 0 0 16px 2px var(--info-soft); } }
-.ascore-node .progress { height: 5px; background: var(--border); border-radius: 0 0 10px 10px; overflow: hidden; }
-.ascore-node .progress > div { height: 100%; background: var(--info); transition: width 0.25s; }
+.agenttic-node .progress { height: 5px; background: var(--border); border-radius: 0 0 10px 10px; overflow: hidden; }
+.agenttic-node .progress > div { height: 100%; background: var(--info); transition: width 0.25s; }
 
 .react-flow__handle { width: 9px; height: 9px; background: var(--muted); border: 2px solid var(--bg); }
 .react-flow__handle:hover { background: var(--accent); }

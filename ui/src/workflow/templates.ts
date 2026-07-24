@@ -1,7 +1,7 @@
 import type { WorkflowDoc, WorkflowNode } from "../api";
 
 /* The fixed agent-safety pipeline, expressed as guided steps. Each step maps to
- * a backend node type (src/ascore/server/nodes.py). Node IDs are stable and
+ * a backend node type (src/agenttic/server/nodes.py). Node IDs are stable and
  * equal the step id, so the guided view finds a step's node by id and the
  * wiring below is deterministic.
  *
