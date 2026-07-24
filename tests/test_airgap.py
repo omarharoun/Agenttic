@@ -67,7 +67,7 @@ def test_in_cluster_endpoints_are_not_egress():
 
 
 def test_env_flag_enables_airgap():
-    assert is_airgap({}, {"ASCORE_AIRGAP": "true"}) is True
+    assert is_airgap({}, {"AGENTTIC_AIRGAP": "true"}) is True
     assert is_airgap({"airgap": {"enabled": True}}, {}) is True
     assert is_airgap({}, {}) is False
 

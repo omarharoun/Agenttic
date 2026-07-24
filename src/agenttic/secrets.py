@@ -2,14 +2,14 @@
 
 Secrets come from the environment, with a ``<NAME>_FILE`` convention so
 file-mounted secrets (Docker/Kubernetes secrets, Vault agent sidecars, etc.)
-work transparently: if ``ASCORE_API_TOKEN_FILE`` points at a file, its contents
+work transparently: if ``AGENTTIC_API_TOKEN_FILE`` points at a file, its contents
 are used. ``hydrate_env_secrets()`` (called at startup) copies any ``*_FILE``
 secret into the plain env var so libraries that read the env directly (the
 Anthropic SDK reads ``ANTHROPIC_API_KEY``) see it.
 
 Rotation: provide overlapping tokens via ``auth.tokens`` (add new, deploy,
 remove old) for zero-downtime rotation; the admin token rotates by updating
-``ASCORE_API_TOKEN`` and restarting. Secrets are never logged — a
+``AGENTTIC_API_TOKEN`` and restarting. Secrets are never logged — a
 ``SecretRedactor`` filter scrubs known secret values from every log record.
 """
 
@@ -20,17 +20,17 @@ import os
 from pathlib import Path
 
 # Secrets that may be supplied via env or <NAME>_FILE. The rename-shimmed names
-# are listed under BOTH the new ``AGENTTIC_*`` and legacy ``ASCORE_*`` spellings
+# are listed under BOTH the new ``AGENTTIC_*`` and legacy ``AGENTTIC_*`` spellings
 # so a file-mounted secret hydrates regardless of which name the operator used
 # (the new name wins; plain env vars are never overwritten).
 SECRET_ENV_NAMES = [
     "ANTHROPIC_API_KEY", "COPILOT_ANTHROPIC_KEY",
     "FI_API_KEY", "FI_SECRET_KEY",
-    "AGENTTIC_API_TOKEN", "ASCORE_API_TOKEN",
-    "AGENTTIC_DB", "ASCORE_DB",
-    "AGENTTIC_REDIS_URL", "ASCORE_REDIS_URL",
-    "AGENTTIC_SESSION_SECRET", "ASCORE_SESSION_SECRET",
-    "AGENTTIC_ADMIN_PASSWORD", "ASCORE_ADMIN_PASSWORD",
+    "AGENTTIC_API_TOKEN", "AGENTTIC_API_TOKEN",
+    "AGENTTIC_DB", "AGENTTIC_DB",
+    "AGENTTIC_REDIS_URL", "AGENTTIC_REDIS_URL",
+    "AGENTTIC_SESSION_SECRET", "AGENTTIC_SESSION_SECRET",
+    "AGENTTIC_ADMIN_PASSWORD", "AGENTTIC_ADMIN_PASSWORD",
 ]
 
 
@@ -50,22 +50,10 @@ def get_secret(name: str) -> str:
     """Value of ``name`` — from ``<name>_FILE`` if set (and readable), else the
     plain env var. Returns "" when unset.
 
-    Rename back-compat: for an ``ASCORE_*`` secret, the ``AGENTTIC_*`` name (and
-    its ``*_FILE`` companion) wins; the legacy ``ASCORE_*`` name is still read
-    as a fallback, emitting a ``DeprecationWarning``. Non-shimmed names
-    (``ANTHROPIC_API_KEY`` …) are read verbatim. See :mod:`agenttic._env`."""
-    from agenttic._env import candidate_names, warn_legacy
-
-    new, old = candidate_names(name)
-    v = _read_one(new)
-    if v is not None:
-        return v
-    if old is not None:
-        v = _read_one(old)
-        if v is not None:
-            warn_legacy(old, new)
-            return v
-    return ""
+    ``<name>_FILE`` takes precedence so secrets can be mounted as files rather
+    than passed as environment variables."""
+    v = _read_one(name)
+    return v if v is not None else ""
 
 
 def hydrate_env_secrets() -> None:
@@ -83,7 +71,7 @@ def known_secret_values(cfg: dict) -> set[str]:
     """All secret strings worth redacting from logs (env + config tokens).
     Short values are excluded to avoid over-redacting incidental text."""
     values: set[str] = set()
-    for name in ("ANTHROPIC_API_KEY", "COPILOT_ANTHROPIC_KEY", "ASCORE_API_TOKEN",
+    for name in ("ANTHROPIC_API_KEY", "COPILOT_ANTHROPIC_KEY", "AGENTTIC_API_TOKEN",
                  "FI_API_KEY", "FI_SECRET_KEY"):
         v = get_secret(name)
         if v:

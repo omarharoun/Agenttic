@@ -1,11 +1,11 @@
 """Symmetric encryption for secrets at rest (per-tenant Anthropic keys).
 
 Uses Fernet (AES-128-CBC + HMAC) with a key derived from a server secret —
-``ASCORE_SECRET_KEY`` if set, else the session secret. In production an unset
+``AGENTTIC_SECRET_KEY`` if set, else the session secret. In production an unset
 secret fails closed (no insecure default); outside production a dev fallback key
 is used so local runs work (dev data is not protected — by design).
 The derivation (SHA-256 → urlsafe base64) accepts any string as the secret, so
-operators don't have to generate a Fernet key by hand. Set ``ASCORE_SECRET_KEY``
+operators don't have to generate a Fernet key by hand. Set ``AGENTTIC_SECRET_KEY``
 to a strong random value in production and keep it stable (rotating it makes
 existing ciphertexts undecryptable).
 """
@@ -20,8 +20,7 @@ from cryptography.fernet import Fernet, InvalidToken
 
 
 def _derive_key(cfg: dict) -> bytes:
-    from agenttic._env import get_env
-    secret = get_env("ASCORE_SECRET_KEY")
+    secret = os.environ.get("AGENTTIC_SECRET_KEY")
     if not secret:
         from agenttic.server.sessions import session_secret
         try:
@@ -35,9 +34,9 @@ def _derive_key(cfg: dict) -> bytes:
         from agenttic.certification import is_production
         if is_production(cfg):
             raise RuntimeError(
-                "ASCORE_SECRET_KEY is not set — refusing to encrypt secrets "
+                "AGENTTIC_SECRET_KEY is not set — refusing to encrypt secrets "
                 "with an insecure default in production (fail closed).")
-        secret = "ascore-dev-insecure-secret"  # dev-only; never reached in prod
+        secret = "agenttic-dev-insecure-secret"  # dev-only; never reached in prod
     return base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest())
 
 

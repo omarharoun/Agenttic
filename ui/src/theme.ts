@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 export type ThemePref = "dark" | "light" | "system";
-const KEY = "ascore_theme";
+const KEY = "agenttic_theme";
 
 /** Persisted appearance preference; dark is the default (Chronometer obsidian). */
 export function getThemePref(): ThemePref {

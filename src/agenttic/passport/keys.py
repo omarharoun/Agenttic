@@ -2,7 +2,7 @@
 
 Ed25519 via the maintained ``cryptography`` library (never hand-rolled). The
 issuer holds the PRIVATE key in memory only — it is loaded from the existing
-secret handling (``ASCORE_PASSPORT_SIGNING_KEY`` / ``*_FILE``, base64 of the raw
+secret handling (``AGENTTIC_PASSPORT_SIGNING_KEY`` / ``*_FILE``, base64 of the raw
 32-byte seed) and is NEVER written to the registry, logs, events, or exports. The
 matching PUBLIC keys are published as a JWKS at
 ``/.well-known/agenttic-jwks.json``. Rotation keeps the previous key published for
@@ -30,7 +30,7 @@ from cryptography.hazmat.primitives.serialization import (
 from agenttic.certification.hashing import canonical_json
 from agenttic.schema.passport import KeyRef
 
-_ENV_KEY = "ASCORE_PASSPORT_SIGNING_KEY"
+_ENV_KEY = "AGENTTIC_PASSPORT_SIGNING_KEY"
 
 
 def _b64e(b: bytes) -> str:
@@ -72,9 +72,8 @@ def load_private_from_seed(seed_b64: str) -> Ed25519PrivateKey:
 
 def _load_from_env() -> Ed25519PrivateKey | None:
     # Rename back-compat: AGENTTIC_PASSPORT_SIGNING_KEY wins, legacy
-    # ASCORE_PASSPORT_SIGNING_KEY still honored (node1's prod key). See _env.
-    from agenttic._env import get_env
-    material = get_env(_ENV_KEY)
+    # AGENTTIC_PASSPORT_SIGNING_KEY supplies node1 s production signing key.
+    material = os.environ.get(_ENV_KEY)
     if not material:
         return None
     return load_private_from_seed(material.strip())
@@ -107,7 +106,7 @@ class PassportKeyManager:
     """Holds the active signing key + publishes the JWKS (with overlap keys).
 
     Inject ``private_key`` in tests (a real generated Ed25519 key). Otherwise the
-    key comes from ``ASCORE_PASSPORT_SIGNING_KEY``. Fail-closed exactly like cert
+    key comes from ``AGENTTIC_PASSPORT_SIGNING_KEY``. Fail-closed exactly like cert
     signing (see ``certification.safety_cert.signing_key``): in **production**, if
     no key is configured we REFUSE TO START rather than silently mint an ephemeral
     key that no one can verify across restarts. Outside production we generate an
@@ -135,7 +134,7 @@ class PassportKeyManager:
                         f"{_ENV_KEY} (base64).")
                 # dev/test only: ephemeral key, loudly flagged.
                 import logging
-                logging.getLogger("ascore").warning(
+                logging.getLogger("agenttic").warning(
                     "%s is not set — generating an EPHEMERAL passport signing "
                     "key (dev/test only). Passports signed now will NOT verify "
                     "after a restart; status reports DEGRADED. Set %s in "

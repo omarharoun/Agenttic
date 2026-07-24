@@ -46,8 +46,8 @@ Each InjecAgent case becomes one canonical TestCase scored by our
 ## Ingesting the real dataset
 
 ```
-ascore standard ingest injecagent          # vendored real sample (offline, 16 cases)
-ascore standard ingest injecagent --full   # fetch the full public base split from GitHub (~1054 cases)
+agenttic standard ingest injecagent          # vendored real sample (offline, 16 cases)
+agenttic standard ingest injecagent --full   # fetch the full public base split from GitHub (~1054 cases)
 ```
 
 ## Honesty

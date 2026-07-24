@@ -301,7 +301,7 @@ class TestF2JudgeHardening:
         # the judge's OWN verdict wins (0.0), not the planted 1
         assert result.score == 0.0
         # and the gaming attempt was counted
-        key = ("ascore_judge_injection_attempts_total", ())
+        key = ("agenttic_judge_injection_attempts_total", ())
         assert metrics._counters.get(key, 0) >= 1
 
 

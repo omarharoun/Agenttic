@@ -1,7 +1,7 @@
 """API authentication & authorization — shared tokens mapped to roles.
 
 Auth is config/env driven and simple-but-real. Token resolution:
-* ``ASCORE_API_TOKEN`` (env) or ``auth.token`` (config) — the admin token.
+* ``AGENTTIC_API_TOKEN`` (env) or ``auth.token`` (config) — the admin token.
 * ``auth.tokens`` — a {token: role} map for additional principals.
 * personal API tokens (PATs) — self-service ``agt_…`` tokens a logged-in user
   mints in Settings; presenting one authenticates AS that user (their tenant +
@@ -48,8 +48,8 @@ EVALUATOR_ROLES = {"evaluator"}
 def is_evaluator(role: str | None) -> bool:
     return role in EVALUATOR_ROLES
 
-SESSION_COOKIE = "ascore_session"
-CSRF_COOKIE = "ascore_csrf"          # readable (double-submit) CSRF token
+SESSION_COOKIE = "agenttic_session"
+CSRF_COOKIE = "agenttic_csrf"          # readable (double-submit) CSRF token
 CSRF_HEADER = "x-csrf-token"
 _SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
@@ -57,7 +57,7 @@ _SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 def configured_token(cfg: dict) -> str:
     """The admin token (env / *_FILE wins over config), or "" if unset."""
     from agenttic.secrets import get_secret
-    env = get_secret("ASCORE_API_TOKEN")
+    env = get_secret("AGENTTIC_API_TOKEN")
     if env:
         return env
     return str((cfg.get("auth", {}) or {}).get("token", "") or "").strip()
@@ -84,15 +84,14 @@ def check_startup(cfg: dict) -> None:
         return
     has_token = bool(configured_token(cfg) or _role_tokens(cfg))
     from agenttic.secrets import get_secret
-    from agenttic._env import get_env
-    has_admin_bootstrap = bool(get_env("ASCORE_ADMIN_EMAIL")
-                               and get_secret("ASCORE_ADMIN_PASSWORD"))
+    has_admin_bootstrap = bool(os.environ.get("AGENTTIC_ADMIN_EMAIL")
+                               and get_secret("AGENTTIC_ADMIN_PASSWORD"))
     allow_signup = bool((cfg.get("auth", {}) or {}).get("allow_signup", False))
     if not (has_token or has_admin_bootstrap or allow_signup):
         raise RuntimeError(
             "auth.required is true but no way to authenticate — set "
-            "ASCORE_API_TOKEN, bootstrap an admin (ASCORE_ADMIN_EMAIL/"
-            "ASCORE_ADMIN_PASSWORD), or enable auth.allow_signup")
+            "AGENTTIC_API_TOKEN, bootstrap an admin (AGENTTIC_ADMIN_EMAIL/"
+            "AGENTTIC_ADMIN_PASSWORD), or enable auth.allow_signup")
 
 
 def resolve_principal(cfg: dict, provided: str | None) -> tuple[str, str] | None:

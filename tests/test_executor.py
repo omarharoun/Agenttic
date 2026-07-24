@@ -304,7 +304,7 @@ class TestUnapprovedSuiteHint:
                       if e["type"] == "node_failed"][0]
             msg = failed["data"]["error"]
             assert "Human Gate" in msg and "Resources" in msg
-            assert "ascore approve" not in msg  # no CLI hint in the UI
+            assert "agenttic approve" not in msg  # no CLI hint in the UI
         asyncio.run(main())
 
 

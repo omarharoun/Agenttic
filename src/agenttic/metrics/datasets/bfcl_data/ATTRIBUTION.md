@@ -24,9 +24,9 @@ scenarios.
   Ingest where network allows (`--full` fetches the whole split from HF):
 
   ```
-  ascore standard ingest bfcl --full                   # full simple split
-  ascore standard ingest bfcl-parallel                 # vendored parallel sample
-  ascore standard ingest bfcl-parallel-multiple --full # full parallel_multiple split
+  agenttic standard ingest bfcl --full                   # full simple split
+  agenttic standard ingest bfcl-parallel                 # vendored parallel sample
+  agenttic standard ingest bfcl-parallel-multiple --full # full parallel_multiple split
   ```
 
 - **Multi-call ground truth:** for the `parallel*` splits BFCL's ground truth is

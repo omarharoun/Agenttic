@@ -28,8 +28,7 @@ class AirgapEgressError(RuntimeError):
 
 def is_airgap(cfg: dict, env: dict | None = None) -> bool:
     env = os.environ if env is None else env
-    from agenttic._env import get_env
-    if str(get_env("ASCORE_AIRGAP", "", environ=env)).lower() in ("1", "true", "yes"):
+    if str(env.get("AGENTTIC_AIRGAP", "")).lower() in ("1", "true", "yes"):
         return True
     return bool((cfg.get("airgap", {}) or {}).get("enabled", False))
 
@@ -67,8 +66,7 @@ def _remote_llm(cfg: dict, env: dict) -> bool:
     # default provider is the Anthropic API (public) — an egress path.
     if ag.get("mock_llm") or ag.get("local_llm_base_url"):
         return False
-    from agenttic._env import get_env
-    base = get_env("ASCORE_LLM_BASE_URL", environ=env) or (cfg.get("anthropic", {}) or {}).get("base_url")
+    base = env.get("AGENTTIC_LLM_BASE_URL") or (cfg.get("anthropic", {}) or {}).get("base_url")
     if base and _host_is_local(urlparse(base).hostname or ""):
         return False
     return True

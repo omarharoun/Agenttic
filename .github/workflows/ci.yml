@@ -12,12 +12,12 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: ascore
-          POSTGRES_PASSWORD: ascore
-          POSTGRES_DB: ascore_test
+          POSTGRES_USER: agenttic
+          POSTGRES_PASSWORD: agenttic
+          POSTGRES_DB: agenttic_test
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U ascore"
+          --health-cmd "pg_isready -U agenttic"
           --health-interval 10s --health-timeout 5s --health-retries 5
       redis:
         image: redis:7-alpine
@@ -27,8 +27,8 @@ jobs:
           --health-interval 10s --health-timeout 5s --health-retries 5
     env:
       # exercises the Postgres + Redis code paths in CI (see test markers)
-      ASCORE_TEST_PG: postgresql+psycopg://ascore:ascore@localhost:5432/ascore_test
-      ASCORE_TEST_REDIS: redis://localhost:6379/0
+      AGENTTIC_TEST_PG: postgresql+psycopg://agenttic:agenttic@localhost:5432/agenttic_test
+      AGENTTIC_TEST_REDIS: redis://localhost:6379/0
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

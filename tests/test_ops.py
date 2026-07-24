@@ -1,4 +1,4 @@
-"""M1 of the UI build: the shared ops layer (ascore/ops.py) and the harness
+"""M1 of the UI build: the shared ops layer (agenttic/ops.py) and the harness
 progress hook. Verifies CLI-parity of run_and_score_op against the e2e
 expectations and that progress events fire in order with correct payloads.
 """

@@ -1,6 +1,6 @@
 """Structured logging + request context + HTTP metrics.
 
-* JSON logs on the ``ascore`` logger (one line per request: method, path,
+* JSON logs on the ``agenttic`` logger (one line per request: method, path,
   status, duration, request_id, tenant, role), configured once via
   ``configure_logging``.
 * Each request gets a request id (honoring an inbound ``X-Request-ID``), echoed
@@ -41,10 +41,10 @@ def configure_logging(cfg: dict) -> None:
     hydrate_env_secrets()  # pull *_FILE secrets into the environment
     obs = (cfg.get("observability", {}) or {})
     level = str(obs.get("log_level", "INFO")).upper()
-    root = logging.getLogger("ascore")
+    root = logging.getLogger("agenttic")
     root.setLevel(level)
     redactor = SecretRedactor(known_secret_values(cfg))
-    if any(getattr(h, "_ascore", False) for h in root.handlers):
+    if any(getattr(h, "_agenttic", False) for h in root.handlers):
         # idempotent across create_app calls / tests — refresh the redactor's
         # secret set in case config changed, but don't stack handlers
         for h in root.handlers:
@@ -53,7 +53,7 @@ def configure_logging(cfg: dict) -> None:
                     f.secrets = redactor.secrets
         return
     handler = logging.StreamHandler()
-    handler._ascore = True  # type: ignore[attr-defined]
+    handler._agenttic = True  # type: ignore[attr-defined]
     handler.setFormatter(_JsonFormatter() if obs.get("log_json", True)
                          else logging.Formatter("%(name)s %(levelname)s %(message)s"))
     handler.addFilter(redactor)

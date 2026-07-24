@@ -48,5 +48,5 @@ concept), tag that entry `rubric_source = "adapted-from-apache"` in
   (no declared license → all rights reserved). Concepts only.
 
 The judge *harness* that scores these rubrics is Agenttic's own
-(`ascore.scoring.judge`), and every criterion here is **PROVISIONAL** until a
+(`agenttic.scoring.judge`), and every criterion here is **PROVISIONAL** until a
 real judge-vs-human calibration run demonstrates agreement (Hard Rule 6).

@@ -118,7 +118,7 @@ def test_unapproved_suite_not_pinned(cfg):
 
 
 def test_cli_profiles_show_snapshot(tmp_path, monkeypatch):
-    monkeypatch.setenv("ASCORE_TENANT", "cliproftest")
+    monkeypatch.setenv("AGENTTIC_TENANT", "cliproftest")
     monkeypatch.chdir(Path(__file__).resolve().parents[1])
     runner = CliRunner()
     res = runner.invoke(app_ref(), ["profiles", "show", "cert-agent-safety-v1"])

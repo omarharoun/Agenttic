@@ -44,9 +44,9 @@ def test_metrics_endpoint_counts_requests(tmp_path):
         c.get("/api/agents")
         c.get("/api/agents")
         body = c.get("/metrics").text
-    assert "ascore_http_requests_total" in body
+    assert "agenttic_http_requests_total" in body
     assert 'method="GET"' in body
-    assert "ascore_http_request_duration_seconds_count" in body
+    assert "agenttic_http_request_duration_seconds_count" in body
 
 
 def test_unhandled_error_returns_clean_envelope(tmp_path):
@@ -71,9 +71,9 @@ def test_unhandled_error_returns_clean_envelope(tmp_path):
 class TestMetricsRegistry:
     def test_counter_and_summary_render(self):
         metrics.reset()
-        metrics.inc_counter("ascore_runs_total", {"status": "completed"})
-        metrics.inc_counter("ascore_runs_total", {"status": "completed"})
+        metrics.inc_counter("agenttic_runs_total", {"status": "completed"})
+        metrics.inc_counter("agenttic_runs_total", {"status": "completed"})
         metrics.record_cost(0.05)
         out = metrics.render()
-        assert 'ascore_runs_total{status="completed"} 2.0' in out
-        assert "ascore_llm_cost_usd_total 0.05" in out
+        assert 'agenttic_runs_total{status="completed"} 2.0' in out
+        assert "agenttic_llm_cost_usd_total 0.05" in out

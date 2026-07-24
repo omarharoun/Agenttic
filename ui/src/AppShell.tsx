@@ -133,7 +133,7 @@ export function AppShell() {
   const [state, setState] = useState<"loading" | "ok" | "denied">("loading");
   const [keySet, setKeySet] = useState<boolean | null>(null);
   const [nudgeDismissed, setNudgeDismissed] = useState(
-    () => sessionStorage.getItem("ascore_key_nudge_dismissed") === "1");
+    () => sessionStorage.getItem("agenttic_key_nudge_dismissed") === "1");
   const execId = useFlowStore((s) => s.exec.executionId);
   useExecutionEvents(execId);   // subscribe above the router so runs survive nav
   useRunNotifications();
@@ -148,7 +148,7 @@ export function AppShell() {
   const onSettings = loc.pathname.startsWith("/app/settings");
   const showNudge = state === "ok" && keySet === false && !nudgeDismissed && !onSettings;
   const dismissNudge = () => {
-    sessionStorage.setItem("ascore_key_nudge_dismissed", "1");
+    sessionStorage.setItem("agenttic_key_nudge_dismissed", "1");
     setNudgeDismissed(true);
   };
 

@@ -173,7 +173,7 @@ def test_fail_closed_is_surfaced_to_telemetry_and_log(monkeypatch):
     assert d.action == "deny"
     # telemetry counter incremented for the canary fail-closed
     rendered = metrics.render()
-    assert "ascore_enforcement_fail_closed_total" in rendered
+    assert "agenttic_enforcement_fail_closed_total" in rendered
     assert 'origin="canary"' in rendered
     # an append-only admin event carries the surfaced enforcement error
     events = reg.list_enforcement_events(s.session_id)

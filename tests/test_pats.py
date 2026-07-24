@@ -38,7 +38,7 @@ def ctx(tmp_path):
 def _signup(c, email="dev@x.com", pw="password123"):
     r = c.post("/api/auth/signup", json={"email": email, "password": pw})
     assert r.status_code == 200
-    return c.cookies.get("ascore_csrf")
+    return c.cookies.get("agenttic_csrf")
 
 
 def _bearer(token: str) -> dict:

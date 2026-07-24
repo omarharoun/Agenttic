@@ -1,8 +1,9 @@
-"""CLI entry points after the ascore → agenttic rename.
+"""CLI entry points.
 
-`agenttic` is the public command; `ascore` remains a working *deprecated* alias
-that forwards to the same Typer app (printing a one-line stderr nudge). Both
-must resolve and exit 0 on ``--help``.
+``agenttic`` is the single public command. The pre-rename ``ascore`` alias has
+been **removed** — these tests pin that removal so it cannot creep back in, and
+so an accidental reintroduction of the old name is a test failure rather than a
+surprise in someone's shell.
 """
 
 from __future__ import annotations
@@ -12,17 +13,15 @@ import sys
 import tomllib
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_pyproject_entry_points_target_agenttic():
+def test_pyproject_declares_exactly_one_console_script():
     data = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())
     scripts = data["project"]["scripts"]
-    assert scripts["agenttic"] == "agenttic.cli:app"
-    # ascore stays, as a deprecated alias, still driving the agenttic CLI
-    assert scripts["ascore"] == "agenttic.cli:_ascore_alias"
+    assert scripts == {"agenttic": "agenttic.cli:app"}, (
+        "agenttic is the only console script; the deprecated `ascore` alias was "
+        "removed and must not return")
 
 
 def test_agenttic_module_help_resolves():
@@ -32,22 +31,25 @@ def test_agenttic_module_help_resolves():
     assert "Usage:" in r.stdout
 
 
-def test_ascore_alias_resolves_and_warns(capsys):
-    from agenttic.cli import _ascore_alias
-    sys_argv = sys.argv
-    try:
-        sys.argv = ["ascore", "--help"]
-        with pytest.raises(SystemExit) as exc:
-            _ascore_alias()
-        assert exc.value.code == 0
-    finally:
-        sys.argv = sys_argv
-    err = capsys.readouterr().err
-    assert "deprecated" in err and "agenttic" in err
-
-
-def test_ascore_alias_forwards_to_same_app():
-    # the alias drives the very same Typer app object (identical behavior)
+def test_the_ascore_alias_is_gone_from_the_cli_module():
     from agenttic import cli
-    assert cli._ascore_alias.__module__ == "agenttic.cli"
+    assert not hasattr(cli, "_ascore_alias"), (
+        "the deprecated ascore alias was removed; re-adding it would resurrect "
+        "the old name in operators' shells")
     assert callable(cli.app)
+
+
+def test_the_ascore_package_is_not_importable():
+    """The rename is complete: nothing should resolve `import ascore`.
+
+    This previously passed by accident — a stale `src/ascore/` full of orphaned
+    __pycache__ made it resolve to an empty NAMESPACE package instead of raising.
+    """
+    import importlib
+    try:
+        mod = importlib.import_module("ascore")
+    except ModuleNotFoundError:
+        return
+    raise AssertionError(
+        f"`import ascore` unexpectedly resolved to {getattr(mod, '__file__', None)!r} "
+        "(a namespace package resolves silently — check for a leftover src/ascore/)")

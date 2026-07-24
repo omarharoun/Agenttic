@@ -390,7 +390,7 @@ every run.
 ## Operational controls (auth, cost, hardening)
 
 ```yaml
-auth: {required: true, token: ""}     # prefer the ASCORE_API_TOKEN env var
+auth: {required: true, token: ""}     # prefer the AGENTTIC_API_TOKEN env var
 security:
   rate_limit_per_minute: 120          # 0 = off; per token/IP
   blackbox_block_private: true        # SSRF guard for black-box agent URLs
@@ -399,7 +399,7 @@ budget:
   max_daily_cost_usd: 50.0            # 0 = unlimited
 ```
 
-- **Auth.** Set `ASCORE_API_TOKEN` (or `auth.token`) and every `/api` route —
+- **Auth.** Set `AGENTTIC_API_TOKEN` (or `auth.token`) and every `/api` route —
   including the SSE stream (`?token=`) and the human-approval gate — requires it.
   `auth.required: true` makes the server refuse to start without a token.
 - **SSRF guard.** Black-box agent URLs are validated at registration and at
@@ -434,7 +434,7 @@ Revoking it in Settings takes effect immediately.
 
 **Auth precedence:** an explicit bearer / `X-API-Key` / `?token=` always wins
 over a session cookie. Among explicit tokens, a configured shared/admin token
-(`ASCORE_API_TOKEN`) is matched first, then PATs. PATs are distinct from your
+(`AGENTTIC_API_TOKEN`) is matched first, then PATs. PATs are distinct from your
 Anthropic key (which still powers the actual model calls — set it first or runs
 return `400`). Code: `src/agenttic/server/pats.py`; auth wiring in `server/auth.py`.
 

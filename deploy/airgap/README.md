@@ -29,7 +29,7 @@ docker compose -f deploy/docker-compose.yaml \
 ```
 
 The `agenttic-airgap` network is `internal: true` (no gateway → no route off the
-host). `ASCORE_AIRGAP=true` makes the app run `assert_airgap_safe` at boot; if
+host). `AGENTTIC_AIRGAP=true` makes the app run `assert_airgap_safe` at boot; if
 any enabled capability would require egress it **refuses to start and names the
 offender**.
 
@@ -38,7 +38,7 @@ offender**.
 Before deploying, audit the config from the CLI (same gate the server runs):
 
 ```bash
-ascore airgap check              # exits non-zero if air-gap mode has offenders
+agenttic airgap check              # exits non-zero if air-gap mode has offenders
 ```
 
 ## Offline LLM

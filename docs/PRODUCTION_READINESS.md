@@ -29,10 +29,10 @@ remaining items are Medium/Low residuals, each documented with a rationale.
 
 These are deliberately out of the codebase — provide them at deploy time:
 
-1. **Managed Postgres** (set `ASCORE_DB`) and **Redis** (`ASCORE_REDIS_URL`,
+1. **Managed Postgres** (set `AGENTTIC_DB`) and **Redis** (`AGENTTIC_REDIS_URL`,
    `events.backend=redis`, `security.rate_limit_backend=redis`) for multi-replica
    HA. SQLite + in-memory is the zero-config single-node default.
-2. **Secrets**: supply `ANTHROPIC_API_KEY` and `ASCORE_API_TOKEN` (and any
+2. **Secrets**: supply `ANTHROPIC_API_KEY` and `AGENTTIC_API_TOKEN` (and any
    role/tenant tokens) via your secret store — env or `*_FILE` mounts. Set
    `auth.required: true`.
 3. **TLS / ingress**: terminate HTTPS at a reverse proxy / load balancer in
@@ -85,7 +85,7 @@ deployment), **Medium** (needed for operability/scale), **Low** (polish).
 
 ### 1.1 No authentication anywhere — **Blocker** · ✅ FIXED (`021f5c8`)
 A shared bearer token now gates **every** `/api` route, the SSE stream
-(`?token=`), and the approval gate. Token from `ASCORE_API_TOKEN` (preferred)
+(`?token=`), and the approval gate. Token from `AGENTTIC_API_TOKEN` (preferred)
 or `auth.token`; `auth.required: true` fails the server closed without one.
 `server/auth.py`, applied as a router dependency in `server/app.py`. The UI
 carries it (🔑 control). **Residual:** still a single shared secret, not
@@ -113,7 +113,7 @@ who can reach the port.
 ### 1.2 No authorization model — **High** · ✅ FIXED (`88e4f54`)
 Tokens now map to roles (viewer < operator < admin); `auth.tokens` is a
 `{token: role}` (or `{token: {role, tenant}}`) map, the admin token comes from
-`ASCORE_API_TOKEN`/`auth.token`. `require_operator` gates run-trigger, gate
+`AGENTTIC_API_TOKEN`/`auth.token`. `require_operator` gates run-trigger, gate
 approval, cancel/resume, suite approval, catalog write, workflow write, live
 ingest, and uploads; reads stay viewer-level. `server/auth.py`,
 `tests/test_auth.py::TestRoles`.
@@ -143,7 +143,7 @@ the 291-test suite stay untouched. Isolation verified in `tests/test_tenancy.py`
 > (pairs with the Alembic migrations in §3.2). **Update:** Postgres support
 > with row-level `tenant_id` scoping is now implemented (§3.1) — the maintainer
 > ratified keeping DB-per-tenant for SQLite. The CLI is tenant-aware too:
-> `ascore --tenant <t> …` (or `ASCORE_TENANT`) selects the workspace for every
+> `ascore --tenant <t> …` (or `AGENTTIC_TENANT`) selects the workspace for every
 > command; it operates directly on the DB as an admin tool (DB access, not an
 > API token; provider keys via env/`*_FILE`).
 
@@ -166,13 +166,13 @@ tables and leaderboard.
 ## 2. Secrets handling
 
 ### 2.1 Implicit, process-global API key — **High** · ✅ FIXED (`1c5d601`)
-Secrets (`ANTHROPIC_API_KEY`, `ASCORE_API_TOKEN`, `FI_*`, `ASCORE_DB`,
-`ASCORE_REDIS_URL`) load from env **or a `<NAME>_FILE` path** so Docker/K8s/Vault
+Secrets (`ANTHROPIC_API_KEY`, `AGENTTIC_API_TOKEN`, `FI_*`, `AGENTTIC_DB`,
+`AGENTTIC_REDIS_URL`) load from env **or a `<NAME>_FILE` path** so Docker/K8s/Vault
 file-mounted secrets work transparently (`ascore/secrets.py`;
 `hydrate_env_secrets()` runs at app + CLI startup). The auth token resolves via
 the same path. **Rotation:** overlapping `auth.tokens` entries allow
 zero-downtime rotation (add new → deploy → remove old); the admin token rotates
-via `ASCORE_API_TOKEN` + restart — documented in `.env.example`/§secret-surface.
+via `AGENTTIC_API_TOKEN` + restart — documented in `.env.example`/§secret-surface.
 **Residual (Medium):** per-tenant *provider* keys (each tenant billing its own
 Anthropic key) — today one server key bills all tenants; per-tenant quotas (§7)
 bound the spend in the meantime.
@@ -216,7 +216,7 @@ connect-time PRAGMA listener sets `journal_mode=WAL`, `busy_timeout=5000`, and
 `_harden_sqlite`). Cross-thread writes no longer error and lock contention waits
 rather than failing; verified in `tests/test_migrations.py::TestHardening`.
 **Update (Postgres now supported):** the Registry/UIStore are backend-agnostic;
-set `ASCORE_DB`/`database.url` to a `postgresql+psycopg://` URL and all tenants
+set `AGENTTIC_DB`/`database.url` to a `postgresql+psycopg://` URL and all tenants
 share one Postgres database with **row-level `tenant_id` isolation** (migrations
 run on both backends). `tests/test_postgres.py` proves isolation (CI runs it
 against a Postgres service). SQLite (single-writer) remains the zero-config
@@ -380,9 +380,9 @@ Added structured JSON request logs with a per-request id (honors/echoes
 `X-Request-ID`, includes tenant + role), unauthenticated `/health` (liveness)
 and `/ready` (default-DB ping → 503 when down), and a `/metrics` Prometheus
 endpoint from a dependency-free registry (HTTP request counts + duration
-summary, `ascore_runs_total{status}`, `ascore_llm_cost_usd_total`).
+summary, `agenttic_runs_total{status}`, `agenttic_llm_cost_usd_total`).
 `server/observability.py`, `server/metrics.py`. **Update (`8955bdb`):**
-added per-token counters (`ascore_llm_tokens_total{component,kind}` from agent +
+added per-token counters (`agenttic_llm_tokens_total{component,kind}` from agent +
 judge), and **OpenTelemetry** tracing (`server/tracing.py`, the `otel` extra):
 `observability.otel_enabled` + `OTEL_EXPORTER_OTLP_ENDPOINT` exports a
 request → run → (agent/judge) span hierarchy; it's a no-op when disabled, so the
@@ -542,7 +542,7 @@ production:
   (with Postgres + Redis service containers), frontend typecheck+build+vitest,
   a `pip-audit` advisory scan, and a docker build — so master is verifiably
   green on every push. (`tests/test_packaging.py` validates these artifacts.)
-- ✅ **Multi-worker:** with `events.backend=redis` (+ `ASCORE_REDIS_URL`) the
+- ✅ **Multi-worker:** with `events.backend=redis` (+ `AGENTTIC_REDIS_URL`) the
   event transport is Redis pub/sub, so SSE works across replicas; run
   `uvicorn --workers N` or scale the service. In-memory (single process) stays
   the default. See §12.

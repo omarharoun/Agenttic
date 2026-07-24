@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir ".[postgres,redis]"
 
 # the built frontend (served by the same app). AGENTTIC_UI_DIST tells the app
 # where dist lives, since the package itself is installed under site-packages.
-# (The legacy ASCORE_UI_DIST is still honored by the env shim as a fallback.)
+# (The legacy AGENTTIC_UI_DIST is still honored by the env shim as a fallback.)
 COPY --from=ui /ui/dist ./ui/dist
 ENV AGENTTIC_UI_DIST=/app/ui/dist
 # default config baked in; override by mounting /app/config.yaml or env vars

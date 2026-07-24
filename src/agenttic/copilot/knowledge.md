@@ -169,11 +169,11 @@ status URL is the source of truth. Allowed actions can carry signed **receipts**
 relying parties verify passports and receipts **offline** with a Python or JS
 verifier SDK, and agents self-identify via the `Agent-Passport` header.
 
-**Deploy note:** passport signing requires `ASCORE_PASSPORT_SIGNING_KEY`. In
+**Deploy note:** passport signing requires `AGENTTIC_PASSPORT_SIGNING_KEY`. In
 **production** the server **fails closed** — it refuses to start without a
 configured key rather than mint an unverifiable ephemeral one. Outside production
 it generates an ephemeral key and reports its health as DEGRADED. The SPEC-1
-safety certificate is signed the same way via `ASCORE_CERT_SIGNING_KEY`.
+safety certificate is signed the same way via `AGENTTIC_CERT_SIGNING_KEY`.
 
 ## Enforcement / policy gateway
 An inline **enforcement gateway** guards an agent's tool calls, compiled
@@ -213,7 +213,7 @@ actions **fail closed**; every fail-open is logged. Endpoints live under
 - **Personal API tokens** (`agt_…`) are for CI/API access, shown once, stored
   only as a hash, sent as `Authorization: Bearer`. They are distinct from the
   Anthropic key.
-- **Air-gap mode** (`ASCORE_AIRGAP=1`) runs the scanner, certification engine, and
+- **Air-gap mode** (`AGENTTIC_AIRGAP=1`) runs the scanner, certification engine, and
   OTel ingest with zero outbound network; at startup it refuses to boot if an
   enabled capability would require egress, naming the offender.
 - **Result caching** — identical runs are served from a prior scorecard with zero

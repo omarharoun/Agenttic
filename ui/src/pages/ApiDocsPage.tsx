@@ -73,11 +73,11 @@ export function ApiDocsPage() {
             <Link to="/app/settings?section=api-keys" style={{ color: "var(--accent)" }}>Settings → API keys</Link>{" "}
             and send <code>Authorization: Bearer agt_…</code>. A configured{" "}
             <b>shared token</b> (<code>AGENTTIC_API_TOKEN</code>, or the legacy{" "}
-            <code>ASCORE_API_TOKEN</code>, which still works) works the same way for
+            <code>AGENTTIC_API_TOKEN</code>, which still works) works the same way for
             CI. Or use a <b>login session</b>: <code>POST /api/auth/login</code> sets an
             httponly cookie; browser requests then authenticate automatically
             (cookie-based mutations also need the <code>X-CSRF-Token</code> header,
-            echoed from the <code>ascore_csrf</code> cookie).
+            echoed from the <code>agenttic_csrf</code> cookie).
           </p>
           <p className="summary">
             <b>Precedence:</b> an explicit bearer/<code>X-API-Key</code>/<code>?token=</code>{" "}

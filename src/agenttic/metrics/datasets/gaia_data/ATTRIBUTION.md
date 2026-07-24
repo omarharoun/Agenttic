@@ -49,8 +49,8 @@ tests and demos. They are a schema/scoring proxy, not real benchmark content.
 3. Ingest the real validation split into the local registry (never written back
    into the repo):
    ```
-   ascore standard ingest gaia --full      # fetch the gated validation split from HF (needs HF_TOKEN)
-   ascore standard ingest gaia             # ingest the vendored NON-OPERATIONAL placeholder sample
+   agenttic standard ingest gaia --full      # fetch the gated validation split from HF (needs HF_TOKEN)
+   agenttic standard ingest gaia             # ingest the vendored NON-OPERATIONAL placeholder sample
    ```
    Without a valid, terms-accepted token, `--full` fails with an authorization
    error (HTTP 401) — that is the gating, surfaced honestly, not a bug.

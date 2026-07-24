@@ -273,10 +273,10 @@ SIGNATURE_ALG = "ed25519"
 
 # Env / config sources for the issuer's Ed25519 signing key. Accepts a PKCS#8 PEM
 # private key OR base64 of the 32-byte raw Ed25519 seed. Via ``*_FILE`` too.
-SIGNING_KEY_ENV = "ASCORE_CERT_SIGNING_KEY"
+SIGNING_KEY_ENV = "AGENTTIC_CERT_SIGNING_KEY"
 # Additional trusted PUBLIC keys (PEM or base64 raw), for key rotation / verify-
 # only nodes — comma/newline separated in the env, a list in config.
-PUBLIC_KEYS_ENV = "ASCORE_CERT_PUBLIC_KEYS"
+PUBLIC_KEYS_ENV = "AGENTTIC_CERT_PUBLIC_KEYS"
 
 # A deterministic, PUBLICLY-KNOWN development key, used ONLY outside production so
 # local runs and tests can issue + verify without provisioning a key. It is NOT a
@@ -307,9 +307,8 @@ def _b64d(s: str) -> bytes:
 def is_production(cfg: dict | None = None) -> bool:
     """Whether this process is running in production, where certificate issuance
     must fail closed if no real signing key is configured. Driven by
-    ``ASCORE_ENV`` / ``ASCORE_ENVIRONMENT`` (or ``env`` in config)."""
-    from agenttic._env import get_env
-    env = (get_env("ASCORE_ENV") or get_env("ASCORE_ENVIRONMENT") or "")
+    ``AGENTTIC_ENV`` / ``AGENTTIC_ENVIRONMENT`` (or ``env`` in config)."""
+    env = (os.environ.get("AGENTTIC_ENV") or os.environ.get("AGENTTIC_ENVIRONMENT") or "")
     if not env and cfg:
         env = str((cfg or {}).get("env")
                   or ((cfg or {}).get("server", {}) or {}).get("env") or "")
@@ -341,11 +340,10 @@ def _load_public_from_material(material: str) -> Ed25519PublicKey:
 
 
 def _configured_signing_material(cfg: dict | None) -> str:
-    # get_secret already applies the AGENTTIC_*→ASCORE_* shim (+ *_FILE). The
+    # get_secret already applies the AGENTTIC_*→AGENTTIC_* shim (+ *_FILE). The
     # env_get tail keeps the redundant direct read shim-aware too.
-    from agenttic._env import get_env
     from agenttic.secrets import get_secret
-    m = get_secret(SIGNING_KEY_ENV) or get_env(SIGNING_KEY_ENV, "")
+    m = get_secret(SIGNING_KEY_ENV) or os.environ.get(SIGNING_KEY_ENV, "")
     if not m and cfg:
         m = str((cfg.get("certification", {}) or {}).get("signing_key") or "")
     return m.strip()
@@ -353,8 +351,7 @@ def _configured_signing_material(cfg: dict | None) -> str:
 
 def _configured_public_materials(cfg: dict | None) -> list[str]:
     out: list[str] = []
-    from agenttic._env import get_env
-    env = get_env(PUBLIC_KEYS_ENV, "")
+    env = os.environ.get(PUBLIC_KEYS_ENV, "")
     for chunk in env.replace("\n", ",").split(","):
         if chunk.strip():
             out.append(chunk.strip())
@@ -368,7 +365,7 @@ def _configured_public_materials(cfg: dict | None) -> list[str]:
 def signing_key(cfg: dict | None = None) -> Ed25519PrivateKey:
     """The issuer's Ed25519 private key for signing certificates.
 
-    Configured via ``ASCORE_CERT_SIGNING_KEY`` (env / ``*_FILE``, PEM or base64
+    Configured via ``AGENTTIC_CERT_SIGNING_KEY`` (env / ``*_FILE``, PEM or base64
     raw seed) or ``certification.signing_key`` in config. In production, if none
     is configured this raises — we never sign with an insecure default and never
     fall back to a hard-coded secret. Outside production a deterministic,
@@ -481,12 +478,11 @@ def verify_certificate(payload: dict, signature: str, public_key_b64: str) -> bo
 
 
 def signing_secret(cfg: dict | None = None) -> str:
-    """The legacy HMAC secret: ``ASCORE_SECRET_KEY`` (env / *_FILE) if set, else
+    """The legacy HMAC secret: ``AGENTTIC_SECRET_KEY`` (env / *_FILE) if set, else
     the session secret, else ``""``. There is **no** insecure hard-coded fallback
     any more — an unset secret makes legacy HMAC verification fail closed."""
-    from agenttic._env import get_env
     from agenttic.secrets import get_secret
-    secret = get_secret("ASCORE_SECRET_KEY") or get_env("ASCORE_SECRET_KEY", "")
+    secret = get_secret("AGENTTIC_SECRET_KEY") or os.environ.get("AGENTTIC_SECRET_KEY", "")
     if not secret and cfg is not None:
         try:
             from agenttic.server.sessions import session_secret
@@ -758,7 +754,7 @@ def _xml_escape(s: str) -> str:
 
 def generate_signing_key() -> tuple[str, dict]:
     """Generate a fresh Ed25519 signing key. Returns ``(private_b64, pub_entry)``
-    where ``private_b64`` is the 32-byte raw seed (set as ``ASCORE_CERT_SIGNING_KEY``)
+    where ``private_b64`` is the 32-byte raw seed (set as ``AGENTTIC_CERT_SIGNING_KEY``)
     and ``pub_entry`` is the public-key entry to publish."""
     priv = Ed25519PrivateKey.generate()
     raw = priv.private_bytes(
@@ -771,7 +767,7 @@ if __name__ == "__main__":  # pragma: no cover
     import sys
     if len(sys.argv) >= 2 and sys.argv[1] == "gen-key":
         priv_b64, entry = generate_signing_key()
-        print("# Keep this SECRET. Set it as ASCORE_CERT_SIGNING_KEY:")
+        print("# Keep this SECRET. Set it as AGENTTIC_CERT_SIGNING_KEY:")
         print(priv_b64)
         print("\n# Public key (published; safe to share):")
         print(json.dumps(entry, indent=2))

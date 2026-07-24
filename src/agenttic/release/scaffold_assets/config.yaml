@@ -57,16 +57,16 @@ anthropic:
     jitter: true
 database:
   url: ""             # blank => SQLite (paths.registry_db, DB-per-tenant).
-                      # Set a postgresql+psycopg:// URL (or ASCORE_DB env) for a
+                      # Set a postgresql+psycopg:// URL (or AGENTTIC_DB env) for a
                       # shared Postgres with row-level tenant scoping.
 events:
   backend: memory     # memory (single process) | redis (multi-worker SSE)
-  redis_url: ""       # redis://host:6379/0 (or ASCORE_REDIS_URL); required for redis
-retention:            # trace data lifecycle (run `ascore retention --apply` on a schedule)
+  redis_url: ""       # redis://host:6379/0 (or AGENTTIC_REDIS_URL); required for redis
+retention:            # trace data lifecycle (run `agenttic retention --apply` on a schedule)
   trace_redact_days: 0  # >0: strip inputs/outputs from traces older than N days (PII)
   trace_prune_days: 0   # >0: delete traces older than N days (scorecards keep aggregates)
 observability:
-  log_level: INFO     # ascore logger level
+  log_level: INFO     # agenttic logger level
   log_json: true      # structured JSON request logs (false => plain text)
   otel_enabled: false # true + OTEL_EXPORTER_OTLP_ENDPOINT => export traces (needs the otel extra)
 
@@ -79,12 +79,12 @@ distribution:
   enforce_posture: shadow   # ramp posture when enforce=True: observe|shadow (non-blocking only)
 auth:
   required: false     # true => server refuses to start without a token (fail closed)
-  token: ""           # the ADMIN token; prefer the ASCORE_API_TOKEN env var
+  token: ""           # the ADMIN token; prefer the AGENTTIC_API_TOKEN env var
                       # when any token is set, ALL /api routes need one
   tokens: {}          # additional principals: {token: role}; roles are
                       # viewer (read) < operator (run/approve/manage) < admin
   # -- user accounts / sessions (login path, in addition to the bearer token) --
-  session_secret: ""        # ASCORE_SESSION_SECRET; falls back to the API token
+  session_secret: ""        # AGENTTIC_SESSION_SECRET; falls back to the API token
   session_ttl_hours: 168    # cookie session lifetime (7 days)
   allow_signup: true        # open signup; each signup gets its own tenant workspace
   signup_role: admin        # role a self-signup receives (admin of their own tenant)

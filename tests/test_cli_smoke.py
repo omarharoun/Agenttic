@@ -88,7 +88,7 @@ def test_agents_catalog_cli_roundtrip(tmp_path):
 
 
 def test_run_uses_named_agent_suite_options():
-    """`ascore run` accepts --agent/--suite (README form), not positionals."""
+    """`agenttic run` accepts --agent/--suite (README form), not positionals."""
     import re
 
     import typer

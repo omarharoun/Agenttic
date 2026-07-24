@@ -25,7 +25,7 @@ def test_selfhost_compose_parses_and_has_server():
     assert "server" in d["services"]
     server = d["services"]["server"]
     # BYO-Postgres knob + data persistence + health check
-    assert "ASCORE_DB" in server["environment"]
+    assert "AGENTTIC_DB" in server["environment"]
     assert any("agenttic-data" in str(v) for v in server["volumes"])
     assert "healthcheck" in server
     assert "agenttic-data" in d["volumes"]
@@ -35,7 +35,7 @@ def test_airgap_overlay_is_internal_network():
     d = yaml.safe_load((DEPLOY / "airgap/docker-compose.airgap.yaml").read_text())
     # the air-gap network has no gateway (internal: true) → zero egress
     assert d["networks"]["agenttic-airgap"]["internal"] is True
-    assert d["services"]["server"]["environment"]["ASCORE_AIRGAP"] == "true"
+    assert d["services"]["server"]["environment"]["AGENTTIC_AIRGAP"] == "true"
 
 
 def test_compose_config_validates_if_docker_present():

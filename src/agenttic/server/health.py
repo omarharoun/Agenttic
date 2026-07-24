@@ -15,6 +15,8 @@ loads probes the real components at most once per ``cache_ttl`` seconds.
 
 from __future__ import annotations
 
+import os
+
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -236,8 +238,7 @@ class HealthChecker:
 def _discover_version() -> str | None:
     try:
         from importlib.metadata import PackageNotFoundError, version
-        # Distribution is `agenttic` (SPEC-8); `ascore` is the pre-8 name.
-        for dist in ("agenttic", "ascore"):
+        for dist in ("agenttic",):
             try:
                 return version(dist)
             except PackageNotFoundError:
@@ -249,5 +250,4 @@ def _discover_version() -> str | None:
 
 def _discover_build() -> str | None:
     # Optional build/commit stamp, set by the deploy pipeline. Never fabricated.
-    from agenttic._env import get_env
-    return get_env("ASCORE_BUILD") or None
+    return os.environ.get("AGENTTIC_BUILD") or None

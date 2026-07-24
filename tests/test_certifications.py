@@ -212,15 +212,15 @@ class TestEd25519ThirdPartyVerification:
             assert "private" not in str(k).lower()
 
     def test_production_fails_closed_without_configured_key(self, monkeypatch):
-        monkeypatch.setenv("ASCORE_ENV", "production")
-        monkeypatch.delenv("ASCORE_CERT_SIGNING_KEY", raising=False)
+        monkeypatch.setenv("AGENTTIC_ENV", "production")
+        monkeypatch.delenv("AGENTTIC_CERT_SIGNING_KEY", raising=False)
         assert cert.is_production() is True
         with pytest.raises(cert.CertificationError):
             cert.signing_key(cfg={})
 
     def test_configured_key_round_trips(self, monkeypatch):
         priv_b64, entry = cert.generate_signing_key()
-        monkeypatch.setenv("ASCORE_CERT_SIGNING_KEY", priv_b64)
+        monkeypatch.setenv("AGENTTIC_CERT_SIGNING_KEY", priv_b64)
         signed, sig = cert.sign_certificate(self._payload(), cfg={})
         assert signed["public_key_id"] == entry["kid"]
         assert cert.verify_certificate(signed, sig, entry["public_key_b64"])

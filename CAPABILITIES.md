@@ -42,7 +42,7 @@ Agenttic's own seed data — they are not the public datasets and don't reproduc
 any paper's numbers. The Index is empty until you run an agent with your own
 Anthropic key. SWE-bench is scored by an **offline proxy**, not its official
 Docker resolve-rate — the real resolve-rate harness is now **wired but gated**
-(set `ASCORE_SWEBENCH_HARNESS=docker` in an environment with Docker + the
+(set `AGENTTIC_SWEBENCH_HARNESS=docker` in an environment with Docker + the
 `swebench` package + instance images) rather than hard-disabled. The honest
 per-wedge status — reproduced vs scorer-validated vs proxy vs seed-sample, and
 what real reproduction would take — is served at `GET /api/public/reproduction`.

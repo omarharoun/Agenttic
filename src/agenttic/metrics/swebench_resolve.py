@@ -31,7 +31,7 @@ scored by the documented PROXY checks in ``metrics.canonical_checks``
 "proxy, not official resolve-rate" everywhere they appear.
 
 The harness path is **wired but gated**, not stubbed: ``harness_available`` now
-detects a configured harness (``ASCORE_SWEBENCH_HARNESS=docker``) plus its
+detects a configured harness (``AGENTTIC_SWEBENCH_HARNESS=docker``) plus its
 prerequisites (Docker + the official ``swebench`` package + instance images). On
 this VM those are absent so it returns False and callers fall back to the honest
 proxy; provisioning the infra flips it on with no code change. The honest
@@ -41,8 +41,6 @@ per-wedge status (proxy vs reproduced) is surfaced in ``metrics.reproduction``.
 from __future__ import annotations
 
 import os
-
-from agenttic._env import get_env
 import shutil
 from dataclasses import dataclass
 from typing import Protocol
@@ -73,10 +71,10 @@ class ResolveHarness(Protocol):
 
 
 # Env switch to wire a real harness. Unset here (no infra on this VM), so the path
-# is genuinely GATED — not permanently stubbed. Set ``ASCORE_SWEBENCH_HARNESS=docker``
+# is genuinely GATED — not permanently stubbed. Set ``AGENTTIC_SWEBENCH_HARNESS=docker``
 # in an environment that has Docker + the official ``swebench`` package + pullable
 # instance images to run the real resolve-rate.
-HARNESS_ENV = "ASCORE_SWEBENCH_HARNESS"
+HARNESS_ENV = "AGENTTIC_SWEBENCH_HARNESS"
 
 
 def _docker_present() -> bool:
@@ -92,11 +90,11 @@ def harness_available(cfg: dict | None = None) -> bool:
     """Whether a REAL SWE-bench execution harness is wired up *and* runnable here.
 
     No longer a hard ``False``: it genuinely detects a configured harness
-    (``ASCORE_SWEBENCH_HARNESS``) plus its prerequisites (Docker + the ``swebench``
+    (``AGENTTIC_SWEBENCH_HARNESS``) plus its prerequisites (Docker + the ``swebench``
     package). On this VM those are absent, so it returns False and callers fall
     back to the honest proxy — but provisioning the infra flips this on for real,
     with no code change."""
-    choice = (get_env(HARNESS_ENV) or "").strip().lower()
+    choice = (os.environ.get(HARNESS_ENV) or "").strip().lower()
     if not choice and cfg:
         choice = str((cfg.get("swebench", {}) or {}).get("harness") or "").lower()
     if choice in ("", "off", "none", "false", "0"):
@@ -113,7 +111,7 @@ def build_configured_harness(cfg: dict | None = None) -> ResolveHarness | None:
     mode (no infra) is explicit."""
     if not harness_available(cfg):
         return None
-    choice = (get_env(HARNESS_ENV) or "").strip().lower()
+    choice = (os.environ.get(HARNESS_ENV) or "").strip().lower()
     if not choice and cfg:
         choice = str((cfg.get("swebench", {}) or {}).get("harness") or "").lower()
     if choice == "docker":

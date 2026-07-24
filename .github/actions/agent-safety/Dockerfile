@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1
 # Container entry for the Agenttic agent-safety gate.
 #
-# The action's default `runs.using: composite` path installs ascore in the
+# The action's default `runs.using: composite` path installs agenttic in the
 # runner and is the friendliest for most consumers. This image is the
-# *self-contained* alternative: it bakes ascore + the gate script into a pinned
+# *self-contained* alternative: it bakes agenttic + the gate script into a pinned
 # container so the safety battery runs with ZERO network install at gate time —
 # the mode used for air-gapped runners and reproducible, hermetic CI (T37.4).
 #
@@ -16,7 +16,7 @@ FROM python:3.12-slim AS gate
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 
 WORKDIR /opt/agenttic
-# Install ascore from source so the container is a faithful, offline copy of the
+# Install agenttic from source so the container is a faithful, offline copy of the
 # CLI the composite action would pip-install. No extras: the gate only needs the
 # core scanner + certify path, which run fully offline in --mock mode.
 COPY pyproject.toml README.md ./

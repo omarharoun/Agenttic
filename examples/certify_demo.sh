@@ -8,7 +8,7 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$HERE"
 
 TENANT="certify-demo"
-export ASCORE_TENANT="$TENANT"
+export AGENTTIC_TENANT="$TENANT"
 DB="ascore.${TENANT}.db"
 OUT="/tmp/agenttic_certify_demo.json"
 
