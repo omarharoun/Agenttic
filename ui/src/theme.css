@@ -3266,6 +3266,51 @@ a.btn-primary, button.btn-primary,
 .verif-strip .val.err { color: var(--score-fail); }
 .verif-strip .val.wait { color: var(--score-provisional); }
 
+/* --- the same vocabulary, in table-cell form -----------------------------
+   Used by the dashboard and results history so a list never shows a bare pass
+   rate. `.cov-cell` leads with closure; `.scope-chip` tags the rate beside it
+   with the scope it was actually measured in. */
+.cov-cell { display: inline-flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
+.cov-cell > b { font-variant-numeric: tabular-nums; }
+.cov-cell > b.ok { color: var(--score-pass); }
+.cov-cell > b.err { color: var(--score-fail); }
+.cov-cell-props {
+  display: inline-flex; gap: var(--sp-2); flex-wrap: wrap;
+  font: 500 var(--t-label) / 1.3 var(--font-ui);
+}
+.cov-cell-props .ok { color: var(--score-pass); }
+.cov-cell-props .err { color: var(--score-fail); }
+.cov-cell-props .wait { color: var(--score-provisional); }
+
+.scope-chip {
+  display: inline-block; margin-left: var(--sp-2);
+  padding: 1px 6px; border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  font: 500 var(--t-label) / 1.5 var(--font-mono);
+  letter-spacing: 0.04em; text-transform: lowercase;
+  color: var(--muted); background: var(--panel-2);
+  vertical-align: middle; cursor: help;
+}
+.scope-chip.scope-unscoped {
+  color: var(--score-provisional);
+  border-color: var(--score-provisional);
+}
+
+.dash-rate { font-variant-numeric: tabular-nums; }
+
+/* A standing statement of what a number on this screen is a claim about. */
+.scope-line {
+  font-size: var(--t-sm);
+  color: var(--muted);
+  line-height: 1.55;
+  max-width: 78ch;
+}
+.scope-line.unscoped {
+  border-left: 2px solid var(--score-provisional);
+  padding: var(--sp-2) 0 var(--sp-2) var(--sp-4);
+}
+.scope-line b { color: var(--text); }
+
 .never-exercised {
   margin-top: var(--sp-4);
   border: 1px solid var(--border);

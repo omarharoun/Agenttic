@@ -156,21 +156,21 @@ export function LandingPage() {
           <div className="lp-doors">
             <div className="lp-door">
               <Eyebrow>For developers</Eyebrow>
-              <h3>Score your agent in one command</h3>
+              <h3>Find the failures your suite never reaches</h3>
               <ul>
                 <li>Catch failures before your users do — including the ones that only show up 1 run in 8.</li>
                 <li>Every score opens to its evidence; no black-box numbers.</li>
               </ul>
-              <Button href="#setup">Install in one command</Button>
+              <Button href="#cover">See what we cover</Button>
             </div>
             <div className="lp-door">
               <Eyebrow>For teams &amp; buyers</Eyebrow>
-              <h3>The scorecard is a file your team can share</h3>
+              <h3>The evidence is a file your team can share</h3>
               <ul>
                 <li>Evaluate a vendor's agent black-box before you deploy it.</li>
                 <li>Reliability, policy compliance, and contamination — what procurement actually asks.</li>
               </ul>
-              <Button variant="ghost" href="/pricing">See pricing</Button>
+              <Button variant="ghost" href="/pricing">How access works</Button>
             </div>
           </div>
         </div>

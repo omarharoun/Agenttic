@@ -63,8 +63,36 @@ def test_the_surface_names_what_it_does_not_cover():
     joined = " ".join(c["not_covered"]).lower()
     assert c["not_covered"], "an honest surface names its edges"
     assert "model" in joined                     # we do not verify the weights
-    assert "memory" in joined                    # SPEC-12 Step 57 not built
-    assert c["supply_chain"]["memory"]["implemented"] is False
+    # memory is now certified (SPEC-12 Step 57) — so the edge it names is the
+    # boundary of that battery, not its absence.
+    assert "memory" in joined
+    assert c["supply_chain"]["memory"]["implemented"] is True
+
+
+def test_memory_and_catalog_capabilities_come_from_the_live_registries():
+    """The surface must enumerate the battery, not restate it — adding a memory
+    check has to move this endpoint without anyone editing it."""
+    from agenttic.certification.catalog import EntryStatus
+    from agenttic.certification.memory_suite import MEMORY_CHECKS
+
+    sc = capabilities()["supply_chain"]
+    assert sc["memory"]["checks"] == [c["id"] for c in MEMORY_CHECKS]
+    assert "principal_isolation" in sc["memory"]["checks"]
+
+    from typing import get_args
+    assert set(sc["catalog"]["statuses"]) == set(get_args(EntryStatus))
+    assert any("named approver" in g for g in sc["catalog"]["promotion_gates"])
+
+
+def test_the_declared_memory_battery_is_the_one_that_actually_runs():
+    """Pins the capability registry to the report: a check added to
+    certify_memory without a MEMORY_CHECKS entry (or vice versa) fails here
+    rather than leaving a stale public claim."""
+    from agenttic.camp.memory import ReferenceMemoryStore
+    from agenttic.certification.memory_suite import MEMORY_CHECKS, certify_memory
+
+    rep = certify_memory(ReferenceMemoryStore(capacity=32), declared_capacity=32)
+    assert [o.check_id for o in rep.outcomes] == [c["id"] for c in MEMORY_CHECKS]
 
 
 def test_no_unbounded_safety_claim_anywhere_in_the_surface():

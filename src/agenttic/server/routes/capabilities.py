@@ -90,6 +90,10 @@ def _formal() -> dict:
 
 
 def _supply_chain() -> dict:
+    from typing import get_args
+
+    from agenttic.certification.catalog import EntryStatus
+    from agenttic.certification.memory_suite import MEMORY_CHECKS
     return {
         "mcp_server": {
             "transports": ["stdio", "streaming http"],
@@ -104,8 +108,36 @@ def _supply_chain() -> dict:
                        "side_effect_disclosure", "failure_mode_handling",
                        "description_quality (cross-model selection accuracy)"],
         },
-        "memory": {"implemented": False,
-                   "note": "SPEC-12 Step 57 — not built yet"},
+        "memory": {
+            "implemented": True,
+            "note": "memory is exercised ACROSS session boundaries — every check "
+                    "below is invisible inside a single session",
+            "checks": [c["id"] for c in MEMORY_CHECKS],
+            "questions": [{"id": c["id"], "critical": c["critical"],
+                           "question": c["question"]} for c in MEMORY_CHECKS],
+        },
+        "catalog": {
+            "implemented": True,
+            "note": "the register of what is approved for use, and the rule for "
+                    "how something enters and leaves it",
+            "statuses": list(get_args(EntryStatus)),
+            "promotion_gates": [
+                "a signed evidence manifest that verifies",
+                "evidence that has not expired",
+                "evidence that has not been revoked",
+                "a named approver and a written rationale",
+                "for a challenger: a clean shadow comparison against the "
+                "incumbent, judged per case rather than on the average",
+            ],
+            "conformance_findings": [
+                "needs_reverification", "no_evidence", "evidence_unavailable",
+                "evidence_mismatch", "evidence_expired", "evidence_revoked",
+                "unregistered_dependency", "uncertified_dependency",
+            ],
+            "cascade": "retiring a component moves every dependent that was "
+                       "certified with it to needs_reverification and suspends "
+                       "its manifest",
+        },
     }
 
 
@@ -163,8 +195,9 @@ def capabilities() -> dict:
         "not_covered": [
             "the model's internals — we verify the guard layer around it, never "
             "the weights",
-            "memory retention / poisoning / cross-tenant leakage (SPEC-12 Step 57, "
-            "not built)",
+            "memory SEMANTICS beyond the certified battery — we test isolation, "
+            "deletion, contradiction, injection and capacity; we do not judge "
+            "whether what a store chose to remember was worth remembering",
             "multi-agent interaction coverage",
             "anything a coverage model does not declare — unhit bins are reported, "
             "never assumed passed",

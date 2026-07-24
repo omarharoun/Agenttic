@@ -392,7 +392,12 @@ export function HardeningPage() {
     <div className="page">
       <div className="list-page">
         <PageHeader title="Hardening"
-          subtitle="Fix, then keep it fixed. Promote an issue's failing cases into a permanent, versioned regression suite, then re-run to prove the fix held — with a McNemar delta so nothing silently regresses." />
+          subtitle={<>Fix, then keep it fixed. Promote an issue's failing cases
+            into a permanent, versioned regression suite, then re-run to check the
+            fix held — with a McNemar delta so nothing silently regresses. A
+            regression suite stops a <i>known</i> failure recurring; it does not by
+            itself reach further into the situation space, which is what coverage
+            closure measures.</>} />
 
         <div className="harden-flow" aria-hidden="true">
           <span className="hf-step"><span className="ic">①</span> Catch a failure</span>
