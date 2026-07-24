@@ -19,6 +19,7 @@ from agenttic.schema.rubric import Criterion
 from agenttic.schema.scorecard import Scorecard
 from agenttic.schema.testcase import TestCase
 from agenttic.schema.trace import Trace
+from agenttic.verification.builtins import DEFAULT_ASSERTION_IDS
 from agenttic.scoring.judge import LLMJudge
 
 _LIVE_TC = TestCase(
@@ -52,6 +53,7 @@ class LiveMonitor:
         drift_threshold: float = 0.15,
         window: int = 50,
         rng: random.Random | None = None,
+        assertion_ids: list[str] | None = None,
     ):
         bad = [c.criterion_id for c in live_criteria
                if c.scorer != "judge" or "live" not in c.tags]
@@ -66,6 +68,12 @@ class LiveMonitor:
         self.drift_threshold = drift_threshold
         self.window = window
         self.rng = rng or random.Random()
+        # SPEC-13 Step 62: assertions run on EVERY ingested production trace, not
+        # just the sampled ones — they are deterministic and make no judge calls,
+        # so continuous monitoring is effectively free.
+        self.assertion_ids = (list(assertion_ids) if assertion_ids is not None
+                              else list(DEFAULT_ASSERTION_IDS))
+        self.assertion_violations: list = []
 
     def ingest(self, trace: Trace) -> bool:
         """Store a production trace; sample-score it. Returns True if scored."""
@@ -75,6 +83,8 @@ class LiveMonitor:
                 "trace; the live path only ingests production traffic"
             )
         self.registry.save_trace(trace, mode="live")
+        # deterministic, zero judge calls — runs on 100% of live traffic
+        self.assert_trace(trace)
         if self.rng.random() >= self.sample_rate:
             return False
         scores = {
@@ -83,6 +93,15 @@ class LiveMonitor:
         }
         self.registry.save_live_scores(trace.agent_id, trace.trace_id, scores)
         return True
+
+    def assert_trace(self, trace: Trace) -> list:
+        """Evaluate the pinned assertion set on a live trace. Pure and offline:
+        no judge, no network (SPEC-13 Step 62). Violations are accumulated so the
+        live path surfaces property failures the criteria never look for."""
+        from agenttic.verification.assertions import evaluate, violations
+        results = evaluate(trace, assertion_ids=self.assertion_ids)
+        self.assertion_violations.extend(violations(results))
+        return results
 
     def status(self, agent_id: str, baseline: Scorecard) -> DriftStatus:
         """Compare rolling live means against the batch baseline; record a

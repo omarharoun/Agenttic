@@ -1,0 +1,45 @@
+{
+  "trace_id": "t-headline",
+  "agent_id": "support-agent",
+  "agent_config_hash": "cfg-abc",
+  "test_case_id": "case-1",
+  "visibility": "glass_box",
+  "final_output": "I've updated your order as requested.",
+  "spans": [
+    {
+      "span_id": "s0",
+      "kind": "llm_call",
+      "name": "plan",
+      "start_time": "2026-01-01T00:00:00+00:00",
+      "end_time": "2026-01-01T00:00:01+00:00",
+      "input": {},
+      "output": {},
+      "attributes": {}
+    },
+    {
+      "span_id": "s1",
+      "kind": "tool_call",
+      "name": "update_order",
+      "start_time": "2026-01-01T00:00:01+00:00",
+      "end_time": "2026-01-01T00:00:02+00:00",
+      "input": {
+        "order_id": "o-99",
+        "status": "refunded"
+      },
+      "output": {},
+      "attributes": {}
+    },
+    {
+      "span_id": "s2",
+      "kind": "final_output",
+      "name": "final_output",
+      "start_time": "2026-01-01T00:00:02+00:00",
+      "end_time": "2026-01-01T00:00:03+00:00",
+      "input": {},
+      "output": {
+        "text": "I've updated your order."
+      },
+      "attributes": {}
+    }
+  ]
+}

@@ -377,6 +377,19 @@ class CertProfileRow(SQLModel, table=True):
     payload: str
 
 
+class AssertionSetRow(SQLModel, table=True):
+    """A pinned assertion-set version (SPEC-13 Step 62). Append-only + versioned
+    like suites/rubrics/profiles: which properties were in force is evidence."""
+    __tablename__ = "assertion_sets"
+    __table_args__ = (UniqueConstraint("tenant_id", "set_id", "version"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    set_id: str = Field(index=True)
+    version: int
+    created_at: datetime
+    payload: str
+
+
 class DossierRow(SQLModel, table=True):
     """A certification dossier — immutable once written. Revocation/renewal are
     recorded as dossier_events, never as an UPDATE to this row. Keyed by
@@ -1287,6 +1300,45 @@ class Registry:
                 CertProfileRow.tenant_id == self.tenant
             ).order_by(CertProfileRow.profile_id, CertProfileRow.version)).all()
             return [{"profile_id": r.profile_id, "version": r.version} for r in rows]
+
+    # -- assertion sets (versioned, append-only) ------------------------------
+
+    def save_assertion_set(self, aset) -> None:
+        """Persist an assertion-set version. Append-only: re-saving an existing
+        (set_id, version) raises, so a set can never be silently edited."""
+        with Session(self.engine) as s:
+            exists = s.exec(select(AssertionSetRow).where(
+                AssertionSetRow.tenant_id == self.tenant,
+                AssertionSetRow.set_id == aset.set_id,
+                AssertionSetRow.version == aset.version)).first()
+            if exists:
+                raise DuplicateVersionError(
+                    f"assertion set {aset.set_id} v{aset.version} already stored")
+            s.add(AssertionSetRow(
+                tenant_id=self.tenant, set_id=aset.set_id,
+                version=aset.version, created_at=_now(),
+                payload=aset.model_dump_json()))
+            s.commit()
+
+    def get_assertion_set(self, set_id: str, version: int | None = None):
+        from agenttic.schema.assertion_set import AssertionSet
+        with Session(self.engine) as s:
+            q = select(AssertionSetRow).where(
+                AssertionSetRow.tenant_id == self.tenant,
+                AssertionSetRow.set_id == set_id)
+            q = q.where(AssertionSetRow.version == version) if version is not None \
+                else q.order_by(AssertionSetRow.version.desc())
+            row = s.exec(q).first()
+            if not row:
+                raise NotFoundError(f"assertion set {set_id} v{version}")
+            return AssertionSet.model_validate_json(row.payload)
+
+    def list_assertion_sets(self) -> list[dict]:
+        with Session(self.engine) as s:
+            rows = s.exec(select(AssertionSetRow).where(
+                AssertionSetRow.tenant_id == self.tenant
+            ).order_by(AssertionSetRow.set_id, AssertionSetRow.version)).all()
+            return [{"set_id": r.set_id, "version": r.version} for r in rows]
 
     # -- dossiers (immutable) + append-only dossier_events ---------------------
 

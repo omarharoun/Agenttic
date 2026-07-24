@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, computed_field, model_validator
 
+from agenttic.verification.assertions import AssertionResult
+
 
 class CriterionScore(BaseModel):
     """Score for one criterion on one run."""
@@ -99,6 +101,36 @@ class Scorecard(BaseModel):
     def success_wilson_high(self) -> float:
         from agenttic.stats import wilson_interval
         return round(wilson_interval(self.n_passed, self.n_scored)[1], 4)
+
+    # --- assertions (SPEC-13 Step 62) ----------------------------------------
+    # Continuous properties monitored on every trace. Deliberately a SEPARATE
+    # block: assertion results never enter criterion scores, the weighted mean,
+    # or task_success_rate — the scoring engine's behaviour is unchanged. A
+    # violation is surfaced through ``verification_status`` instead (Hard Rule 59).
+    assertions: list["AssertionResult"] = Field(default_factory=list)
+    assertion_set_ref: str = ""      # the pinned set that was in force
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def assertion_violations(self) -> int:
+        return sum(1 for a in self.assertions if a.status == "violation")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def assertions_unexercised(self) -> int:
+        """Vacuity: properties that never had their antecedent occur. NOT passes
+        (Hard Rule 60)."""
+        return sum(1 for a in self.assertions if a.status == "unexercised")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def verification_status(self) -> str:
+        """FAIL if any assertion violated, regardless of criteria scores."""
+        return "FAIL" if self.assertion_violations else "PASS"
+
+    def violated_properties(self) -> list[str]:
+        """The named properties that failed — what the report prints."""
+        return [a.detail for a in self.assertions if a.status == "violation"]
 
     @classmethod
     def aggregate(
