@@ -44,10 +44,16 @@ Cross-links and status for the platform spec surfaces.
 | M38a | SPEC-12 Step 56 — tool certification (component tier) | ✅ done | — |
 | M38b | SPEC-12 Step 57 — memory testing | ⬜ not started | — |
 | M39 | SPEC-12 Step 58 — catalog conformance | ⬜ not started | — |
+| M40 | SPEC-13 Step 62 — assertions on every trace | ✅ done | — |
+| M41 | SPEC-13 Step 59 — coverage model | ✅ done | — |
+| M42 | SPEC-13 Steps 60–61 — stimulus + CDV loop | ✅ done | — |
+| M43 | SPEC-13 Step 63 — formal (authorization layer) | ✅ done | — |
+| M44 | SPEC-13 Step 64 — sign-off + vPlan | ✅ done | — |
 
 See [docs/SPEC9_RUBRIC_ENGINE.md](SPEC9_RUBRIC_ENGINE.md),
 [docs/SPEC11_DESIGN_SYSTEM.md](SPEC11_DESIGN_SYSTEM.md) and
-[docs/SPEC12_SUPPLY_CHAIN.md](SPEC12_SUPPLY_CHAIN.md) for the build records.
+[docs/SPEC12_SUPPLY_CHAIN.md](SPEC12_SUPPLY_CHAIN.md) and
+[docs/SPEC13_COVERAGE_DRIVEN.md](SPEC13_COVERAGE_DRIVEN.md) for the build records.
 
 ## Key entry points
 - Profiles: `ascore profiles list|show` · `src/ascore/certification/profiles.py`
