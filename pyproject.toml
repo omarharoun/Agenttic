@@ -35,6 +35,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# SPEC-13 Step 63: symbolic discharge for the authorization layer.
+# Optional — exhaustive reachability over the finite guard layer needs
+# no solver, and without z3 the z3-backed method reports not_attempted
+# rather than silently assuming safety.
+formal = ["z3-solver>=4.12"]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "httpx>=0.27", "ruff>=0.6"]
 fi = ["ai-evaluation>=0.2"]   # Future AGI scorer (optional, lazy-imported)
 # --- Evaluator plugins (Evaluator Plugin Interface) ------------------------
