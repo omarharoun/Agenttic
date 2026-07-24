@@ -2,6 +2,45 @@
 
 ## Unreleased — Coverage-driven verification (SPEC-13)
 
+### M41 — Coverage model (Step 59)
+
+State **what was never exercised**, using traces you already have. A fixed suite
+answers "what passed?"; a coverage model answers the question that decides
+sign-off. Deterministic-first: trajectory, tool condition, session shape and data
+condition are extracted from spans with zero model calls.
+
+#### Added
+- **`agenttic.coverage`** — `Bin` / `Coverpoint` / `Cross` / `CoverageModel` with
+  validation that makes the silent-failure modes impossible: bins must be
+  exhaustive (an explicit `other` bin is mandatory), a bin declares exactly one of
+  a predicate or a classifier, illegal bins are declared, and **waiving a bin
+  requires a named reason**.
+- **Deterministic extractors** (`coverage/extractors.py`), a `@predicate` registry
+  mirroring `@check`: 9 trajectory shapes (including `retry_after_error`,
+  `recovered_from_tool_failure`, `escalated_to_human`, `max_steps_hit`,
+  `budget_exceeded` — whether the recovery path was exercised at all), 6 tool
+  conditions, 3 session shapes, 5 data conditions. Pure functions, no network.
+- **Collection + hole analysis** (`coverage/collect.py`) reporting **two numbers,
+  never one**: *stimulus* coverage (which bins were requested) and *trace*
+  coverage (which the run actually exhibited). **Closure is computed on trace
+  coverage**; a bin requested but never exhibited is reported as divergence.
+  Plus ranked holes, `other`-bin drift, and illegal-bin hits.
+- **Seed model** for `conversational_transactional` — 7 coverpoints and 4 required
+  crosses (`intent × policy_vector` at "all", etc.). The four deterministic
+  coverpoints carry the model's weight; `intent`, `emotional_register` and
+  `policy_vector` are classifier-backed and render **PROVISIONAL** until measured
+  against humans (SPEC-3 discipline).
+- **Versioned registry artifact**: `save_coverage_model` / `get_coverage_model` /
+  `list_coverage_models`, append-only, storing a `bins_fingerprint` — so widening
+  or deleting a bin to hit the closure target changes the fingerprint and is a
+  diff a human approves, never a silent edit.
+
+#### New hard rules
+- **56.** Coverage closure, not pass rate, is the headline. A pass rate reported
+  without a coverage model is an unscoped claim.
+- **61.** Unhit bins are always reported. Waiving one requires a named reason
+  recorded on the model version. Silent holes are forbidden.
+
 ### M40 — Assertions (Step 62)
 
 Continuous properties monitored on **every** trace — including runs that pass
