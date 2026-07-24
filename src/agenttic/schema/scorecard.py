@@ -109,6 +109,10 @@ class Scorecard(BaseModel):
     # violation is surfaced through ``verification_status`` instead (Hard Rule 59).
     assertions: list["AssertionResult"] = Field(default_factory=list)
     assertion_set_ref: str = ""      # the pinned set that was in force
+    #: SPEC-13 Step 59 — deterministic coverage over this run's traces. Free
+    #: (no model calls), so it is attached to every run and the report leads
+    #: with it instead of the pass rate (Hard Rule 56).
+    coverage: dict = Field(default_factory=dict)
 
     @computed_field  # type: ignore[prop-decorator]
     @property
