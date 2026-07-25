@@ -1,6 +1,6 @@
 [project]
 name = "agenttic-langgraph"
-version = "1.0.1"
+version = "2.0.0"
 description = "Trace a LangGraph agent onto the Agenttic OTel-GenAI bus (public callbacks only)."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -10,7 +10,7 @@ requires-python = ">=3.12"
 # depend on `agenttic`, pinned in lock-step with this release). LangChain
 # provides the public callback base; langgraph itself is a peer dependency of
 # the user's app, not of this package.
-dependencies = ["agenttic==1.0.1", "langchain-core>=0.2"]
+dependencies = ["agenttic==2.0.0", "langchain-core>=0.2"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]

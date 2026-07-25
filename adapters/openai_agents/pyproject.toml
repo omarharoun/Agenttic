@@ -1,6 +1,6 @@
 [project]
 name = "agenttic-openai-agents"
-version = "1.0.1"
+version = "2.0.0"
 description = "Trace an OpenAI Agents SDK agent onto the Agenttic OTel-GenAI bus (public RunHooks only)."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -10,7 +10,7 @@ requires-python = ">=3.12"
 # depend on `agenttic`, pinned in lock-step with this release). The OpenAI
 # Agents SDK provides the public RunHooks lifecycle and is a peer dependency of
 # the user's app.
-dependencies = ["agenttic==1.0.1", "openai-agents>=0.0.1"]
+dependencies = ["agenttic==2.0.0", "openai-agents>=0.0.1"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]

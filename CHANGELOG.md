@@ -1,5 +1,73 @@
 # Changelog
 
+## 2.0.0 — the `ascore` name is gone (BREAKING)
+
+`ascore` was the pre-rename name of this project. The compatibility layer that
+kept it working has been removed. Everything below is a rename, not a behaviour
+change — but several of them are things your deployment supplies, so read the
+migration before upgrading.
+
+### Migration — do this BEFORE upgrading
+
+1. **Environment variables.** Every `ASCORE_*` variable is now `AGENTTIC_*`, and
+   the fallback is gone: `ASCORE_*` names are **no longer read at all**. Rename
+   the keys in your `.env` (values are unchanged):
+
+   ```bash
+   sed -i -E 's/^ASCORE_/AGENTTIC_/' .env
+   ```
+
+   This matters most for `ASCORE_CERT_SIGNING_KEY` / `ASCORE_PASSPORT_SIGNING_KEY`:
+   without them, signing **fails closed**. Do the rename before deploying, not
+   after. Verify with your published key id — it must not change.
+
+2. **The `ascore` command is gone.** Use `agenttic`. Update any CI step, cron
+   entry, systemd unit, or Dockerfile `CMD` that invokes `ascore`.
+
+3. **Prometheus metrics renamed** `ascore_* → agenttic_*` (e.g.
+   `ascore_http_requests_total` → `agenttic_http_requests_total`). Update
+   dashboards, recording rules and alerts.
+
+4. **Everyone is logged out once.** The session cookie, CSRF cookie and the
+   browser token key were renamed, so existing sessions are not recognised. No
+   action needed; users log in again.
+
+5. **New SQLite installs use `agenttic.db`.** An existing `ascore.db` is still
+   opened automatically when no `agenttic.db` is present, so no data is
+   orphaned — but if you back up by filename, note that
+   `scripts/backup.sh` now globs both.
+
+### Removed
+- `ASCORE_*` environment-variable support and the `_env.py` shim that provided it.
+- The `ascore` console script and its `_ascore_alias` entry point.
+
+### Changed
+- Session/CSRF cookies, the Redis event key, Prometheus metric names, the logger
+  name, the OpenTelemetry tracer name and browser storage keys all carry the
+  `agenttic` name.
+- The shipped `paths.registry_db` default is `agenttic.db`.
+- `agenttic init` no longer scaffolds a config that mentions `ascore` — this was
+  the most visible leak, since it is the first file a new user reads.
+
+### Fixed
+- **`scripts/backup.sh` could silently back up nothing.** It globbed
+  `ascore*.db`; with the new default filename that matched no files while still
+  reporting success. It now globs both names.
+- **`scripts/restore.sh` restored to the wrong path**, defaulting to `ascore.db`
+  — a file the app no longer opens, so the data appeared lost.
+- `examples/certify_demo.sh` invoked the removed `ascore` command.
+
+### Kept deliberately
+`ascore` still appears where it names a live object rather than the project: the
+Postgres role/database and the `ascore-data` volume (renaming those is an
+`ALTER ROLE`/volume migration, not a text edit), and the `ascore.db` fallback that
+prevents orphaning an existing registry.
+
+### Note
+`agenttic-langgraph` and `agenttic-openai-agents` are released as 2.0.0 in
+lock-step, because they pin `agenttic` exactly. Upgrade all three together.
+
+
 ## Unreleased — Coverage-driven verification (SPEC-13)
 
 ### M44 — Sign-off + vPlan (Step 64)
