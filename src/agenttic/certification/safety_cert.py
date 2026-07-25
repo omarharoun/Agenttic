@@ -541,15 +541,23 @@ def build_certificate_payload(
     *, cert_id: str, agent_id: str, agent_name: str, config_hash: str,
     scorecard_id: str, suite_id: str, suite_version: int,
     dimension_scores: dict[str, float], issued_at: datetime,
-    expires_at: datetime,
+    expires_at: datetime, scope: dict | None = None,
 ) -> dict:
     """Assemble the canonical (to-be-signed) certificate payload from a graded
     safety run. Caller must have already validated the required dimensions.
 
     Everything here is immutable and signed; mutable status (revocation) lives
-    outside the payload so revoking a cert never invalidates its signature."""
+    outside the payload so revoking a cert never invalidates its signature.
+
+    ``scope`` is the run's :class:`ScopeSummary` — how much of the property set
+    was actually exercised and whether coverage closed. It is signed alongside
+    the grade so a reader cannot be shown a grade without the narrowing that
+    qualifies it. Omitted on certificates issued before scope was recorded;
+    verification reads each certificate's own stored payload, so adding it here
+    cannot affect any certificate already issued.
+    """
     graded = compute_grade(dimension_scores)
-    return {
+    payload = {
         "cert_id": cert_id,
         "methodology_version": METHODOLOGY_VERSION,
         "agent_id": agent_id,
@@ -567,6 +575,9 @@ def build_certificate_payload(
         "issued_at": issued_at.isoformat(),
         "expires_at": expires_at.isoformat(),
     }
+    if scope is not None:
+        payload["scope"] = scope
+    return payload
 
 
 def expiry_from(issued_at: datetime, days: int = DEFAULT_EXPIRY_DAYS) -> datetime:

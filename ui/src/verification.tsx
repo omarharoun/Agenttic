@@ -181,3 +181,102 @@ export function ScopeLine({ sc }: { sc: any }) {
     </p>
   );
 }
+
+/* ---------------------------------------------------------------------------
+   The certificate's own scope, on the face of the certificate.
+
+   A grade shown without its narrowing is the misreading this platform exists to
+   prevent: a certificate attesting eight properties where three never ran is a
+   narrower claim than it looks. The scope is signed alongside the grade, so it
+   is rendered here as part of the document rather than as an optional footnote.
+
+   Certificates issued before scope was recorded carry none. That renders as
+   "not recorded" — never as full coverage.
+   --------------------------------------------------------------------------- */
+
+export interface CertScopeSummary {
+  properties_total?: number | null;
+  properties_exercised?: number | null;
+  trace_closure?: number | null;
+  closure_target?: number | null;
+  closed?: boolean | null;
+  violations?: number | null;
+  unexercised_properties?: string[] | null;
+}
+
+/** The one-line form: "5/8 properties exercised · closure 20.4% · not closed". */
+export function certScopeLabel(scope?: CertScopeSummary | null): string {
+  if (!scope) return "Scope not recorded on this certificate";
+  const total = scope.properties_total ?? 0;
+  const ran = scope.properties_exercised ?? 0;
+  const closure = scope.trace_closure == null
+    ? null : Math.round(scope.trace_closure * 1000) / 10;
+  const parts = [`${ran}/${total} properties exercised`];
+  if (closure != null) parts.push(`closure ${closure}%`);
+  parts.push(scope.closed ? "coverage closed" : "coverage NOT closed");
+  return parts.join(" · ");
+}
+
+/** Compact strip for the engraved document. */
+export function CertScopeStrip({ scope }: { scope?: CertScopeSummary | null }) {
+  const closed = Boolean(scope?.closed);
+  return (
+    <span className={`cert-scope-strip ${scope ? (closed ? "ok" : "warn") : "unknown"}`}>
+      {certScopeLabel(scope)}
+    </span>
+  );
+}
+
+/** The full readout, for the "what this does and doesn't attest" section. */
+export function CertScopeDetail({ scope }: { scope?: CertScopeSummary | null }) {
+  if (!scope) {
+    return (
+      <p className="scope-line unscoped">
+        This certificate was issued before measured scope was recorded, so the
+        share of properties actually exercised is unknown. Treat it as unverified
+        rather than as full coverage.
+      </p>
+    );
+  }
+  const unexercised = scope.unexercised_properties || [];
+  const closure = scope.trace_closure == null ? null
+    : Math.round(scope.trace_closure * 1000) / 10;
+  const target = scope.closure_target == null ? null
+    : Math.round(scope.closure_target * 100);
+  return (
+    <div className="cert-scope-detail">
+      <dl className="certdoc-meta">
+        <div>
+          <dt>Properties exercised</dt>
+          <dd>{scope.properties_exercised ?? 0} of {scope.properties_total ?? 0}</dd>
+        </div>
+        <div>
+          <dt>Coverage closure</dt>
+          <dd>
+            {closure == null ? "not measured" : `${closure}%`}
+            {target != null ? ` of ${target}% target` : ""}
+          </dd>
+        </div>
+        <div>
+          <dt>Closed</dt>
+          <dd className={scope.closed ? "ok" : "warn"}>
+            {scope.closed ? "Yes" : "No"}
+          </dd>
+        </div>
+        <div>
+          <dt>Property violations</dt>
+          <dd className={(scope.violations ?? 0) > 0 ? "warn" : "ok"}>
+            {scope.violations ?? 0}
+          </dd>
+        </div>
+      </dl>
+      {unexercised.length > 0 && (
+        <p className="cd-fine">
+          <b>Never exercised on this run</b> — these properties did not have their
+          situation arise, so their result is not evidence of anything:{" "}
+          {unexercised.join(", ")}.
+        </p>
+      )}
+    </div>
+  );
+}

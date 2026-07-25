@@ -21,7 +21,7 @@ from agenttic.certification.attest import (
 from agenttic.certification.memory_suite import (
     certify_memory, check_capacity_bound, check_contradiction,
     check_deletion_honored, check_memory_injection, check_principal_isolation,
-    link_memory_to_scorecard, manifest_for_memory)
+    link_memory_to_scorecard, manifest_for_memory, signoff_for_memory)
 from tests.fixtures.memory_store_fixture import LeakyMemoryStore
 
 
@@ -152,7 +152,8 @@ def test_memory_report_attaches_to_a_signed_manifest(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENTTIC_ATTEST_KEY_DIR", str(tmp_path))
     rep = certify_memory(ReferenceMemoryStore(capacity=32), store_name="reference",
                          store_version="1.0", declared_capacity=32)
-    signed = sign_manifest(manifest_for_memory(rep, manifest_id="mem-reference"))
+    signed = sign_manifest(manifest_for_memory(rep, manifest_id="mem-reference"),
+                           signoff=signoff_for_memory(rep))
 
     assert signed.manifest.subject.agent_id == "memory:reference"
     assert signed.manifest.subject.agent_config_hash
@@ -197,5 +198,6 @@ def test_no_memory_artifact_makes_an_unbounded_claim(tmp_path, monkeypatch):
                          declared_capacity=32)
     for o in rep.outcomes:
         assert_no_banned_claims(o.detail, where=f"memory check {o.check_id}")
-    signed = sign_manifest(manifest_for_memory(rep, manifest_id="mem-honest"))
+    signed = sign_manifest(manifest_for_memory(rep, manifest_id="mem-honest"),
+                           signoff=signoff_for_memory(rep))
     assert_no_banned_claims(render_certificate(signed), where="memory certificate")

@@ -240,7 +240,7 @@ def test_certificate_embeds_the_signoff_hash(tmp_path, monkeypatch):
         suite_id="s", suite_version=1, rubric_id="r", rubric_version=1,
         scorecard=scorecard, signoff_sha256=s.content_sha256())
     assert m.signoff_sha256 == s.content_sha256()
-    signed = sign_manifest(m)
+    signed = sign_manifest(m, signoff=s)
     assert verify_manifest(signed, scorecard=scorecard).ok
     # tampering with the sign-off breaks the manifest hash
     signed.manifest.signoff_sha256 = "0" * 64

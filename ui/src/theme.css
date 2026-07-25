@@ -3311,6 +3311,28 @@ a.btn-primary, button.btn-primary,
 }
 .scope-line b { color: var(--text); }
 
+/* The certificate's own measured scope. Token-only, and it must read in both
+   themes — a public certificate is the one surface a stranger sees first. */
+.cert-scope-strip {
+  display: inline-block;
+  padding: 1px 6px; border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  font: 500 var(--t-label) / 1.55 var(--font-mono);
+  color: var(--muted); background: var(--panel-2);
+  vertical-align: middle;
+}
+/* Not-closed and not-recorded are both cautions: neither is evidence of cover. */
+.cert-scope-strip.warn,
+.cert-scope-strip.unknown {
+  color: var(--score-provisional);
+  border-color: var(--score-provisional);
+}
+.cert-scope-strip.ok { color: var(--score-pass); border-color: var(--score-pass); }
+
+.cert-scope-detail { margin: 0 0 var(--sp-4); }
+.cert-scope-detail .ok { color: var(--score-pass); }
+.cert-scope-detail .warn { color: var(--score-provisional); }
+
 .never-exercised {
   margin-top: var(--sp-4);
   border: 1px solid var(--border);
@@ -3404,3 +3426,12 @@ a.btn-primary, button.btn-primary,
 .cap-list--warn li { color: var(--text); }
 .cap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-6); margin-top: var(--sp-4); }
 @media (max-width: 760px) { .cap-grid { grid-template-columns: 1fr; } }
+
+/* A scan report announces that it is NOT a certificate. Loud on purpose: this
+   line is the difference between a screen and a credential. */
+.certdoc-scope.is-report {
+  color: var(--score-provisional);
+  border-left: 2px solid var(--score-provisional);
+  padding-left: var(--sp-3);
+  font-weight: 500;
+}

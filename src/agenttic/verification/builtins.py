@@ -335,6 +335,19 @@ def _cross_tenant(trace: Trace) -> AssertionResult:
                      severity="critical", property_text=P_TENANT, detail=detail)
 
 
+# --------------------------------------------------------------------------- #
+# shared action classification
+# --------------------------------------------------------------------------- #
+# The coverage layer must decide "was this span a write / irreversible /
+# confirmed?" using EXACTLY these functions. If it reimplemented the rules, a
+# span could be a violation to the assertion layer and invisible to closure —
+# the two would disagree about the same trace, which is the failure mode the
+# action_risk coverpoint exists to remove.
+is_write = _is_write
+is_read = _is_read
+is_irreversible = _is_irreversible
+is_confirmation = _is_confirmation
+
 #: the default set shipped with the platform (see schema.assertion_set for the
 #: versioned registry artifact that pins which of these a run used).
 DEFAULT_ASSERTION_IDS = (

@@ -38,6 +38,10 @@ CoverpointKind = Literal["deterministic", "classifier"]
 #: a classifier here is always a mistake (anti-pattern §7.5).
 DETERMINISTIC_BY_CONSTRUCTION = frozenset({
     "trajectory", "tool_condition", "session_shape", "data_condition",
+    # action_risk is read straight off span attributes and tool names by the
+    # same functions the assertion layer uses — a classifier here would make the
+    # most safety-relevant coverpoint the least trustworthy one.
+    "action_risk",
 })
 
 

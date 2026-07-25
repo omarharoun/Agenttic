@@ -30,10 +30,24 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 from agenttic.schema.attestation import (
     BANNED_CLAIMS, EvidenceManifest, ManifestStatus, RevocationEntry,
     RevocationList, SignedManifest, content_hash)
+from agenttic.schema.signoff import SignoffLike
 
 DEFAULT_EXPIRY_DAYS = 90          # mirrors safety_cert.DEFAULT_EXPIRY_DAYS
 #: Test/CI override for where the local key lives.
 LOCAL_KEY_DIR_ENV = "AGENTTIC_ATTEST_KEY_DIR"
+
+
+class SignoffRefused(RuntimeError):
+    """Raised instead of producing a signature.
+
+    The platform's whole claim is that a certificate means something. A report
+    that reads ``DOES NOT SIGN OFF`` while the same run mints a signed
+    certificate makes the signature worthless, so the sign-off is checked *here*,
+    at the one point every signing path goes through — not in a renderer.
+
+    Deliberately has no ``force=`` escape hatch, following ``PromotionRefused``.
+    A gate with an override is documentation, not a gate.
+    """
 
 
 # --------------------------------------------------------------------------- #
@@ -125,6 +139,7 @@ def build_manifest(
     contamination: dict | None = None,
     environment: dict | None = None,
     abom_sha256: str | None = None,
+    signoff: SignoffLike | None = None,
     signoff_sha256: str | None = None,
     user_source: str = "simulated",
     issuer: str = "local-self-attested",
@@ -135,7 +150,30 @@ def build_manifest(
     limits_statement: str | None = None,
 ) -> EvidenceManifest:
     """Assemble a manifest from a scorecard. The scorecard is hashed, never
-    inlined — verification recomputes the hash from the stored scorecard."""
+    inlined — verification recomputes the hash from the stored scorecard.
+
+    Requires an evidence sign-off: pass ``signoff`` (preferred — its hash and
+    scope are derived for you) or ``signoff_sha256`` directly. A manifest with
+    no sign-off would be an unscoped claim, which is the thing this platform
+    exists to refuse.
+    """
+    if signoff is not None:
+        derived = signoff.content_sha256()
+        if signoff_sha256 is not None and signoff_sha256 != derived:
+            raise SignoffRefused(
+                "signoff_sha256 does not match the sign-off passed alongside it "
+                f"({signoff_sha256[:12]}… vs {derived[:12]}…) — refusing to "
+                "attest one body of evidence while naming another")
+        signoff_sha256 = derived
+        scope_summary = signoff.scope_summary()
+    else:
+        scope_summary = None
+    if not signoff_sha256:
+        raise SignoffRefused(
+            "refusing to build a manifest with no verification sign-off: a "
+            "certificate that names no evidence is an unscoped claim "
+            "(Hard Rule 56). Pass signoff= from verify_op(), or a "
+            "ComponentSignoff for a component certificate.")
     issued = issued_at or datetime.now(timezone.utc)
     scope = scope_statement or DEFAULT_SCOPE.format(
         suite=suite_id, sv=suite_version, rubric=rubric_id, rv=rubric_version,
@@ -155,6 +193,7 @@ def build_manifest(
         environment=environment or {},
         abom_sha256=abom_sha256,
         signoff_sha256=signoff_sha256,
+        scope_summary=scope_summary,
         issued_at=issued,
         expires_at=issued + timedelta(days=expires_in_days),
         issuer=issuer,
@@ -164,9 +203,52 @@ def build_manifest(
     )
 
 
-def sign_manifest(manifest: EvidenceManifest, *, cfg: dict | None = None,
+def sign_manifest(manifest: EvidenceManifest, *,
+                  signoff: SignoffLike | None = None,
+                  cfg: dict | None = None,
                   transparency_log_url: str | None = None) -> SignedManifest:
-    """Sign the manifest hash with the key for its declared tier."""
+    """Sign the manifest hash with the key for its declared tier.
+
+    **The gate.** Every production signing path reaches the key through this one
+    function, so the sign-off is enforced here and nowhere else is required to
+    remember. Raises :class:`SignoffRefused` rather than producing a signature
+    when the evidence does not support one.
+
+    ``signoff`` is required whenever the manifest names one. The hash alone
+    cannot be evaluated — only the sign-off object knows whether it signs off —
+    and it is re-bound to the manifest here so that evidence A can never be
+    signed while evidence B is attested.
+    """
+    if not manifest.signoff_sha256:
+        # Closes the last way round the gate: an EvidenceManifest constructed
+        # directly, bypassing build_manifest. Parsing and verifying a manifest
+        # signed before sign-offs existed is untouched — only *issuing* is gated.
+        if signoff is not None:
+            raise SignoffRefused(
+                f"a sign-off was supplied but manifest {manifest.manifest_id} "
+                "does not name one — rebuild it with build_manifest(signoff=…) "
+                "so the evidence is bound into the signed body")
+        raise SignoffRefused(
+            f"refusing to sign {manifest.manifest_id}: it names no verification "
+            "sign-off, so there is nothing to stand behind (Hard Rule 56)")
+    if signoff is None:
+        raise SignoffRefused(
+            f"manifest {manifest.manifest_id} names sign-off "
+            f"{manifest.signoff_sha256[:12]}… but it was not supplied — the "
+            "signing gate cannot evaluate a hash, so refusing to sign")
+    presented = signoff.content_sha256()
+    if presented != manifest.signoff_sha256:
+        raise SignoffRefused(
+            f"sign-off mismatch: manifest {manifest.manifest_id} is bound to "
+            f"{manifest.signoff_sha256[:12]}… but the sign-off presented hashes "
+            f"to {presented[:12]}… — refusing to sign one body of evidence "
+            "while attesting another")
+    if not signoff.signs_off:
+        reasons = "; ".join(signoff.refusal_reasons()) or "sign-off is negative"
+        raise SignoffRefused(
+            f"refusing to sign {manifest.manifest_id}: the evidence does not "
+            f"sign off — {reasons}. A certificate is not a participation award; "
+            "close the coverage or fix the violations first.")
     key, _issuer = _signing_key_for(manifest.signing_tier, cfg)
     digest = manifest.manifest_hash()
     sig = key.sign(digest.encode("utf-8"))
@@ -392,6 +474,21 @@ def render_certificate(signed: SignedManifest, result: VerifyResult | None = Non
         f"SCOPE           {m.scope_statement}",
         f"LIMITS          {m.limits_statement}",
     ]
+    # The measured narrowing, not just the prose. A reader cannot discount a
+    # claim whose shape they cannot see.
+    if m.scope_summary is not None:
+        s = m.scope_summary
+        lines += [
+            "",
+            f"MEASURED        {s.exercised_label} · closure {s.trace_closure:.1%} "
+            f"of {s.closure_target:.0%} target · "
+            f"{'CLOSED' if s.closed else 'NOT CLOSED'} · "
+            f"{s.violations} violation(s)",
+        ]
+        if s.unexercised_properties:
+            lines.append(
+                "NEVER EXERCISED " + ", ".join(s.unexercised_properties[:6])
+                + ("…" if len(s.unexercised_properties) > 6 else ""))
     if result is not None:
         lines += ["", f"STATUS          {result.status.upper()} — {result.reason}"]
     text = "\n".join(lines)

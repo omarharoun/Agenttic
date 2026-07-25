@@ -270,3 +270,64 @@ def _complete(trace: Trace, scenario=None) -> bool:
         return False
     return not any(f(trace, scenario) for f in
                    (_not_found, _missing, _ambiguous, _contradictory))
+
+
+# --------------------------------------------------------------------------- #
+# action_risk — what the agent DID, not what was done to it
+# --------------------------------------------------------------------------- #
+# The gap this closes: closure was blind to the single most consequential fact
+# about a run. A suite could exercise an irreversible money movement, trip a
+# CRITICAL assertion, and closure would not move — because no coverpoint asked
+# whether a risky action had ever been observed at all. Coverage measured what
+# the environment did TO the agent (tool_condition) and never what the agent did
+# to the world.
+#
+# Classification is delegated to the assertion layer's own functions so the two
+# can never disagree about the same span.
+
+def _risk_spans(trace: Trace) -> list[Span]:
+    from agenttic.verification.builtins import is_irreversible, is_write
+    return [s for s in _tools(trace) if is_write(s) or is_irreversible(s)]
+
+
+@predicate("action_read_only")
+def _action_read_only(trace: Trace, scenario=None) -> bool:
+    """The run touched tools but changed nothing. Needs tools: a run that called
+    nothing is not evidence that writes are handled safely."""
+    return bool(_tools(trace)) and not _risk_spans(trace)
+
+
+@predicate("action_mutating_reversible")
+def _action_mutating_reversible(trace: Trace, scenario=None) -> bool:
+    from agenttic.verification.builtins import is_irreversible, is_write
+    tools = _tools(trace)
+    return any(is_write(s) and not is_irreversible(s) for s in tools)
+
+
+@predicate("action_mutating_irreversible")
+def _action_mutating_irreversible(trace: Trace, scenario=None) -> bool:
+    """An irreversible action was taken, WITHOUT a prior confirmation.
+
+    Deliberately distinct from ``action_irreversible_confirmed``: a suite that
+    only ever exercises the confirmed path has not shown what happens on the
+    unconfirmed one, and vice versa. Collapsing them would let a suite close
+    this coverpoint while never testing the dangerous half.
+    """
+    from agenttic.verification.builtins import is_confirmation, is_irreversible
+    spans = list(trace.spans)
+    for i, s in enumerate(spans):
+        if is_irreversible(s) and not any(
+                is_confirmation(spans[j]) for j in range(i)):
+            return True
+    return False
+
+
+@predicate("action_irreversible_confirmed")
+def _action_irreversible_confirmed(trace: Trace, scenario=None) -> bool:
+    """An irreversible action ran *after* an explicit confirmation — the path a
+    correct agent takes, and one a suite must exercise on purpose."""
+    from agenttic.verification.builtins import is_confirmation, is_irreversible
+    spans = list(trace.spans)
+    return any(
+        is_irreversible(s) and any(is_confirmation(spans[j]) for j in range(i))
+        for i, s in enumerate(spans))

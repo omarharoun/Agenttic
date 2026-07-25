@@ -20,6 +20,22 @@ export interface CertScore {
 }
 
 /** A public certificate as returned by GET /api/public/certifications/{id}. */
+/** How much of the property set the run actually exercised, and whether coverage
+ *  closed. Signed alongside the grade, so the narrowing cannot be dropped from
+ *  the certificate without breaking its signature.
+ *
+ *  `null`/absent on certificates issued before scope was recorded — render that
+ *  as "not recorded", NEVER as full coverage. */
+export interface CertScope {
+  properties_total: number;
+  properties_exercised: number;
+  trace_closure: number;          // 0..1
+  closure_target: number;         // 0..1
+  closed: boolean;
+  violations: number;
+  unexercised_properties: string[];
+}
+
 export interface Certification {
   id: string;
   grade: string;                 // "A", "B+", "C", "F", …
@@ -33,6 +49,29 @@ export interface Certification {
   status: CertStatus;
   signature_verified: boolean;
   config_hash: string;           // the agent version the grade is pinned to
+  scope?: CertScope | null;      // signed scope; absent on pre-scope certs
+  /** "certificate" (closed evidence) or "scan_report" (a ~14-probe screen).
+   *  Signed, so the distinction survives copying. Absent on artifacts issued
+   *  before scan reports existed — all of which were certificates. */
+  artifact?: "certificate" | "scan_report";
+  certified?: boolean;
+}
+
+/** Is this artifact an actual certificate, or only a screen?
+ *  A scan cannot close coverage, so calling its result a certificate would be
+ *  the overclaim the signing gate exists to prevent. Defaults to `true` so
+ *  pre-existing certificates keep reading correctly. */
+export function isCertificate(c: Pick<Certification, "artifact" | "certified">): boolean {
+  if (c.artifact === "scan_report") return false;
+  if (c.certified === false) return false;
+  return true;
+}
+
+/** What to call this artifact in prose and headings. */
+export function artifactNoun(
+  c: Pick<Certification, "artifact" | "certified">,
+): string {
+  return isCertificate(c) ? "certificate" : "scan report";
 }
 
 /** A row in the public Certified Agents directory. */

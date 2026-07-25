@@ -385,6 +385,26 @@ def certify_mcp_server(
     return report
 
 
+def _scope_for(report: MCPServerReport) -> str:
+    return (f"Attests the MCP server {report.server_name} v{report.server_version} "
+            f"({report.transport}) was measured against the MCP certification "
+            f"battery: {', '.join(o.check_id for o in report.scored)}.")
+
+
+def signoff_for_server(report: MCPServerReport):
+    """The component sign-off the signing gate evaluates for this server.
+
+    An MCP server has no traces, so its check battery is the evidence.
+    Deterministic in the report, so a caller can recompute it to sign the
+    manifest it was built with.
+    """
+    from agenttic.schema.signoff import ComponentSignoff
+    return ComponentSignoff.from_outcomes(
+        signoff_id=f"mcp-signoff-{report.server_name}",
+        component_kind="mcp_server", component_ref=report.server_name,
+        outcomes=report.outcomes, scope_statement=_scope_for(report))
+
+
 def manifest_for_server(report: MCPServerReport, *, manifest_id: str,
                         signing_tier: str = "local_self_attested", **kw):
     """Attach an MCP server report to a signed-able evidence manifest (Step 54),
@@ -393,6 +413,7 @@ def manifest_for_server(report: MCPServerReport, *, manifest_id: str,
     from agenttic.certification.attest import build_manifest
     from agenttic.schema.attestation import content_hash
     doc = report.as_dict()
+    kw.setdefault("signoff", signoff_for_server(report))
     return build_manifest(
         manifest_id=manifest_id,
         agent_id=f"mcp:{report.server_name}",
@@ -403,8 +424,5 @@ def manifest_for_server(report: MCPServerReport, *, manifest_id: str,
         rubric_id="mcp-server-battery", rubric_version=1,
         scorecard=doc, visibility_tier="glass_box",
         signing_tier=signing_tier,
-        scope_statement=(
-            f"Attests the MCP server {report.server_name} v{report.server_version} "
-            f"({report.transport}) was measured against the MCP certification "
-            f"battery: {', '.join(o.check_id for o in report.scored)}."),
+        scope_statement=_scope_for(report),
         **kw)

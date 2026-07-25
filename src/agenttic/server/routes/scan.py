@@ -2,15 +2,16 @@
 
 A normal user points us at their agent (an HTTP endpoint, with an optional auth
 header) or picks the built-in demo agent, and gets back a signed A–F safety
-grade. This route is a THIN orchestrator over the existing engine:
+grade in a scan report (not a certificate — ~14 probes cannot close coverage). This route is a THIN orchestrator over the existing engine:
 
     POST /api/scan            start a scan (background); returns a scan_id
     GET  /api/scan/{scan_id}  poll live progress + the graded result + cert
     GET  /api/scan/preview    what a scan will do (dimensions, key/cost) before running
 
 The heavy lifting is ``agenttic.scan.run_safety_scan`` (build adapter → run + score
-the Safety Battery → grade) and ``server.certifications.issue_certificate`` (the
-signed, tamper-evident certificate). We add no scoring here.
+the Safety Battery → grade) and ``server.certifications.issue_scan_report`` (the
+signed, tamper-evident **scan report** — a screen is not a certificate, so this
+route never issues one). We add no scoring here.
 
 Honesty / cost:
 * A scan against the user's OWN endpoint (``target=endpoint``) spends NO Anthropic
@@ -21,7 +22,7 @@ Honesty / cost:
   and never fall back to a shared key.
 
 Progress is exposed by polling (simple + robust for a short consumer scan). Jobs
-live in-process; the durable artifacts (scorecard + signed certificate) are
+live in-process; the durable artifacts (scorecard + signed scan report) are
 persisted by the engine, so a restart loses only the transient progress bar.
 """
 
@@ -41,7 +42,7 @@ from agenttic import ops, scan
 from agenttic.metrics.safety_battery import BATTERY_DIMENSIONS
 from agenttic.server.abuse import guard_cost_endpoint
 from agenttic.server.auth import require_operator
-from agenttic.server.certifications import issue_certificate
+from agenttic.server.certifications import issue_scan_report
 from agenttic.server.keys import NO_KEY_MSG, KeyStore
 
 router = APIRouter(tags=["scan"])
@@ -67,7 +68,7 @@ class ScanJob:
     # per-dimension live checklist (pending → pass/fail once graded)
     checks: list = field(default_factory=list)
     result: dict | None = None       # the graded scan result (scan.run_safety_scan)
-    certificate: dict | None = None  # the issued public certificate view
+    certificate: dict | None = None  # the issued scan-report view (artifact=scan_report)
     cert_note: str | None = None
     error: str | None = None
 
@@ -117,7 +118,7 @@ class ScanBody(BaseModel):
     url: str = ""                     # required for target=endpoint
     header_name: str = ""             # optional single auth header, e.g. "Authorization"
     header_value: str = ""            # e.g. "Bearer sk-..."
-    agent_name: str = ""              # display name for the certificate
+    agent_name: str = ""              # display name on the scan report
     expires_days: int = cert.DEFAULT_EXPIRY_DAYS
 
 
@@ -281,9 +282,13 @@ async def start_scan(body: ScanBody, request: Request):
                     if d:
                         chk.update(status=d["status"], passed=d["passed"],
                                    detail=d["detail"], percent=d["percent"])
-            # issue a signed certificate from the completed scorecard
+            # Issue a signed SCAN REPORT, not a certificate. ~14 probes cannot
+            # close a coverage target and were never meant to; calling the result
+            # a certificate would be the overclaim the signing gate exists to
+            # prevent. The report is still signed — integrity, not endorsement —
+            # and it states on its face that it is not a certificate.
             try:
-                view = issue_certificate(
+                view = issue_scan_report(
                     global_engine=global_engine, cfg=cfg, reg=reg, tenant=tenant,
                     scorecard_id=result["scorecard_id"], expires_days=expires_days)
                 with _LOCK:
@@ -291,7 +296,7 @@ async def start_scan(body: ScanBody, request: Request):
             except cert.CertificationError as exc:
                 with _LOCK:
                     job.cert_note = (
-                        "We graded your agent but couldn't issue a certificate: "
+                        "We scanned your agent but couldn't issue a scan report: "
                         f"{exc}")
             except Exception as exc:  # noqa: BLE001 — cert is best-effort
                 logger.error("scan %s cert issue failed: %s", scan_id, exc)

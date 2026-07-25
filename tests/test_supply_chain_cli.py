@@ -16,6 +16,8 @@ from agenttic.certification.catalog import Catalog, CatalogEntry
 from agenttic.cli import app
 
 runner = CliRunner()
+from tests.conftest import attesting_signoff
+
 NOW = datetime(2026, 7, 24, 12, 0, tzinfo=timezone.utc)
 
 
@@ -64,10 +66,11 @@ def test_certify_memory_writes_a_signed_manifest(tmp_path, monkeypatch):
 
 def _catalog_file(tmp_path, monkeypatch) -> tuple[str, str]:
     monkeypatch.setenv("AGENTTIC_ATTEST_KEY_DIR", str(tmp_path))
+    so = attesting_signoff(agent_id="triage", config_hash="cfg-triage")
     signed = sign_manifest(build_manifest(
         manifest_id="m-agent", agent_id="triage", agent_config_hash="cfg-triage",
         suite_id="s", suite_version=1, rubric_id="r", rubric_version=1,
-        scorecard={"score": 0.9}, issued_at=NOW))
+        scorecard={"score": 0.9}, issued_at=NOW, signoff=so), signoff=so)
     cat = Catalog(owner="acme")
     cat.register(CatalogEntry(subject_id="payments-mcp", kind="mcp_server",
                               version="3.1", recorded_at=NOW))
@@ -98,10 +101,12 @@ def test_catalog_check_reports_an_uncertified_dependency_and_exits_nonzero(
 def test_catalog_check_is_clean_when_the_whole_chain_is_promoted(
         tmp_path, monkeypatch):
     monkeypatch.setenv("AGENTTIC_ATTEST_KEY_DIR", str(tmp_path))
-    mk = lambda mid, aid: sign_manifest(build_manifest(   # noqa: E731
-        manifest_id=mid, agent_id=aid, agent_config_hash=f"cfg-{aid}",
-        suite_id="s", suite_version=1, rubric_id="r", rubric_version=1,
-        scorecard={"score": 0.9}, issued_at=NOW))
+    def mk(mid, aid):
+        so = attesting_signoff(agent_id=aid, config_hash=f"cfg-{aid}")
+        return sign_manifest(build_manifest(
+            manifest_id=mid, agent_id=aid, agent_config_hash=f"cfg-{aid}",
+            suite_id="s", suite_version=1, rubric_id="r", rubric_version=1,
+            scorecard={"score": 0.9}, issued_at=NOW, signoff=so), signoff=so)
     agent, server = mk("m-agent", "triage"), mk("m-mcp", "payments-mcp")
 
     cat = Catalog(owner="acme")

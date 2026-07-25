@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ui-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "ui", "run", "preview", "--", "--port", "4319", "--strictPort"],
+      "port": 4319
+    },
+    {
+      "name": "billing-preview",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8899", "--directory",
+        "/home/omar/.config/Claude/local-agent-mode-sessions/ca595b52-373c-4d46-aa07-68691a17fb37/ae793934-0522-4bd6-b933-8742f283472e/agent/local_ditto_ae793934-0522-4bd6-b933-8742f283472e/outputs"],
+      "port": 8899
+    }
+  ]
+}

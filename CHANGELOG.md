@@ -1,5 +1,73 @@
 # Changelog
 
+## Unreleased — the signing gate: a certificate can no longer outrun its evidence (BREAKING)
+
+> **Release note.** This is a breaking change (`sign_manifest`/`build_manifest`
+> signatures and issuance behaviour), so it warrants a **major** bump to 3.0.0 —
+> not a minor one. Version numbers are deliberately left untouched here: the two
+> adapters pin `agenttic` exactly, so `agenttic`, `agenttic-langgraph` and
+> `agenttic-openai-agents` must be bumped and published together, and PyPI is
+> still on 1.0.1 (the 2.0.0 artifacts were built but never uploaded). Cutting the
+> version is a release decision, not part of this change.
+
+
+`VerificationSignoff.signs_off` was already correct and deny-by-default. Its only
+consumer was a **renderer** — so a run could print `DOES NOT SIGN OFF` and mint a
+signed, publicly verifiable, *graded* certificate from the same scorecard. The
+verdict and the signature were unconnected code paths. They are now the same path.
+
+### What changed
+
+- **`sign_manifest()` refuses.** It is the single chokepoint every signing path
+  reaches the key through, and it now raises `SignoffRefused` unless the sign-off
+  is positive and its hash matches the manifest. No `force=` escape hatch.
+- **`issue_certificate()` refuses.** The public graded certificate is gated on the
+  same evidence. A grade is not issued over unclosed coverage or an outstanding
+  property violation.
+- **Sign-offs are built and persisted.** `verify_op()` assembles the sign-off from
+  the artifacts it already holds; `aggregate_op()` stores it on the scorecard
+  (`Scorecard.signoff`). Certification works from a stored scorecard and never
+  holds the traces, so this had to survive the round-trip.
+- **Scope travels on the artifact.** A signed `ScopeSummary` (properties
+  exercised / total, closure, violations, unexercised property names) is carried
+  inside the signed payload and rendered on `/certified/:id`. Tampering with it
+  breaks the signature.
+- **Components get their own contract.** `ComponentSignoff` covers MCP servers
+  and memory stores, which have no traces. A **skipped** critical check does not
+  count as a pass, even though `CheckOutcome.passed` returns `True` for a skip.
+- **`/scan` now issues a signed SCAN REPORT, not a certificate.** A ~14-probe
+  lexical screen cannot close a 95% coverage target and was never meant to.
+  Reports are signed (integrity, not endorsement), carry `artifact:
+  "scan_report"` and `certified: false` inside the signed body, and say on their
+  face that they are not certificates.
+
+### Coverage model v2 — closure numbers are NOT comparable with v1
+
+The baseline and seed models gain an **`action_risk`** coverpoint: `read_only`,
+`mutating_reversible`, `mutating_irreversible` (unconfirmed), and
+`irreversible_confirmed`. Both models are bumped to **version 2** and
+`bins_fingerprint()` changes, so the discontinuity cannot pass silently.
+
+Why it was added: coverage recorded what the environment did *to* the agent and
+never what the agent did *to the world*. Measured against deepeval, inspect_ai,
+promptfoo and langsmith on the same traces, adding a case that moved money
+irreversibly and tripped a CRITICAL assertion moved baseline closure by **exactly
+zero** (16.6% → 16.6%). It now moves (18.0% → 22.2%) and names the untested risk
+paths. Expect closure to read **lower** than under v1 — the model asks a question
+it previously did not.
+
+### Migration
+
+- **Scorecards recorded before this release carry no sign-off and cannot be
+  certified.** Re-run the suite and certify the new scorecard. Already-issued
+  certificates are unaffected and continue to verify — post-v1 optional manifest
+  fields are excluded from the hash when unset precisely so historical digests
+  are unchanged.
+- **Expect refusals.** Against real production data (0/32 scorecards closed, mean
+  closure 20.4%) no agent-run certificate issues until coverage closes. That is
+  the intended behaviour, not a regression: use the coverage report's named holes
+  and the CDV loop to close them.
+
 ## 2.0.0 — the `ascore` name is gone (BREAKING)
 
 `ascore` was the pre-rename name of this project. The compatibility layer that

@@ -17,3 +17,5 @@ build/
 .env
 docker-compose.override.yml
 backups/
+# graphify: generated code graph (~26MB, rebuild with `graphify update .`)
+graphify-out/

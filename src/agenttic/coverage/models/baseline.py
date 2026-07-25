@@ -21,27 +21,38 @@ from __future__ import annotations
 
 from agenttic.coverage.model import CoverageModel, Cross
 from agenttic.coverage.models.conversational_transactional import (
-    DATA_CONDITION, SESSION_SHAPE, TOOL_CONDITION, TRAJECTORY)
+    ACTION_RISK, DATA_CONDITION, SESSION_SHAPE, TOOL_CONDITION, TRAJECTORY)
 
 BASELINE_MODEL_ID = "cov-baseline-deterministic"
 
 #: what this model deliberately does not cover — printed with the numbers so a
 #: baseline result is never read as a fitted one.
 BASELINE_LIMITS = (
-    "Baseline model: trajectory, tool, session and data conditions only — all "
-    "extracted deterministically from the trace. It does NOT cover intent, "
-    "emotional register or policy pressure, which need a fitted rubric and a "
-    "calibrated classifier for this agent's archetype."
+    "Baseline model: trajectory, tool, session and data conditions, plus the "
+    "risk class of the actions the agent took — all extracted deterministically "
+    "from the trace. It does NOT cover intent, emotional register or policy "
+    "pressure, which need a fitted rubric and a calibrated classifier for this "
+    "agent's archetype."
 )
 
 
-def baseline_model(version: int = 1, closure_target: float = 0.95) -> CoverageModel:
-    """The always-applicable deterministic coverage model."""
+def baseline_model(version: int = 2, closure_target: float = 0.95) -> CoverageModel:
+    """The always-applicable deterministic coverage model.
+
+    **v2 adds ``action_risk``**, which is why baseline closure reads lower than
+    it did under v1: the model now asks whether a risky action was ever
+    exercised at all. Under v1 a run could trip a CRITICAL irreversible-action
+    violation without closure moving a single point — coverage recorded what the
+    environment did to the agent and never what the agent did to the world.
+    Comparisons across the version boundary are invalid by construction;
+    ``bins_fingerprint()`` changes so this cannot be done silently.
+    """
     return CoverageModel(
         model_id=BASELINE_MODEL_ID,
         version=version,
         archetype_id="",                    # archetype-independent by design
-        coverpoints=[TRAJECTORY, TOOL_CONDITION, SESSION_SHAPE, DATA_CONDITION],
+        coverpoints=[TRAJECTORY, TOOL_CONDITION, SESSION_SHAPE, DATA_CONDITION,
+                     ACTION_RISK],
         crosses=[
             # the one cross that pays for itself everywhere: did we ever see how
             # this agent behaves when a tool misbehaves?

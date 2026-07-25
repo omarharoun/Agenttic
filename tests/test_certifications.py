@@ -20,6 +20,7 @@ from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
 from agenttic.schema.trace import Trace
 from agenttic.server.app import create_app
 from agenttic.server.certifications import CertStore, issue_certificate
+from tests.conftest import attesting_signoff
 
 CONFIG = """\
 models: {agent_default: a, judge_strong: j, judge_light: l}
@@ -41,9 +42,14 @@ def _now() -> datetime:
 def _save_safety_scorecard(reg, *, scorecard_id="sc-safety-1", agent_id="agent-x",
                            refusal=1.0, injection=1.0, extra=None,
                            config_hash=CONFIG_HASH, with_trace=True,
-                           suite_id="std-safety-cert-v1", suite_version=1):
+                           suite_id="std-safety-cert-v1", suite_version=1,
+                           signoff=True, signoff_obj=None):
     """Persist a trace (carrying config_hash) + a scorecard whose
-    per_criterion_means encode the given safety-dimension values."""
+    per_criterion_means encode the given safety-dimension values.
+
+    ``signoff=False`` writes a scorecard with no verification sign-off — the
+    shape of every scorecard recorded before sign-offs were persisted, which
+    issuance must refuse."""
     trace_id = f"tr-{scorecard_id}"
     if with_trace:
         reg.save_trace(Trace(
@@ -63,7 +69,13 @@ def _save_safety_scorecard(reg, *, scorecard_id="sc-safety-1", agent_id="agent-x
         suite_version=suite_version, rubric_id="r", rubric_version=1,
         run_scores=[run], task_success_rate=1.0, mean_cost_usd=0.0,
         p95_latency_ms=0.0, per_criterion_means=means,
-        visibility_tier="black_box")
+        visibility_tier="black_box",
+        # Issuance is gated on evidence that signs off: a grade is not issued
+        # over unclosed coverage or an outstanding violation. Real runs get this
+        # from verify_op; a fixture has to supply it explicitly.
+        signoff=((signoff_obj or attesting_signoff(
+            agent_id=agent_id, config_hash=config_hash)).model_dump(mode="json")
+            if (signoff or signoff_obj) else {}))
     reg.save_scorecard(sc)
     return scorecard_id
 
@@ -229,6 +241,69 @@ class TestEd25519ThirdPartyVerification:
 # --------------------------------------------------------------------------- #
 # Issuance + store (engine over a real registry, no HTTP).
 # --------------------------------------------------------------------------- #
+
+
+class TestTheSigningGate:
+    """A grade must not outrun its evidence.
+
+    Before this gate the sign-off verdict and the signature were unconnected: a
+    run could render ``DOES NOT SIGN OFF`` and still mint a signed, publicly
+    verifiable, *graded* certificate from the same scorecard.
+    """
+
+    def test_a_scorecard_with_no_signoff_is_refused(self, tmp_path):
+        reg = Registry(tmp_path / "a.db")
+        sid = _save_safety_scorecard(reg, signoff=False)
+        with pytest.raises(cert.CertificationError, match="no verification sign-off"):
+            issue_certificate(global_engine=reg.engine, cfg={}, reg=reg,
+                              tenant="default", scorecard_id=sid)
+
+    def test_unclosed_coverage_is_refused_and_names_the_number(self, tmp_path):
+        reg = Registry(tmp_path / "a.db")
+        so = attesting_signoff(config_hash=CONFIG_HASH)
+        so.coverage.closed = False
+        so.coverage.trace_closure = 0.204
+        sid = _save_safety_scorecard(reg, signoff_obj=so)
+        with pytest.raises(cert.CertificationError) as e:
+            issue_certificate(global_engine=reg.engine, cfg={}, reg=reg,
+                              tenant="default", scorecard_id=sid)
+        assert "20.4%" in str(e.value)
+
+    def test_an_outstanding_property_violation_is_refused(self, tmp_path):
+        reg = Registry(tmp_path / "a.db")
+        so = attesting_signoff(config_hash=CONFIG_HASH)
+        so.assertions.violations = 1
+        so.assertions.violated_properties = [
+            "always_irreversible_action_confirmed — ran unconfirmed"]
+        sid = _save_safety_scorecard(reg, signoff_obj=so)
+        with pytest.raises(cert.CertificationError,
+                           match="always_irreversible_action_confirmed"):
+            issue_certificate(global_engine=reg.engine, cfg={}, reg=reg,
+                              tenant="default", scorecard_id=sid)
+
+    def test_a_clean_run_is_certified_and_carries_its_scope(self, tmp_path):
+        reg = Registry(tmp_path / "a.db")
+        sid = _save_safety_scorecard(reg)
+        view = issue_certificate(global_engine=reg.engine, cfg={}, reg=reg,
+                                 tenant="default", scorecard_id=sid)
+        scope = view["scope"]
+        assert scope is not None
+        assert scope["properties_total"] == 8
+        assert scope["properties_exercised"] == 8
+        assert scope["closed"] is True
+        assert scope["violations"] == 0
+
+    def test_the_scope_is_signed_so_it_cannot_be_edited_after_issuance(self, tmp_path):
+        reg = Registry(tmp_path / "a.db")
+        sid = _save_safety_scorecard(reg)
+        view = issue_certificate(global_engine=reg.engine, cfg={}, reg=reg,
+                                 tenant="default", scorecard_id=sid)
+        assert view["signature_verified"] is True
+        # flatter the scope inside the signed payload -> signature must fail
+        import json as _json
+        payload = _json.loads(view["signed_payload"])
+        payload["scope"]["properties_exercised"] = 99
+        assert not cert.verify_signature(payload, view["signature"], cfg={})
 
 
 class TestIssuance:

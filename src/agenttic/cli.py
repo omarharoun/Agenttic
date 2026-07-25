@@ -1757,6 +1757,18 @@ def attest(
     except Exception as exc:
         raise typer.BadParameter(f"unknown scorecard {scorecard_id}: {exc}")
 
+    from agenttic.certification.attest import SignoffRefused
+    from agenttic.ops import signoff_from_run
+
+    signoff = signoff_from_run(sc)
+    if signoff is None:
+        console.print(
+            "[red]This scorecard carries no verification sign-off, so there is "
+            "nothing to stand behind.[/]\n"
+            "Scorecards recorded before sign-offs were persisted cannot be "
+            "certified — re-run the suite and attest the new scorecard.")
+        raise typer.Exit(code=2)
+
     sc_dict = sc.model_dump(mode="json")
     manifest = _build(
         manifest_id=f"manifest-{scorecard_id}",
@@ -1767,8 +1779,23 @@ def attest(
         scorecard=sc_dict, visibility_tier=sc.visibility_tier, k=k,
         expires_in_days=expires_in, signing_tier=tier,
         issuer=("agenttic-assurance" if tier == "assurance" else "local-self-attested"),
+        signoff=signoff,
     )
-    signed = sign_manifest(manifest, cfg=_cfg)
+    try:
+        signed = sign_manifest(manifest, signoff=signoff, cfg=_cfg)
+    except SignoffRefused as exc:
+        # The whole point: no certificate is produced. Report why, in the terms
+        # the reader has to act on, and exit non-zero so CI fails too.
+        console.print(f"[red]REFUSED — no certificate issued.[/]\n{exc}")
+        summary = signoff.scope_summary()
+        console.print(
+            f"\n[dim]scope: {summary.exercised_label} · closure "
+            f"{summary.trace_closure:.1%} of {summary.closure_target:.0%} · "
+            f"{summary.violations} violation(s)[/]")
+        if summary.unexercised_properties:
+            console.print("[dim]never exercised: "
+                          + ", ".join(summary.unexercised_properties) + "[/]")
+        raise typer.Exit(code=3)
     _P(out).write_text(signed.model_dump_json(indent=2), encoding="utf-8")
     console.print(render_certificate(signed))
     console.print(f"\n[green]Signed manifest written to {out}[/]")
@@ -1934,11 +1961,17 @@ def certify_mcp(
         _P(out).write_text(_json.dumps(report.as_dict(), indent=2), encoding="utf-8")
         console.print(f"[dim]scorecard → {out}[/]")
     if attest_out:
-        from agenttic.certification.attest import sign_manifest
+        from agenttic.certification.attest import SignoffRefused, sign_manifest
+        from agenttic.certification.mcp_suite import signoff_for_server
         cfg, _reg = _ctx(config)
-        signed = sign_manifest(
-            manifest_for_server(report, manifest_id=f"mcp-{report.server_name}"),
-            cfg=cfg)
+        signoff = signoff_for_server(report)
+        try:
+            signed = sign_manifest(
+                manifest_for_server(report, manifest_id=f"mcp-{report.server_name}"),
+                signoff=signoff, cfg=cfg)
+        except SignoffRefused as exc:
+            console.print(f"[red]REFUSED — no certificate issued.[/]\n{exc}")
+            raise typer.Exit(code=3)
         _P(attest_out).write_text(signed.model_dump_json(indent=2), encoding="utf-8")
         console.print(f"[dim]signed manifest → {attest_out}[/]")
     if not report.passed:
@@ -2024,11 +2057,17 @@ def certify_memory_cmd(
         _P(out).write_text(_json.dumps(report.as_dict(), indent=2), encoding="utf-8")
         console.print(f"[dim]scorecard → {out}[/]")
     if attest_out:
-        from agenttic.certification.attest import sign_manifest
+        from agenttic.certification.attest import SignoffRefused, sign_manifest
+        from agenttic.certification.memory_suite import signoff_for_memory
         cfg, _reg = _ctx(config)
-        signed = sign_manifest(
-            manifest_for_memory(report, manifest_id=f"memory-{report.store_name}"),
-            cfg=cfg)
+        signoff = signoff_for_memory(report)
+        try:
+            signed = sign_manifest(
+                manifest_for_memory(report, manifest_id=f"memory-{report.store_name}"),
+                signoff=signoff, cfg=cfg)
+        except SignoffRefused as exc:
+            console.print(f"[red]REFUSED — no certificate issued.[/]\n{exc}")
+            raise typer.Exit(code=3)
         _P(attest_out).write_text(signed.model_dump_json(indent=2), encoding="utf-8")
         console.print(f"[dim]signed manifest → {attest_out}[/]")
     if not report.passed:

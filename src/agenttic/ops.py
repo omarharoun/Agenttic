@@ -240,7 +240,9 @@ def verify_op(traces: list) -> tuple[list, dict]:
     run. It is what lets a report lead with *what was never exercised* instead of
     a pass rate that is silent about everything the suite never tried.
 
-    Returns (assertion_results, coverage_summary)."""
+    Returns (assertion_results, coverage_summary). The coverage summary carries
+    the serialized sign-off under ``"signoff"`` — see :func:`signoff_from_run`,
+    which is what the signing gate evaluates."""
     from agenttic.coverage.collect import Sample, collect
     from agenttic.coverage.models.baseline import BASELINE_LIMITS, baseline_model
     from agenttic.verification.assertions import evaluate, rollup_assertions
@@ -252,6 +254,7 @@ def verify_op(traces: list) -> tuple[list, dict]:
         except Exception:  # noqa: BLE001 — verification must never break a run
             continue
 
+    report = None
     summary: dict = {}
     try:
         report = collect(baseline_model(), [Sample(trace=t) for t in traces])
@@ -274,11 +277,49 @@ def verify_op(traces: list) -> tuple[list, dict]:
             "other_drift": report.other_drift(),
         }
     except Exception:  # noqa: BLE001
+        report = None
         summary = {}
 
     if results:
         summary["assertions"] = rollup_assertions(results)
+
+    # Build the sign-off here: this is the only place that holds the raw coverage
+    # report AND the raw assertion results, which is exactly what build_signoff
+    # consumes. Building it anywhere else would mean recomputing, and a sign-off
+    # derived from a different computation could disagree with the report.
+    try:
+        from agenttic.schema.signoff import build_signoff
+        agent_id = getattr(traces[0], "agent_id", "") if traces else ""
+        cfg_hash = getattr(traces[0], "agent_config_hash", "") if traces else ""
+        signoff = build_signoff(
+            signoff_id=f"signoff-{cfg_hash[:12] or 'unpinned'}",
+            agent_id=agent_id, agent_config_hash=cfg_hash,
+            coverage_report=report,
+            assertion_results=results or None)
+        summary["signoff"] = signoff.model_dump(mode="json")
+    except Exception:  # noqa: BLE001 — verification must never break a run
+        pass
     return results, summary
+
+
+def signoff_from_run(scorecard) -> "object | None":
+    """Rebuild the sign-off a run recorded, for the signing gate to evaluate.
+
+    Certification works from a stored scorecard and never holds the traces, so
+    the sign-off has to survive the round-trip rather than be recomputed.
+    Returns ``None`` for scorecards written before sign-offs were persisted —
+    the caller must refuse rather than invent one.
+    """
+    from agenttic.schema.signoff import VerificationSignoff
+    raw = getattr(scorecard, "signoff", None) or {}
+    if not raw:
+        raw = (getattr(scorecard, "coverage", None) or {}).get("signoff") or {}
+    if not raw:
+        return None
+    try:
+        return VerificationSignoff.model_validate(raw)
+    except Exception:  # noqa: BLE001 — a corrupt sign-off must not be trusted
+        return None
 
 
 def aggregate_op(
@@ -319,7 +360,10 @@ def aggregate_op(
         sc = sc.model_copy(update={
             "assertions": assertions,
             "assertion_set_ref": "assertions:builtin-default@v1",
-            "coverage": coverage})
+            "coverage": coverage,
+            # promoted out of the coverage blob so certification can find it
+            # without reaching through a summary dict
+            "signoff": coverage.get("signoff") or {}})
     reg.save_scorecard(sc)
     # record total spend (execution + scoring) for the daily budget ledger
     total_spend = sc.total_cost_usd + sc.total_scoring_cost_usd

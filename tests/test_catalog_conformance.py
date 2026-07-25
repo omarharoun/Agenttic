@@ -25,6 +25,8 @@ from agenttic.certification.catalog import (
     Catalog, CatalogEntry, PromotionRefused, shadow_compare)
 
 NOW = datetime(2026, 7, 24, 12, 0, tzinfo=timezone.utc)
+from tests.conftest import attesting_signoff
+
 SCORECARD = {"agent_id": "triage", "score": 0.91}
 
 
@@ -35,12 +37,13 @@ def _local_key(tmp_path, monkeypatch):
 
 def _signed(manifest_id="m-1", agent_id="triage", issued=NOW, days=90,
             scorecard=None):
+    so = attesting_signoff(agent_id=agent_id, config_hash=f"cfg-{agent_id}")
     return sign_manifest(build_manifest(
         manifest_id=manifest_id, agent_id=agent_id,
         agent_config_hash=f"cfg-{agent_id}",
         suite_id="s", suite_version=1, rubric_id="r", rubric_version=1,
         scorecard=scorecard if scorecard is not None else SCORECARD,
-        issued_at=issued, expires_in_days=days))
+        issued_at=issued, expires_in_days=days, signoff=so), signoff=so)
 
 
 def _catalog_with_candidate(ref_id="triage", depends_on=()):

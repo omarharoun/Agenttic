@@ -157,7 +157,8 @@ def test_results_attach_to_a_signed_manifest():
     with _client("good") as c:
         report = certify_mcp_server(c, **CERT_KW)
     manifest = manifest_for_server(report, manifest_id="mcp-1")
-    signed = sign_manifest(manifest)
+    from agenttic.certification.mcp_suite import signoff_for_server
+    signed = sign_manifest(manifest, signoff=signoff_for_server(report))
     assert manifest.subject.agent_id == "mcp:fixture-good"
     assert "fixture-good" in manifest.scope_statement
     assert "1.0.0" in manifest.scope_statement

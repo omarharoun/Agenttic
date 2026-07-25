@@ -17,6 +17,7 @@ from agenttic.certification.attest import (
     local_signing_key, new_revocation_list, public_key_b64, render_certificate,
     sign_manifest, sign_revocation_list, suspend_on_drift, verify_manifest)
 from agenttic.schema.attestation import BANNED_CLAIMS, content_hash
+from tests.conftest import attesting_signoff
 
 ROOT = Path(__file__).resolve().parents[1]
 NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -35,15 +36,24 @@ def _isolated_key(tmp_path, monkeypatch):
     yield
 
 
+SIGNOFF = attesting_signoff()
+
+
 def _manifest(**over):
     kw = dict(
         manifest_id="m-1", agent_id="pilot", agent_config_hash="cfg-abc123",
         suite_id="suite-support", suite_version=2,
         rubric_id="rubric-support", rubric_version=3,
         scorecard=SCORECARD, k=4, issued_at=NOW,
+        signoff=SIGNOFF,          # signing is gated on evidence that signs off
     )
     kw.update(over)
     return build_manifest(**kw)
+
+
+def _sign(manifest, **kw):
+    """Sign with the sign-off ``_manifest`` bound in."""
+    return sign_manifest(manifest, signoff=SIGNOFF, **kw)
 
 
 # --- 1. deterministic hashing, across processes ---------------------------- #
@@ -78,7 +88,7 @@ def test_float_precision_and_key_order_do_not_change_the_hash():
 # --- 2. attest -> verify, and precise tamper detection --------------------- #
 
 def test_attest_then_verify_passes():
-    signed = sign_manifest(_manifest())
+    signed = _sign(_manifest())
     pub = public_key_b64(local_signing_key().public_key())
     res = verify_manifest(signed, public_key_b64_str=pub, scorecard=SCORECARD,
                           current_config_hash="cfg-abc123", now=NOW)
@@ -86,7 +96,7 @@ def test_attest_then_verify_passes():
 
 
 def test_mutating_one_byte_of_the_scorecard_fails_with_a_precise_reason():
-    signed = sign_manifest(_manifest())
+    signed = _sign(_manifest())
     tampered = {**SCORECARD, "task_success_rate": 0.87}   # one byte
     res = verify_manifest(signed, scorecard=tampered, now=NOW)
     assert not res.ok and res.status == "invalid"
@@ -94,7 +104,7 @@ def test_mutating_one_byte_of_the_scorecard_fails_with_a_precise_reason():
 
 
 def test_mutating_the_rubric_version_breaks_the_signed_hash():
-    signed = sign_manifest(_manifest())
+    signed = _sign(_manifest())
     signed.manifest.rubric_version = 4          # tamper after signing
     res = verify_manifest(signed, scorecard=SCORECARD, now=NOW)
     assert not res.ok and res.status == "invalid"
@@ -102,7 +112,7 @@ def test_mutating_the_rubric_version_breaks_the_signed_hash():
 
 
 def test_bad_signature_is_reported():
-    signed = sign_manifest(_manifest())
+    signed = _sign(_manifest())
     other_pub = public_key_b64(
         __import__("cryptography.hazmat.primitives.asymmetric.ed25519",
                    fromlist=["Ed25519PrivateKey"]).Ed25519PrivateKey.generate().public_key())
@@ -115,7 +125,7 @@ def test_bad_signature_is_reported():
 # --- 3. subject binding (Hard Rule 53) ------------------------------------- #
 
 def test_verification_fails_when_the_agent_config_hash_differs():
-    signed = sign_manifest(_manifest())
+    signed = _sign(_manifest())
     res = verify_manifest(signed, scorecard=SCORECARD,
                           current_config_hash="cfg-DIFFERENT", now=NOW)
     assert not res.ok
@@ -142,7 +152,7 @@ def test_abom_validates_and_is_referenced_by_hash():
     assert "You are a support agent." not in blob
     # referenced from the manifest by hash
     h = abom_sha256(doc)
-    signed = sign_manifest(_manifest(abom_sha256=h))
+    signed = _sign(_manifest(abom_sha256=h))
     res = verify_manifest(signed, scorecard=SCORECARD, abom=doc, now=NOW)
     assert res.ok
     # a mutated ABOM is caught
@@ -154,7 +164,7 @@ def test_abom_validates_and_is_referenced_by_hash():
 # --- 5. expiry (Hard Rule 52) ---------------------------------------------- #
 
 def test_expired_certificate_verifies_as_expired_not_valid():
-    signed = sign_manifest(_manifest(expires_in_days=30))
+    signed = _sign(_manifest(expires_in_days=30))
     later = NOW + timedelta(days=31)
     res = verify_manifest(signed, scorecard=SCORECARD, now=later)
     assert res.status == "expired"
@@ -169,7 +179,7 @@ def test_manifest_cannot_be_issued_without_an_expiry():
 
 def test_drift_suspends_the_certificate_and_appends_a_signed_entry():
     m = _manifest()
-    signed = sign_manifest(m)
+    signed = _sign(m)
     rl = new_revocation_list()
     # the live monitor filed a re-eval request for this subject
     entries = suspend_on_drift(
@@ -194,7 +204,7 @@ def test_drift_suspends_the_certificate_and_appends_a_signed_entry():
 
 def test_revocation_beats_expiry_in_the_reported_status():
     m = _manifest(expires_in_days=1)
-    signed = sign_manifest(m)
+    signed = _sign(m)
     rl = new_revocation_list()
     append_revocation(rl, manifest_id=m.manifest_id,
                       subject_config_hash=m.subject.agent_config_hash,
@@ -207,18 +217,18 @@ def test_revocation_beats_expiry_in_the_reported_status():
 # --- 7. Hard Rule 51 — sign the evidence, never the verdict ---------------- #
 
 def test_certificate_renders_scope_and_limits():
-    signed = sign_manifest(_manifest())
+    signed = _sign(_manifest())
     text = render_certificate(signed)
     assert "SCOPE" in text and "LIMITS" in text
     assert "NOT ASSESSED" in text
 
 def test_local_tier_is_never_presented_as_third_party_assurance():
-    text = render_certificate(sign_manifest(_manifest()))
+    text = render_certificate(_sign(_manifest()))
     assert "LOCAL SELF-ATTESTATION" in text
     assert "NOT a third-party assurance" in text
 
 def test_no_rendered_artifact_asserts_the_agent_is_safe():
-    text = render_certificate(sign_manifest(_manifest()))
+    text = render_certificate(_sign(_manifest()))
     low = text.lower()
     for claim in BANNED_CLAIMS:
         assert claim not in low, f"certificate asserts banned claim {claim!r}"

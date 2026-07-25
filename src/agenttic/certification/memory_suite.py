@@ -374,6 +374,27 @@ def certify_memory(
     return rep
 
 
+def _scope_for(report: MemoryReport) -> str:
+    return (f"Attests the memory store {report.store_name}"
+            f"{(' v' + report.store_version) if report.store_version else ''} was "
+            f"measured across session boundaries against the memory certification "
+            f"battery: {', '.join(o.check_id for o in report.scored)}.")
+
+
+def signoff_for_memory(report: MemoryReport):
+    """The component sign-off the signing gate evaluates for this store.
+
+    A memory store has no traces, so trace coverage cannot be its evidence — the
+    battery is. Deterministic in the report, so a caller can recompute it to sign
+    the manifest it was built with.
+    """
+    from agenttic.schema.signoff import ComponentSignoff
+    return ComponentSignoff.from_outcomes(
+        signoff_id=f"memory-signoff-{report.store_name}",
+        component_kind="memory_store", component_ref=report.store_name,
+        outcomes=report.outcomes, scope_statement=_scope_for(report))
+
+
 def manifest_for_memory(report: MemoryReport, *, manifest_id: str,
                         signing_tier: str = "local_self_attested", **kw):
     """Attach a memory report to a signable evidence manifest (Step 54), naming
@@ -382,6 +403,7 @@ def manifest_for_memory(report: MemoryReport, *, manifest_id: str,
     from agenttic.certification.attest import build_manifest
     from agenttic.schema.attestation import content_hash
     doc = report.as_dict()
+    kw.setdefault("signoff", signoff_for_memory(report))
     return build_manifest(
         manifest_id=manifest_id,
         agent_id=f"memory:{report.store_name}",
@@ -392,11 +414,7 @@ def manifest_for_memory(report: MemoryReport, *, manifest_id: str,
         rubric_id="memory-battery", rubric_version=1,
         scorecard=doc, visibility_tier="glass_box",
         signing_tier=signing_tier,
-        scope_statement=(
-            f"Attests the memory store {report.store_name}"
-            f"{(' v' + report.store_version) if report.store_version else ''} was "
-            f"measured across session boundaries against the memory certification "
-            f"battery: {', '.join(o.check_id for o in report.scored)}."),
+        scope_statement=_scope_for(report),
         **kw)
 
 

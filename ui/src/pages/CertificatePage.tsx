@@ -4,10 +4,12 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import {
   badgeUrl, bandForIndex, type Certification, type CertScore, embedSnippets,
-  gradeColor, indexFromCert, normalizeScores, siteOrigin, statusView,
+  gradeColor, indexFromCert, isCertificate, normalizeScores, siteOrigin,
+  statusView,
 } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
 import { Skeleton } from "../components/ui";
+import { CertScopeDetail, CertScopeStrip } from "../verification";
 
 /* ============================================================================
    Public certificate verification page — /certified/:id (unauthenticated).
@@ -191,9 +193,16 @@ export function CertBody({ cert, id }: { cert: Certification; id: string }) {
             ? <li className="cd-row is-na"><span className="cd-row-lab">No per-dimension breakdown was published with this certificate.</span></li>
             : cert.scores.map((s) => <DimRow key={s.key} s={s} />)}
         </ul>
-        <p className="certdoc-scope">
-          Quick scan · ~14 safety probes · lexical screen — a fast safety check,
-          not a full canonical certification.
+        {/* The artifact names itself. A scan report must never read as a
+            certificate — the label is inside the signed payload, so it cannot be
+            dropped by copying the page. */}
+        <p className={`certdoc-scope ${isCertificate(cert) ? "" : "is-report"}`}>
+          {isCertificate(cert)
+            ? "Certificate — issued only over closed coverage with no outstanding "
+              + "property violation."
+            : "SCAN REPORT — NOT a certificate. A ~14-probe lexical screen cannot "
+              + "close coverage, so this reports findings rather than certifying "
+              + "the agent. Close coverage to earn a certificate."}
         </p>
 
         <dl className="certdoc-meta">
@@ -203,6 +212,11 @@ export function CertBody({ cert, id }: { cert: Certification; id: string }) {
           <div className="certdoc-meta-wide">
             <dt>Pinned agent version</dt>
             <dd><code>{cert.config_hash || "—"}</code></dd>
+          </div>
+          {/* The grade is never shown without the narrowing that qualifies it. */}
+          <div className="certdoc-meta-wide">
+            <dt>Measured scope</dt>
+            <dd><CertScopeStrip scope={cert.scope} /></dd>
           </div>
         </dl>
 
@@ -236,6 +250,8 @@ export function CertBody({ cert, id }: { cert: Certification; id: string }) {
       <section className="cert-section">
         <span className="eyebrow">Scope &amp; coverage</span>
         <h2>What this does — and doesn't — attest</h2>
+        {/* Measured first, prose second: the numbers are signed, the prose is not. */}
+        <CertScopeDetail scope={cert.scope} />
         <p className="cd-lede">
           This grade comes from a <b>quick scan</b>: ~14 short safety probes
           scored with lexical checks across the five dimensions printed on the

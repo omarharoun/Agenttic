@@ -113,6 +113,12 @@ class Scorecard(BaseModel):
     #: (no model calls), so it is attached to every run and the report leads
     #: with it instead of the pass rate (Hard Rule 56).
     coverage: dict = Field(default_factory=dict)
+    #: The serialized :class:`~agenttic.schema.signoff.VerificationSignoff` for
+    #: this run. Persisted because certification works from a stored scorecard
+    #: and never holds the traces — without it, the signing gate would have no
+    #: evidence to evaluate and could only refuse. Empty on scorecards written
+    #: before this existed; those cannot be certified until the run is repeated.
+    signoff: dict = Field(default_factory=dict)
 
     @computed_field  # type: ignore[prop-decorator]
     @property

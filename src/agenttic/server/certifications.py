@@ -76,6 +76,25 @@ def issue_certificate(*, global_engine, cfg: dict, reg, tenant: str,
             "(AgentHarm refusal + AgentDojo/InjecAgent injection) and certify "
             "from a scorecard that measures them.")
 
+    # --- the signing gate ------------------------------------------------- #
+    # This is the PUBLIC, third-party-verifiable, graded certificate. A grade
+    # that outruns its evidence is the thing that makes the whole signature
+    # worthless, so it is refused here rather than reported in a renderer.
+    from agenttic.ops import signoff_from_run
+    signoff = signoff_from_run(sc)
+    if signoff is None:
+        raise cert.CertificationError(
+            "scorecard carries no verification sign-off, so there is nothing to "
+            "stand behind. Scorecards recorded before sign-offs were persisted "
+            "cannot be certified — re-run the suite and certify the new "
+            "scorecard.")
+    if not signoff.signs_off:
+        raise cert.CertificationError(
+            "refusing to issue a certificate: the evidence does not sign off — "
+            + "; ".join(signoff.refusal_reasons())
+            + ". A grade is not issued over unclosed coverage or an outstanding "
+              "property violation.")
+
     config_hash = _config_hash_from_scorecard(reg, sc)
     issued_at = _now()
     expires_at = cert.expiry_from(issued_at, expires_days)
@@ -86,9 +105,81 @@ def issue_certificate(*, global_engine, cfg: dict, reg, tenant: str,
         agent_name=_agent_name(reg, sc.agent_id), config_hash=config_hash,
         scorecard_id=scorecard_id, suite_id=sc.suite_id,
         suite_version=sc.suite_version, dimension_scores=dimension_scores,
-        issued_at=issued_at, expires_at=expires_at)
+        issued_at=issued_at, expires_at=expires_at,
+        # signed alongside the grade: a reader never sees the grade without the
+        # narrowing that qualifies it
+        scope=signoff.scope_summary().model_dump(mode="json"))
     # Ed25519-sign: embeds signature_alg + public_key_id into the payload and
     # signs the canonical form. Fails closed in prod if no signing key is set.
+    payload, signature = cert.sign_certificate(payload, cfg=cfg)
+
+    row = CertificationRow(
+        cert_id=cert_id, tenant_id=tenant, agent_id=sc.agent_id,
+        config_hash=config_hash, scorecard_id=scorecard_id,
+        grade=payload["grade"], payload=cert.canonical_json(payload),
+        signature=signature, issued_at=issued_at, expires_at=expires_at,
+        created_at=issued_at)
+    with Session(global_engine) as s:
+        s.add(row)
+        s.commit()
+    return CertStore(global_engine).public_view(cert_id, cfg=cfg)
+
+
+def issue_scan_report(*, global_engine, cfg: dict, reg, tenant: str,
+                      scorecard_id: str,
+                      expires_days: int = cert.DEFAULT_EXPIRY_DAYS) -> dict:
+    """Issue a signed **scan report** — deliberately not a certificate.
+
+    A quick scan is ~14 probes. It cannot close a 95% coverage target, and it was
+    never meant to: it is a screen, not an audit. Issuing a *certificate* from it
+    would be the exact overclaim the signing gate exists to prevent, so the scan
+    path produces its own artifact instead.
+
+    The difference is not cosmetic. A scan report:
+      * is labelled ``artifact: "scan_report"`` and ``certified: false`` inside
+        the signed payload, so the distinction survives copying and embedding;
+      * carries its measured scope, like a certificate does;
+      * is **not** gated on ``signs_off`` — it is allowed to report bad news,
+        which is the entire point of a screen.
+
+    It is still signed, so a reader can verify the findings were not altered.
+    Integrity, not endorsement.
+    """
+    try:
+        sc = reg.get_scorecard(scorecard_id)
+    except NotFoundError as exc:
+        raise NotFoundError(f"scorecard {scorecard_id} not found") from exc
+
+    if not sc.run_scores:
+        raise cert.CertificationError(
+            "scorecard has no run results — cannot report on an empty run")
+
+    dimension_scores = cert.extract_dimension_scores(sc.per_criterion_means)
+    missing = cert.missing_required(dimension_scores)
+    if missing:
+        raise cert.CertificationError(
+            "scan did not measure the required safety dimensions "
+            f"{list(cert.REQUIRED_DIMENSIONS)} — missing {missing}")
+
+    from agenttic.ops import signoff_from_run
+    signoff = signoff_from_run(sc)
+
+    config_hash = _config_hash_from_scorecard(reg, sc)
+    issued_at = _now()
+    expires_at = cert.expiry_from(issued_at, expires_days)
+    cert_id = "scan_" + uuid.uuid4().hex[:16]
+
+    payload = cert.build_certificate_payload(
+        cert_id=cert_id, agent_id=sc.agent_id,
+        agent_name=_agent_name(reg, sc.agent_id), config_hash=config_hash,
+        scorecard_id=scorecard_id, suite_id=sc.suite_id,
+        suite_version=sc.suite_version, dimension_scores=dimension_scores,
+        issued_at=issued_at, expires_at=expires_at,
+        scope=(signoff.scope_summary().model_dump(mode="json")
+               if signoff is not None else None))
+    # Inside the signed body, so neither label can be stripped from a copy.
+    payload["artifact"] = "scan_report"
+    payload["certified"] = False
     payload, signature = cert.sign_certificate(payload, cfg=cfg)
 
     row = CertificationRow(
@@ -145,6 +236,16 @@ class CertStore:
             "cap_reason": payload.get("cap_reason"),
             "composite_score": payload.get("composite_score"),
             "dimensions": payload.get("dimensions", []),
+            # How much of the property set was actually exercised, and whether
+            # coverage closed. Signed alongside the grade. ``None`` on
+            # certificates issued before scope was recorded — the UI must render
+            # that as "not recorded", never as full coverage.
+            "scope": payload.get("scope"),
+            # "certificate" (closed evidence) or "scan_report" (a screen). Absent
+            # on everything issued before scan reports existed, all of which were
+            # certificates. The UI must never call a scan_report a certificate.
+            "artifact": payload.get("artifact", "certificate"),
+            "certified": payload.get("certified", True),
             "issued_at": payload.get("issued_at"),
             "expires_at": payload.get("expires_at"),
             "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,

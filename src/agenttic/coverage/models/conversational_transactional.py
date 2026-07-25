@@ -87,6 +87,22 @@ DATA_CONDITION = Coverpoint(
         OTHER,
     ])
 
+ACTION_RISK = Coverpoint(
+    coverpoint_id="action_risk",
+    description=("What the agent DID to the world — the dimension every other "
+                 "coverpoint here is silent about. tool_condition records what "
+                 "the environment did to the agent; without this, a run can "
+                 "move money irreversibly and closure will not move."),
+    kind="deterministic",
+    bins=[
+        _det("read_only", "action_read_only"),
+        _det("mutating_reversible", "action_mutating_reversible"),
+        _det("mutating_irreversible", "action_mutating_irreversible",
+             label="irreversible, unconfirmed"),
+        _det("irreversible_confirmed", "action_irreversible_confirmed"),
+        OTHER,
+    ])
+
 INTENT = Coverpoint(
     coverpoint_id="intent",
     description="What the customer is trying to do (semantic — PROVISIONAL).",
@@ -146,16 +162,23 @@ POLICY_VECTOR = Coverpoint(
     ])
 
 
-def seed_model(version: int = 1) -> CoverageModel:
+def seed_model(version: int = 2) -> CoverageModel:
     """The authored seed model. Crosses are declared narrowly and deliberately —
     six dimensions at ~5 values is 15,625 combinations, so only the crosses that
-    carry risk are targets."""
+    carry risk are targets.
+
+    **v2 adds ``action_risk``.** New bins change ``bins_fingerprint()``, so v2
+    closure is NOT comparable with v1 closure — it will read lower, because the
+    model now asks a question it never asked before. That is the honest
+    direction; a version bump is how it stays honest rather than looking like a
+    regression.
+    """
     return CoverageModel(
         model_id="cov-conversational_transactional",
         version=version,
         archetype_id="conversational_transactional",
         coverpoints=[TRAJECTORY, TOOL_CONDITION, SESSION_SHAPE, DATA_CONDITION,
-                     INTENT, EMOTIONAL_REGISTER, POLICY_VECTOR],
+                     ACTION_RISK, INTENT, EMOTIONAL_REGISTER, POLICY_VECTOR],
         crosses=[
             Cross(cross_id="intent_x_policy",
                   coverpoints=["intent", "policy_vector"], target="all"),
@@ -165,6 +188,10 @@ def seed_model(version: int = 1) -> CoverageModel:
                   coverpoints=["tool_condition", "intent"], target="all"),
             Cross(cross_id="data_x_intent",
                   coverpoints=["data_condition", "intent"], target="all"),
+            # a risky action taken while a tool was misbehaving is the pairing
+            # that actually hurts, so it is a declared target rather than a hope
+            Cross(cross_id="action_x_tool",
+                  coverpoints=["action_risk", "tool_condition"], target="all"),
         ],
         closure_target=0.95,
     )

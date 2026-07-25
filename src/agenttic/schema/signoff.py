@@ -26,13 +26,42 @@ model was present it renders `unscoped — no coverage model` (Hard Rule 56).
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Protocol
 
 from pydantic import BaseModel, Field
 
-from agenttic.schema.attestation import content_hash
+from agenttic.schema.attestation import ScopeSummary, content_hash
 
 LegStatus = Literal["populated", "not_run"]
+
+
+class SignoffLike(Protocol):
+    """What the signing path requires of any evidence sign-off.
+
+    Two kinds of thing get certified and their evidence is not the same shape:
+    an **agent run** is judged on trace coverage, assertions and formal proofs;
+    a **component** (an MCP server, a memory store) has no traces at all and is
+    judged on its own check battery. Both must be able to refuse, and both must
+    be able to say what they cover — so the signing gate depends on this
+    protocol rather than on either concrete type.
+    """
+
+    @property
+    def signs_off(self) -> bool:
+        """Deny-by-default. Evidence that did not run never reads as a pass."""
+        ...
+
+    def content_sha256(self) -> str:
+        """Stable hash of the evidence, bound into the manifest."""
+        ...
+
+    def scope_summary(self) -> ScopeSummary:
+        """What this evidence covers, for the face of the certificate."""
+        ...
+
+    def refusal_reasons(self) -> list[str]:
+        """Why ``signs_off`` is False. Empty when it is True."""
+        ...
 
 
 class CoverageLeg(BaseModel):
@@ -177,6 +206,144 @@ class VerificationSignoff(BaseModel):
         data = self.model_dump(mode="json")
         data.pop("created_at", None)
         return content_hash(data)
+
+    def scope_summary(self) -> ScopeSummary:
+        """The narrowing a reader needs in order to discount the claim."""
+        return ScopeSummary(
+            properties_total=self.assertions.total,
+            properties_exercised=max(
+                0, self.assertions.total - self.assertions.unexercised),
+            trace_closure=self.coverage.trace_closure,
+            closure_target=self.coverage.closure_target,
+            closed=self.coverage.closed,
+            violations=self.assertions.violations,
+            unexercised_properties=list(self.assertions.unexercised_properties),
+        )
+
+    def refusal_reasons(self) -> list[str]:
+        """Why this sign-off is negative, in the terms the reader must act on.
+
+        Mirrors :attr:`signs_off` condition for condition, and lists nothing
+        else. Naming a leg that does not actually block the gate would send the
+        reader off fixing the wrong thing — the other legs are reported as scope,
+        not as blockers.
+        """
+        why: list[str] = []
+        if self.coverage.status != "populated":
+            why.append("coverage was never measured, so the claim is unscoped")
+        elif not self.coverage.closed:
+            why.append(
+                f"coverage not closed: {self.coverage.trace_closure:.1%} against "
+                f"a {self.coverage.closure_target:.0%} target"
+                + (f" — unhit: {', '.join(self.coverage.unhit_bins[:5])}"
+                   if self.coverage.unhit_bins else ""))
+        if self.assertions.status != "populated":
+            why.append("no properties were evaluated")
+        if self.assertions.violations:
+            why.append(
+                f"{self.assertions.violations} property violation(s): "
+                + "; ".join(self.assertions.violated_properties[:3]))
+        if self.formal.counterexample:
+            why.append(f"{self.formal.counterexample} formal counterexample(s)")
+        if self.coverage.illegal_hits:
+            why.append("illegal bin(s) hit: "
+                       + ", ".join(self.coverage.illegal_hits[:5]))
+        return why
+
+
+class ComponentSignoff(BaseModel):
+    """Evidence for a component — an MCP server, a memory store — which has no
+    traces and therefore no trace coverage.
+
+    Its battery of checks is the evidence. The same two rules apply as anywhere
+    else in the platform: a check that **failed** blocks sign-off, and a critical
+    check that was **skipped** blocks it too, because
+    :attr:`CheckOutcome.passed` treats a skip as a pass and an unexercised check
+    is not evidence of anything (Hard Rule 60, the vacuity rule).
+    """
+
+    signoff_id: str
+    component_kind: Literal["mcp_server", "memory_store", "tool"]
+    component_ref: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    #: check_id -> (score, critical, skipped, detail)
+    checks: dict[str, tuple[float, bool, bool, str]] = Field(default_factory=dict)
+    #: what this battery does NOT cover — required, and never blank
+    scope_statement: str = ""
+
+    @classmethod
+    def from_outcomes(cls, *, signoff_id: str, component_kind: str,
+                      component_ref: str, outcomes, scope_statement: str,
+                      ) -> "ComponentSignoff":
+        """Build from the ``CheckOutcome`` list a component suite already emits."""
+        return cls(
+            signoff_id=signoff_id,
+            component_kind=component_kind,      # type: ignore[arg-type]
+            component_ref=component_ref,
+            checks={o.check_id: (o.score, o.critical, o.skipped, o.detail)
+                    for o in outcomes},
+            scope_statement=scope_statement)
+
+    @property
+    def failed(self) -> list[str]:
+        return [cid for cid, (score, _c, skipped, _d) in self.checks.items()
+                if not skipped and score < 1.0]
+
+    @property
+    def skipped_critical(self) -> list[str]:
+        return [cid for cid, (_s, critical, skipped, _d) in self.checks.items()
+                if critical and skipped]
+
+    @property
+    def exercised(self) -> list[str]:
+        return [cid for cid, (_s, _c, skipped, _d) in self.checks.items()
+                if not skipped]
+
+    @property
+    def signs_off(self) -> bool:
+        """Deny-by-default: at least one check actually ran, none failed, and no
+        critical check was skipped."""
+        return (bool(self.exercised)
+                and not self.failed
+                and not self.skipped_critical
+                and bool(self.scope_statement.strip()))
+
+    def content_sha256(self) -> str:
+        data = self.model_dump(mode="json")
+        data.pop("created_at", None)
+        return content_hash(data)
+
+    def scope_summary(self) -> ScopeSummary:
+        """A component battery has no trace coverage, so closure is reported as
+        met over the checks that ran — never inferred over checks that did not."""
+        total = len(self.checks)
+        ran = len(self.exercised)
+        return ScopeSummary(
+            properties_total=total,
+            properties_exercised=ran,
+            trace_closure=(ran / total) if total else 0.0,
+            closure_target=1.0,
+            closed=bool(total) and ran == total and not self.failed,
+            violations=len(self.failed),
+            unexercised_properties=sorted(
+                cid for cid, (_s, _c, skipped, _d) in self.checks.items()
+                if skipped),
+        )
+
+    def refusal_reasons(self) -> list[str]:
+        why: list[str] = []
+        if not self.exercised:
+            why.append("no check in the battery actually ran")
+        if self.failed:
+            why.append(f"{len(self.failed)} check(s) failed: "
+                       + ", ".join(sorted(self.failed)[:5]))
+        if self.skipped_critical:
+            why.append("critical check(s) skipped, which is not a pass: "
+                       + ", ".join(sorted(self.skipped_critical)))
+        if not self.scope_statement.strip():
+            why.append("no scope_statement naming what is NOT covered")
+        return why
 
 
 def build_signoff(

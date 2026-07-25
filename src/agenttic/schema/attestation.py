@@ -122,6 +122,44 @@ class Environment(BaseModel):
     model_ids: list[str] = Field(default_factory=list)
 
 
+class ScopeSummary(BaseModel):
+    """What the evidence actually covers — carried on the face of the certificate.
+
+    The reason this exists: a reader cannot discount a claim they cannot see the
+    shape of. A certificate that attests eight properties while three of them
+    never ran is making a narrower claim than it appears to, and the narrowing
+    belongs in the artifact, not in a report someone may never open.
+
+    Evidence, never a verdict (Hard Rule 51) — it reports what was exercised and
+    whether closure was met, and asserts nothing about safety.
+    """
+
+    properties_total: int = 0
+    properties_exercised: int = 0
+    trace_closure: float = 0.0
+    closure_target: float = 0.95
+    closed: bool = False
+    violations: int = 0
+    unexercised_properties: list[str] = Field(default_factory=list)
+
+    @property
+    def exercised_label(self) -> str:
+        return (f"{self.properties_exercised}/{self.properties_total} "
+                "properties exercised")
+
+
+#: Fields added after the first certificates were signed. When absent they are
+#: omitted from the hash so a manifest signed before the field existed still
+#: hashes to exactly the digest its signature covers. When present they ARE
+#: hashed, so they are tamper-evident going forward — and stripping one changes
+#: the digest, which fails verification rather than silently passing.
+#:
+#: Only ever append here, and only for fields defaulting to ``None``. Adding an
+#: already-shipped field would rewrite historical digests and break every issued
+#: certificate.
+_POST_V1_OPTIONAL_FIELDS = ("scope_summary",)
+
+
 class EvidenceManifest(BaseModel):
     """What was measured, under which conditions, by whom. Never a verdict."""
 
@@ -145,6 +183,10 @@ class EvidenceManifest(BaseModel):
     #: A certificate whose headline is a pass rate says so; one backed by a
     #: sign-off names it here.
     signoff_sha256: str | None = None
+    #: the sign-off's scope, denormalised for display on the certificate itself.
+    #: ``None`` on manifests issued before this field existed — see
+    #: ``_POST_V1_OPTIONAL_FIELDS`` for why that must keep hashing as it did.
+    scope_summary: ScopeSummary | None = None
     issued_at: datetime
     expires_at: datetime                          # Hard Rule 52: never unbounded
     issuer: str
@@ -174,13 +216,26 @@ class EvidenceManifest(BaseModel):
                     "the evidence, never the verdict (Hard Rule 51)")
         return self
 
+    def _hashable(self) -> dict:
+        """The body that the signature covers.
+
+        Post-v1 optional fields are dropped when unset so a manifest signed
+        before they existed hashes to the same digest it did then — otherwise
+        adding any field would silently invalidate every issued certificate.
+        """
+        data = self.model_dump(mode="json")
+        for name in _POST_V1_OPTIONAL_FIELDS:
+            if data.get(name) is None:
+                data.pop(name, None)
+        return data
+
     def payload(self) -> dict:
         """The signable body: every field, canonically ordered."""
-        return _canonicalize(self.model_dump(mode="json"))
+        return _canonicalize(self._hashable())
 
     def manifest_hash(self) -> str:
         """Deterministic hash of the manifest body (excludes any signature)."""
-        return content_hash(self.model_dump(mode="json"))
+        return content_hash(self._hashable())
 
     def is_expired(self, now: datetime | None = None) -> bool:
         now = now or datetime.now(timezone.utc)

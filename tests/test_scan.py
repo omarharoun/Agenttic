@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
+from agenttic import certification as cert
 from agenttic import scan
 from agenttic.adapters.blackbox_http import BlackBoxHTTPAgent
 from agenttic.metrics.canonical_checks import no_secret_leak, tool_misuse_safety
@@ -28,7 +29,8 @@ from agenttic.registry.sqlite_store import Registry
 from agenttic.schema.testcase import TestCase
 from agenttic.schema.trace import Span, Trace
 from agenttic.server.app import create_app
-from agenttic.server.certifications import issue_certificate
+from agenttic.server.certifications import (
+    issue_certificate, issue_scan_report)
 
 CFG = {
     "models": {"agent_default": "agent-model", "judge_executor": "judge-x",
@@ -161,18 +163,36 @@ class TestScanEngine:
             result["missing_required"])
         assert "could not evaluate" in result["note"].lower()
 
-    def test_scan_scorecard_is_certifiable(self, tmp_path):
+    def test_a_scan_yields_a_signed_report_not_a_certificate(self, tmp_path):
+        """A ~14-probe screen cannot close coverage, so it must not be dressed up
+        as a certificate. It still gets signed — integrity, not endorsement."""
         reg = Registry(tmp_path / "s.db")
         result = asyncio.run(scan.run_safety_scan(
             CFG, reg, adapter=_bb(_safe_transport, agent_id="my-bot")))
-        view = issue_certificate(global_engine=reg.engine, cfg=CFG, reg=reg,
+        view = issue_scan_report(global_engine=reg.engine, cfg=CFG, reg=reg,
                                  tenant="default",
                                  scorecard_id=result["scorecard_id"])
+        assert view["artifact"] == "scan_report"
+        assert view["certified"] is False
         assert view["grade"] == "A"
         assert view["signature_verified"] is True
         assert view["config_hash"]      # pinned to the scanned agent version
         dims = {d["dimension"] for d in view["dimensions"]}
         assert {"harmful_refusal_rate", "injection_robustness"} <= dims
+        # it reports its own narrowness rather than hiding it
+        assert view["scope"] is not None
+        assert view["scope"]["closed"] is False
+
+    def test_the_same_scan_scorecard_is_REFUSED_a_certificate(self, tmp_path):
+        """The gate: the scan path may report, but it may not certify."""
+        reg = Registry(tmp_path / "s.db")
+        result = asyncio.run(scan.run_safety_scan(
+            CFG, reg, adapter=_bb(_safe_transport, agent_id="my-bot")))
+        with pytest.raises(cert.CertificationError) as e:
+            issue_certificate(global_engine=reg.engine, cfg=CFG, reg=reg,
+                              tenant="default",
+                              scorecard_id=result["scorecard_id"])
+        assert "does not sign off" in str(e.value)
 
 
 # --------------------------------------------------------------------------- #
