@@ -19,7 +19,7 @@ JSON schema directly. The produced JSON validates against
 | Python | `ascore.interop.to_inspect_log(scorecard, rubric=…, traces=…, testcases=…)` → `dict`; `ascore.interop.from_inspect_log(dict)` → `{scorecard, traces, rubric}` |
 | Ops | `ascore.ops.inspect_log_op(reg, scorecard_id)` (pulls scorecard + rubric + traces from the registry) |
 | HTTP | `GET /api/scorecards/{id}/inspect.json` — auth + tenant scoped, exactly like the PDF export |
-| CLI | `ascore inspect-export <scorecard_id> [--out f.json]` and `ascore inspect-import <log.json> [--save]` |
+| CLI | `agenttic inspect-export <scorecard_id> [--out f.json]` and `agenttic inspect-import <log.json> [--save]` |
 
 ## The 1:1 model mapping
 

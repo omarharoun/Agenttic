@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-15
 **Reviewed at commit:** `ba0e5a3` (master)
-**Scope:** the `ascore` backend (FastAPI + workflow engine + registry), the
+**Scope:** the `agenttic` backend (FastAPI + workflow engine + registry), the
 React/Vite UI, and the CLI. Grounded in a direct read of the code; file:line
 references throughout.
 
@@ -38,7 +38,7 @@ These are deliberately out of the codebase — provide them at deploy time:
 3. **TLS / ingress**: terminate HTTPS at a reverse proxy / load balancer in
    front of the app (the app speaks plain HTTP).
 4. **Scheduled jobs**: cron / k8s CronJob for `scripts/backup.sh` and
-   `ascore retention --apply` (see `docs/OPERATIONS.md`).
+   `agenttic retention --apply` (see `docs/OPERATIONS.md`).
 5. **Backups + encryption-at-rest**: enable Litestream or managed-DB snapshots,
    and encrypt the data volume / DB at the infrastructure layer.
 6. **Metrics/tracing collection**: scrape `/metrics` per replica (Prometheus)
@@ -71,7 +71,7 @@ it's everything around it: there is **no authentication, no authorization, no
 multi-tenancy, no logging, no metrics, no health checks, no rate limiting, no
 cost ceiling, no migrations, no container/CI**, and at least **three concrete
 security holes** (SSRF, path traversal, unauthenticated state-changing endpoints
-that spend money). The app is honest about one of these — `ascore ui` literally
+that spend money). The app is honest about one of these — `agenttic ui` literally
 prints a warning that "the API has no authentication." Today it is safe only on
 `localhost` or a fully trusted LAN, run by one operator.
 
@@ -143,12 +143,12 @@ the 291-test suite stay untouched. Isolation verified in `tests/test_tenancy.py`
 > (pairs with the Alembic migrations in §3.2). **Update:** Postgres support
 > with row-level `tenant_id` scoping is now implemented (§3.1) — the maintainer
 > ratified keeping DB-per-tenant for SQLite. The CLI is tenant-aware too:
-> `ascore --tenant <t> …` (or `AGENTTIC_TENANT`) selects the workspace for every
+> `agenttic --tenant <t> …` (or `AGENTTIC_TENANT`) selects the workspace for every
 > command; it operates directly on the DB as an admin tool (DB access, not an
 > API token; provider keys via env/`*_FILE`).
 
 #### Original finding
-There is a single SQLite file (`config.yaml` → `paths.registry_db: ascore.db`)
+There is a single SQLite file (`config.yaml` → `paths.registry_db: agenttic.db`)
 and **flat global namespaces**: `agent_id`, `suite_id`, `scorecard_id` are not
 scoped to any tenant/org/project. `Registry` and `UIStore` share one engine
 (`server/app.py:35-36`). Two clients' engagements would collide in the same
@@ -168,7 +168,7 @@ tables and leaderboard.
 ### 2.1 Implicit, process-global API key — **High** · ✅ FIXED (`1c5d601`)
 Secrets (`ANTHROPIC_API_KEY`, `AGENTTIC_API_TOKEN`, `FI_*`, `AGENTTIC_DB`,
 `AGENTTIC_REDIS_URL`) load from env **or a `<NAME>_FILE` path** so Docker/K8s/Vault
-file-mounted secrets work transparently (`ascore/secrets.py`;
+file-mounted secrets work transparently (`agenttic/secrets.py`;
 `hydrate_env_secrets()` runs at app + CLI startup). The auth token resolves via
 the same path. **Rotation:** overlapping `auth.tokens` entries allow
 zero-downtime rotation (add new → deploy → remove old); the admin token rotates
@@ -193,7 +193,7 @@ secrets manager, no rotation, no per-tenant key.
 ### 2.2 No secret redaction — **Medium** · ✅ FIXED (`1c5d601`)
 A `SecretRedactor` logging filter scrubs known secret values (resolved keys +
 configured tokens) from every log record's message and structured fields
-(`ascore/secrets.py`, wired in `configure_logging`). Request logs already use
+(`agenttic/secrets.py`, wired in `configure_logging`). Request logs already use
 `url.path` (no query string), so the SSE `?token=` never reaches the logs.
 Tested in `tests/test_secrets.py`.
 
@@ -247,7 +247,7 @@ created with **no `connect_args`**. WAL is enabled once on the shared engine
 A versioned migration runner (`ascore/migrations.py`) replaces additive
 `create_all` drift: each migration is recorded in a `schema_migrations` table,
 the v1 baseline builds the current schema, and `Registry.__init__` migrates to
-head on construction (so every tenant DB self-migrates). `ascore migrate
+head on construction (so every tenant DB self-migrates). `agenttic migrate
 [--status]` reports/forces it. Future schema changes add a new numbered
 migration rather than editing an applied one. **Decision:** I used an in-repo,
 dependency-free runner (sized for single-SQLite) rather than Alembic; when we
@@ -273,7 +273,7 @@ per-tenant file, or `pg_dump`/`pg_restore` for Postgres) + a Litestream config
 example, with a step-by-step **restore drill** in `docs/OPERATIONS.md`.
 **Retention/PII:** `retention.trace_redact_days` (strip trace inputs/outputs,
 keep timing/cost) and `retention.trace_prune_days` (delete old traces;
-scorecards keep aggregates), applied by `ascore retention --apply`
+scorecards keep aggregates), applied by `agenttic retention --apply`
 (`Registry.redact_old_traces` / `prune_traces`, `tests/test_retention.py`).
 **Residual (Low, operator infra):** scheduling the backup + retention jobs
 (cron/k8s CronJob) and encryption-at-rest are deployment concerns, documented

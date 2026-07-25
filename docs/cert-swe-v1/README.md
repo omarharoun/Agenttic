@@ -62,7 +62,7 @@ table.
 
 ```bash
 # Offline, no API key — the built-in reference (mock) agent:
-agenttic certify -p cert-swe-v1 --mock            # or: ascore certify -p cert-swe-v1 --mock
+agenttic certify -p cert-swe-v1 --mock            # or: agenttic certify -p cert-swe-v1 --mock
 
 # A real agent endpoint:
 agenttic certify -p cert-swe-v1 --url https://your-agent/endpoint

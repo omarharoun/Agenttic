@@ -75,8 +75,8 @@ time**. Two independent guarantees:
   provider — no API key, no external model calls. Used for the self-test and for
   air-gapped runners.
 - **Container entry.** Instead of the default composite path (which `pip install`s
-  ascore in the runner), you can run the gate from a pinned image that already
-  contains ascore + the gate script, so nothing is fetched at gate time:
+  agenttic in the runner), you can run the gate from a pinned image that already
+  contains agenttic + the gate script, so nothing is fetched at gate time:
 
   ```bash
   # build once (from the repo root), then run hermetically:
@@ -120,7 +120,7 @@ Any dimension that drops vs base fails the check and is named in the PR comment
 
 ## How it works
 
-The action installs the `ascore` CLI, runs `ascore certify` against your agent,
+The action installs the `agenttic` CLI, runs `agenttic certify` against your agent,
 parses the signed dossier, and exits non-zero when the grade is below your bar —
 which fails the required check and blocks the merge. The dossier is
 content-hashed and signed, so the grade it reports can be independently verified.

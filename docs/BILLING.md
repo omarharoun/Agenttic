@@ -183,15 +183,15 @@ granted. Endpoints (tenant-scoped):
 - `GET /api/billing/invoices` — history
 - `GET /api/billing/invoices/{id}` — detail (JSON)
 - `GET /api/billing/invoices/{id}/download` — a standalone, printable **HTML**
-  document (browser → PDF), rendered by `ascore.billing.invoices`.
+  document (browser → PDF), rendered by `agenttic.billing.invoices`.
 
 ---
 
 ## How it replaces the Copilot stub gate
 
-`ascore.copilot.credits` defines a `CreditsProvider` seam with a permissive stub
+`agenttic.copilot.credits` defines a `CreditsProvider` seam with a permissive stub
 (`check` always allows; `record` only logs). Billing supplies the real
-implementation — `ascore.billing.credits_provider.BillingCreditsProvider` — and
+implementation — `agenttic.billing.credits_provider.BillingCreditsProvider` — and
 installs it at app startup:
 
 - On startup the app calls `install_if_default(workspaces, cfg)`, which replaces

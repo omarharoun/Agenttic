@@ -1,5 +1,5 @@
 # Business workflow simulated as an Anthropic Managed Agent.
-# Deploy once:  ascore deploy examples/pilot_support_triage/workflow.agent.yaml
+# Deploy once:  agenttic deploy examples/pilot_support_triage/workflow.agent.yaml
 # Re-deploying after edits creates a new immutable agent version — scorecards
 # pin the exact version they tested, so regressions are attributable.
 name: support-triage-workflow

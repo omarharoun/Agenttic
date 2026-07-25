@@ -133,8 +133,8 @@ State lives entirely in the database (SQLite files by default, or Postgres when
 
 ## Backups
 
-**SQLite (default).** Each tenant is its own file: `ascore.db` (default tenant)
-plus `ascore.<tenant>.db`, with `-wal`/`-shm` sidecars. Back up online:
+**SQLite (default).** Each tenant is its own file: `agenttic.db` (default tenant)
+plus `agenttic.<tenant>.db`, with `-wal`/`-shm` sidecars. Back up online:
 
 ```bash
 BACKUP_DIR=/backups ./scripts/backup.sh        # sqlite3 .backup per DB (consistent under WAL)
@@ -146,8 +146,8 @@ For continuous, point-in-time backup, run **Litestream** against each DB file
 ```yaml
 # litestream.yml
 dbs:
-  - path: /app/data/ascore.db
-    replicas: [{ type: s3, bucket: my-bucket, path: ascore/ascore.db }]
+  - path: /app/data/agenttic.db
+    replicas: [{ type: s3, bucket: my-bucket, path: agenttic/agenttic.db }]
 ```
 
 **Postgres (this is what `node1` runs).** `deploy.sh` sets `AGENTTIC_DB`, so the
@@ -160,9 +160,9 @@ client install needed) and is safe while the app is live:
 cd /opt/agenttic
 # logical dump (custom format) straight from the running container
 docker compose exec -T postgres \
-  pg_dump -U ascore -Fc ascore > backups/ascore-$(date +%Y%m%d-%H%M%S).dump
+  pg_dump -U ascore -Fc ascore > backups/agenttic-$(date +%Y%m%d-%H%M%S).dump
 # keep the last 14 dumps, drop older ones
-ls -1t backups/ascore-*.dump | tail -n +15 | xargs -r rm --
+ls -1t backups/agenttic-*.dump backups/ascore-*.dump 2>/dev/null | tail -n +15 | xargs -r rm --
 ```
 
 Schedule it (cron / k8s CronJob). For a managed Postgres, prefer the provider's
@@ -197,12 +197,12 @@ cd /opt/agenttic
 docker compose stop app                                   # quiesce writers
 # DROPs & recreates objects, then reloads (run from inside the container):
 docker compose exec -T postgres \
-  pg_restore -U ascore --clean --if-exists -d ascore < backups/ascore-XXXX.dump
+  pg_restore -U ascore --clean --if-exists -d ascore < backups/agenttic-XXXX.dump
 docker compose start app                                  # re-applies migrations
 ```
 
 (Off-host, with a Postgres client on PATH and `AGENTTIC_DB` exported, the same
-dump restores via `./scripts/restore.sh ascore-XXXX.dump`.)
+dump restores via `./scripts/restore.sh agenttic-XXXX.dump`.)
 
 **Volume tarball restore (full data-volume rollback):**
 
@@ -221,7 +221,7 @@ your RTO.
 ## Data retention & PII
 
 Traces store agent inputs/outputs, which may contain client/PII data. Two
-configurable controls (`retention` in config), applied by `ascore retention`:
+configurable controls (`retention` in config), applied by `agenttic retention`:
 
 ```yaml
 retention:
@@ -232,8 +232,8 @@ retention:
 Run it on a schedule (the values are 0/off by default):
 
 ```bash
-ascore retention --apply           # redact + prune per config
-ascore retention                   # dry-run (prints what it would do)
+agenttic retention --apply           # redact + prune per config
+agenttic retention                   # dry-run (prints what it would do)
 ```
 
 Redaction is idempotent and keeps the trace row (structure, latency, cost) while

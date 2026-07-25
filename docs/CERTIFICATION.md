@@ -87,7 +87,7 @@ tenant). The certificate pins:
 The canonical certificate payload is serialized deterministically (sorted keys,
 compact) and signed with **Ed25519** — an asymmetric signature. The issuer holds
 the **private** signing key (`AGENTTIC_CERT_SIGNING_KEY`, a PKCS#8 PEM or base64
-raw 32-byte seed; generate one with `python -m ascore.certification gen-key`).
+raw 32-byte seed; generate one with `python -m agenttic.certification gen-key`).
 The matching **public** key is *published* and is all anyone needs to verify. The
 payload embeds `signature_alg: "ed25519"` and a `public_key_id` naming the key;
 the base64 `signature` is stored on the certificate.
@@ -110,7 +110,7 @@ secret**:
    `signed_payload` (the exact canonical JSON bytes that were signed, returned on
    the public certificate).
 
-`ascore.certification.verify_certificate(payload, signature, public_key_b64)` is a
+`agenttic.certification.verify_certificate(payload, signature, public_key_b64)` is a
 reference implementation; the same three steps reimplement in any language. A
 symmetric HMAC could never do this — only the key-holder could verify — which is
 why the earlier HMAC scheme was not genuine public verifiability.

@@ -30,13 +30,13 @@ templates. This guide is the contract a **third** adapter is written against.
    rather than working around it.
 
 3. **Speak OTel-GenAI, invent nothing (Hard Rule 33).** Build spans with
-   `ascore.ingest.emit.SpanEmitter`, which emits the GenAI semantic conventions
+   `agenttic.ingest.emit.SpanEmitter`, which emits the GenAI semantic conventions
    as OTLP/JSON. Don't hand-roll a wire format. Add LLM calls with
    `emit_llm_call(...)` and tool calls with `emit_tool_call(...)`; the emitter
    handles the OTLP envelope and the best-effort, non-blocking flush.
 
 4. **Fail loud on enforcement, default to observe.** `trace()` takes an optional
-   `enforce=`. Route it through `ascore.enforce.adapter_guard.build_enforce_guard`,
+   `enforce=`. Route it through `agenttic.enforce.adapter_guard.build_enforce_guard`,
    which validates a compiled policy exists (raising `EnforceConfigError`
    otherwise) and runs at the **non-blocking** shadow posture. Inline blocking
    postures are reached only through the Step 39 ramp — never the adapter.
@@ -48,7 +48,7 @@ templates. This guide is the contract a **third** adapter is written against.
 
 ```
 adapters/<framework>/
-├── pyproject.toml                 # name: agenttic-<framework>; deps: ascore + the SDK
+├── pyproject.toml                 # name: agenttic-<framework>; deps: agenttic + the SDK
 └── agenttic_<framework>/
     └── __init__.py                # exports trace(); a public-hook handler; a wrapper
 ```
@@ -77,7 +77,7 @@ adapters/<framework>/
    otherwise.
 4. Ship a golden end-to-end test: drive the handler through the framework's
    public test utilities (or a fake that mimics the public contract), flush to a
-   `sink`, feed the payload to `ascore.ingest.ingest_otlp_payload`, and assert
+   `sink`, feed the payload to `agenttic.ingest.ingest_otlp_payload`, and assert
    the resulting `Trace` has the expected spans + I/O hashes — and that wrapped
    vs unwrapped outputs are identical.
 5. If a capability has no public hook, document the gap here. That honesty is
@@ -87,9 +87,9 @@ adapters/<framework>/
 
 | Concern | Location |
 |---|---|
-| OTLP-GenAI span building + flush | `ascore.ingest.emit.SpanEmitter` (shared) |
-| Span → Trace/Decision ingest | `ascore.ingest` (`/v1/traces`, `ascore ingest otel`) |
-| enforce= policy guard | `ascore.enforce.adapter_guard` (shared) |
+| OTLP-GenAI span building + flush | `agenttic.ingest.emit.SpanEmitter` (shared) |
+| Span → Trace/Decision ingest | `agenttic.ingest` (`/v1/traces`, `agenttic ingest otel`) |
+| enforce= policy guard | `agenttic.enforce.adapter_guard` (shared) |
 | Framework-specific hook wiring | the adapter package (thin) |
 
 Keep the adapter thin: everything reusable already lives in `ascore`.

@@ -267,7 +267,7 @@ Register four lookup checks that read the runner's stashed results. Each returns
 and reads its probe result from `tc.expected["gaming_probe_id"]`:
 
 ```python
-from ascore.scoring.checks import check
+from agenttic.scoring.checks import check
 
 @check("eval_awareness_consistent")     # 2.1 behavior-delta: 1.0 = no negative gap
 def _eval_awareness(trace, tc) -> float: ...

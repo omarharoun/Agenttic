@@ -35,7 +35,7 @@ air-gap mode is ON but 1 capability(ies) would require outbound network: remote_
 Run the same audit ahead of time from the CLI:
 
 ```bash
-ascore airgap check     # exits non-zero if air-gap mode has offenders
+agenttic airgap check     # exits non-zero if air-gap mode has offenders
 ```
 
 ### Capabilities audited
@@ -66,7 +66,7 @@ braces: even a bug that tried to egress has nowhere to go.
 - **Upstream Index browse/import** — the public discovery Index. Offline, your
   local registry is authoritative.
 
-These are reported by `ascore airgap check` under "unavailable", so there is no
+These are reported by `agenttic airgap check` under "unavailable", so there is no
 ambiguity about what you give up.
 
 ## Certification stays honest offline

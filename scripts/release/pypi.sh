@@ -3,7 +3,7 @@
 # TestPyPI (SPEC-8 Step 40, T40.3).
 #
 # Distributions built (SPEC-8 distribution model — see docs/SPEC2_DEVIATIONS.md):
-#   * agenttic                 (repo root — public umbrella + internal ascore)
+#   * agenttic                 (repo root — public umbrella + internal engine)
 #   * agenttic-langgraph       (adapters/langgraph)
 #   * agenttic-openai-agents   (adapters/openai_agents)
 #

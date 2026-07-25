@@ -13,15 +13,18 @@ STAMP="$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 
 if [[ -n "${AGENTTIC_DB:-}" ]]; then
-  echo "Postgres backup -> $BACKUP_DIR/ascore-$STAMP.dump"
+  echo "Postgres backup -> $BACKUP_DIR/agenttic-$STAMP.dump"
   # AGENTTIC_DB looks like postgresql+psycopg://user:pass@host:5432/db
   PG_URL="${AGENTTIC_DB#*+psycopg://}"; PG_URL="postgresql://$PG_URL"
   pg_dump --format=custom --dbname="$PG_URL" \
-    --file="$BACKUP_DIR/ascore-$STAMP.dump"
+    --file="$BACKUP_DIR/agenttic-$STAMP.dump"
 else
   DATA_DIR="${AGENTTIC_DATA_DIR:-.}"
   shopt -s nullglob
-  for db in "$DATA_DIR"/ascore*.db; do
+  # Both names on purpose: new installs use agenttic*.db, legacy ones
+  # still have ascore*.db (see registry.default_db_filename). Missing the
+  # database silently is far worse than dumping one extra file.
+  for db in "$DATA_DIR"/agenttic*.db "$DATA_DIR"/ascore*.db; do
     name="$(basename "$db" .db)"
     echo "SQLite backup $db -> $BACKUP_DIR/$name-$STAMP.db"
     sqlite3 "$db" ".backup '$BACKUP_DIR/$name-$STAMP.db'"

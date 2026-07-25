@@ -25,7 +25,7 @@ reasonable defaults. If an authoritative spec later surfaces, reconcile these:
 - T0.3: existing flat module `src/agenttic/certification.py` collided with the required
   `certification/` package. Moved it to `certification/safety_cert.py` (git mv, history
   preserved) and re-export its full namespace from `certification/__init__.py`; added
-  `certification/__main__.py` so `python -m ascore.certification gen-key` still works. All
+  `certification/__main__.py` so `python -m agenttic.certification gen-key` still works. All
   existing importers (`scan.py`, `issues.py`, `server/crypto.py`, `server/app.py`,
   `server/routes/scan.py`) unchanged and green.
 - T12.1: capability-domain tags implemented as a deterministic catalog mapping
@@ -33,7 +33,7 @@ reasonable defaults. If an authoritative spec later surfaces, reconcile these:
   immutable `TestSuite`. suites are append-only; the mapping is a pure function of
   suite_id, so this is config-over-code with no schema migration.
 - T16.6: the incidents "surface" is delivered as the REST API contract
-  (`GET/POST /api/incidents`, `/transition`, `/export`) plus the `ascore incidents`
+  (`GET/POST /api/incidents`, `/transition`, `/export`) plus the `agenttic incidents`
   CLI (list/open/report/close/export). The bespoke SPA incidents *page* + SSE feed
   is deferred to the frontend build; the tested REST list endpoint (with computed
   state + SLA due clock + overdue flag) is the page's data contract. Live updates
@@ -153,15 +153,15 @@ pass/fail status against a mock agent, fully offline. Suite: **1516 passed, 4 sk
   invariant enforced via mode="live" at save (asserted in ingest_spans).
 - Added surface commit (endpoint + CLI, required by Step 35 + the CLI-additions
   section but not a numbered task): POST /v1/traces OTLP receiver (auth+tenant
-  scoped, JSON only, 415 on protobuf) + `ascore ingest otel <file>`.
+  scoped, JSON only, 415 on protobuf) + `agenttic ingest otel <file>`.
 - T35.3 ingest contracts: committed OTLP-GenAI golden fixture + 9 tests
   (well-formed trace, graceful incomplete/malformed degrade, endpoint success,
   invariant regression, no enforcement-log writes).
 - T36.1/T36.2 thin adapters (agenttic-langgraph public BaseCallbackHandler,
-  agenttic-openai-agents public RunHooks) + shared ascore.ingest.emit.SpanEmitter
+  agenttic-openai-agents public RunHooks) + shared agenttic.ingest.emit.SpanEmitter
   (stdlib OTLP/JSON, best-effort non-blocking flush). Each round-trips through
   /v1/traces ingest.
-- T36.3 ascore.enforce.adapter_guard: enforce= at non-blocking shadow default;
+- T36.3 agenttic.enforce.adapter_guard: enforce= at non-blocking shadow default;
   fails loud (EnforceConfigError) without a registry or compiled policy; rejects
   inline blocking postures (they belong to M21) — preserving milestone order.
 - T36.4 authoring guide (adapters/README.md) + OTEL_INTEROP.md + 11 tests
@@ -180,7 +180,7 @@ regression all green. Suite: **1536 passed, 4 skipped**.
   control blocks) otherwise.
 - T38.3 src/agenttic/airgap.py egress self-check (declarative append-only
   capability table), wired into the server lifespan BEFORE tracing setup; refuses
-  boot naming offenders; `ascore airgap check` CLI; deploy/airgap overlay uses an
+  boot naming offenders; `agenttic airgap check` CLI; deploy/airgap overlay uses an
   internal (no-gateway) Docker network.
 - T38.4 docs/SELF_HOSTING.md + docs/AIRGAP.md (with data-residency statement).
 - T38.5 tests: air-gap self-check units, server boot-vs-refuse, and TWO no-egress

@@ -1,8 +1,8 @@
 [project]
 # The public umbrella distribution. It ships ONE importable package, `agenttic`,
 # which is BOTH the supported, semver'd public surface (SPEC-8 Hard Rule 36) AND
-# the internal implementation engine (the former `ascore` package was folded in
-# during the rename; `ascore` survives only as a deprecated CLI alias).
+# the internal implementation engine (the former separate engine package was
+# folded in during the rename; no alias survives — `agenttic` is the only name).
 # One distribution, one version, defined in agenttic/__init__.py and kept in
 # lock-step with the `version` below (asserted by a test).
 name = "agenttic"
@@ -95,7 +95,7 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 # One package from the src layout. `agenttic` is now BOTH the supported,
 # semver'd public umbrella surface AND the internal engine — the former
-# `ascore` package was folded into it during the rename. `ascore` survives
+# the engine package was folded into it during the rename. Nothing survives
 # only as a deprecated CLI alias (see [project.scripts]).
 packages = ["src/agenttic"]
 

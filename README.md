@@ -1,8 +1,7 @@
 # Agenttic — Agentic Scoring & Benchmarking Platform
 
 A UVM-style verification testbench where the device under test is an **AI
-agent**. Agenttic (install `agenttic`; the `agenttic` CLI, with `ascore` kept as
-a deprecated back-compat alias) turns business requirements into versioned benchmark suites,
+agent**. Agenttic (install `agenttic`; the CLI is `agenttic`) turns business requirements into versioned benchmark suites,
 runs any agent against them, scores the runs with deterministic checks plus a
 calibrated LLM judge, and produces client-ready scorecards — with a live
 monitoring path that detects production drift and triggers re-evaluation.

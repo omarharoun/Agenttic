@@ -3,7 +3,7 @@
 An in-app **agentic assistant**: a right-docked slide-out chat panel in the app
 console (`/app/*`) that helps authenticated users understand AND operate the
 platform. It answers questions grounded in the real platform (methodology, metric
-catalog, certification, dossiers, passports, the `ascore` CLI) **and orchestrates
+catalog, certification, dossiers, passports, the `agenttic` CLI) **and orchestrates
 the platform on the user's behalf through tools** — where the tools are the
 Agenttic API, scoped to that user's tenant, permissions, and budget. It reads
 freely and **proposes** write/cost actions, which the user must **confirm** before
