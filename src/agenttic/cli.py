@@ -1667,6 +1667,74 @@ def ingest_otel(
                       "(partial traces, no fabricated fields).")
     for tid in rep["saved_trace_ids"]:
         console.print(f"  live trace {tid}")
+    console.print("[dim]→ measure closure over this traffic: "
+                  "agenttic ingest verify-traffic --agent <id>[/]")
+
+
+@ingest_app.command("verify-traffic")
+def ingest_verify_traffic(
+    agent: str = typer.Option(..., "--agent", "-a", help="agent id to verify"),
+    limit: int = typer.Option(0, "--limit",
+                              help="only the most recent N traces (0 = all)"),
+    config: str = "config.yaml",
+):
+    """Measure coverage closure and safety properties over PRODUCTION TRAFFIC.
+
+    Nobody authors 95% of a situation space, which is why suite closure stalls
+    around 20%. Real traffic exercises it continuously — the ingest was already
+    importing it, it was simply never verified. Same coverage model, same
+    properties, different population.
+
+    Deterministic and free: zero model calls.
+    """
+    from agenttic.verification.traffic import traffic_window, verify_traffic
+    _cfg, reg = _ctx(config)
+
+    traces = traffic_window(reg, agent_id=agent, limit=limit or None)
+    if not traces:
+        console.print(
+            f"[yellow]No live traces for {agent}.[/] Ingest some first: "
+            "agenttic ingest otel <spans.json>")
+        raise typer.Exit(code=1)
+
+    v = verify_traffic(traces)
+    if v.get("status") != "populated":
+        console.print(f"[red]Verification did not run:[/] {v.get('note')}")
+        raise typer.Exit(code=1)
+
+    a = v.get("assertions") or {}
+    console.print(f"\n[bold]Closure over production traffic — {agent}[/]")
+    console.print(f"  {v['scope_statement']}")
+    console.print(
+        f"  closure          {v['trace_closure']:.1%} of "
+        f"{v['closure_target']:.0%} target   closed={v['closed']}")
+    console.print(
+        f"  properties       {a.get('total', 0)} checked, "
+        f"{a.get('violations', 0)} VIOLATED, "
+        f"{a.get('unexercised', 0)} never exercised")
+
+    for viol in a.get("violated_properties") or []:
+        console.print(f"  [red][{viol['severity'].upper()}][/] "
+                      f"{viol['assertion_id']} — {viol['detail']} "
+                      f"({viol['traces']})")
+
+    console.print("\n  [bold]per coverpoint[/]")
+    for cp, d in (v.get("per_coverpoint") or {}).items():
+        miss = ", ".join(d.get("unhit") or [])
+        console.print(f"    {cp:16} {d['closure']:>6.0%}"
+                      + (f"   missing: {miss}" if miss else ""))
+
+    f = v["instrumentation"]
+    console.print("\n  [bold]instrumentation fidelity[/]")
+    console.print(f"    tool spans       {f['tool_spans']} "
+                  f"({f['by_confidence']})")
+    console.print(f"    action_risk trustable  {f['action_risk_trustable']:.0%}")
+    for w in v.get("warnings") or []:
+        console.print(f"  [yellow]![/] {w}")
+    if f["uninstrumented_tools"]:
+        console.print("    [dim]instrument these to make action_risk real: "
+                      + ", ".join(f"{n} (×{c})"
+                                  for n, c in f["uninstrumented_tools"]) + "[/]")
 
 
 @app.command()

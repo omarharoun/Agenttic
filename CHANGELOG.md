@@ -41,6 +41,35 @@ verdict and the signature were unconnected code paths. They are now the same pat
   "scan_report"` and `certified: false` inside the signed body, and say on their
   face that they are not certificates.
 
+### Closure over production traffic
+
+Suite closure stalls near 20% and never closes, because nobody authors 95% of a
+situation space — `timeout`, `rate_limited`, `escalated_to_human`,
+`entity_not_found`, `mutating_irreversible` happen in production and almost never
+in a test suite. The OTel ingest was already importing production traces
+(`source="otel_ingest"`, `mode="live"`) and **never verifying them**.
+
+`agenttic ingest verify-traffic --agent <id>` now measures the same coverage model
+and the same safety properties over that population. Deterministic, zero model
+calls. A claim of *closed over N days of real traffic* is stronger than *closed
+over 40 authored cases*, and it makes ingested telemetry into evidence rather than
+just storage.
+
+**With an honesty guard, because this is easy to get wrong.** Ingested spans come
+from someone else's instrumentation and usually carry no mutation semantics.
+`is_write` falls back to tool-name hints, so an uninstrumented `process_request`
+would be silently credited to `action_risk.read_only` — a coverage credit for a
+question nobody answered. Every tool span is therefore classified by confidence:
+
+| confidence | meaning |
+|---|---|
+| `explicit` | the producer instrumented `mutating` / `irreversible` (including an explicit `false` — a stated "no" is evidence) |
+| `inferred` | no attribute; the tool *name* matched a hint |
+| `unknown` | no attribute, no hint. **Never a read-only credit.** |
+
+Results report `action_risk_trustable` plus the specific uninstrumented tool names
+to fix, and warn when closure rests on instrumentation that cannot support it.
+
 ### Verification is now a component of the harness
 
 There were **three** certification paths, not two, and the third bypassed
