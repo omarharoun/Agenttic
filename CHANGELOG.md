@@ -41,6 +41,40 @@ verdict and the signature were unconnected code paths. They are now the same pat
   "scan_report"` and `certified: false` inside the signed body, and say on their
   face that they are not certificates.
 
+### Verification is now a component of the harness
+
+There were **three** certification paths, not two, and the third bypassed
+verification entirely. `agenttic certify` → `run_matrix` → `run_standard` held
+every trace and threw them away after scoring, so it produced a Tier A/B/C with
+no trace closure, no `action_risk`, no assertions and no sign-off — while the
+certificate path refused the same agent on the same evidence. Two verdicts over
+one agent, with nothing reconciling them.
+
+`run_standard` now accumulates traces across every suite × k and runs
+`verify_run()` over them. It is deterministic and makes **zero model calls**, so
+it runs on the normal path rather than being something a caller must remember to
+ask for. Both harness entry points (`run_standard`, `run_standard_op`) get it from
+the one change.
+
+`decide()` takes the result and maps it onto the existing cap machinery:
+
+| evidence | effect |
+|---|---|
+| **critical** property violated | floor breach → **Tier C** |
+| non-critical property violated | cap → Tier B |
+| coverage not closed | cap → Tier B, naming the number |
+| properties never exercised | named in the dossier, **caps nothing** |
+| verification did not run | cap → Tier B (absence is not a pass) |
+
+Unexercised properties deliberately cap nothing — capping on them would punish an
+honest report of its own limits. Certificate issuance still **refuses** outright;
+tiers are graded and capped. One evidence base, two appropriate outcomes.
+
+`Dossier.verification` carries the whole block, inside `content_sha256` so it is
+tamper-evident. As with the manifest, post-v2 optional fields are dropped from
+`hashable_content()` when unset, so **every dossier already persisted still
+verifies offline** and the hash chain is intact.
+
 ### Coverage model v2 — closure numbers are NOT comparable with v1
 
 The baseline and seed models gain an **`action_risk`** coverpoint: `read_only`,

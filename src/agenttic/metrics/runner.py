@@ -64,6 +64,35 @@ def _confidence_of(trace) -> float | None:
     return float(m.group(1)) if m else None
 
 
+def verify_run(traces: list) -> dict:
+    """The verification component of the harness.
+
+    Runs the SPEC-13 layer over every trace the harness produced and returns a
+    JSON-safe summary: coverage closure per coverpoint, the assertion roll-up,
+    and the serialized sign-off. Deterministic and free — zero model calls — so
+    it runs on every harness invocation rather than being something a
+    certification path has to remember to ask for.
+
+    Returns ``{"status": "not_run", ...}`` when there are no traces, never a
+    fabricated pass: a harness run that produced nothing is the absence of
+    evidence, not evidence of safety.
+    """
+    if not traces:
+        return {"status": "not_run",
+                "note": "no traces were produced, so nothing was verified"}
+    try:
+        from agenttic.ops import verify_op
+        _results, summary = verify_op(traces)
+    except Exception as exc:      # noqa: BLE001 — verification never breaks a run
+        return {"status": "error", "note": f"verification failed: {exc}"}
+    if not summary:
+        return {"status": "not_run",
+                "note": "the coverage model produced no report"}
+    summary["status"] = "populated"
+    summary["n_traces"] = len(traces)
+    return summary
+
+
 async def run_standard(cfg, reg, adapter, *, k: int = 3, suite_ids=None,
                        judge_client=None, fi_evaluate_fn=None, on_progress=None,
                        faithfulness_checker=None, claim_extractor=None,
@@ -91,6 +120,11 @@ async def run_standard(cfg, reg, adapter, *, k: int = 3, suite_ids=None,
     abstention_scores: list[float] = []
     conf_pairs: list[tuple[float, bool]] = []
     faith_results: list = []                  # FaithfulnessResult per faith run
+    # Every trace the harness produced, kept for the verification component
+    # below. Accumulated across suites AND k, which is the point: coverage over
+    # k×suites exercises more of the situation space than any single run, so the
+    # closure number here is the strongest one the harness can produce.
+    all_traces: list = []
     total_cost = 0.0
 
     for sid in suite_ids:
@@ -100,6 +134,7 @@ async def run_standard(cfg, reg, adapter, *, k: int = 3, suite_ids=None,
             runs = await ops.score_op(cfg, reg, traces, cases, model, on_progress,
                                       judge_client=judge_client,
                                       fi_evaluate_fn=fi_evaluate_fn)
+            all_traces.extend(traces)
             tr_by_id = {t.test_case_id: t for t in traces}
             for rs in runs:
                 total_cost += rs.cost_usd
@@ -143,6 +178,18 @@ async def run_standard(cfg, reg, adapter, *, k: int = 3, suite_ids=None,
         components["calibration_ece"] = round(abstention_appropriateness(abstention_scores), 4)
         calib_mode = "abstention_only"
 
+    # --- verification: a harness component, not an optional consult ---------
+    # The harness is the only place that holds every trace, so this is where
+    # verification belongs. Deterministic and FREE (zero model calls), which is
+    # why it can run unconditionally on the normal path.
+    #
+    # The gap this closes: `agenttic certify` -> run_matrix -> run_standard held
+    # the traces and threw them away, so the certification path produced a Tier
+    # A/B/C with no closure, no action_risk, no assertions and no sign-off —
+    # while the certificate path refused the same agent on the same evidence.
+    # Two verdicts, two code paths, nothing reconciling them.
+    verification = verify_run(all_traces)
+
     idx = compute_index(components)
     return {
         "run_id": uuid.uuid4().hex[:12],
@@ -150,6 +197,7 @@ async def run_standard(cfg, reg, adapter, *, k: int = 3, suite_ids=None,
         "k": k,
         "suites_run": suite_ids,
         "n_cases": len(per_case),
+        "verification": verification,
         "index": idx["index"],
         "components": {m: round(v, 4) for m, v in components.items()},
         "weights_used": idx["weights_used"],

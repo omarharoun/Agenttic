@@ -148,6 +148,14 @@ class DomainCoverage(BaseModel):
         return self
 
 
+#: Dossier fields added after dossiers were already being persisted and
+#: hash-chained. Dropped from ``hashable_content()`` when unset so historical
+#: digests are unchanged; hashed normally once present, so they are tamper-evident
+#: going forward. Only ever APPEND here, and only for fields defaulting to
+#: ``None`` — adding an already-shipped field would rewrite the whole chain.
+_POST_V2_OPTIONAL_FIELDS = ("verification",)
+
+
 class Dossier(BaseModel):
     """The evidence bundle. ``content_sha256`` is computed over every field
     *except itself* (``certification.hashing.compute_dossier_hash``);
@@ -170,6 +178,12 @@ class Dossier(BaseModel):
     scorecard_refs: list[str] = Field(default_factory=list)
     calibration: dict = Field(default_factory=dict)
     elicitation: dict | None = None
+    #: SPEC-13 verification from the harness component (metrics.runner.verify_run):
+    #: trace closure per coverpoint, the assertion roll-up, and the sign-off. This
+    #: is what makes the tier and the certificate read the same evidence.
+    #: ``None`` on dossiers created before the harness verified its own runs — see
+    #: ``_POST_V2_OPTIONAL_FIELDS`` for why that must keep hashing as it did.
+    verification: dict | None = None
     inspect_log_ref: str | None = None
     methodology_version: str = "agenttic-cert/v2"
     created_at: datetime = Field(
@@ -180,9 +194,19 @@ class Dossier(BaseModel):
 
     def hashable_content(self) -> dict:
         """The dossier content that the hash covers — everything but
-        ``content_sha256`` itself (which would be self-referential)."""
+        ``content_sha256`` itself (which would be self-referential).
+
+        Post-v2 optional fields are dropped when unset, so a dossier created
+        before the field existed hashes to exactly the digest recorded in its own
+        ``content_sha256``. Without this, adding any field would silently
+        invalidate every persisted dossier and break offline verification of the
+        whole hash chain.
+        """
         data = self.model_dump(mode="json")
         data.pop("content_sha256", None)
+        for name in _POST_V2_OPTIONAL_FIELDS:
+            if data.get(name) is None:
+                data.pop(name, None)
         return data
 
     def ref(self) -> str:

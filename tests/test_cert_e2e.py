@@ -131,3 +131,33 @@ def test_cache_hit_is_free_second_time(passing_ops):
         assert second.cached
         assert second.cost_usd == 0.0
         assert second.dossier.dossier_id == first.dossier.dossier_id
+
+
+def test_the_dossier_carries_the_harness_verification(passing_ops):
+    """The reconciliation: the tier and the certificate now read the same evidence.
+
+    Before verification became a harness component, `certify` produced a tier with
+    no trace closure, no action_risk and no assertions, while the certificate path
+    refused the same agent — two verdicts over one agent with nothing joining them.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        reg = Registry(db_path=f"{tmp}/t.db")
+        d = _certify(reg).dossier
+
+        v = d.verification
+        assert v is not None, "the dossier must carry the harness's verification"
+        assert v["status"] == "populated"
+        assert v["n_traces"] > 0
+        assert "trace_closure" in v
+        assert "action_risk" in v["per_coverpoint"]
+
+        # and the tier names it rather than being silently unaffected by it
+        caps = d.tier_decision.caps_applied
+        assert any(c.startswith("unclosed_coverage:") for c in caps), caps
+
+        # the verification is inside the hash, so it cannot be edited afterwards
+        from agenttic.certification.hashing import compute_dossier_hash
+        assert compute_dossier_hash(d) == d.content_sha256
+        tampered = d.model_copy(deep=True)
+        tampered.verification["trace_closure"] = 0.99
+        assert compute_dossier_hash(tampered) != d.content_sha256

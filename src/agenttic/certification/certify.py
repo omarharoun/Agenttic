@@ -74,7 +74,9 @@ async def renew(cfg: dict, reg, *, agent_id: str, profile_id: str,
             attestation=Attestation(mode=attestation_mode_for(caller_role),
                                     tenant=reg.tenant),
             scorecard_refs=prev.scorecard_refs, calibration=prev.calibration,
-            elicitation=prev.elicitation, inspect_log_ref=prev.inspect_log_ref,
+            elicitation=prev.elicitation,
+            verification=getattr(prev, "verification", None),
+            inspect_log_ref=prev.inspect_log_ref,
             prev_dossier_sha256=prev.content_sha256, persist=True)
         reg.append_dossier_event(dossier.dossier_id, agent_id, "renewed",
                                  reason="unchanged agent — cache hit ($0)")
@@ -264,6 +266,17 @@ async def certify(
 
     neutral = matrix["configs"].get("neutral", {})
     components = neutral.get("components", {})
+    # The harness now verifies every run it makes (metrics.runner.verify_run), so
+    # the tier reads the SAME trace coverage and safety properties the signing
+    # gate does. Taken from the NEUTRAL config: an elicitation-strengthened run
+    # is a probe, and its coverage must not be credited to the agent as shipped.
+    # Never let a MISSING verification block silently mean "fine": an empty dict
+    # would be falsy in decide() and skip the caps entirely, which is the vacuity
+    # bug this whole layer exists to prevent. Absent evidence is reported as
+    # absent, and caps.
+    verification = neutral.get("verification") or {
+        "status": "not_run",
+        "note": "the harness returned no verification block for the neutral config"}
     analysis = analyze_elicitation(matrix, cfg)
     cov = compute_coverage(reg, profile)
     calibrated = judge_is_calibrated(cfg)
@@ -283,6 +296,7 @@ async def certify(
     tier_decision = decide(
         profile=profile, components=components, coverage=cov,
         judge_calibrated=calibrated, elicitation_analysis=analysis,
+        verification=verification,
         evidence_refs=evidence_refs, cfg=cfg,
         autonomy_level=autonomy.level, covered_agent=covered, has_card=has_card)
 
@@ -301,6 +315,7 @@ async def certify(
                                 tenant=tenant or reg.tenant),
         scorecard_refs=evidence_refs,
         calibration=calibration, elicitation=analysis.summary(),
+        verification=verification or None,
         inspect_log_ref=f"inspect:{neutral.get('run_id')}",
         persist=True)
 

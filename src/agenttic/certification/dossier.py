@@ -47,6 +47,7 @@ def assemble(
     scorecard_refs: list[str] | None = None,
     calibration: dict | None = None,
     elicitation: dict | None = None,
+    verification: dict | None = None,
     inspect_log_ref: str | None = None,
     dossier_id: str | None = None,
     prev_dossier_sha256: str | None = None,
@@ -67,6 +68,7 @@ def assemble(
         scorecard_refs=list(scorecard_refs or []),
         calibration=dict(calibration or {}),
         elicitation=elicitation,
+        verification=verification,
         inspect_log_ref=inspect_log_ref,
         prev_dossier_sha256=(
             prev_dossier_sha256 if prev_dossier_sha256 is not None
