@@ -15,7 +15,8 @@ import "../landing/landing.css";
 /* ============================================================================
    The public landing route (SPEC-11 Step 52). Rebuilt from the shared design
    tokens + the ds component library — no bespoke markup, no second style world.
-   The see-it scorecard is the SAME <ScorecardCard> the console renders. All
+   The see-it block mirrors the console's run view: the coverage wheel first,
+   then the SAME <ScorecardCard>. All
    social proof is gated behind SHOW_SOCIAL_PROOF (OFF until real, Hard Rule 49),
    so with the flag off the page ships clean with those sections simply absent.
    Public route: SiteNav only, no authenticated data or console chrome.
@@ -137,9 +138,18 @@ export function LandingPage() {
       <section id="see">
         <div className="wrap">
           <SectionHeading eyebrow="See it" title="Your agent's whole run, on one screen."
-            sub="Each row is one criterion; the badge is how it was scored. This is the same component the console renders with your real data." />
-          <ScorecardCard bar="scorecard.html · support-triage · sample data"
-                         metrics={SAMPLE_METRICS} rows={SAMPLE_ROWS} />
+            sub="The wheel first, then the criteria. This is the order the console renders — coverage before any rate, because a rate with no denominator is an unscoped claim." />
+          <div className="lp-see">
+            <figure className="lp-see__wheel">
+              <CoverageWheel dims={LANDING_WHEEL} closure={0.222} target={0.95}
+                             size={280} />
+              <CoverageWheelLegend />
+            </figure>
+            <div className="lp-see__card">
+              <ScorecardCard bar="scorecard.html · support-triage · sample data"
+                             metrics={SAMPLE_METRICS} rows={SAMPLE_ROWS} />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -175,6 +185,18 @@ export function LandingPage() {
           <SectionHeading eyebrow="What we cover"
             title="The questions other evaluations structurally cannot answer."
             sub="Not a scoring website. Six things a pass rate cannot express, and we lead with all of them." />
+          {/* The first claim is the whole thesis, so it gets the picture rather
+              than another paragraph asserting it. */}
+          <div className="lp-cover-lead">
+            <CoverageWheel dims={LANDING_WHEEL} closure={0.222} target={0.95}
+                           size={210} compact />
+            <p className="lp-cover-lead__p">
+              Eight dimensions of one real run. Filled is what the suite reached;
+              everything out to the rim is untested, and the hatched sectors are
+              dimensions nothing even asks about. <strong>An unmeasured dimension
+              can never fail</strong> — which is why it has to be drawn.
+            </p>
+          </div>
           <div className="lp-grid lp-grid--3">
             {COVERAGE_CLAIMS.map((t) => (
               <div className="lp-cell" key={t.h}>
@@ -216,7 +238,7 @@ export function LandingPage() {
       <section id="trust">
         <div className="wrap">
           <SectionHeading eyebrow="Trust" title="Your agent and data never leave your machine."
-            sub="Every hosted eval platform asks you to ship your agent, prompts, and traces to someone else's cloud first. Agenttic doesn't, because it can't: there is no server in the loop." />
+            sub="Every hosted eval platform asks you to ship your agent, prompts, and traces to someone else's cloud first. Agenttic doesn't: there is no server in the evaluation loop. The harness, the checks and the trace capture run on your hardware — the hosted console only ever holds what you choose to publish, such as a certificate you want a third party to verify." />
           <div className="lp-grid lp-grid--2">
             {TRUST.map((t) => (
               <div className="lp-cell" key={t.h}><h3>{t.h}</h3><p>{t.p}</p></div>
@@ -243,12 +265,20 @@ export function LandingPage() {
       <section id="access">
         <div className="wrap lp-price">
           <Eyebrow>Access</Eyebrow>
-          <div className="lp-price__big">Sold as an engagement.</div>
-          <p>We scope the agent, stand the verification up against it, and hand back
-            evidence your risk function can actually read. Availability is limited
-            while we work with a small number of teams.</p>
+          <div className="lp-price__big">Start with the audit.</div>
+          <p>Point us at traces you already have — from your own harness, or from
+            LangSmith, deepeval, Future AGI, raw OpenTelemetry, whatever you run.
+            We hand back the situations your agent has never been put in, the
+            properties that were never once exercised, and anything actually broken
+            in that traffic. Fixed fee, one week, and it costs us no model calls
+            because none of it is judged.</p>
+          <p className="lp-price__then">
+            Verification engagements follow from there: scope, fit a suite, verify,
+            hand back signed evidence. We would rather show you the gap first than
+            ask you to buy the fix on faith.
+          </p>
           <div className="lp-cta" style={{ justifyContent: "center" }}>
-            <Button href="#access">Request a briefing</Button>
+            <Button href="#access">Book a coverage audit</Button>
             <Button variant="ghost" href="/methodology">Read the methodology</Button>
           </div>
         </div>

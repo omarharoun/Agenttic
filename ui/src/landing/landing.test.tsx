@@ -58,3 +58,51 @@ describe("shared score components span both surfaces", () => {
     expect(html).toContain("ds-badge--prov");  // provisional
   });
 });
+
+/* --- the six honesty fixes, pinned ---------------------------------------- *
+ * Each of these was a place the page argued against itself, or claimed more
+ * than the product does. They regress easily because they are all copy. */
+
+describe("the landing must not contradict its own argument", () => {
+  it("does NOT lead the product shot with a pass rate", () => {
+    // The page spends its length arguing a rate with no denominator is unscoped.
+    // Printing it as the headline of the one product shot undoes that.
+    const seeIt = html.slice(html.indexOf('id="see"'), html.indexOf('id="why"'));
+    const closureAt = seeIt.indexOf("Coverage closure");
+    const rateAt = seeIt.indexOf("Task success");
+    expect(closureAt).toBeGreaterThan(-1);
+    expect(closureAt).toBeLessThan(rateAt);          // coverage first
+    expect(seeIt).toContain("unscoped");             // and the rate is labelled
+  });
+
+  it("shows the wheel in the product shot, matching what the console renders", () => {
+    const seeIt = html.slice(html.indexOf('id="see"'), html.indexOf('id="why"'));
+    expect(seeIt).toContain('class="cw');
+  });
+
+  it("puts the wheel beside the claim it exists to make", () => {
+    const cover = html.slice(html.indexOf('id="cover"'), html.indexOf('id="doors"'));
+    expect(cover).toContain("lp-cover-lead");
+    expect(cover).toContain("can never fail");
+  });
+
+  it("does not claim there is no server at all — only none in the eval loop", () => {
+    // A hosted console, a public certificate page and billing all exist. The
+    // unqualified claim is the one a sharp reader uses to discount the rest.
+    expect(html).not.toMatch(/there is no server in the loop/);
+    expect(html).toContain("no server in the evaluation loop");
+  });
+
+  it("does not promise a suite fitted to every agent", () => {
+    // One authored archetype plus a generic baseline is not a bespoke library.
+    expect(html).not.toContain("A test built for your agent");
+    expect(html).toContain("archetype-independent baseline");
+  });
+
+  it("offers the thing that can actually be delivered today", () => {
+    // The audit runs over traces the customer already has, deterministically,
+    // with zero model calls — unlike a certificate, which currently cannot issue.
+    expect(html).toContain("Book a coverage audit");
+    expect(html).toMatch(/traces you already have/i);
+  });
+});

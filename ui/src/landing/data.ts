@@ -44,11 +44,14 @@ export const ASSISTANTS: Assistant[] = [
 
 // ---- see-it: sample scorecard (rendered by the SAME ScorecardCard the console
 // uses). Clearly a sample — the card bar says so. ---------------------------
+/* Coverage leads, the pass rate is demoted to a line — the same order the
+ * console's ResultsPanel now renders. A landing that argues the pass rate is the
+ * wrong headline must not print it as the headline in its own product shot. */
 export const SAMPLE_METRICS: ScoreMetric[] = [
-  { label: "Task success", value: "86", sub: "% ±4" },
-  { label: "Consistency · pass^8", value: "41", sub: "%" },
-  { label: "Mean cost", value: "$0.021" },
-  { label: "p95 latency", value: "1.9", sub: "s" },
+  { label: "Coverage closure", value: "22", sub: "% of 95%" },
+  { label: "Properties broken", value: "2", sub: "of 8" },
+  { label: "Never exercised", value: "4", sub: "of 8" },
+  { label: "Task success (unscoped)", value: "86", sub: "% ±4" },
 ];
 export const SAMPLE_ROWS: CriterionRow[] = [
   { name: "routing", description: "Ticket routed to the correct queue", scorer: "code", score: 1 },
@@ -96,8 +99,8 @@ export const COVERAGE_CLAIMS = [
     p: "Some questions about a system are decidable. For those we don't sample and hope — we decide, for every path, and say plainly where that stops applying." },
   { h: "The supply chain, not just the agent",
     p: "The tools, servers and memory your agent depends on are tested as subjects in their own right. An agent is only as trustworthy as what it calls." },
-  { h: "A test built for your agent",
-    p: "Not one fixed exam for everything. A suite fitted to what your agent actually does — and rejected outright unless it can tell a good agent from a bad one." },
+  { h: "A test fitted to the job, not one fixed exam",
+    p: "An archetype-independent baseline applies to any agent with traces; where we have authored depth, the suite is fitted to that archetype — and rejected outright unless it can tell a good agent from a bad one." },
   { h: "Evidence with an expiry date",
     p: "Signed, scoped, revocable, and bound to the exact version tested. It states what was measured and what was not. Agents drift; unbounded claims are a lie with a long fuse." },
 ];

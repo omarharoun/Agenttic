@@ -53,10 +53,12 @@ export function CertifiedDirectoryPage() {
           <span className="eyebrow">The registry</span>
           <h1>Certified agents</h1>
           <p className="sub">
-            AI agents that have earned an Agenttic Safety Certification — graded on
-            injection robustness, harmful-action refusal, secret-leak resistance
-            and more, with the grade pinned to a specific agent version. Every
-            entry links to a signed, verifiable certificate.
+            AI agents that have <em>earned</em> an Agenttic Safety Certification.
+            A certificate is not issued from a good score: it requires coverage of
+            the situation space to close and every safety property to hold, and the
+            signing path refuses when they do not. The grade is pinned to one exact
+            agent version and expires. Every entry links to a signed certificate
+            anyone can verify independently.
           </p>
         </header>
 
@@ -66,9 +68,14 @@ export function CertifiedDirectoryPage() {
           </div>
         ) : list.length === 0 ? (
           <EmptyState
-            title="No certified agents yet"
-            hint="Be the first. Run your agent through the safety suites and publish a grade the world can verify."
-            action={<Link className="btn-primary" to="/signup">Get your agent certified</Link>}
+            title="Nothing is certified yet — and that is the standard working"
+            hint={"A certificate requires closed coverage of the situation space and "
+              + "no outstanding property violation. Real suites do not clear that bar "
+              + "on the first attempt: measured across our own production data, mean "
+              + "closure sits near 20% and nothing has closed. An empty registry is "
+              + "what a certifier that refuses looks like before anyone has earned "
+              + "one. Start by finding out how far off you are."}
+            action={<Link className="btn-primary" to="/#access">Book a coverage audit</Link>}
           />
         ) : (
           <div className="cert-dir-grid">
