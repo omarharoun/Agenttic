@@ -14,9 +14,9 @@ from typer.testing import CliRunner
 from agenttic.certification.attest import build_manifest, sign_manifest
 from agenttic.certification.catalog import Catalog, CatalogEntry
 from agenttic.cli import app
+from tests.conftest import attesting_signoff, plain
 
 runner = CliRunner()
-from tests.conftest import attesting_signoff
 
 NOW = datetime(2026, 7, 24, 12, 0, tzinfo=timezone.utc)
 
@@ -41,14 +41,14 @@ def test_certify_memory_fails_a_defective_store_and_exits_nonzero(tmp_path):
         "--capacity", "16", "--name", "leaky"])
     assert r.exit_code == 1
     # the output NAMES the defects rather than printing a bare score
-    assert "principal_isolation" in r.output
-    assert "blast radius" in r.output
+    assert "principal_isolation" in plain(r.output)
+    assert "blast radius" in plain(r.output)
 
 
 def test_certify_memory_requires_a_subject():
     r = runner.invoke(app, ["certify-memory"])
     assert r.exit_code != 0
-    assert "--store" in r.output
+    assert "--store" in plain(r.output)
 
 
 def test_certify_memory_writes_a_signed_manifest(tmp_path, monkeypatch):
@@ -94,8 +94,8 @@ def test_catalog_check_reports_an_uncertified_dependency_and_exits_nonzero(
     cat_path, mdir = _catalog_file(tmp_path, monkeypatch)
     r = runner.invoke(app, ["catalog-check", cat_path, "--manifests", mdir])
     assert r.exit_code == 1
-    assert "uncertified_dependency" in r.output
-    assert "error" in r.output.lower()
+    assert "uncertified_dependency" in plain(r.output)
+    assert "error" in plain(r.output).lower()
 
 
 def test_catalog_check_is_clean_when_the_whole_chain_is_promoted(
@@ -130,11 +130,11 @@ def test_catalog_check_is_clean_when_the_whole_chain_is_promoted(
 
     r = runner.invoke(app, ["catalog-check", str(cat_path), "--manifests", str(mdir)])
     assert r.exit_code == 0, r.output
-    assert "conformant" in r.output
+    assert "conformant" in plain(r.output)
 
 
 def test_catalog_check_counts_entries_by_status(tmp_path, monkeypatch):
     cat_path, mdir = _catalog_file(tmp_path, monkeypatch)
     r = runner.invoke(app, ["catalog-check", cat_path, "--manifests", mdir])
-    assert "1 candidate" in r.output
-    assert "1 promoted" in r.output
+    assert "1 candidate" in plain(r.output)
+    assert "1 promoted" in plain(r.output)

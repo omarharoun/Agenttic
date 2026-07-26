@@ -1754,18 +1754,84 @@ def hook_claude_code():
     raise typer.Exit(code=hook_main())
 
 
+def _report(res, what: str) -> None:
+    """Say exactly what happened to which file — never 'done'."""
+    if res.action == "error":
+        console.print(f"[red]Could not install {what}:[/] {res.detail}")
+        raise typer.Exit(code=1)
+    if res.action == "already":
+        console.print(f"[dim]{what}: already set up in {res.path} — nothing to do[/]")
+        return
+    if res.action == "skipped":
+        console.print(f"[dim]{what}: {res.detail}[/]")
+        return
+    console.print(f"[green]{what} → {res.path}[/]"
+                  + (f"\n[dim]  previous file saved as {res.backup.name}[/]"
+                     if res.backup else ""))
+
+
 @hook_app.command("install")
-def hook_install():
-    """Print the settings.json snippet that wires the hook up."""
-    from agenttic.hooks.claude_code import DEFAULT_SPOOL, SPOOL_ENV
+def hook_install(
+    settings: str = typer.Option("", "--settings",
+                                 help="settings file (default ~/.claude/settings.json)"),
+    mcp: bool = typer.Option(True, "--mcp/--no-mcp",
+                             help="also register the MCP server"),
+    dry_run: bool = typer.Option(False, "--dry-run",
+                                 help="print what would change, write nothing"),
+):
+    """Set it up: register the tool-use hook AND the MCP server.
+
+    Edits your assistant's settings in place, merging rather than replacing, and
+    leaves a timestamped backup beside anything it touches. Re-running is safe.
+    """
     import json as _json
-    snippet = {"hooks": {"PostToolUse": [{"matcher": "*", "hooks": [
-        {"type": "command", "command": "agenttic hook claude-code"}]}]}}
-    console.print("Add to ~/.claude/settings.json:\n")
-    console.print(_json.dumps(snippet, indent=2))
-    console.print(f"\n[dim]spans spool to {DEFAULT_SPOOL} "
+
+    from agenttic.hooks.claude_code import DEFAULT_SPOOL, SPOOL_ENV
+    from agenttic.hooks.install import (
+        CLAUDE_SETTINGS, HOOK_COMMAND, MCP_ENTRY, MCP_SERVER_NAME,
+        detect_mcp_targets, install_hook, install_mcp)
+
+    if dry_run:
+        console.print("[bold]Would add to "
+                      f"{settings or CLAUDE_SETTINGS}:[/]")
+        console.print(_json.dumps({"hooks": {"PostToolUse": [
+            {"matcher": "*", "hooks": [{"type": "command",
+                                        "command": HOOK_COMMAND}]}]}}, indent=2))
+        if mcp:
+            for name, path in detect_mcp_targets() or []:
+                console.print(f"\n[bold]Would add to {path} ({name}):[/]")
+                console.print(_json.dumps(
+                    {"mcpServers": {MCP_SERVER_NAME: MCP_ENTRY}}, indent=2))
+        console.print("\n[dim]nothing was written (--dry-run)[/]")
+        return
+
+    _report(install_hook(settings or CLAUDE_SETTINGS), "tool-use hook")
+
+    if mcp:
+        targets = detect_mcp_targets()
+        if not targets:
+            console.print("[yellow]No MCP client config found on this machine.[/] "
+                          "Add this to yours by hand:")
+            console.print(_json.dumps(
+                {"mcpServers": {MCP_SERVER_NAME: MCP_ENTRY}}, indent=2))
+        for name, path in targets:
+            _report(install_mcp(name), f"MCP server ({name})")
+
+    console.print(f"\n[dim]what the agent does spools to {DEFAULT_SPOOL} "
                   f"(override with {SPOOL_ENV})[/]")
-    console.print("[dim]then: agenttic hook verify[/]")
+    console.print("[dim]then, after working as normal: agenttic hook verify[/]")
+
+
+@hook_app.command("uninstall")
+def hook_uninstall(
+    settings: str = typer.Option("", "--settings", help="settings file"),
+):
+    """Remove our hook and MCP entry, leaving everything else untouched."""
+    from agenttic.hooks.install import (
+        CLAUDE_SETTINGS, detect_mcp_targets, uninstall_hook, uninstall_mcp)
+    _report(uninstall_hook(settings or CLAUDE_SETTINGS), "tool-use hook removed")
+    for name, _p in detect_mcp_targets():
+        _report(uninstall_mcp(name), f"MCP server removed ({name})")
 
 
 @hook_app.command("verify")

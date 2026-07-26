@@ -18,6 +18,7 @@ from agenttic.schema.scorecard import CriterionScore, RunScore, Scorecard
 from agenttic.schema.testcase import TestCase
 from agenttic.schema.trace import Span, Trace
 from agenttic.server.app import create_app
+from tests.conftest import plain
 
 T0 = datetime(2026, 6, 22, 10, 0, 0, tzinfo=timezone.utc)
 T1 = datetime(2026, 6, 22, 10, 0, 5, tzinfo=timezone.utc)
@@ -287,4 +288,4 @@ class TestCli:
 
         imp = run.invoke(app, ["inspect-import", str(out), "--config", str(cfg)])
         assert imp.exit_code == 0, imp.output
-        assert "sc-1" in imp.output and "agent=agent-x" in imp.output
+        assert "sc-1" in plain(imp.output) and "agent=agent-x" in plain(imp.output)

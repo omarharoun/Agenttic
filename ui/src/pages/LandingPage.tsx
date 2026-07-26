@@ -162,15 +162,16 @@ export function LandingPage() {
         <div className="wrap">
           <SectionHeading eyebrow="Install"
             title="Two lines, and it starts watching."
-            sub="Nothing to sign up for and no key needed. It records what your coding assistant does and tells you what has never been tried." />
+            sub="Nothing to sign up for and no key needed. One command wires it in, and it can be taken back out just as easily." />
 
           <div className="lp-install">
             <div className="lp-install__col">
-              <h3>Watch your coding assistant</h3>
-              <p>Works with Claude Code. It notes what the assistant did — which
-                files it changed, which commands it ran — and keeps it on your
-                machine.</p>
-              <CodeBlock label="watch a coding assistant" lines={[
+              <h3>One command sets both up</h3>
+              <p>It finds your assistant’s settings, adds itself, and keeps a
+                copy of the old file beside it. Run it twice and nothing
+                happens — and <code>agenttic hook uninstall</code> takes it back
+                out without touching anything else.</p>
+              <CodeBlock label="set up" lines={[
                 { prompt: "$", text: "uv tool install agenttic" },
                 { prompt: "$", text: "agenttic hook install" },
                 { prompt: "$", text: "agenttic hook verify",
@@ -179,11 +180,14 @@ export function LandingPage() {
             </div>
 
             <div className="lp-install__col">
-              <h3>Let it answer questions</h3>
-              <p>Connect it to your assistant so it can check a command
+              <h3>What those two things do</h3>
+              <p><b>It watches.</b> Every file your assistant changes and every
+                command it runs is noted, on your machine, so we can tell you
+                afterwards what was never tried.</p>
+              <p><b>It answers.</b> Your assistant can ask us about a command
                 <em> before</em> running it — “is this something I cannot undo?” —
-                and report what has never been tested.</p>
-              <CodeBlock label="connect it to your assistant" lines={[
+                and get a straight answer instead of finding out afterwards.</p>
+              <CodeBlock label="or add it by hand" lines={[
                 { text: '"agenttic": {' },
                 { text: '  "command": "agenttic",' },
                 { text: '  "args": ["mcp"]' },

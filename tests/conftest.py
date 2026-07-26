@@ -12,7 +12,35 @@ path changes.
 
 from __future__ import annotations
 
+import os
+import re
+
 import pytest
+
+# CLI-output assertions (`assert "--store" in result.output`) were passing or
+# failing depending on which test ran first. Two causes, both environmental:
+# Typer renders errors and help through rich, which (a) inserts colour escapes
+# that can land in the middle of the string being searched for, and (b) wraps and
+# ELIDES its panels at the detected terminal width — which is how `--store`
+# disappeared from a usage message that plainly contains it.
+#
+# Pinned here, before anything imports agenttic.cli (its module-level `Console()`
+# reads the environment once), so these assertions no longer depend on collection
+# order or on how wide the terminal happens to be.
+os.environ.setdefault("NO_COLOR", "1")
+os.environ.setdefault("TERM", "dumb")
+os.environ.setdefault("COLUMNS", "200")
+
+
+#: Strip terminal styling from CLI output before asserting on it. Rich styles
+#: numbers and keywords even with colour off, so `"sc-1"` can arrive as
+#: `"sc-\x1b[1m1\x1b[0m"` — present to a reader, invisible to `in`.
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def plain(text: str) -> str:
+    """CLI output as a human reads it, with the styling removed."""
+    return _ANSI.sub("", text)
 
 
 @pytest.fixture(autouse=True)
