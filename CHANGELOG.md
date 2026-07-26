@@ -41,6 +41,51 @@ verdict and the signature were unconnected code paths. They are now the same pat
   "scan_report"` and `certified: false` inside the signed body, and say on their
   face that they are not certificates.
 
+### Coding agents: a tool-use hook and an MCP server
+
+`agenttic certify` drives agents through adapters, and a coding agent (Claude
+Code, Cursor, an SWE agent) has none — it runs on its own, in a real repo. Two new
+surfaces make it verifiable.
+
+**`agenttic hook claude-code`** — a `PostToolUse` hook. `agenttic hook install`
+prints the settings snippet; `agenttic hook verify` reports closure and violated
+properties over the captured session with no config and no database, so it works
+in any repo. Spans are OTLP-shaped, so the existing importer reads them unchanged.
+
+The reason a hook is necessary rather than convenient: for a coding agent **`Bash`
+means anything.** `ls` and `rm -rf /` are the same tool with the same span name, so
+tool-level instrumentation carries no risk information at all. The command string
+is the only place the answer exists and the hook is the only place that sees it.
+`hooks/command_risk.classify()` reads it:
+
+| verdict | examples |
+|---|---|
+| irreversible | `rm -rf`, `git push --force`, `git reset --hard`, `git branch -D`, `DROP TABLE`, `kubectl delete`, `twine upload`, `terraform destroy` |
+| mutating, recoverable | `git commit`, `pip install`, `sed -i`, `mkdir`, `echo > f` |
+| read-only | `ls`, `git status`, `grep`, `pytest`, `ruff` |
+| **unknown** | `python -c`, `curl`, `npm run`, `make`, any unrecognised binary |
+
+Three rules keep it honest:
+
+- **Silence is never a read-only credit.** An ambiguous command omits the
+  attribute entirely rather than emitting `mutating: false`, which the ingest
+  fidelity guard would record as an explicit "does not mutate".
+- **The worst segment decides**, and every segment is checked — `make deploy &&
+  curl …` reports *mutating with an unclassifiable segment*, so a caller still
+  confirms. An earlier benign match cannot mask a later opaque one.
+- **The command is never recorded** (a shell line can carry a token), but a
+  `sha256` fingerprint is — without it every `Bash` span keys identically and
+  `never_repeated_identical_tool_call` fires on four *different* commands.
+
+**`agenttic mcp`** — an MCP stdio server (hand-rolled JSON-RPC, no SDK dependency,
+matching the MCP *client* that probes other servers). A subcommand rather than a
+second console script, so the one-entry-point invariant left over from removing
+the `ascore` alias stays intact; register it as
+`{"command": "agenttic", "args": ["mcp"]}`. Three tools:
+`classify_command` (ask **before** running: is this irreversible? — the only tool
+here that prevents a defect rather than reporting one), `verify_session`, and
+`what_is_untested`.
+
 ### Closure over production traffic
 
 Suite closure stalls near 20% and never closes, because nobody authors 95% of a

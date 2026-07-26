@@ -1737,6 +1737,127 @@ def ingest_verify_traffic(
                                   for n, c in f["uninstrumented_tools"]) + "[/]")
 
 
+# --- hook: verify a coding agent from its own tool-use stream ---------------
+hook_app = typer.Typer(
+    help="Capture a coding agent's tool calls and verify them.")
+app.add_typer(hook_app, name="hook")
+
+
+@hook_app.command("claude-code")
+def hook_claude_code():
+    """PostToolUse hook: read one event on stdin, append a span, exit 0.
+
+    Wire it up with `agenttic hook install`. Always exits 0 — a hook that breaks
+    the agent it observes is worse than no hook.
+    """
+    from agenttic.hooks.claude_code import main as hook_main
+    raise typer.Exit(code=hook_main())
+
+
+@hook_app.command("install")
+def hook_install():
+    """Print the settings.json snippet that wires the hook up."""
+    from agenttic.hooks.claude_code import DEFAULT_SPOOL, SPOOL_ENV
+    import json as _json
+    snippet = {"hooks": {"PostToolUse": [{"matcher": "*", "hooks": [
+        {"type": "command", "command": "agenttic hook claude-code"}]}]}}
+    console.print("Add to ~/.claude/settings.json:\n")
+    console.print(_json.dumps(snippet, indent=2))
+    console.print(f"\n[dim]spans spool to {DEFAULT_SPOOL} "
+                  f"(override with {SPOOL_ENV})[/]")
+    console.print("[dim]then: agenttic hook verify[/]")
+
+
+@hook_app.command("verify")
+def hook_verify(
+    spool: str = typer.Option("", "--spool", help="span file (default: the spool)"),
+    agent: str = typer.Option("", "--agent", help="only this agent id"),
+):
+    """Closure + safety properties over the tool calls the hook captured.
+
+    No registry and no config needed — this reads the spool directly, so it works
+    inside any repo the moment the hook is installed. Deterministic, zero model
+    calls.
+    """
+    from pathlib import Path as _P
+
+    from agenttic.hooks.claude_code import as_otlp, load_spool
+    from agenttic.ingest.mapping import spans_to_traces
+    from agenttic.ingest.otel import parse_otlp
+    from agenttic.verification.traffic import verify_traffic
+
+    spans = load_spool(_P(spool).expanduser() if spool else None)
+    if not spans:
+        console.print("[yellow]No captured tool calls yet.[/] "
+                      "Run `agenttic hook install` and use the agent first.")
+        raise typer.Exit(code=1)
+
+    # spans_to_traces is the registry-free seam: no config, no db, works in any repo
+    traces, _decisions, _report = spans_to_traces(parse_otlp(as_otlp(spans)))
+    if agent:
+        traces = [t for t in traces if t.agent_id == agent]
+    if not traces:
+        console.print(f"[yellow]No traces for {agent!r}.[/]")
+        raise typer.Exit(code=1)
+
+    v = verify_traffic(traces)
+    if v.get("status") != "populated":
+        console.print(f"[red]Verification did not run:[/] {v.get('note')}")
+        raise typer.Exit(code=1)
+
+    a = v.get("assertions") or {}
+    console.print(f"\n[bold]What this agent has actually been observed doing[/]")
+    console.print(f"  {len(spans)} tool call(s) across {v['n_traces']} session(s)")
+    console.print(f"  closure     {v['trace_closure']:.1%} of "
+                  f"{v['closure_target']:.0%}   closed={v['closed']}")
+    console.print(f"  properties  {a.get('total', 0)} checked, "
+                  f"{a.get('violations', 0)} VIOLATED, "
+                  f"{a.get('unexercised', 0)} never exercised")
+    for viol in a.get("violated_properties") or []:
+        console.print(f"  [red][{viol['severity'].upper()}][/] "
+                      f"{viol['assertion_id']} — {viol['detail']} "
+                      f"({viol['traces']})")
+    for p in a.get("unexercised_properties") or []:
+        console.print(f"  [dim]never exercised: {p}[/]")
+
+    f = v["instrumentation"]
+    console.print(f"\n  action_risk trustable {f['action_risk_trustable']:.0%} "
+                  f"({f['by_confidence']})")
+    if f["uninstrumented_tools"]:
+        console.print("  [yellow]unclassifiable[/]: "
+                      + ", ".join(f"{n} (×{c})"
+                                  for n, c in f["uninstrumented_tools"]))
+
+
+@app.command("mcp")
+def mcp_serve():
+    """Run the MCP stdio server so an agent can query its own evidence.
+
+    Exposes `classify_command` (ask BEFORE running a shell command whether it is
+    irreversible), `verify_session`, and `what_is_untested`.
+
+    Register it with any MCP client as:
+        {"command": "agenttic", "args": ["mcp"]}
+    """
+    from agenttic.mcp_server import main as mcp_main
+    raise typer.Exit(code=mcp_main())
+
+
+@hook_app.command("export")
+def hook_export(
+    out: str = typer.Option("hook-spans.json", "--out", help="OTLP JSON output"),
+):
+    """Export the spool as an OTLP dump for `agenttic ingest otel`."""
+    import json as _json
+    from pathlib import Path as _P
+
+    from agenttic.hooks.claude_code import as_otlp, load_spool
+    spans = load_spool()
+    _P(out).write_text(_json.dumps(as_otlp(spans), indent=2), encoding="utf-8")
+    console.print(f"[green]{len(spans)} span(s)[/] → {out}")
+    console.print(f"[dim]agenttic ingest otel {out}[/]")
+
+
 @app.command()
 def evaluate(
     inputs: str = typer.Argument(
