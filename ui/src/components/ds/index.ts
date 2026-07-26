@@ -7,5 +7,7 @@ export {
 } from "./primitives";
 export type { CodeLine, CompColumn, CompRow } from "./primitives";
 export { EscapementMark } from "./EscapementMark";
+export { RefusalNotice } from "./RefusalNotice";
+export type { RefusalReason, RefusalNoticeProps } from "./RefusalNotice";
 export { CoverageWheel, CoverageWheelLegend, dimsFromCoverage, DECLARED_COVERPOINTS } from "./CoverageWheel";
 export type { WheelDim, CoverageWheelProps } from "./CoverageWheel";

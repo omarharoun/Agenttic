@@ -220,3 +220,54 @@
 .cw-legend .sw.gap { border-color: var(--score-provisional); border-style: dashed; }
 .cw-legend .sw.un  { border-color: var(--muted);
   background: repeating-linear-gradient(45deg, transparent 0 3px, var(--muted) 3px 4px); }
+
+/* ---------------------------------------------------------------------------
+   The refusal notice — the site's hero.
+   Deliberately built like the certificate it isn't: the same document weight,
+   the same seal-adjacent restraint, with the verdict stamped across it.
+   --------------------------------------------------------------------------- */
+.rn { margin: 0; }
+.rn__doc {
+  border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--panel); padding: var(--sp-6);
+  position: relative; overflow: hidden;
+}
+.rn__doc::before {                       /* the engraved rule of a real document */
+  content: ""; position: absolute; inset: 6px; border-radius: var(--r-md);
+  border: 1px solid var(--border); opacity: .55; pointer-events: none;
+}
+.rn__head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-4); margin-bottom: var(--sp-4);
+}
+.rn__kicker {
+  font: 600 10px/1.4 var(--font-mono); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+}
+.rn__stamp {
+  font: 700 13px/1 var(--font-mono); letter-spacing: .18em; text-transform: uppercase;
+  color: var(--score-fail); border: 2px solid var(--score-fail);
+  border-radius: var(--r-sm); padding: 7px 12px; transform: rotate(-3deg);
+}
+.rn__subject {
+  font: 400 1.05rem/1.4 var(--font-serif); color: var(--text);
+  margin: 0 0 var(--sp-4); position: relative;
+}
+.rn__reasons { list-style: none; margin: 0; padding: 0;
+               display: flex; flex-direction: column; gap: var(--sp-3); }
+.rn__reasons li {
+  border-left: 3px solid var(--score-provisional);
+  padding-left: var(--sp-3); position: relative;
+}
+.rn__reasons li.is-critical { border-left-color: var(--score-fail); }
+.rn__rhead {
+  display: block; font: 600 12.5px/1.4 var(--font-mono); color: var(--text);
+}
+.rn__rdetail {
+  display: block; font-size: var(--t-sm); color: var(--muted); line-height: 1.5;
+}
+.rn__foot {
+  margin: var(--sp-5) 0 0; padding-top: var(--sp-3);
+  border-top: 1px solid var(--border);
+  font-size: var(--t-sm); color: var(--muted); line-height: 1.55; position: relative;
+}

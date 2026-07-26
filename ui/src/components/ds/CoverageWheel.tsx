@@ -44,6 +44,9 @@ export interface CoverageWheelProps {
   compact?: boolean;
   /** accessible summary; a sensible one is derived when omitted */
   label?: string;
+  /** the word under the hub number. "closure" is right for the console, where
+   *  the reader knows the term; the public site says "tried" instead. */
+  hubLabel?: string;
 }
 
 const TAU = Math.PI * 2;
@@ -63,6 +66,7 @@ function seg(cx: number, cy: number, r0: number, r1: number, a0: number, a1: num
 
 export function CoverageWheel({
   dims, closure, target = 0.95, size = 420, compact = false, label,
+  hubLabel = "closure",
 }: CoverageWheelProps) {
   const hatchId = useId();
   if (!dims.length) return null;
@@ -174,7 +178,7 @@ export function CoverageWheel({
       {closure != null && (
         <>
           <text className="cw-ctr-v" x={cx} y={cy + 2}>{Math.round(closure * 100)}%</text>
-          <text className="cw-ctr-k" x={cx} y={cy + 16}>closure</text>
+          <text className="cw-ctr-k" x={cx} y={cy + 16}>{hubLabel}</text>
         </>
       )}
     </svg>

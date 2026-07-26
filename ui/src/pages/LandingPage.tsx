@@ -4,11 +4,12 @@ import { SiteNav } from "../components/SiteNav";
 import {
   Button, Eyebrow, SectionHeading, CodeBlock, StatTile, ComparisonTable,
   FaqItem, ScorecardCard, ProvenanceBadge,
-  CoverageWheel, CoverageWheelLegend,
+  CoverageWheel, CoverageWheelLegend, RefusalNotice,
 } from "../components/ds";
 import {
   SHOW_SOCIAL_PROOF, ASSISTANTS, type TabKey, SAMPLE_METRICS, SAMPLE_ROWS,
   COMPARISON, CONFIDENCE, COVERAGE_CLAIMS, TRUST, FAQ,
+  REFUSAL_REASONS, ON_TOP,
 } from "../landing/data";
 import "../landing/landing.css";
 
@@ -72,45 +73,131 @@ export function LandingPage() {
       <header className="lp-hero">
         <div className="wrap lp-hero__grid">
           <div>
-            <Eyebrow>Agent verification</Eyebrow>
-            <h1>Everyone tells you what passed. We tell you what was never tested.</h1>
+            <Eyebrow>Proof for AI agents</Eyebrow>
+            <h1>Anyone will sell you a score. We are the ones who say no.</h1>
             <p className="lp-hero__lede">
-              A pass rate is a report on the cases somebody thought to write. We
-              measure the space your agent was actually put through, hold it to its
-              properties on every run, and prove what can be proven — then lead with
-              what is still untested.
+              We sit on top of the testing you already run and turn it into
+              something you can hand to a customer, an auditor, or a board. And when
+              the evidence is not good enough, we refuse to sign — and tell you
+              exactly what is missing.
             </p>
             <div className="lp-cta">
-              <Button href="#access">Request a briefing</Button>
-              <Button variant="ghost" href="#cover">See what we cover</Button>
+              <Button href="#access">Book a coverage audit</Button>
+              <Button variant="ghost" href="#install">Install it in a minute</Button>
             </div>
             <div className="lp-hero__meta">
-              Runs in your environment · your keys · nothing leaves it
+              Works with the tools you already use · runs on your machines
             </div>
           </div>
-          {/* The hero art IS the headline. An abstract mark said "verification";
-              the wheel shows the actual claim — five dimensions barely exercised,
-              three the model never asks about, against a 95% target. */}
-          <figure className="lp-hero__art lp-wheel">
-            <CoverageWheel
-              dims={LANDING_WHEEL}
-              closure={0.222}
-              target={0.95}
-              size={320}
-              label={
-                "Coverage wheel from a real run: five dimensions measured between "
-                + "11 and 50 percent, three not measured at all, against a 95 "
-                + "percent closure target. Overall closure 22 percent."
-              }
+          {/* The hero is a certificate we did NOT issue. Every competitor sells a
+              number that goes up; the one thing none of them can do is tell the
+              customer paying them that the evidence is not good enough yet. */}
+          <div className="lp-hero__art">
+            <RefusalNotice
+              subject="support-agent · version 4a91c2 · checked 26 July"
+              reasons={REFUSAL_REASONS}
+              footnote={"This is what our answer looks like when the evidence does "
+                + "not hold up. It is the same wording the tool prints, not a mockup."}
             />
-            <CoverageWheelLegend />
-            <figcaption className="lp-wheel__cap">
-              A real run. The filled part is what the suite exercised; everything
-              out to the rim is what nobody tested.
-            </figcaption>
-          </figure>
+          </div>
         </div>
       </header>
+
+      {/* ---- WHY IT WAS REFUSED (the wheel, in plain words) ---- */}
+      <section id="why-refused">
+        <div className="wrap lp-whyref">
+          <figure className="lp-whyref__art">
+            <CoverageWheel dims={LANDING_WHEEL} closure={0.222} target={0.95}
+              size={300} hubLabel="tried"
+              label={"A wheel of eight kinds of situation. Five were tried a little,"
+                + " between 11 and 50 percent. Three were never looked at."} />
+            <CoverageWheelLegend />
+          </figure>
+          <div className="lp-whyref__body">
+            <Eyebrow>Why we said no</Eyebrow>
+            <h2>Because most of it was never tried.</h2>
+            <p>
+              Think of everything that can happen to your agent while it works —
+              a service times out, a customer pushes back, it is asked to do
+              something it cannot undo. That whole range is the circle.
+            </p>
+            <p>
+              The filled part is what your tests actually put it through. The gap
+              out to the edge is what nobody ever tried. The striped slices are
+              kinds of situation nothing even asks about, so they can never fail
+              and would never show up in any report.
+            </p>
+            <p className="lp-whyref__kicker">
+              A high score on a small circle is not evidence. It is a smaller
+              question, answered well.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ---- ON TOP OF WHAT YOU ALREADY RUN ---- */}
+      <section id="ontop">
+        <div className="wrap">
+          <SectionHeading eyebrow="Where we fit"
+            title="We do not replace your testing. We build on it."
+            sub="You already run something to check your agent. Keep it. We read what it records and answer the one question it cannot." />
+          <div className="lp-grid lp-grid--3">
+            {ON_TOP.map((t) => (
+              <div className="lp-cell" key={t.h}>
+                <h3>{t.h}</h3>
+                <p>{t.p}</p>
+              </div>
+            ))}
+          </div>
+          <p className="lp-ontop__names">
+            Works alongside <b>LangSmith</b>, <b>deepeval</b>, <b>Future AGI</b>,
+            <b> Braintrust</b>, <b>Langfuse</b>, public benchmarks, and home-grown
+            scripts.
+          </p>
+        </div>
+      </section>
+
+      {/* ---- INSTALL ---- */}
+      <section id="install">
+        <div className="wrap">
+          <SectionHeading eyebrow="Install"
+            title="Two lines, and it starts watching."
+            sub="Nothing to sign up for and no key needed. It records what your coding assistant does and tells you what has never been tried." />
+
+          <div className="lp-install">
+            <div className="lp-install__col">
+              <h3>Watch your coding assistant</h3>
+              <p>Works with Claude Code. It notes what the assistant did — which
+                files it changed, which commands it ran — and keeps it on your
+                machine.</p>
+              <CodeBlock label="watch a coding assistant" lines={[
+                { prompt: "$", text: "uv tool install agenttic" },
+                { prompt: "$", text: "agenttic hook install" },
+                { prompt: "$", text: "agenttic hook verify",
+                  comment: "after working as normal" },
+              ]} />
+            </div>
+
+            <div className="lp-install__col">
+              <h3>Let it answer questions</h3>
+              <p>Connect it to your assistant so it can check a command
+                <em> before</em> running it — “is this something I cannot undo?” —
+                and report what has never been tested.</p>
+              <CodeBlock label="connect it to your assistant" lines={[
+                { text: '"agenttic": {' },
+                { text: '  "command": "agenttic",' },
+                { text: '  "args": ["mcp"]' },
+                { text: "}" },
+              ]} />
+            </div>
+          </div>
+
+          <p className="lp-install__note">
+            Everything stays on your machine. The command it never recognises is
+            reported as unknown rather than assumed safe.
+          </p>
+        </div>
+      </section>
 
       {/* ---- HOW IT WORKS ---- */}
       <section id="how">
@@ -142,7 +229,7 @@ export function LandingPage() {
           <div className="lp-see">
             <figure className="lp-see__wheel">
               <CoverageWheel dims={LANDING_WHEEL} closure={0.222} target={0.95}
-                             size={280} />
+                             size={280} hubLabel="tried" />
               <CoverageWheelLegend />
             </figure>
             <div className="lp-see__card">
@@ -189,7 +276,7 @@ export function LandingPage() {
               than another paragraph asserting it. */}
           <div className="lp-cover-lead">
             <CoverageWheel dims={LANDING_WHEEL} closure={0.222} target={0.95}
-                           size={210} compact />
+                           size={210} compact hubLabel="tried" />
             <p className="lp-cover-lead__p">
               Eight dimensions of one real run. Filled is what the suite reached;
               everything out to the rim is untested, and the hatched sectors are

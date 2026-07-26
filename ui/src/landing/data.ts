@@ -48,10 +48,10 @@ export const ASSISTANTS: Assistant[] = [
  * console's ResultsPanel now renders. A landing that argues the pass rate is the
  * wrong headline must not print it as the headline in its own product shot. */
 export const SAMPLE_METRICS: ScoreMetric[] = [
-  { label: "Coverage closure", value: "22", sub: "% of 95%" },
-  { label: "Properties broken", value: "2", sub: "of 8" },
-  { label: "Never exercised", value: "4", sub: "of 8" },
-  { label: "Task success (unscoped)", value: "86", sub: "% ±4" },
+  { label: "Situations tried", value: "22", sub: "% of 95% needed" },
+  { label: "Rules broken", value: "2", sub: "of 8" },
+  { label: "Rules never tested", value: "4", sub: "of 8" },
+  { label: "Pass rate (of what was tried)", value: "86", sub: "%" },
 ];
 export const SAMPLE_ROWS: CriterionRow[] = [
   { name: "routing", description: "Ticket routed to the correct queue", scorer: "code", score: 1 },
@@ -69,64 +69,89 @@ export const COMPARISON = {
     { key: "eye", header: "Eyeballing it" },
   ],
   rows: [
-    { rowHeader: "Fit", cells: { us: "A rubric fitted to the agent's archetype, proven to discriminate", bench: "One test for all agents", eye: "Whatever you thought to check" } },
-    { rowHeader: "Provenance", cells: { us: "Every score traces to a check, trace, and rationale", bench: "An opaque aggregate", eye: "A gut feeling" } },
-    { rowHeader: "Reliability", cells: { us: "pass^k — consistency across k runs, not luck once", bench: "Usually single-run", eye: "Unmeasured" } },
-    { rowHeader: "Contamination", cells: { us: "Private suites, per-tenant canaries", bench: "Public repos, likely trained on", eye: "—" } },
-    { rowHeader: "On-device", cells: { us: "Yes; your model key, no telemetry", bench: "Varies", eye: "Yes" } },
-    { rowHeader: "Scope", cells: { us: "States what was never exercised, and refuses to call that a pass", bench: "Silent about everything it didn't test", eye: "Unknown by definition" } },
-    { rowHeader: "Proof", cells: { us: "Decides exhaustively where a question is decidable", bench: "Samples, always", eye: "—" } },
+    { rowHeader: "Fit", cells: { us: "A test built for what this agent actually does, thrown out if it cannot tell good from bad", bench: "One test for every agent", eye: "Whatever you thought to check" } },
+    { rowHeader: "Can you check it", cells: { us: "Every number opens to the exact moment in the run", bench: "One total, no way in", eye: "A gut feeling" } },
+    { rowHeader: "Reliability", cells: { us: "Does it work all eight times, or just once", bench: "Usually run once", eye: "Never measured" } },
+    { rowHeader: "Could it have seen the answers", cells: { us: "Your tests stay private, and we plant markers to detect leaks", bench: "Published online, probably in the training data", eye: "—" } },
+    { rowHeader: "Runs on your machines", cells: { us: "Yes — your keys, and nothing sent to us", bench: "Varies", eye: "Yes" } },
+    { rowHeader: "What it never tried", cells: { us: "Named out loud, and never counted as a pass", bench: "Silent about everything it didn't test", eye: "Unknown by definition" } },
+    { rowHeader: "Certainty", cells: { us: "Checks every case where checking every case is possible", bench: "Samples, always", eye: "—" } },
   ],
 };
 
 // ---- confidence: the three provenance kinds -------------------------------
 export const CONFIDENCE = [
   { scorer: "code" as const, name: "no_unauthorized_writes",
-    body: "A code check passed on the trace, at a step you can open. No model in the loop; the same input always gives the same result." },
+    body: "Checked by ordinary code, on the recording of the run. No AI involved, so the same run always gives the same answer, and you can open the exact step." },
   { scorer: "judge" as const, calibrated: true, alpha: 0.87, name: "tone",
-    body: "An LLM judge scored it, and that judge agrees with human reviewers at a measured α against a known human ceiling." },
+    body: "Graded by an AI — and we checked that grader against real human reviewers first, so you know how much it agrees with people." },
   { scorer: "judge" as const, calibrated: false, name: "policy_fidelity",
-    body: "Scored by a judge not yet calibrated against humans on this criterion. Shown, flagged, never quietly counted as certain." },
+    body: "Graded by an AI we have not yet checked against people for this question. Shown, and flagged as such — never quietly counted as certain." },
 ];
 
-// ---- what we cover that others don't (broad headlines only) --------------
+// ---- the refusal, verbatim in the shape the signing path produces ---------
+export const REFUSAL_REASONS = [
+  { head: "Most situations were never tried",
+    detail: "Only 22% of the things that can happen to this agent were ever put in front of it. The bar is 95%." },
+  { head: "It did something it cannot undo, without asking",
+    detail: "The agent issued a refund with no confirmation step. That is not a low score — it is a stop.",
+    critical: true },
+  { head: "Four safety rules never came up at all",
+    detail: "Nothing in the tests ever created the situation those rules exist for, so passing them proves nothing." },
+];
+
+// ---- what we add on top of what you already run --------------------------
+export const ON_TOP = [
+  { h: "Keep your tools",
+    p: "Carry on running LangSmith, deepeval, Future AGI, Braintrust, your own scripts — whatever you use. We do not replace any of it." },
+  { h: "We read what they already record",
+    p: "Your existing recordings of what the agent did are all we need. No new SDK in your agent, no rewrite, no migration." },
+  { h: "We answer a question they don't",
+    p: "They tell you how your agent scored on the tests you wrote. We tell you which situations nobody ever tried — and we will not sign anything off until that list is short enough." },
+];
+
+// ---- what we cover that others don't (plain words) -----------------------
 export const COVERAGE_CLAIMS = [
-  { h: "What was never exercised",
-    p: "Every other tool reports what passed. We report the situations your agent was never once put in — and refuse to call that a pass." },
-  { h: "Properties, watched throughout",
-    p: "Not just the final answer. Behaviour is held to its rules across the whole run, including the runs that scored perfectly." },
-  { h: "Proof where proof is possible",
-    p: "Some questions about a system are decidable. For those we don't sample and hope — we decide, for every path, and say plainly where that stops applying." },
-  { h: "The supply chain, not just the agent",
-    p: "The tools, servers and memory your agent depends on are tested as subjects in their own right. An agent is only as trustworthy as what it calls." },
-  { h: "A test fitted to the job, not one fixed exam",
-    p: "An archetype-independent baseline applies to any agent with traces; where we have authored depth, the suite is fitted to that archetype — and rejected outright unless it can tell a good agent from a bad one." },
-  { h: "Evidence with an expiry date",
-    p: "Signed, scoped, revocable, and bound to the exact version tested. It states what was measured and what was not. Agents drift; unbounded claims are a lie with a long fuse." },
+  { h: "What nobody ever tried",
+    p: "Every other tool reports what passed. We report the situations your agent was never once put in — and we refuse to call that a pass." },
+  { h: "Rules watched the whole way through",
+    p: "Not just the final answer. We watch the agent's behaviour at every step, including on the runs that looked perfect." },
+  { h: "Certainty where certainty is possible",
+    p: "For some questions about a system you can check every possibility rather than take a sample. Where that is true we do it, and we say plainly where it stops being true." },
+  { h: "The things your agent depends on",
+    p: "The tools, servers and memory your agent uses are tested in their own right. An agent is only as trustworthy as the things it calls." },
+  { h: "A test built for the job",
+    p: "One fixed exam cannot fit every agent. We start from a baseline that applies to any agent, and go deeper where we have built depth — and any test that cannot tell a good agent from a bad one is thrown away." },
+  { h: "Findings that expire",
+    p: "Signed, and tied to the exact version we tested. Change the agent and it no longer applies. Anything that never expires is a promise nobody can keep." },
 ];
 
 // ---- trust ----------------------------------------------------------------
 export const TRUST = [
-  { h: "On-device", p: "The harness, checks, and trace capture run on your hardware. The scorecard is a file on your disk, not rows in a hosted index." },
-  { h: "No telemetry", p: "No usage pings, no crash reports, no analytics. There's nothing to opt out of, because nothing is sent." },
-  { h: "Evidence, not assertions", p: "Every number opens to the run behind it. You are never asked to take a score on faith — including ours." },
-  { h: "Self-host the MCP server", p: "Serve evaluation over stdio on one machine, or over HTTP on your own infrastructure. We host nothing." },
+  { h: "It runs where your agent runs",
+    p: "The testing happens on your machines. The results are a file on your disk, not rows in somebody else's database." },
+  { h: "Nothing is sent to us",
+    p: "No usage tracking, no crash reports, no analytics. There is nothing to switch off, because nothing is sent." },
+  { h: "Every number opens",
+    p: "Each result links to the exact moment in the run behind it. You are never asked to take a score on faith — ours included." },
+  { h: "Run the connector yourself",
+    p: "The piece your coding assistant talks to runs on your own machine, over a plain local connection. We host none of it." },
 ];
 
-// ---- faq ------------------------------------------------------------------
+// ---- faq (plain words) ----------------------------------------------------
 export const FAQ = [
-  { q: "How is this different from a benchmark or a leaderboard?",
-    a: "A benchmark hands every agent the same fixed test and returns one number, and says nothing at all about what it never tried. We build the test around your agent, measure how much of the space it actually reached, and lead with what is still unexercised. Your suites stay private, so they cannot be trained against." },
-  { q: "What can you test that our current evaluation can't?",
-    a: "The things a pass rate is structurally unable to express. Whether your agent was ever put in the situations that actually break it. Whether it held its properties on the runs that passed. Whether the tools and servers it depends on behave under pressure. And, for the parts of the system where the question is decidable, an answer that holds for every path rather than for the cases someone happened to write." },
-  { q: "Does my agent or my data leave my machine?",
-    a: "No. The harness, checks, and trace capture run locally. The only calls that leave your machine are the ones your judge and generator steps make to the model provider you configure — under your own keys — which you can point at a local model like Ollama to keep everything on-device. No telemetry, nothing uploaded to us." },
-  { q: "How do you score subjective things like tone without it being arbitrary?",
-    a: "Two ways. Anything checkable in code is a deterministic check. Anything qualitative is scored by an LLM judge calibrated against human reviewers — we measure the agreement (α) and show it, and until a judge is calibrated its scores are marked provisional, never counted as certain. A judge is never allowed to be more confident than the humans it's measured against." },
-  { q: "What is pass^k, and why does it matter?",
-    a: "pass^k is the probability an agent succeeds on a task across k independent tries, not just once. Agents that look deployable on a single run often fail when asked to do the same thing eight times. The gap between pass^1 and pass^8 is the flakiness number, and Agenttic names it in every report." },
-  { q: "How do we get access?",
-    a: "Agenttic is sold as an engagement, not a download. We scope the agent, stand the verification up against it, and hand back evidence your risk function can read. Start with a briefing." },
-  { q: "Can you evaluate an agent we didn't build?",
-    a: "Yes — that's the point of the black-box adapter. Wrap any agent behind an HTTP endpoint and Agenttic scores it on the criteria that don't require internal traces, and says so honestly in the report. It's how a buyer evaluates a vendor's agent before deploying it." },
+  { q: "Do we have to stop using our current eval tools?",
+    a: "No — and please don't. We sit on top of them. Keep running whatever you run today; we read the recordings it already produces and answer the question none of them answer: which situations has nobody tried, and is the evidence strong enough to stand behind. If we replaced your tooling we would be one more scoring product, and that is not what this is." },
+  { q: "What can you tell us that our current testing can't?",
+    a: "Whether your agent has ever been put in the situations that actually break it. Whether it followed its own rules on the runs that passed. Whether the tools and services it depends on hold up under pressure. And for the parts where it is possible to check every case rather than a sample, an answer that covers all of them." },
+  { q: "Does our agent or our data leave our machines?",
+    a: "No. The testing runs locally. The only calls that leave are the ones to whichever AI provider you configure, under your own keys — and you can point that at a model running on your own hardware instead. We receive nothing." },
+  { q: "How do you grade something subjective, like tone, without it being arbitrary?",
+    a: "Anything a computer can check outright, a computer checks. Anything that needs judgement is graded by an AI that we first compare against real human reviewers — we measure how often it agrees with them and show you that number. Until we have done that check, its grades are labelled as unverified rather than counted as certain." },
+  { q: "Why does it matter if an agent only works sometimes?",
+    a: "Because a demo is one run and production is thousands. We run the same task eight times and report how often it works every single time, not just once. Agents that look ready on a single run often fall apart on the eighth, and that gap is the number nobody shows you." },
+  { q: "Why would you refuse to certify us?",
+    a: "Because a certificate that anyone can get means nothing. If most of the situations your agent could face were never tried, or it broke one of its own safety rules, we will not sign it off — we will tell you exactly what is missing instead. Then you fix that list and we look again. That is the entire value of the thing." },
+  { q: "Can you check an agent we didn't build?",
+    a: "Yes. Point us at it over its normal interface and we test what can be tested from the outside, and say plainly in the report what we could not see. It is how you check a supplier's agent before you let it near your customers." },
 ];
