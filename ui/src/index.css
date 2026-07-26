@@ -1,0 +1,9 @@
+
+/* The run view's verification block: the wheel leads, the numbers sit beside it
+   (and beneath it on a narrow screen). */
+.run-verif {
+  display: flex; flex-wrap: wrap; gap: var(--sp-5);
+  align-items: center; margin-bottom: var(--sp-4);
+}
+.run-verif .cw-wrap { flex: 0 1 300px; min-width: 220px; }
+.run-verif-nums { flex: 1 1 300px; min-width: 260px; }

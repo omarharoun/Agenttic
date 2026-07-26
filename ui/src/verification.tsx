@@ -1,3 +1,7 @@
+import {
+  CoverageWheel, CoverageWheelLegend, DECLARED_COVERPOINTS, dimsFromCoverage,
+} from "./components/ds";
+
 /* ============================================================================
    The verification vocabulary — one implementation, used everywhere.
 
@@ -156,6 +160,33 @@ export function CoverageCell({ sc }: { sc: any }) {
         </span>
       )}
     </span>
+  );
+}
+
+/** The wheel, for a record that carries per-coverpoint coverage.
+ *
+ * This is the lead element of a run view: the shape of what was and was not
+ * exercised, before any pass rate. Renders nothing when the run has no coverage
+ * model — an absent wheel is honest; a full one would not be.
+ */
+export function CoverageWheelFor(
+  { sc, size = 300, compact = false }: { sc: any; size?: number; compact?: boolean },
+) {
+  const c = cov(sc);
+  const per = (c as any).per_coverpoint;
+  if (!c.model_ref || !per || !Object.keys(per).length) return null;
+  const dims = dimsFromCoverage(per, DECLARED_COVERPOINTS);
+  return (
+    <div className="cw-wrap">
+      <CoverageWheel
+        dims={dims}
+        closure={typeof c.trace_closure === "number" ? c.trace_closure : null}
+        target={c.closure_target ?? 0.95}
+        size={size}
+        compact={compact}
+      />
+      {!compact && <CoverageWheelLegend />}
+    </div>
   );
 }
 

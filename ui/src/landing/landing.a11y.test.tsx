@@ -23,8 +23,15 @@ describe("landing a11y / responsive bar", () => {
     expect((html.match(/<h1\b/g) || []).length).toBe(1);
   });
 
-  it("the decorative escapement dial is hidden from assistive tech", () => {
-    expect(html).toMatch(/class="ds-escape[^"]*"[^>]*aria-hidden="true"|aria-hidden="true"[^>]*class="ds-escape/);
+  it("the hero art is the coverage wheel, not a decorative clock", () => {
+    // The escapement was ornament; the wheel is the headline made visual, so it
+    // carries meaning and must be described rather than hidden.
+    expect(html).not.toContain("ds-escape");
+    expect(html).toContain('class="cw');
+  });
+
+  it("the wheel is described to assistive tech instead of hidden", () => {
+    expect(html).toMatch(/<svg[^>]*role="img"[^>]*aria-label="[^"]*closure/);
   });
 
   it("interactive controls are keyboard-operable native elements", () => {

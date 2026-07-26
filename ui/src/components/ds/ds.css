@@ -170,3 +170,53 @@
 @media (prefers-reduced-motion: reduce) {
   .ds-escape__tick { animation: none; }
 }
+
+/* ---------------------------------------------------------------------------
+   The coverage wheel (SPEC-11). Token-only: the console and the landing draw
+   the same picture, and both themes follow design/tokens.css.
+
+   The three states are structurally different, never colour alone:
+     exercised    solid fill
+     never tested dashed stroke, no fill  (the gap out to the rim)
+     not measured 45° hatch to the rim
+   --------------------------------------------------------------------------- */
+.cw { width: 100%; height: auto; display: block; overflow: visible; }
+
+.cw-ring { fill: none; stroke: var(--border); }
+.cw-target { stroke: var(--muted); stroke-dasharray: 4 3; }
+.cw-divider { stroke: var(--panel); stroke-width: 2; }
+.cw-hub { fill: var(--panel); stroke: var(--border); }
+.cw-hatch { stroke: var(--muted); opacity: 0.45; }
+
+.cw-seg { transition: opacity 120ms ease; }
+.cw-seg:hover { opacity: 0.75; }
+
+/* exercised */
+.cw-hit { fill: var(--score-pass); stroke: none; }
+/* the deficit: never exercised. Not a failure — an absence of evidence. */
+.cw-gap { fill: none; stroke: var(--score-provisional); stroke-width: 1.25;
+          stroke-dasharray: 3 2.5; }
+/* the model does not ask about this dimension at all */
+.cw-unmeasured { stroke: none; }
+
+.cw-lab { font: 600 11px/1 var(--font-mono); fill: var(--text); }
+.cw-val { font: 11px/1 var(--font-mono); fill: var(--muted);
+          font-variant-numeric: tabular-nums; }
+.cw-ctr-v { font: 700 20px/1 var(--font-ui); fill: var(--text);
+            text-anchor: middle; font-variant-numeric: tabular-nums; }
+.cw-ctr-k { font: 600 9px/1 var(--font-mono); fill: var(--muted);
+            text-anchor: middle; letter-spacing: 0.1em; text-transform: uppercase; }
+
+.cw-compact .cw-ctr-v { font-size: 15px; }
+.cw-compact .cw-ctr-k { font-size: 8px; }
+
+/* The legend belongs with the wheel wherever it is used. */
+.cw-legend { display: flex; flex-wrap: wrap; gap: var(--sp-4);
+             font-size: var(--t-sm); color: var(--muted); margin-top: var(--sp-3); }
+.cw-legend .lg { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.cw-legend .sw { width: 13px; height: 13px; border-radius: var(--r-sm);
+                 border: 1px solid transparent; }
+.cw-legend .sw.hit { background: var(--score-pass); }
+.cw-legend .sw.gap { border-color: var(--score-provisional); border-style: dashed; }
+.cw-legend .sw.un  { border-color: var(--muted);
+  background: repeating-linear-gradient(45deg, transparent 0 3px, var(--muted) 3px 4px); }

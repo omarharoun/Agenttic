@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { SiteNav } from "../components/SiteNav";
 import {
   Button, Eyebrow, SectionHeading, CodeBlock, StatTile, ComparisonTable,
-  FaqItem, EscapementMark, ScorecardCard, ProvenanceBadge,
+  FaqItem, ScorecardCard, ProvenanceBadge,
+  CoverageWheel, CoverageWheelLegend,
 } from "../components/ds";
 import {
   SHOW_SOCIAL_PROOF, ASSISTANTS, type TabKey, SAMPLE_METRICS, SAMPLE_ROWS,
@@ -46,6 +47,21 @@ function HowItWorks() {
   );
 }
 
+/** A real captured run, not a mock: the five dimensions the baseline model
+ *  measures, plus the three the archetype declares and this model never asks
+ *  about. An unmeasured dimension cannot fail, which is why it is drawn rather
+ *  than omitted. */
+const LANDING_WHEEL = [
+  { id: "trajectory", value: 0.111 },
+  { id: "tool_condition", value: 0.167 },
+  { id: "action_risk", value: 0.5 },
+  { id: "data_condition", value: 0.2 },
+  { id: "session_shape", value: 0.333 },
+  { id: "intent", value: null },
+  { id: "emotional_register", value: null },
+  { id: "policy_vector", value: null },
+];
+
 export function LandingPage() {
   return (
     <div className="lp">
@@ -71,7 +87,27 @@ export function LandingPage() {
               Runs in your environment · your keys · nothing leaves it
             </div>
           </div>
-          <div className="lp-hero__art"><EscapementMark size={280} /></div>
+          {/* The hero art IS the headline. An abstract mark said "verification";
+              the wheel shows the actual claim — five dimensions barely exercised,
+              three the model never asks about, against a 95% target. */}
+          <figure className="lp-hero__art lp-wheel">
+            <CoverageWheel
+              dims={LANDING_WHEEL}
+              closure={0.222}
+              target={0.95}
+              size={320}
+              label={
+                "Coverage wheel from a real run: five dimensions measured between "
+                + "11 and 50 percent, three not measured at all, against a 95 "
+                + "percent closure target. Overall closure 22 percent."
+              }
+            />
+            <CoverageWheelLegend />
+            <figcaption className="lp-wheel__cap">
+              A real run. The filled part is what the suite exercised; everything
+              out to the rim is what nobody tested.
+            </figcaption>
+          </figure>
         </div>
       </header>
 

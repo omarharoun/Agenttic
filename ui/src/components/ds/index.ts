@@ -7,3 +7,5 @@ export {
 } from "./primitives";
 export type { CodeLine, CompColumn, CompRow } from "./primitives";
 export { EscapementMark } from "./EscapementMark";
+export { CoverageWheel, CoverageWheelLegend, dimsFromCoverage, DECLARED_COVERPOINTS } from "./CoverageWheel";
+export type { WheelDim, CoverageWheelProps } from "./CoverageWheel";

@@ -14,8 +14,10 @@ const html = renderToStaticMarkup(
 
 describe("landing route", () => {
   it("renders from the shared ds component library", () => {
+    // "cw" is the coverage wheel, which replaced the decorative escapement as
+    // the hero art — same library, and now the art carries the argument.
     for (const cls of ["ds-card", "ds-badge", "ds-cmp", "ds-faq", "ds-btn",
-                       "ds-eyebrow", "ds-escape", "ds-term"]) {
+                       "ds-eyebrow", "cw", "ds-term"]) {
       expect(html).toContain(cls);
     }
   });

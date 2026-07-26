@@ -5,7 +5,9 @@ import { money, ms } from "../stats";
 import { PASS_MEANING, PASS_THRESHOLD } from "../workflow/templates";
 import { Markdown } from "../components/Markdown";
 import { ProvenanceBadge } from "../components/ds";
-import { VerificationStrip, cov, scopeNote, scopeTag } from "../verification";
+import {
+  CoverageWheelFor, VerificationStrip, cov, scopeNote, scopeTag,
+} from "../verification";
 
 /** Post-run scoreboard: scorecard summary + one row per test case showing
  * the agent's prediction vs expected, expandable to per-criterion scores
@@ -37,7 +39,14 @@ export function ResultsPanel({ results }: { results: any }) {
               judge calls were made (<b>$0</b>). Re-run with refresh to recompute.
             </div>
           )}
-          <VerificationStrip sc={sc} />
+          {/* The wheel leads: the shape of what was exercised comes before any
+              rate, because a rate with no denominator is the unscoped claim. */}
+          <div className="run-verif">
+            <CoverageWheelFor sc={sc} size={260} />
+            <div className="run-verif-nums">
+              <VerificationStrip sc={sc} />
+            </div>
+          </div>
           <div className="score-strip">
             <div className="stat">
               <span className="lab" title={scopeNote(sc)}>Task success{scopeTag(sc)}</span>
