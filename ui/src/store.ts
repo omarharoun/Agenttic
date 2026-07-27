@@ -10,12 +10,23 @@ export type NodeRunState =
   | "failed"
   | "skipped";
 
+/** One thing that happened during a run. `text` is the terse line the advanced
+ *  log prints; `data` is the event's own payload, kept so the guided view can
+ *  render it as a readable card instead of re-parsing the sentence. */
+export interface LogEntry {
+  seq: number;
+  type: string;
+  nodeId: string | null;
+  text: string;
+  data: Record<string, any>;
+}
+
 export interface ExecState {
   executionId: string | null;
   status: string; // idle | running | waiting_approval | succeeded | failed | cancelled
   nodeStates: Record<string, NodeRunState>;
   progress: Record<string, { done: number; total: number }>;
-  log: { seq: number; type: string; nodeId: string | null; text: string }[];
+  log: LogEntry[];
 }
 
 export const emptyExec = (): ExecState => ({
@@ -83,7 +94,8 @@ export function applyEvent(prev: ExecState, evt: SSEEvent): ExecState {
   }
   const text = summarize(evt);
   if (text) {
-    next.log = [...prev.log, { seq: evt.seq, type: evt.type, nodeId: nid, text }];
+    next.log = [...prev.log,
+      { seq: evt.seq, type: evt.type, nodeId: nid, text, data: evt.data ?? {} }];
   }
   return next;
 }

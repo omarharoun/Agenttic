@@ -437,7 +437,10 @@ button.approve { background: var(--wait); border-color: var(--wait); color: var(
   height: 6px; background: var(--panel-2); border-radius: var(--r-pill); overflow: hidden; margin: 4px 0 6px;
 }
 .step-progress > div { height: 100%; background: var(--info); transition: width 0.25s; }
-.step-progress-label { font: 500 11.5px/1 var(--font-mono); color: var(--muted); margin-bottom: var(--sp-3); }
+.step-progress-label {
+  font: 500 var(--t-xs) / 1 var(--font-ui); font-variant-numeric: tabular-nums;
+  color: var(--muted); margin-bottom: var(--sp-3);
+}
 
 .opt-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 var(--sp-6); }
 .opt-chip {
@@ -454,6 +457,45 @@ button.approve { background: var(--wait); border-color: var(--wait); color: var(
   border-radius: var(--r-sm); padding: 10px 12px;
 }
 .step-hint { margin: 0 0 8px; color: var(--muted); font-size: var(--t-sm); }
+
+/* what a run did, as cards inside the step that did it (was: one mono log at
+   the bottom of the page) */
+.step-activity { margin-top: var(--sp-4); }
+.sa-trimmed { margin: 0 0 var(--sp-3); color: var(--muted); font-size: var(--t-xs); }
+.sa-grid {
+  display: grid; gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fill, minmax(228px, 1fr));
+}
+.sa-card {
+  border: 1px solid var(--border-soft); border-left: 3px solid var(--border);
+  border-radius: var(--r-sm); background: var(--panel-2); padding: 10px 12px;
+}
+.sa-card.ok { border-left-color: var(--ok); }
+.sa-card.fail { border-left-color: var(--fail); }
+.sa-card.wait { border-left-color: var(--wait); }
+.sa-card.info { border-left-color: var(--info); }
+.sa-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-2); margin-bottom: 4px; min-height: 16px;
+}
+.sa-lead {
+  font: 600 var(--t-xs) / 1 var(--font-ui); color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.sa-badge {
+  margin-left: auto; padding: 3px 7px; border-radius: var(--r-pill);
+  border: 1px solid var(--border); background: var(--panel);
+  font: 600 9.5px/1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted); white-space: nowrap;
+}
+.sa-card.ok .sa-badge { color: var(--ok); border-color: var(--ok-border); background: var(--ok-soft); }
+.sa-card.fail .sa-badge { color: var(--fail); border-color: var(--fail-border); background: var(--fail-soft); }
+.sa-card.wait .sa-badge { color: var(--wait); border-color: var(--wait-border); background: var(--wait-soft); }
+.sa-title { color: var(--text); font-size: var(--t-sm); line-height: 1.4; }
+.sa-detail {
+  margin-top: 4px; color: var(--muted); font-size: var(--t-xs); line-height: 1.45;
+  overflow-wrap: anywhere;
+}
 
 /* run/validation error banner (editor) */
 .run-problems {

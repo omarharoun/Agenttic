@@ -1,9 +1,9 @@
 import type { Node } from "@xyflow/react";
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import { ExecutionLog } from "../panels/ExecutionLog";
 import { ResultsPanel } from "../panels/ResultsPanel";
 import { useFlowStore } from "../store";
+import { StepActivity } from "./StepActivity";
 import { STEPS, type Template, TEMPLATES, isConfigurable, stepById } from "./templates";
 
 const AGENT_FIELDS = ["agent_id", "variant", "model", "system_prompt", "url",
@@ -201,14 +201,21 @@ function StepCard({ node }: { node: Node }) {
           </h3>
           <p className="step-blurb">{empty ? (step.cta ?? step.blurb) : step.blurb}</p>
         </div>
-        {state && <span className={`status-chip ${chip}`}>{label}</span>}
+        {/* The agent step is where you point at what you're testing — it isn't a
+            stage that finishes, so a "done" chip over your own settings only
+            reads as noise. Failures still surface: the card border turns red. */}
+        {state && node.id !== "agent" && (
+          <span className={`status-chip ${chip}`}>{label}</span>
+        )}
       </div>
 
       <div className="step-body cfg">
         {progress?.total ? (
           <>
             <div className="step-progress"><div style={{ width: `${pct}%` }} /></div>
-            <div className="step-progress-label">{progress.done}/{progress.total} cases</div>
+            <div className="step-progress-label">
+              {progress.done} of {progress.total} cases
+            </div>
           </>
         ) : null}
 
@@ -226,6 +233,8 @@ function StepCard({ node }: { node: Node }) {
         ) : isConfigurable(node.id) ? null : (
           step.note && <p className="step-note">{step.note}</p>
         )}
+
+        <StepActivity nodeId={node.id} />
       </div>
     </div>
   );
@@ -236,7 +245,7 @@ export function GuidedFlow({ results, onPickTemplate }: {
   results: any | null;
   onPickTemplate: (t: Template) => void;
 }) {
-  const { nodes, exec, workflowName } = useFlowStore();
+  const { nodes, workflowName } = useFlowStore();
 
   if (nodes.length === 0) {
     return <div className="guided"><TemplatePicker onPick={onPickTemplate} /></div>;
@@ -275,16 +284,6 @@ export function GuidedFlow({ results, onPickTemplate }: {
             <ResultsPanel results={results} />
           </div>
         ) : null}
-
-        {exec.executionId && (
-          <div style={{ marginTop: 18 }}>
-            <div className="eyebrow" style={{ marginBottom: 6 }}>Activity</div>
-            <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r)",
-                          overflow: "hidden", background: "var(--panel)" }}>
-              <ExecutionLog />
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

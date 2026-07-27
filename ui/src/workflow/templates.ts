@@ -9,7 +9,10 @@ import type { WorkflowDoc, WorkflowNode } from "../api";
  *  - Steps expose only what's essential. Most steps have NO options (sensible
  *    defaults under the hood) — only the Business requirement and Agent steps
  *    take input.
- *  - Live monitor is ALWAYS part of the pipeline (not optional).
+ *  - New evaluations end at the report. Live monitoring is a separate, ongoing
+ *    thing you turn on against a tested baseline — it was never something you
+ *    configured while setting up a test, and sitting at the end of the guided
+ *    flow it only implied the run wasn't finished until it ran.
  *  - There is no Future AGI / FI option on the surface. */
 
 export const TRIAGE_PROMPT =
@@ -84,10 +87,13 @@ export const STEPS: StepDef[] = [
     title: "Report",
     blurb: "A clear report of what passed, what failed, and why.",
     note: "Generated automatically." },
+  // Kept in STEPS but no longer in any template: workflows saved before this
+  // change still contain a monitor node, and dropping the definition would
+  // leave the guided view with a node it can't name.
   { id: "monitor", ntype: "monitor", num: 9, icon: "◉",
     title: "Live monitor",
     blurb: "Keeps watching live traffic and flags safety or quality drift.",
-    note: "Always on — watches for drift against this tested baseline." },
+    note: "Watches for drift against this tested baseline." },
 ];
 
 export const stepById = (id: string) => STEPS.find((s) => s.id === id)!;
@@ -151,10 +157,9 @@ export const SCORE_MEANING =
   + `dimensions (it drives the letter grade). This is a different number from the `
   + `pass rate (the share of cases passed) — they measure different things.`;
 
-// Live monitor is mandatory, so it's in every template.
 const SCORE = { pass_threshold: PASS_THRESHOLD };
 const GENERATE = ["business_doc", "generator", "human_gate", "agent",
-  "run_suite", "score", "scorecard", "report", "monitor"];
+  "run_suite", "score", "scorecard", "report"];
 
 export const TEMPLATES: Template[] = [
   {
@@ -198,7 +203,7 @@ export const TEMPLATES: Template[] = [
     name: "Run an existing test suite",
     tagline: "Already have an approved suite? Point an agent at it and get a scorecard — no generation step.",
     icon: "◈",
-    stepIds: ["agent", "run_suite", "score", "scorecard", "report", "monitor"],
+    stepIds: ["agent", "run_suite", "score", "scorecard", "report"],
     configs: {
       agent: { variant: "reference", agent_id: "agent-under-test", system_prompt: TRIAGE_PROMPT },
       run_suite: { suite_id: "pilot-support-triage" },
