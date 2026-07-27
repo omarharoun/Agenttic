@@ -214,7 +214,8 @@ function StepCard({ node }: { node: Node }) {
           <>
             <div className="step-progress"><div style={{ width: `${pct}%` }} /></div>
             <div className="step-progress-label">
-              {progress.done} of {progress.total} cases
+              {progress.done} of {progress.total}{" "}
+              {node.id === "generator" ? "tasks" : "cases"}
             </div>
           </>
         ) : null}

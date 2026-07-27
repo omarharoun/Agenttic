@@ -44,6 +44,18 @@ export interface SSEEvent {
   data: Record<string, any>;
 }
 
+/** Events that each mean "one more unit of this step is finished" — a case for
+ *  Run/Score, a task for Generate.
+ *
+ *  Progress is COUNTED rather than read off the event's `index`. Cases and
+ *  generator tasks run concurrently, so events arrive out of order: case 9 can
+ *  land before case 2, and an index-derived bar would jump to 90% and then back
+ *  down. Counting is order-independent and can only go forwards. */
+const UNIT_DONE = new Set([
+  "case_finished", "case_scored", "case_error", "case_resumed",
+  "budget_exceeded", "cases_generated", "cases_skipped",
+]);
+
 /** Pure reducer: one SSE event -> next execution state (unit-tested). */
 export function applyEvent(prev: ExecState, evt: SSEEvent): ExecState {
   const next: ExecState = {
@@ -60,15 +72,17 @@ export function applyEvent(prev: ExecState, evt: SSEEvent): ExecState {
     case "node_started":
       if (nid) next.nodeStates[nid] = "running";
       break;
-    case "node_progress":
-      if (nid && typeof evt.data.index === "number") {
-        const done =
-          ["case_finished", "case_scored", "case_error"].includes(evt.data.event)
-            ? evt.data.index + 1
-            : evt.data.index;
-        next.progress[nid] = { done, total: evt.data.total ?? 0 };
-      }
+    case "node_progress": {
+      if (!nid) break;
+      const total = Number(evt.data.total) || prev.progress[nid]?.total || 0;
+      if (!total) break;
+      const wasDone = prev.progress[nid]?.done ?? 0;
+      next.progress[nid] = {
+        total,
+        done: Math.min(total, wasDone + (UNIT_DONE.has(evt.data.event) ? 1 : 0)),
+      };
       break;
+    }
     case "node_waiting":
       if (nid) next.nodeStates[nid] = "waiting";
       next.status = "waiting_approval";

@@ -16,7 +16,7 @@ describe("applyEvent reducer", () => {
     expect(s.nodeStates.run).toBe("running");
     s = applyEvent(s, ev("node_progress", "run",
       { event: "case_finished", index: 6, total: 10, ok: true, test_id: "t" }, 3));
-    expect(s.progress.run).toEqual({ done: 7, total: 10 });
+    expect(s.progress.run).toEqual({ done: 1, total: 10 });
     s = applyEvent(s, ev("node_completed", "run", {}, 4));
     expect(s.nodeStates.run).toBe("succeeded");
     s = applyEvent(s, ev("execution_succeeded", null, {}, 5));

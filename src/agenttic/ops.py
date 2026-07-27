@@ -120,6 +120,30 @@ def blackbox_call_cost(cfg: dict, *, cost_per_call_usd: float = 0.0,
     return 0.0
 
 
+def _parallelism(cfg: dict, section: str, default: int) -> int:
+    """A stage's concurrency cap, from config, floored at 1.
+
+    Every stage that fans out reads its own cap rather than sharing
+    ``harness.max_parallel``: the harness paces agent runs, scoring paces judge
+    calls, and generation paces generator calls. They hit different models with
+    different rate limits, so one number can't pace all three."""
+    raw = (cfg.get(section) or {}).get("max_parallel", default)
+    try:
+        return max(1, int(raw))
+    except (TypeError, ValueError):
+        return default
+
+
+def scoring_parallelism(cfg: dict) -> int:
+    """How many cases are scored at once (``scoring.max_parallel``)."""
+    return _parallelism(cfg, "scoring", 5)
+
+
+def generator_parallelism(cfg: dict) -> int:
+    """How many tasks are generated at once (``generator.max_parallel``)."""
+    return _parallelism(cfg, "generator", 4)
+
+
 def agent_model_of(adapter: AgentAdapter) -> str:
     """The model string Hard Rule 4 compares judges against. Black-box
     adapters expose no model, so they never collide with a judge tier."""
@@ -192,10 +216,15 @@ async def score_op(
             threshold=cfg.get("scoring", {}).get("fi_threshold", 0.5),
             evaluate_fn=fi_evaluate_fn)
     from agenttic.scoring.corpus import uncalibrated_criteria
-    runs: list[RunScore] = []
     total = len(cases)
     _uncal_cache: dict[str, set[str]] = {}
-    for i, (trace, case) in enumerate(zip(traces, cases)):
+
+    # Resolve rubric + calibration for every case FIRST, in one sequential pass.
+    # It is pure registry work (no model calls), it keeps the per-rubric cache
+    # single-threaded, and a missing rubric still aborts the batch here rather
+    # than half-way through a fan-out with some cases already scored.
+    prepared = []
+    for trace, case in zip(traces, cases):
         rubric = rubric_override or reg.get_rubric(case.rubric_id)
         # Hard Rule 6: mark provisional every criterion whose calibration isn't
         # demonstrated — all judge criteria, plus heuristic checks not proven by
@@ -207,29 +236,44 @@ async def score_op(
                 [c.criterion_id for c in rubric.criteria],
                 {c.criterion_id: c.scorer for c in rubric.criteria})
             _uncal_cache[rkey] = uncal
-        try:
-            rs = await asyncio.to_thread(
-                score_run, trace, case, rubric, judge, uncalibrated=uncal,
-                pass_threshold=pass_threshold, fi_evaluator=fi_evaluator)
-            runs.append(rs)
+        prepared.append((trace, case, rubric, uncal))
+
+    # Scoring a case costs one judge call per judge criterion, and cases are
+    # independent of each other — so run them concurrently instead of one after
+    # another (this was the longest stretch of a run's wall clock). Bounded, not
+    # an unbounded gather: the judge shares an API rate limit with everything
+    # else, and unbounded fan-out only trades slowness for 429s.
+    sem = asyncio.Semaphore(scoring_parallelism(cfg))
+
+    async def score_one(i: int, trace, case, rubric, uncal) -> RunScore:
+        async with sem:
+            try:
+                rs = await asyncio.to_thread(
+                    score_run, trace, case, rubric, judge, uncalibrated=uncal,
+                    pass_threshold=pass_threshold, fi_evaluator=fi_evaluator)
+            except Exception as exc:  # noqa: BLE001 — scoring failure is data, not fatal
+                err = f"{type(exc).__name__}: {exc}"
+                if on_progress:
+                    on_progress("case_error", {
+                        "index": i, "total": total, "test_id": case.test_id,
+                        "error": err,
+                    })
+                return RunScore(
+                    trace_id=trace.trace_id, test_id=case.test_id,
+                    criterion_scores=[], passed=False,
+                    cost_usd=trace.total_cost_usd, latency_ms=trace.total_latency_ms,
+                    steps=trace.total_steps, scoring_error=err)
             if on_progress:
                 on_progress("case_scored", {
                     "index": i, "total": total, "test_id": case.test_id,
                     "passed": rs.passed,
                 })
-        except Exception as exc:  # noqa: BLE001 — scoring failure is data, not fatal
-            err = f"{type(exc).__name__}: {exc}"
-            runs.append(RunScore(
-                trace_id=trace.trace_id, test_id=case.test_id,
-                criterion_scores=[], passed=False,
-                cost_usd=trace.total_cost_usd, latency_ms=trace.total_latency_ms,
-                steps=trace.total_steps, scoring_error=err))
-            if on_progress:
-                on_progress("case_error", {
-                    "index": i, "total": total, "test_id": case.test_id,
-                    "error": err,
-                })
-    return runs
+            return rs
+
+    # gather preserves argument order, so RunScores still line up with traces
+    # even though they finish out of order.
+    return list(await asyncio.gather(
+        *(score_one(i, *p) for i, p in enumerate(prepared))))
 
 
 def verify_op(traces: list) -> tuple[list, dict]:
@@ -411,6 +455,7 @@ def generate_op(cfg: dict, reg: Registry, business_doc: str, suite_id: str,
     gen = BenchmarkGenerator(model=cfg["models"]["generator"],
                              retry_policy=RetryPolicy.from_cfg(cfg),
                              pricing_per_mtok=model_price(cfg, cfg["models"]["generator"]),
+                             max_parallel=generator_parallelism(cfg),
                              **kw)
     return gen.generate_suite(business_doc, suite_id=suite_id, registry=reg,
                               review_dir=cfg["paths"]["review_dir"],

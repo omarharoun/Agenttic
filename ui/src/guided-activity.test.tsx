@@ -28,6 +28,66 @@ describe("the event payload survives into the log", () => {
   });
 });
 
+describe("the progress bar under concurrency", () => {
+  /* Cases and generator tasks now run several at a time, so events arrive out
+   * of order. Progress is counted, not read off the event's index — otherwise
+   * case 9 landing first would show 90% and then jump backwards. */
+  const prog = (data: Record<string, any>, seq = 1): SSEEvent =>
+    ({ seq, type: "node_progress", node_id: "run_suite", data });
+
+  it("counts completions instead of trusting the index", () => {
+    let s = applyEvent(emptyExec(), prog(
+      { event: "case_finished", index: 8, total: 10, ok: true, test_id: "t-9" }));
+    expect(s.progress.run_suite).toEqual({ done: 1, total: 10 });
+    s = applyEvent(s, prog(
+      { event: "case_finished", index: 1, total: 10, ok: true, test_id: "t-2" }, 2));
+    expect(s.progress.run_suite).toEqual({ done: 2, total: 10 });
+  });
+
+  it("never runs backwards, whatever order events land in", () => {
+    let s = emptyExec();
+    const order = [7, 2, 9, 0, 4];
+    order.forEach((idx, n) => {
+      s = applyEvent(s, prog(
+        { event: "case_finished", index: idx, total: 10, ok: true, test_id: `t-${idx}` },
+        n + 1));
+      expect(s.progress.run_suite.done).toBe(n + 1);
+    });
+  });
+
+  it("counts a resumed case — it is finished, it just cost nothing", () => {
+    const s = applyEvent(emptyExec(), prog(
+      { event: "case_resumed", index: 3, total: 4, test_id: "t-4" }));
+    expect(s.progress.run_suite.done).toBe(1);
+  });
+
+  it("does not count a case merely starting", () => {
+    const s = applyEvent(emptyExec(), prog(
+      { event: "case_started", index: 0, total: 4, test_id: "t-1" }));
+    expect(s.progress.run_suite).toEqual({ done: 0, total: 4 });
+  });
+
+  it("never exceeds the total", () => {
+    let s = emptyExec();
+    for (let i = 0; i < 8; i++) {
+      s = applyEvent(s, prog(
+        { event: "case_finished", index: i, total: 3, ok: true, test_id: `t-${i}` },
+        i + 1));
+    }
+    expect(s.progress.run_suite.done).toBe(3);
+  });
+
+  it("counts a generator task once, not twice per task", () => {
+    const gen = (event: string, seq: number): SSEEvent =>
+      ({ seq, type: "node_progress", node_id: "generator",
+         data: { event, index: 0, total: 3, task: "triage" } });
+    let s = applyEvent(emptyExec(), gen("criteria_defined", 1));
+    expect(s.progress.generator.done).toBe(0);   // half-done is not done
+    s = applyEvent(s, gen("cases_generated", 2));
+    expect(s.progress.generator.done).toBe(1);
+  });
+});
+
 describe("events read as English", () => {
   it("numbers a case from one, the way a person counts", () => {
     const c = describeEvent(entry({

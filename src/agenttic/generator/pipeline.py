@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -90,18 +92,28 @@ from agenttic.scoring.checks import repair_expected as _repair_expected  # noqa:
 
 class BenchmarkGenerator:
     def __init__(self, *, model: str, client=None, max_tokens: int = 4000,
-                 retry_policy=None, pricing_per_mtok: dict | None = None):
+                 retry_policy=None, pricing_per_mtok: dict | None = None,
+                 max_parallel: int = 1):
+        # ``max_parallel`` defaults to serial so a directly-constructed
+        # generator makes its stage calls in a predictable order. Both real
+        # entry points (``agenttic generate`` and the workflow node) go through
+        # ``ops.generate_op``, which passes ``generator.max_parallel`` from
+        # config — that is where the speed-up comes from.
         if client is None:
             import anthropic
             client = anthropic.Anthropic()
         self.client = client
         self.model = model
         self.max_tokens = max_tokens
+        self.max_parallel = max(1, int(max_parallel or 1))
         from agenttic.retry import RetryPolicy
         self.retry_policy = retry_policy or RetryPolicy()
         self.pricing = pricing_per_mtok or {"input": 3.0, "output": 15.0}
         # token usage accumulated across stages, so cost is recorded even when a
-        # later stage fails (see generate_suite).
+        # later stage fails (see generate_suite). Tasks are generated in parallel
+        # threads, so the accumulation takes a lock — `+=` is a read-modify-write
+        # and a lost update here understates what a run actually cost.
+        self._usage_lock = threading.Lock()
         self.tokens_in = 0
         self.tokens_out = 0
 
@@ -121,8 +133,9 @@ class BenchmarkGenerator:
                 system=SYSTEM, messages=[{"role": "user", "content": prompt}],
             ), self.retry_policy, op="generator")
             usage = getattr(resp, "usage", None)
-            self.tokens_in += getattr(usage, "input_tokens", 0) or 0
-            self.tokens_out += getattr(usage, "output_tokens", 0) or 0
+            with self._usage_lock:
+                self.tokens_in += getattr(usage, "input_tokens", 0) or 0
+                self.tokens_out += getattr(usage, "output_tokens", 0) or 0
             raw = "".join(b.text for b in resp.content
                           if getattr(b, "type", "") == "text").strip()
             raw = re.sub(r"^```(json)?|```$", "", raw).strip()
@@ -213,34 +226,59 @@ class BenchmarkGenerator:
             # their tasks are skipped — a prior failure doesn't re-spend tokens.
             resumed = {c.test_id: c for c in registry.peek_cases(suite_id, 1)}
             all_cases: list[TestCase] = list(resumed.values())
-            rubrics: list[Rubric] = []
-            for i, task in enumerate(tasks):
+
+            # One task's criteria and cases depend on nothing but that task, so
+            # the tasks run concurrently rather than one after another — this
+            # loop was the bulk of a generation's wall clock, two serial calls
+            # to the (slow, expensive) generator model per task.
+            #
+            # What is deliberately unchanged: each task still checkpoints its
+            # own cases to the registry as soon as it has them, so a run that
+            # dies part-way still resumes without re-spending. The registry is
+            # written from several threads at once — the same thing the harness
+            # already does when running cases in parallel.
+            def one_task(i: int, task: dict) -> tuple[int, Rubric | None, list[TestCase]]:
                 prefix = f"{suite_id}-{task['slug']}-"
                 rubric_id = f"{suite_id}-{task['slug']}"
                 if any(tid.startswith(prefix) for tid in resumed):
                     try:
-                        rubrics.append(registry.get_rubric(rubric_id))
+                        known = registry.get_rubric(rubric_id)
                     except Exception:  # noqa: BLE001 — rubric optional for review
-                        pass
+                        known = None
                     emit("cases_skipped", {"index": i, "total": len(tasks),
                                            "task": task["slug"], "reason": "resumed"})
-                    continue
+                    return i, known, []
                 rubric = self.define_criteria(task, rubric_id=rubric_id)
                 try:
                     registry.save_rubric(rubric)
                 except DuplicateVersionError:
                     rubric = registry.get_rubric(rubric_id)  # resume after partial
-                rubrics.append(rubric)
                 emit("criteria_defined", {"index": i, "total": len(tasks),
                                           "task": task["slug"],
                                           "n_criteria": len(rubric.criteria)})
                 new_cases = self.generate_cases(task, suite_id=suite_id,
                                                 rubric=rubric, max_n=cases_per_task)
                 registry.add_cases(suite_id, 1, new_cases)  # checkpoint immediately
-                all_cases += new_cases
                 emit("cases_generated", {"index": i, "total": len(tasks),
                                          "task": task["slug"],
                                          "n_cases": len(new_cases)})
+                return i, rubric, new_cases
+
+            if len(tasks) == 1 or self.max_parallel == 1:
+                results = [one_task(i, t) for i, t in enumerate(tasks)]
+            else:
+                with ThreadPoolExecutor(
+                        max_workers=min(self.max_parallel, len(tasks)),
+                        thread_name_prefix="agenttic-gen") as pool:
+                    # list() re-raises the first task's exception, as the serial
+                    # loop did — a failed stage still aborts the generation.
+                    results = list(pool.map(lambda a: one_task(*a),
+                                            list(enumerate(tasks))))
+            # tasks finish out of order; the review file lists rubrics in task order
+            results.sort(key=lambda r: r[0])
+            rubrics: list[Rubric] = [r for _, r, _ in results if r is not None]
+            for _, _, new_cases in results:
+                all_cases += new_cases
         finally:
             # record tokens spent so far even if a stage ultimately failed
             if self.spent_usd:

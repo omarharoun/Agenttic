@@ -13,9 +13,12 @@ harness:
   max_parallel: 5
   transport_retries: 2
 scoring:
+  max_parallel: 5            # cases scored concurrently (judge calls)
   calibration_threshold: 0.8
   advisor_max_tokens: 2048
   fi_threshold: 0.5
+generator:
+  max_parallel: 4            # tasks generated concurrently (generator model calls)
 live:
   sample_rate: 0.05
   drift_threshold: 0.15

@@ -44,6 +44,29 @@ def plain(text: str) -> str:
 
 
 @pytest.fixture(autouse=True)
+def _isolate_agenttic_logger():
+    """Undo :func:`server.observability.configure_logging`'s global side effects.
+
+    Building the app installs a handler on the ``agenttic`` logger and sets
+    ``propagate = False`` — process-global state that outlives the test that
+    caused it. Any later test asserting on an ``agenttic`` log record then finds
+    nothing, because pytest's ``caplog`` handler sits on the ROOT logger and
+    propagation to it has been switched off. That is how
+    ``test_no_target_is_a_logged_no_op`` passes alone and fails after any test
+    that builds an app: the assertion is right, the logger was left dirty.
+
+    Snapshot and restore, so log configuration never leaks between tests.
+    """
+    import logging
+    lg = logging.getLogger("agenttic")
+    handlers, propagate, level = list(lg.handlers), lg.propagate, lg.level
+    yield
+    lg.handlers[:] = handlers
+    lg.propagate = propagate
+    lg.setLevel(level)
+
+
+@pytest.fixture(autouse=True)
 def _reset_login_lockout():
     try:
         from agenttic.server.routes import auth
