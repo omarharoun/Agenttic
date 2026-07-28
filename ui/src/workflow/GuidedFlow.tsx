@@ -22,7 +22,7 @@ function stepStatus(state: string | undefined) {
 }
 
 /** Pick from the declared catalog; freezes connection details into the node. */
-function CatalogPicker({ config, onPick }: { config: any; onPick: (a: any) => void }) {
+function CatalogPicker({ onPick }: { onPick: (a: any) => void }) {
   const [agents, setAgents] = useState<any[]>([]);
   useEffect(() => {
     // Managed (Anthropic-hosted) agents aren't selectable in the guided flow —
@@ -90,7 +90,7 @@ function AgentConfigCard({ node }: { node: Node }) {
         </>
       ) : (
         <>
-          <CatalogPicker config={config} onPick={(a) => set(
+          <CatalogPicker onPick={(a) => set(
             Object.fromEntries(AGENT_FIELDS.map((k) => [k, a[k] ?? config[k] ?? ""])))} />
           <label>Task instructions <small>(what the agent should do)</small></label>
           <textarea value={config.system_prompt ?? ""}

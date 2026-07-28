@@ -38,17 +38,17 @@ export function Markdown({ children, className = "" }: {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          table: ({ node, ...props }) => (
+          table: ({ node: _node, ...props }) => (
             <div className="report-table-wrap">
               <table {...props} />
             </div>
           ),
-          th: ({ node, children, ...props }) => (
+          th: ({ node: _node, children, ...props }) => (
             <th className={isNumeric(children) ? "num" : undefined} {...props}>
               {children}
             </th>
           ),
-          td: ({ node, children, ...props }) => (
+          td: ({ node: _node, children, ...props }) => (
             <td className={isNumeric(children) ? "num" : undefined} {...props}>
               {children}
             </td>

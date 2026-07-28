@@ -91,7 +91,6 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
   const [showAuth, setShowAuth] = useState(false);
   const [headerName, setHeaderName] = useState("Authorization");
   const [headerValue, setHeaderValue] = useState("");
-  const [agentName, setAgentName] = useState("");
   const [job, setJob] = useState<ScanJob | null>(null);
   const [err, setErr] = useState<ReturnType<typeof explainError> | null>(null);
   const [preview, setPreview] = useState<ScanPreview | null>(null);
@@ -139,7 +138,11 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
       target,
       // a saved connection carries its own url/auth/mapping server-side
       ...(target === "connection" ? {} : {
-        url: url.trim(), agent_name: agentName.trim(),
+        // No agent_name: this form has no field to set one, so it was always
+        // sent empty. The server already defaults a blank name to "your-agent",
+        // so omitting it is behaviour-identical — and the dead state that used
+        // to carry it hid the fact that you cannot name your agent here.
+        url: url.trim(),
         ...(showAuth && headerValue.trim()
           ? { header_name: headerName.trim(), header_value: headerValue.trim() } : {}),
       }),

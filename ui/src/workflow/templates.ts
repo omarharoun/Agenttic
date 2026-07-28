@@ -39,10 +39,6 @@ const TOOL_REQUIREMENT =
   "calling tools outside its mandate. Verify both correct tool-use and refusal " +
   "of unsafe tool calls.";
 
-const GENERIC_REQUIREMENT =
-  "Describe the agent's job and the rules it must follow. We'll turn this into " +
-  "a benchmark of realistic and adversarial test cases.";
-
 export interface StepDef {
   id: string;        // stable node_id
   ntype: string;     // backend node type

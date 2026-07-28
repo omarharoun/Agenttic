@@ -26,4 +26,12 @@ export default defineConfig({
       "/api": "http://127.0.0.1:8700",
     },
   },
+  test: {
+    // Two runners, one file extension. Vitest's default glob claims every
+    // *.spec.ts, including the Playwright specs under e2e/ — which then fail
+    // with "test() was not expected to be called here" because they are being
+    // run by the wrong runner entirely. Each owns a directory: vitest takes
+    // src/, playwright takes e2e/ (see playwright.config.ts testDir).
+    exclude: ["**/node_modules/**", "**/dist/**", "e2e/**"],
+  },
 });

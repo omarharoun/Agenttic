@@ -257,7 +257,7 @@ async function json<T>(res: Response): Promise<T> {
       throw new ApiError("401 unauthenticated — log in or set an API token", 401,
                          data?.detail ?? data ?? body);
     }
-    let detail: unknown = data?.detail ?? data?.error ?? (data === undefined ? body.trim() : undefined);
+    const detail: unknown = data?.detail ?? data?.error ?? (data === undefined ? body.trim() : undefined);
     const msg = typeof detail === "string" && detail
       ? detail
       : detail !== undefined ? JSON.stringify(detail) : `${res.status}`;

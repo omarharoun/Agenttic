@@ -4,7 +4,7 @@ import { api } from "../api";
 import { EmptyState, PageHeader, Skeleton, Uncertainty } from "../components/ui";
 import { Onboarding } from "../components/Onboarding";
 import { money } from "../stats";
-import { CoverageCell, ScopeChip, cov, hasVerification, scopeNote } from "../verification";
+import { CoverageCell, ScopeChip, cov, hasVerification } from "../verification";
 
 /* ============================================================================
    Dashboard — the front door of the console.
