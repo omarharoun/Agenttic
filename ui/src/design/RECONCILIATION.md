@@ -44,3 +44,53 @@ read under `html[data-theme=light]` yields the light `--ok`).
 hex colour in `src/pages`, `src/components`, or the landing route — SPEC-4 Hard
 Rule 20 extended to the landing (Hard Rule 47). Colours there must be a
 `var(--token)` or a `tokens.ts` reference.
+
+## Visual regression baselines
+
+`ui/e2e/visual.spec.ts` holds the token layer to its appearance: 16 committed
+screenshots (5 console screens + 3 public routes, each in both themes) plus a
+mechanism check that a token override visibly changes **both** a console screen
+and the landing — because if it did not, the snapshots would pass whether or not
+those surfaces actually draw from `tokens.css`.
+
+Any future edit to `design/tokens.css` that moves a pixel on these screens fails
+the suite. The diff must then be either fixed or accepted and explained here.
+That is what makes this file a record rather than a one-time note.
+
+**Baselines are captured against stubbed API responses, not a live backend.** A
+snapshot is only evidence if identical input yields identical pixels; pointing
+these at a database would make them a test of whatever it happened to contain.
+The fixtures live in `e2e/support/console.ts` and match the real endpoint
+shapes — the list routes return bare arrays (`server/routes/resources.py`
+`return rows`), and stubbing them as `{items: […]}` crashes DashboardPage, which
+is how that mismatch was found.
+
+### What the suite can actually detect
+
+Sensitivity was measured, not assumed. Repainting `--accent` in the light theme
+and re-running:
+
+| Tolerance | Screens that caught it |
+| --- | --- |
+| `maxDiffPixelRatio: 0.002` | 2 of 8 |
+| `maxDiffPixels: 120` | 9 |
+
+A *ratio* scales the blind spot with the page: on the ~1280×5000 landing page
+0.002 permits ~12,800 changed pixels, so a whole button can change colour and
+still pass. The absolute budget does not grow with page size. It was set against
+three consecutive runs that diffed at zero, so the headroom absorbs antialiasing
+without hiding a real change.
+
+Three sources of nondeterminism had to be removed before the baselines meant
+anything, each of which had produced a green-but-empty check:
+
+- **Theme.** Setting `data-theme` after load is overwritten by the no-flash
+  script in `index.html` and by the app's own theme effect — `settings-dark.png`
+  and `settings-light.png` came out byte-identical. The preference is now set in
+  `localStorage` before boot, and `settle()` *asserts* the theme took effect
+  rather than setting it, so a failure is loud instead of silent.
+- **Clock.** Relative timestamps drift against fixed fixtures; `page.clock`
+  is pinned to the same instant the fixtures use.
+- **Data race.** Waiting on a container resolves before the API promises settle,
+  so a screenshot could catch either the loading or the loaded render. Captures
+  now wait for network idle.

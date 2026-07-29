@@ -32,9 +32,18 @@ export default defineConfig({
   },
 
   expect: {
-    // Font antialiasing differs by a hair between machines; a hard zero here
-    // makes the suite flap without catching anything real.
-    toHaveScreenshot: { maxDiffPixelRatio: 0.002, animations: "disabled" },
+    /* An ABSOLUTE pixel budget, not a ratio.
+     *
+     * A ratio scales with page size, which is exactly backwards: the landing
+     * page is ~1280x5000, so maxDiffPixelRatio 0.002 silently allowed ~12,800
+     * changed pixels — a whole button could change colour and still pass. That
+     * was not hypothetical: repainting --accent green in the light theme was
+     * caught on only 2 of 8 screens at that tolerance.
+     *
+     * A flat budget absorbs a few hundred antialiased edge pixels without
+     * scaling the blind spot up with the page. Verified against two
+     * back-to-back clean runs that diffed at zero. */
+    toHaveScreenshot: { maxDiffPixels: 120, animations: "disabled" },
   },
 
   projects: [
