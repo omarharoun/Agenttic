@@ -49,6 +49,14 @@ export default tseslint.config(
       // swallows a real failure is exactly the bug class verify should find.
       "no-empty": ["error", { allowEmptyCatch: false }],
 
+      // A duplicate key in an object literal silently OVERRIDES — the later one
+      // wins and the earlier is discarded with no error anywhere. That is not
+      // theoretical: a bad edit here left two "/api/capabilities" entries in the
+      // e2e stub table, the stale one won, and the page under test rendered a
+      // crash. Neither tsc nor typescript-eslint's defaults flagged it, so the
+      // base rule is turned back on explicitly.
+      "no-dupe-keys": "error",
+
       // These two are the React Compiler ruleset new in react-hooks v7. They
       // flag `setState` inside an effect and mutation of module-scope values —
       // patterns that are correct React and that this console uses throughout

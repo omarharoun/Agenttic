@@ -2,14 +2,15 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { SiteNav } from "../components/SiteNav";
 import {
-  Button, Eyebrow, SectionHeading, CodeBlock, StatTile, ComparisonTable,
+  Button, Eyebrow, SectionHeading, CodeBlock, StatTile,
   FaqItem, ScorecardCard, ProvenanceBadge,
   CoverageWheel, CoverageWheelLegend, RefusalNotice,
 } from "../components/ds";
 import {
   SHOW_SOCIAL_PROOF, ASSISTANTS, type TabKey, SAMPLE_METRICS, SAMPLE_ROWS,
-  COMPARISON, CONFIDENCE, COVERAGE_CLAIMS, TRUST, FAQ,
-  REFUSAL_REASONS, ON_TOP,
+  CONFIDENCE, COVERAGE_CLAIMS, TRUST, FAQ, REFUSAL_REASONS, ON_TOP,
+  STAT_BAND, REFUSAL_TRANSCRIPT, REFUSAL_CONDITIONS, LIMITS, PROOF_STATES,
+  VERIFY_TRANSCRIPT, VERIFY_STATES,
 } from "../landing/data";
 import "../landing/landing.css";
 
@@ -22,6 +23,31 @@ import "../landing/landing.css";
    so with the flag off the page ships clean with those sections simply absent.
    Public route: SiteNav only, no authenticated data or console chrome.
    ========================================================================== */
+
+/** Command OUTPUT, not a command. CodeBlock offers a copy button because its
+ *  lines are meant to be run; a refusal transcript is meant to be read, and a
+ *  copy affordance on it would invite pasting a message back into a shell. */
+function Transcript({ lines, label, meta }: {
+  lines: { prompt?: string; text: string; tone?: "fail" | "dim" | "ok" }[];
+  label: string; meta?: string;
+}) {
+  return (
+    <figure className="lp-tx" role="group" aria-label={label}>
+      <figcaption className="lp-tx__bar">
+        <span>{label}</span>
+        {meta && <span className="lp-tx__sample">{meta}</span>}
+      </figcaption>
+      <pre className="lp-tx__body">
+        {lines.map((l, i) => (
+          <div key={i} className={l.tone ? `lp-tx__l is-${l.tone}` : "lp-tx__l"}>
+            {l.prompt && <span className="lp-tx__p">{l.prompt} </span>}
+            {l.text || "\u00a0"}
+          </div>
+        ))}
+      </pre>
+    </figure>
+  );
+}
 
 function HowItWorks() {
   const [asst, setAsst] = useState(ASSISTANTS[0]);
@@ -73,20 +99,20 @@ export function LandingPage() {
       <header className="lp-hero">
         <div className="wrap lp-hero__grid">
           <div>
-            <Eyebrow>Proof for AI agents</Eyebrow>
-            <h1>Anyone will sell you a score. We are the ones who say no.</h1>
+            <Eyebrow>Agent verification</Eyebrow>
+            <h1>A certificate is not a participation award.</h1>
             <p className="lp-hero__lede">
-              We sit on top of the testing you already run and turn it into
-              something you can hand to a customer, an auditor, or a board. And when
-              the evidence is not good enough, we refuse to sign — and tell you
-              exactly what is missing.
+              Agenttic measures what your agent's run actually exercised —
+              coverage closure, assertions, a bounded formal check. When the
+              sign-off is negative the signing call raises, and no certificate
+              exists.
             </p>
             <div className="lp-cta">
-              <Button href="#access">Book a coverage audit</Button>
-              <Button variant="ghost" href="#install">Install it in a minute</Button>
+              <Button href="#access">Get your closure figure</Button>
+              <Button variant="ghost" href="#check-it">Verify a certificate yourself</Button>
             </div>
             <div className="lp-hero__meta">
-              Works with the tools you already use · runs on your machines
+              Sits on the traces you already produce · runs on your machines
             </div>
           </div>
           {/* The hero is a certificate we did NOT issue. Every competitor sells a
@@ -102,6 +128,68 @@ export function LandingPage() {
           </div>
         </div>
       </header>
+
+      {/* ---- THREE COUNTABLE FACTS, then the tool declining ---- */}
+      <section id="facts" className="lp-band-sec">
+        <div className="wrap">
+          <div className="lp-band">
+            {STAT_BAND.map((s) => (
+              <div className="lp-band__i" key={s.lab}>
+                <div className="lp-band__f">{s.fig}</div>
+                <div className="lp-band__l">{s.lab}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ---- THE REFUSAL, AS PRINTED ----
+          Nobody in this category shows a negative outcome from their own
+          product. It is simultaneously the demo, the proof and the difference,
+          which is why it sits first rather than in a footer. */}
+      <section id="refusal">
+        <div className="wrap lp-refusal">
+          <SectionHeading eyebrow="What it prints when it will not certify"
+            title="The only command that issues a certificate, declining to." />
+          <Transcript lines={REFUSAL_TRANSCRIPT} label="agenttic attest"
+                      meta="support-triage · sample data" />
+          <div className="lp-refusal__notes">
+            <p>
+              The message names the gate condition, not a grade. It exits 3, so a
+              CI job that calls it fails with it. No file is written, because the
+              write happens after the signing call returns — and here it never
+              returns.
+            </p>
+            <p>
+              The reasons mirror the sign-off condition for condition. They list
+              the legs that actually blocked the gate and nothing else, so you are
+              never sent to fix the wrong thing.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ---- THERE IS NO force= ---- */}
+      <section id="no-force">
+        <div className="wrap">
+          <SectionHeading eyebrow="sign_manifest(…) — no override parameter"
+            title={<>There is no <code>force=</code>.</>}
+            sub={"It takes no override parameter. Not a disabled one, not an "
+              + "environment variable, not an internal flag we hold and you do "
+              + "not. A gate with an override is documentation, not a gate."} />
+          <ol className="lp-conds">
+            {REFUSAL_CONDITIONS.map((c) => (
+              <li key={c.h}><b>{c.h}.</b> {c.p}</li>
+            ))}
+          </ol>
+          <p className="lp-conds__foot">
+            The hosted certificate route is a second path, and it does not call
+            this function. It re-checks the sign-off itself and raises its own
+            error in its own words. Two paths, two checks, no override on either.
+            We would rather write that than write “every path” and have you grep it.
+          </p>
+        </div>
+      </section>
 
       {/* ---- WHY IT WAS REFUSED (the wheel, in plain words) ---- */}
       <section id="why-refused">
@@ -244,13 +332,54 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ---- WHY A RUBRIC / SIDE BY SIDE ---- */}
-      <section id="why">
+      {/* ---- CHECK ONE YOURSELF ----
+          Replaces the old side-by-side table. Three of that table's seven rows
+          made categorical claims about competitors' products, which one
+          counterexample breaks — on a page arguing it does not make unbounded
+          claims. A procedure a stranger can run is stronger than a comparison
+          they have to take our word for. */}
+      <section id="check-it">
         <div className="wrap">
-          <SectionHeading eyebrow="Why a rubric, not a benchmark"
-            title="Every score traces to how it was measured."
-            sub="Leaderboards hand every agent the same test and one number. Real agents do different jobs, and a number you can't open is a number you can't trust." />
-          <ComparisonTable columns={COMPARISON.columns} rows={COMPARISON.rows} />
+          <SectionHeading eyebrow="Third-party verification"
+            title="Check one without asking us."
+            sub={"Verification recomputes every hash from the stored evidence, "
+              + "checks the signature against the published key, the binding to "
+              + "the deployed config hash, the expiry, and the revocation list."} />
+          <Transcript lines={VERIFY_TRANSCRIPT} label="agenttic verify"
+                      meta="sample data" />
+          <dl className="lp-states">
+            {VERIFY_STATES.map((s) => (
+              <div className="lp-states__r" key={s.k}>
+                <dt>{s.k}</dt><dd>{s.v}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="lp-conds__foot">
+            For assurance-tier certificates the public keys are published, as raw
+            keys and as JWKS — you do not need to tell us you looked. A locally
+            self-attested certificate is signed with a key generated on your own
+            machine, so checking one means the holder needs that public key from
+            you. We would rather write that sentence than let “anyone can verify
+            it” stand for both tiers.
+          </p>
+        </div>
+      </section>
+
+      {/* ---- WHAT THIS CANNOT PROVE ---- */}
+      <section id="limits">
+        <div className="wrap">
+          <SectionHeading eyebrow="Stated plainly" title="What this cannot prove." />
+          <div className="lp-limits">
+            {LIMITS.map((l) => (
+              <div className="lp-limits__i" key={l.h}>
+                <h3>{l.h}</h3>
+                <p>{l.p}</p>
+              </div>
+            ))}
+          </div>
+          <div className="lp-proof" aria-label="formal result states">
+            {PROOF_STATES.map((s) => <span key={s}>{s}</span>)}
+          </div>
         </div>
       </section>
 

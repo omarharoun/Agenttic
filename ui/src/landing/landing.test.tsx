@@ -16,7 +16,11 @@ describe("landing route", () => {
   it("renders from the shared ds component library", () => {
     // "cw" is the coverage wheel, which replaced the decorative escapement as
     // the hero art — same library, and now the art carries the argument.
-    for (const cls of ["ds-card", "ds-badge", "ds-cmp", "ds-faq", "ds-btn",
+    // ds-cmp is absent on purpose: the side-by-side ComparisonTable was cut
+    // (three of its rows made categorical claims about competitors' products).
+    // The component still exists and is covered by ds.test.tsx; this page just
+    // no longer uses it. Every remaining class still pins the principle.
+    for (const cls of ["ds-card", "ds-badge", "ds-faq", "ds-btn",
                        "ds-eyebrow", "cw", "ds-term"]) {
       expect(html).toContain(cls);
     }
@@ -112,7 +116,7 @@ describe("the refusal is the pitch", () => {
     const hero = html.slice(0, html.indexOf('id="why-refused"'));
     expect(hero).toContain("Refused");
     expect(hero).toContain("rn__stamp");
-    expect(hero).toMatch(/we are the ones who say no/i);
+    expect(hero).toMatch(/a certificate is not a participation award/i);
   });
 
   it("names the reasons for the refusal, including the hard stop", () => {

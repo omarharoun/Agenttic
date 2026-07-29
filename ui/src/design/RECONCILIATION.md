@@ -94,3 +94,50 @@ anything, each of which had produced a green-but-empty check:
 - **Data race.** Waiting on a container resolves before the API promises settle,
   so a screenshot could catch either the loading or the loaded render. Captures
   now wait for network idle.
+
+### Accepted baseline changes
+
+Four baselines were regenerated deliberately. Recorded here because the
+criterion is "unchanged **or their diffs are explained**", and an updated
+snapshot with no explanation is indistinguishable from an accident.
+
+**landing (dark + light)** — the page was rewritten. The hero headline is now
+`A certificate is not a participation award.`, taken verbatim from the
+`SignoffRefused` message in `certification/attest.py`; a three-figure band and
+the tool's actual refusal transcript were added; the side-by-side
+`ComparisonTable` was cut (three of its seven rows made categorical claims about
+competitors' products, which a single counterexample breaks). The h1 measure
+went 15ch → 18ch with `text-wrap: balance`, because at 15ch the new headline
+broke as "A certificate is / not a / participation / award" — a two-word orphan
+in 66px display serif.
+
+**pricing (dark + light)** — not edited directly. `.lp-hero h1` is shared by
+both public routes, so the measure/`text-wrap` change reached the pricing hero
+too. Checked rather than accepted: it now sets as "Priced by what / has to be
+verified." on two balanced lines. This is the coupling a snapshot suite exists to
+surface — a change made for one page landing on another.
+
+**capabilities (dark + light)** — the previous baselines were **photographs of a
+crashed page**, 1280×737 of React Router's error boundary. The stub served
+`{dimensions, checks, models}` while `CapabilitiesPage` reads
+`coverage.baseline.*` and `supply_chain.mcp_server.checks`. The new baselines are
+the real 1280×3546 page.
+
+That failure is the reason `loaded()` now refuses to snapshot an error boundary.
+A crash screen is a *stable* image — it captures cleanly and diffs clean forever
+while asserting nothing — so it survives exactly the checks a snapshot suite
+performs. It surfaced only because stack traces embed hashed asset filenames, so
+a rebuild shifted 1,736 pixels of text inside the error message.
+
+Two further defects were hidden underneath it, neither reachable while the page
+crashed:
+
+- `supply_chain` was stubbed as `[]`, so `sc.mcp_server` was `undefined`. The
+  fixture is now the **real response**, captured by calling
+  `server/routes/capabilities.py` directly rather than transcribed from the
+  page's field accesses — two hand-written attempts were wrong in two different
+  places.
+- The provisional dimensions rendered as `intentemotional_registerpolicy_vector`
+  — three names mapped to `<code>` with no separator. On a page whose subtitle is
+  "enumerated from the live registries — not a brochure", printing an invented-
+  looking identifier is the precise opposite of the claim.

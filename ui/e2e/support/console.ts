@@ -1,4 +1,12 @@
 import type { Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+
+/* Read rather than `import ... from "*.json"`: Node ESM requires an import
+ * attribute (`with { type: "json" }`) whose support differs between the
+ * TypeScript transpile and the runtime, and the failure is a hard module error
+ * that takes the whole suite down. A file read has neither problem. */
+const CAPABILITIES = JSON.parse(readFileSync(
+  new URL("./capabilities.fixture.json", import.meta.url), "utf8"));
 
 /* Deterministic console screens for visual regression.
  *
@@ -46,7 +54,20 @@ const scorecard = {
   ],
 };
 
-/* Shapes MUST match the real endpoints. The list endpoints return BARE ARRAYS
+/* `capabilities.fixture.json` is the REAL response, captured by calling
+ * server/routes/capabilities.py directly (it enumerates registries and touches
+ * no database, so it is reproducible):
+ *
+ *   uv run python -c "import json; from agenttic.server.routes.capabilities \
+ *     import capabilities; print(json.dumps(capabilities()))"
+ *
+ * Hand-writing this one failed twice — first `coverage.baseline` was missing,
+ * then `supply_chain.mcp_server.checks`. A deeply nested shape guessed from the
+ * page's field accesses will keep being wrong in a new place each time, and each
+ * wrong guess renders a crash the snapshot would happily photograph. Capture
+ * beats transcription.
+ *
+ * Shapes MUST match the real endpoints. The list endpoints return BARE ARRAYS
  * (see server/routes/resources.py `return rows`), not {items: [...]}. Getting
  * this wrong is not a harmless stub detail: DashboardPage does
  * `(results ?? []).slice(0, 6)`, and `??` only guards null/undefined — handed an
@@ -65,7 +86,7 @@ const ROUTES: Record<string, unknown> = {
   "/api/leaderboard": { agents: [] },
   "/api/billing/summary": { plan: "free", spend_usd: 0, quota: {} },
   "/api/settings": { api_keys: [] },
-  "/api/capabilities": { dimensions: [], checks: [], models: [] },
+  "/api/capabilities": CAPABILITIES,
 };
 
 /** Serve every /api call from the table above; never touch the network. */
@@ -120,6 +141,27 @@ export async function freezeClock(page: Page) {
 export async function loaded(page: Page) {
   await page.locator("main, .page, #root > *").first().waitFor();
   await page.waitForLoadState("networkidle");
+
+  /* Refuse to photograph a crash.
+   *
+   * A screenshot of React Router's error boundary is a perfectly stable image:
+   * it captures, it diffs clean forever, and it asserts nothing except that the
+   * page keeps breaking the same way. That is not hypothetical — the first
+   * capabilities baseline committed here WAS an error screen, because the stub
+   * had the wrong shape and nobody looked at all sixteen images.
+   *
+   * The stack trace embeds hashed asset filenames, so such a baseline also
+   * breaks on every rebuild, which is how it finally surfaced. Failing loudly
+   * here is the difference between a suite that proves something and one that
+   * merely runs. */
+  const crashed = await page.locator("text=Unexpected Application Error").count();
+  if (crashed > 0) {
+    const detail = await page.locator("pre, h2, h3").first().innerText()
+      .catch(() => "(no detail)");
+    throw new Error(
+      `the page rendered an error boundary, not the screen under test — `
+      + `refusing to snapshot it.\n${detail.slice(0, 400)}`);
+  }
 }
 
 /** Hold the page still: no in-flight animation, no blinking caret. */

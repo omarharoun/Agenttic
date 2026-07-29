@@ -19,3 +19,7 @@ docker-compose.override.yml
 backups/
 # graphify: generated code graph (~26MB, rebuild with `graphify update .`)
 graphify-out/
+
+# playwright (runner may emit at repo root)
+test-results/
+playwright-report/

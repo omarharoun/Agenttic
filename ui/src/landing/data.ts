@@ -70,9 +70,9 @@ export const COMPARISON = {
   ],
   rows: [
     { rowHeader: "Fit", cells: { us: "A test built for what this agent actually does, thrown out if it cannot tell good from bad", bench: "One test for every agent", eye: "Whatever you thought to check" } },
-    { rowHeader: "Can you check it", cells: { us: "Every number opens to the exact moment in the run", bench: "One total, no way in", eye: "A gut feeling" } },
-    { rowHeader: "Reliability", cells: { us: "Does it work all eight times, or just once", bench: "Usually run once", eye: "Never measured" } },
-    { rowHeader: "Could it have seen the answers", cells: { us: "Your tests stay private, and we plant markers to detect leaks", bench: "Published online, probably in the training data", eye: "—" } },
+    { rowHeader: "Can you check it", cells: { us: "A broken rule names the exact step it broke on; every judged score carries its reasoning and its calibration", bench: "One total, no way in", eye: "A gut feeling" } },
+    { rowHeader: "Reliability", cells: { us: "Repeated k times; it counts only if all k pass", bench: "Usually run once", eye: "Never measured" } },
+    { rowHeader: "Could it have seen the answers", cells: { us: "Your tests are generated from your own requirement and stay on your machines", bench: "Published online, probably in the training data", eye: "—" } },
     { rowHeader: "Runs on your machines", cells: { us: "Yes — your keys, and nothing sent to us", bench: "Varies", eye: "Yes" } },
     { rowHeader: "What it never tried", cells: { us: "Named out loud, and never counted as a pass", bench: "Silent about everything it didn't test", eye: "Unknown by definition" } },
     { rowHeader: "Certainty", cells: { us: "Checks every case where checking every case is possible", bench: "Samples, always", eye: "—" } },
@@ -113,7 +113,7 @@ export const ON_TOP = [
 // ---- what we cover that others don't (plain words) -----------------------
 export const COVERAGE_CLAIMS = [
   { h: "What nobody ever tried",
-    p: "Every other tool reports what passed. We report the situations your agent was never once put in — and we refuse to call that a pass." },
+    p: "A pass rate reports what was tried. We report the situations your agent was never once put in — and we refuse to call those a pass." },
   { h: "Rules watched the whole way through",
     p: "Not just the final answer. We watch the agent's behaviour at every step, including on the runs that looked perfect." },
   { h: "Certainty where certainty is possible",
@@ -132,8 +132,8 @@ export const TRUST = [
     p: "The testing happens on your machines. The results are a file on your disk, not rows in somebody else's database." },
   { h: "Nothing is sent to us",
     p: "No usage tracking, no crash reports, no analytics. There is nothing to switch off, because nothing is sent." },
-  { h: "Every number opens",
-    p: "Each result links to the exact moment in the run behind it. You are never asked to take a score on faith — ours included." },
+  { h: "A broken rule names its step",
+    p: "A violated property points at the exact step it fired on. A judged score carries the reasoning behind it and whether that judge has been calibrated. You are never asked to take a number on faith — ours included." },
   { h: "Run the connector yourself",
     p: "The piece your coding assistant talks to runs on your own machine, over a plain local connection. We host none of it." },
 ];
@@ -149,9 +149,104 @@ export const FAQ = [
   { q: "How do you grade something subjective, like tone, without it being arbitrary?",
     a: "Anything a computer can check outright, a computer checks. Anything that needs judgement is graded by an AI that we first compare against real human reviewers — we measure how often it agrees with them and show you that number. Until we have done that check, its grades are labelled as unverified rather than counted as certain." },
   { q: "Why does it matter if an agent only works sometimes?",
-    a: "Because a demo is one run and production is thousands. We run the same task eight times and report how often it works every single time, not just once. Agents that look ready on a single run often fall apart on the eighth, and that gap is the number nobody shows you." },
+    a: "Because a demo is one run and production is thousands. We run the same task k times and count it only if all k pass, rather than reporting the one run that worked. Agents that look ready on a single run are often not, and that gap is the number nobody shows you." },
   { q: "Why would you refuse to certify us?",
     a: "Because a certificate that anyone can get means nothing. If most of the situations your agent could face were never tried, or it broke one of its own safety rules, we will not sign it off — we will tell you exactly what is missing instead. Then you fix that list and we look again. That is the entire value of the thing." },
   { q: "Can you check an agent we didn't build?",
     a: "Yes. Point us at it over its normal interface and we test what can be tested from the outside, and say plainly in the report what we could not see. It is how you check a supplier's agent before you let it near your customers." },
+];
+
+/* ============================================================================
+   THE REFUSAL, AS THE TOOL ACTUALLY PRINTS IT (researched rewrite).
+
+   Every string below is reproduced from a real code path, not written for the
+   page. Where a figure appears it is sample data from one recorded run and the
+   surrounding UI says so. Sources are named per block so a reader — or a future
+   editor — can check rather than trust.
+   ========================================================================== */
+
+/** Three countable facts, each of which can be verified by reading one file.
+ *  Deliberately NOT "0 ways to override a refusal": that is an absence claim
+ *  over a whole codebase, printed as a counted number, on a page that argues a
+ *  bounded check can never prove absence. */
+export const STAT_BAND = [
+  { fig: "4", lab: "ways sign_manifest() refuses to sign",
+    src: "certification/attest.py" },
+  { fig: "17", lab: "claim phrasings the manifest will not carry",
+    src: "schema/attestation.py BANNED_CLAIMS" },
+  { fig: "0", lab: "model calls on the verification path",
+    src: "ops.py verify_op()" },
+];
+
+/** The SignoffRefused message, the CLI's summary lines, and the exit code.
+ *  `agenttic attest` is the only command that produces a certificate; this is
+ *  it declining to. Unhit bins render dotted (coverpoint.bin) exactly as
+ *  build_signoff() emits them. */
+export const REFUSAL_TRANSCRIPT = [
+  { prompt: "$", text: "agenttic attest sc-2f9c1a --config-hash 9f41c0…" },
+  { text: "" },
+  { text: "REFUSED — no certificate issued.", tone: "fail" as const },
+  { text: "refusing to sign manifest-sc-2f9c1a: the evidence does not sign off —" },
+  { text: "coverage not closed: 22.2% against a 95% target — unhit:" },
+  { text: "  refund_flow.refund_over_limit, tool_use.tool_error_retry," },
+  { text: "  escalation.escalation_declined; 1 property violation(s):" },
+  { text: "  never_write_before_read. A certificate is not a participation" },
+  { text: "  award; close the coverage or fix the violations first." },
+  { text: "" },
+  { text: "scope: 8/36 properties exercised · closure 22.2% of 95% · 1 violation(s)", tone: "dim" as const },
+  { text: "never exercised: pii_never_logged, refund_over_limit_escalates, …", tone: "dim" as const },
+  { text: "" },
+  { prompt: "$", text: "echo $?" },
+  { text: "3" },
+];
+
+/** The four raise sites in sign_manifest(). The function takes no override
+ *  parameter — not a disabled one, not an env var. */
+export const REFUSAL_CONDITIONS = [
+  { h: "The sign-off is negative",
+    p: "Coverage short of target, a property violation, or a formal counterexample." },
+  { h: "The manifest names no sign-off at all",
+    p: "Evidence cannot be implied by its absence." },
+  { h: "The sign-off is not supplied alongside the manifest",
+    p: "The gate needs the evidence in hand, not a reference to it." },
+  { h: "The sign-off hashes differently from the one the manifest is bound to",
+    p: "So evidence A cannot be signed while evidence B is attested." },
+];
+
+/** What the formal layer can and cannot conclude. The scope travels welded to
+ *  the claim — ProofResult.claim() has no path that renders one without it. */
+export const PROOF_STATES = ["proven", "counterexample", "unbounded", "not_attempted"];
+
+export const LIMITS = [
+  { h: "Closure is a statement about a declared model",
+    p: "Not about everything the world can do to your agent. The baseline model covers trajectory, tool use, session shape, data condition and action risk. It does not cover intent, emotional register or policy pressure — and it prints that list itself." },
+  { h: "A bounded check can refute; it never proves",
+    p: "`proven` comes only from exhaustive reachability over the finite tool-authorization guard layer. A bounded check reports `unbounded` when it hits its state limit, and `not_attempted` when no solver is installed — never an assumption of safety." },
+  { h: "An uncalibrated judge is labelled, not counted",
+    p: "A criterion whose judge has not been checked against human reviewers renders PROVISIONAL. Per criterion — not as a blanket claim about our judging." },
+  { h: "Local self-attestation proves integrity, not neutrality",
+    p: "It shows nothing was altered since measurement. It does not show that a disinterested party did the measuring, and the certificate says so on its face rather than in a footnote." },
+];
+
+/** verify_manifest() recomputes hashes, checks the signature against the
+ *  published key, the binding to the deployed config hash, the expiry, and the
+ *  revocation list. Five outcomes, kept apart. */
+export const VERIFY_TRANSCRIPT = [
+  { prompt: "$", text: "agenttic verify manifest.json --config-hash 9f41c0…" },
+  { text: "" },
+  { text: "hashes recomputed from stored evidence   ok" },
+  { text: "signature against published key          ok" },
+  { text: "binding to deployed config hash          ok" },
+  { text: "expiry  2026-10-27                       ok" },
+  { text: "revocation list                          ok" },
+  { text: "" },
+  { text: "status: valid", tone: "ok" as const },
+];
+
+export const VERIFY_STATES = [
+  { k: "valid", v: "Every check passed, within the stated scope." },
+  { k: "expired", v: "The window lapsed. Nothing is wrong with it; it is old." },
+  { k: "suspended", v: "Held pending review, not withdrawn." },
+  { k: "revoked", v: "Withdrawn deliberately, resolved against a signed list." },
+  { k: "invalid", v: "The evidence does not match the signature. Tampered is never reported as lapsed." },
 ];

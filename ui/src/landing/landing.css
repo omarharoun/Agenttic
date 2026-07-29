@@ -15,7 +15,11 @@
 .lp-hero h1 {
   font-family: var(--font-serif); font-weight: 400; line-height: 1.06;
   font-size: clamp(38px, 6.2vw, 66px); letter-spacing: -0.01em;
-  max-width: 15ch; margin: var(--sp-5) 0 var(--sp-5);
+  /* 15ch against this headline broke it as "A certificate is / not a /
+     participation / award." — a two-word orphan line in 66px display serif.
+     `balance` evens the ragged edge; the wider cap gives it room to do so. */
+  max-width: 18ch; text-wrap: balance;
+  margin: var(--sp-5) 0 var(--sp-5);
 }
 .lp-hero__lede { font-size: var(--t-lg); max-width: 52ch; color: var(--muted); margin-bottom: var(--sp-6); }
 .lp-cta { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center; }
@@ -122,3 +126,109 @@
 .lp-whyref__body h2 { margin: var(--sp-2) 0 var(--sp-3); }
 .lp-whyref__body p { color: var(--muted); line-height: 1.65; margin: 0 0 var(--sp-3); }
 .lp-whyref__kicker { color: var(--text) !important; font-weight: 500; }
+
+/* ===========================================================================
+   Researched rewrite (see landing/data.ts). Three new blocks: the countable
+   stat band, command TRANSCRIPTS (output, distinct from CodeBlock's copyable
+   commands), and the limits/verification sections that replaced the
+   side-by-side table. Tokens only — check-tokens.mjs fails the build on a hex.
+   ========================================================================= */
+
+/* ---- three countable facts, straddling the fold ---- */
+.lp-band-sec { padding-top: 0; }
+.lp-band {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.lp-band__i { padding: var(--sp-6) var(--sp-5) var(--sp-6) 0; }
+.lp-band__i + .lp-band__i {
+  border-left: 1px solid var(--border-soft); padding-left: var(--sp-6);
+}
+.lp-band__f {
+  font: 400 44px/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--text); letter-spacing: -0.02em;
+}
+.lp-band__l {
+  margin-top: var(--sp-3); font-size: var(--t-xs); line-height: 1.45;
+  color: var(--muted); max-width: 28ch;
+}
+@media (max-width: 700px) {
+  .lp-band { grid-template-columns: 1fr; }
+  .lp-band__i + .lp-band__i {
+    border-left: 0; border-top: 1px solid var(--border-soft); padding-left: 0;
+  }
+}
+
+/* ---- transcripts: what the tool printed, not what you type ---- */
+.lp-tx {
+  margin: var(--sp-6) 0 0; background: var(--term-bg);
+  border: 1px solid var(--border-strong); border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.lp-tx__bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-3); padding: var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid var(--hairline);
+  font: var(--t-label)/1.4 var(--font-mono); text-transform: uppercase;
+  letter-spacing: var(--track-caps); color: var(--term-comment);
+}
+.lp-tx__sample { color: var(--term-prompt); }
+.lp-tx__body {
+  margin: 0; padding: var(--sp-5); overflow-x: auto;
+  font: var(--t-sm)/1.7 var(--font-mono); color: var(--term-out);
+}
+.lp-tx__l { white-space: pre; }
+.lp-tx__p { color: var(--term-prompt); }
+.lp-tx__l.is-fail { color: var(--score-fail); font-weight: 600; }
+.lp-tx__l.is-dim { color: var(--term-comment); }
+.lp-tx__l.is-ok { color: var(--score-pass); }
+
+.lp-refusal__notes {
+  display: flex; flex-direction: column; gap: var(--sp-4);
+  margin-top: var(--sp-6); max-width: 68ch; color: var(--muted);
+}
+
+/* ---- the four refusal conditions ---- */
+.lp-conds {
+  margin: var(--sp-6) 0 0; padding-left: var(--sp-5);
+  display: flex; flex-direction: column; gap: var(--sp-4); max-width: 72ch;
+}
+.lp-conds li { font-family: var(--font-mono); font-size: var(--t-base); color: var(--muted); }
+.lp-conds li b { color: var(--text); font-weight: 500; }
+.lp-conds__foot {
+  margin-top: var(--sp-6); max-width: 68ch; color: var(--muted);
+  font-size: var(--t-base);
+}
+
+/* ---- verification states ---- */
+.lp-states { margin: var(--sp-6) 0 0; display: flex; flex-direction: column; gap: 0; }
+.lp-states__r {
+  display: grid; grid-template-columns: 140px 1fr; gap: var(--sp-4);
+  padding: var(--sp-4) 0; border-bottom: 1px solid var(--border-soft);
+}
+.lp-states__r dt {
+  font: 600 var(--t-sm)/1.5 var(--font-mono); color: var(--text);
+}
+.lp-states__r dd { margin: 0; font-size: var(--t-sm); color: var(--muted); }
+@media (max-width: 640px) {
+  .lp-states__r { grid-template-columns: 1fr; gap: var(--sp-1); }
+}
+
+/* ---- limits: reads as a specification, not a feature grid ---- */
+.lp-limits {
+  display: grid; gap: var(--sp-6); margin-top: var(--sp-6);
+}
+@media (min-width: 860px) { .lp-limits { grid-template-columns: 1fr 1fr; } }
+.lp-limits__i h3 {
+  margin: 0 0 var(--sp-2); font-family: var(--font-serif); font-weight: 400;
+  font-size: var(--t-h3); line-height: 1.25; color: var(--text);
+}
+.lp-limits__i p { margin: 0; color: var(--muted); font-size: var(--t-base); }
+.lp-proof {
+  display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-8);
+  padding-top: var(--sp-6); border-top: 1px solid var(--border-soft);
+}
+.lp-proof span {
+  font: var(--t-sm)/1 var(--font-mono); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--r-xs); padding: 7px 11px;
+}

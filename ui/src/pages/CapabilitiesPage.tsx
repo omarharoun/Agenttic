@@ -80,7 +80,13 @@ export function CapabilitiesPage() {
         </table>
         <div className="cap-note">
           A fitted model for an archetype adds the semantic dimensions —{" "}
-          {cov.fitted_example.provisional.map((p: string) => <code key={p}>{p}</code>)}{" "}
+          {/* Separators matter: mapping straight to <code> runs the names
+              together as one string ("intentemotional_registerpolicy_vector"),
+              which reads as a single invented identifier rather than three real
+              dimensions. */}
+          {cov.fitted_example.provisional.map((p: string, i: number) => (
+            <span key={p}>{i > 0 && ", "}<code>{p}</code></span>
+          ))}{" "}
           — which stay <b>PROVISIONAL</b> until a calibration study against humans.
         </div>
       </Section>
