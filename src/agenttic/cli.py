@@ -1789,6 +1789,73 @@ def _render_transcript(entries: list) -> None:
                           "the agent had to ask for[/]")
 
 
+def _render_interactions(run: dict) -> None:
+    """Escalations and confirmations — what the agent ASKED FOR before acting.
+
+    Stored by the producer and, until now, read by no command. The confirmation
+    with a null ``answer`` is the one that matters most: it is the evidence that
+    consent was requested and NOT manufactured, which is exactly what
+    ``always_irreversible_action_confirmed`` is looking for. An artifact that
+    records it and a reader that never shows it leaves the strongest thing in the
+    row invisible.
+    """
+    items = run.get("interactions") or []
+    console.print("\n[bold]interactions[/] — what the agent asked for before "
+                  "acting")
+    if not items:
+        console.print("  [dim]none: the agent escalated to nobody and asked for "
+                      "no confirmation. On a run that changed the world that is "
+                      "a finding; on one that changed nothing it is not.[/]")
+        return
+    for it in items:
+        kind = escape(str(it.get("kind") or "unknown"))
+        reason = escape(str(it.get("reason") or ""))
+        line = f"  [cyan]{kind}[/]" + (f" — {reason}" if reason else "")
+        if "answer" in it:
+            ans = it.get("answer")
+            line += ("  [yellow](asked, and no answer was recorded — consent was "
+                     "requested and not manufactured)[/]" if ans is None
+                     else f"  [dim]answered: {escape(str(ans))}[/]")
+        console.print(line)
+
+
+def _render_counterparty_record(run: dict) -> None:
+    """The counterparty's OWN record of each turn, beside the transcript join.
+
+    ``turns`` carries four fields the transcript entry drops — ``expect``,
+    ``forbid``, ``reason`` and ``source`` — and ``expect``/``forbid`` are the
+    entire input to :meth:`UserTurn.grade`. Stored so a run can be re-graded from
+    the row rather than re-run; unread, that storage was a promise nothing kept.
+
+    ``None`` is a row written before the record was kept, and is not an empty
+    conversation.
+    """
+    turns = run.get("turns")
+    if turns is None:
+        console.print("\n[bold]counterparty record[/]")
+        console.print("  [dim]this row kept no turn record — not the same as a "
+                      "run whose counterparty took no turns.[/]")
+        return
+    if not turns:
+        return                      # single-shot; the conversation block says so
+    console.print("\n[bold]counterparty record[/] — what each turn expected of "
+                  "the agent, which is what a re-grade reads")
+    for i, t in enumerate(turns):
+        kind = escape(str((t or {}).get("kind") or "?"))
+        bits = []
+        for key, gloss in (("expect", "must appear"), ("forbid", "must NOT appear")):
+            vals = (t or {}).get(key) or []
+            if vals:
+                bits.append(f"[magenta]{key}[/] {escape(str(list(vals)))} "
+                            f"[dim]({gloss})[/]")
+        reason = str((t or {}).get("reason") or "")
+        if reason:
+            bits.append(f"[dim]ended: {escape(reason)}[/]")
+        console.print(f"  turn {i + 1} [dim]({kind})[/]"
+                      + ("  " + " · ".join(bits) if bits else
+                         "  [dim]nothing was required of the agent here[/]"))
+
+
 scenario_app = typer.Typer(
     help="Run ONE scenario against the stateful world — and read a past run back.")
 app.add_typer(scenario_app, name="scenario")
@@ -1934,6 +2001,8 @@ def scenario_run_cmd(
     _render_state_diff(stored["state_diff"])
     _render_blocked(stored["blocked"])
     _render_conversation(stored)
+    _render_counterparty_record(stored)
+    _render_interactions(stored)
     _render_coverage(stored["coverage"])
     # The whole row: divergence is a statement about the POINT, and the point is
     # the half of it the coverage dict does not carry.
@@ -1973,6 +2042,8 @@ def scenario_transcript_cmd(
     _render_transcript_section(run)
     _render_final_answer(trace)
     _render_conversation(run)
+    _render_counterparty_record(run)
+    _render_interactions(run)
     _render_tool_calls(trace)
     _render_faults(run["faults"])
     _render_state_diff(run["state_diff"])

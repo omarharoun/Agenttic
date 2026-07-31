@@ -934,7 +934,7 @@ export function ExhibitedCoverage({ coverage }: {
   const bins = c.bins ?? [];
   return (
     <Section eyebrow="4 · What it proved" title="Coverage exhibited"
-      sub="Credited from what the run EXHIBITED in its trace, never from what the scenario asked for. These are bins this one run reached; they are not closure, and a dimension absent here was not exercised by this run.">
+      sub="Credited from what the run EXHIBITED in its trace, never from what the scenario asked for. These are bins this one run reached; they are not closure. A dimension absent here was either not exercised or not measured — this list is built from countable bins only, so a coverpoint the model declares not measurable, and a classifier-backed bin collected with no evaluator, are both missing from it without having been tested and found wanting. It cannot tell you which.">
       {bins.length === 0 ? (
         <Nothing><b>Measured, and credited nothing.</b> Coverage was collected
           for this run and it exhibited no bin at all.</Nothing>
@@ -1081,6 +1081,33 @@ export function ScenarioEmpty() {
  *  space or a semicolon. Anything outside the id alphabet is single-quoted. */
 function shellWord(v: string): string {
   return /^[A-Za-z0-9_.:@/-]+$/.test(v) ? v : `'${v.replace(/'/g, "'\\''")}'`;
+}
+
+/** How many runs the list asks the API for.
+ *
+ *  Named rather than inlined because two places have to agree about it: the
+ *  request and the notice that says the answer was cut off. */
+export const RUN_LIMIT = 100;
+
+/** A truncated list that looks complete is a claim about how much evidence
+ *  exists, made by a query that never asked.
+ *
+ *  `GET /api/scenario-runs` returns `count = len(runs)` — the size of the PAGE,
+ *  not of the store — so nothing in the response distinguishes "there are
+ *  exactly 100 runs" from "there are thousands and you are seeing the newest
+ *  100". A reader counting rows to judge how much testing has happened would get
+ *  the same number either way. Shown only when the page came back full, because
+ *  a notice on a short page would be the opposite error. */
+export function ListCap({ n, limit }: { n: number; limit: number }) {
+  if (n < limit) return null;
+  return (
+    <p className="scn-why scn-cap">
+      Showing the newest <b>{limit}</b> runs, which is all this page asks for.
+      There may be older ones: the list is capped, and the count above is the
+      size of this page rather than of the store. Narrow it with the filters, or
+      read the full set with <code>agenttic scenario list --limit</code>.
+    </p>
+  );
 }
 
 /** The OTHER zero, and it is not the one above.
@@ -1324,7 +1351,7 @@ export function ScenariosPage() {
     api.listScenarioRuns({
       agent_id: query.agent_id || undefined,
       scenario_id: query.scenario_id || undefined,
-      limit: 100,
+      limit: RUN_LIMIT,
     })
       .then((r) => { if (live) setRows(r.runs ?? []); })
       .catch((e) => { if (live) { setListErr(String(e?.message || e)); setRows([]); } });
@@ -1413,6 +1440,7 @@ export function ScenariosPage() {
                 ))}
               </tbody>
             </table>
+            <ListCap n={rows.length} limit={RUN_LIMIT} />
           </div>
         )}
 

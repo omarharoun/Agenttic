@@ -1128,3 +1128,57 @@ class TestItRunsOffline:
         second = scenario_run(cfg, *NEVER_REACHED)
         ids = re.findall(r"scenario (scn-[0-9a-f]{16})", first + second)
         assert len(ids) == 2 and ids[0] == ids[1]
+
+
+class TestTheRecordThatHadNoReader:
+    """Two things the producer stored and no command showed.
+
+    A row that keeps evidence nothing renders is a promise nobody keeps: the
+    storage looks like diligence and the reader still cannot see it.
+    """
+
+    def test_the_counterparty_record_is_readable(self, cfg, reg, no_network):
+        """`turns` carries `expect`/`forbid` — the ENTIRE input to
+        `UserTurn.grade` — which the transcript join drops. It is stored so a run
+        can be re-graded from the row instead of re-run; unread, it was stored
+        for nobody.
+        """
+        scenario_run(cfg, "--multi-turn", "--seed", "11",
+                     "--intent", "account_change")
+        run_id = stored_run_id(reg)
+        stored = reg.get_scenario_run(run_id)
+        assert stored["turns"], "this run kept no turn record — test is vacuous"
+
+        out = plain(run_cli(cfg, "scenario", "transcript", run_id).output)
+        assert "counterparty record" in out
+        assert "must NOT appear" in out          # a `forbid` reached the reader
+        assert "must appear" in out              # and an `expect`
+
+    def test_a_single_shot_run_prints_no_counterparty_record(
+            self, cfg, reg, no_network):
+        """Empty is not the same as absent, and neither is a section to fill."""
+        scenario_run(cfg, *FIRED)
+        out = plain(run_cli(cfg, "scenario", "transcript",
+                            stored_run_id(reg)).output)
+        assert "counterparty record" not in out
+
+    def test_interactions_are_rendered(self, cfg, reg, no_network):
+        """Escalations and confirmations — what the agent asked for before it
+        acted — were stored and shown by no command."""
+        scenario_run(cfg, *NEVER_REACHED)        # this stand-in escalates
+        stored = reg.get_scenario_run(stored_run_id(reg))
+        assert stored["interactions"], "no interaction stored — test is vacuous"
+
+        out = plain(run_cli(cfg, "scenario", "transcript",
+                            stored_run_id(reg)).output)
+        assert "interactions" in out
+        assert "escalation" in out
+
+    def test_no_interaction_is_a_sentence_and_not_an_empty_section(
+            self, cfg, reg, no_network):
+        scenario_run(cfg, "--seed", "3", "--intent", "status",
+                     "--tool-condition", "all_ok")
+        out = plain(run_cli(cfg, "scenario", "transcript",
+                            stored_run_id(reg)).output)
+        assert "interactions" in out
+        assert "escalated to nobody" in out

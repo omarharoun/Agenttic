@@ -44,9 +44,9 @@ import type {
   CoverageDivergence, ScenarioFaults, ScenarioRunDetail, ScenarioRunRow,
 } from "./api";
 import {
-  Divergence, Elicitation, ExhibitedCoverage, FaultLedger, RunId, RunRow,
-  ScenarioEmpty, ScenarioNoMatch, ScenarioRunDetailView, ScenariosPage,
-  StateDiff, ToolLedger, Transcript,
+  Divergence, Elicitation, ExhibitedCoverage, FaultLedger, ListCap, RUN_LIMIT,
+  RunId, RunRow, ScenarioEmpty, ScenarioNoMatch, ScenarioRunDetailView,
+  ScenariosPage, StateDiff, ToolLedger, Transcript,
   enforcementOf, formatCreated, groupBins, isOtherBin,
 } from "./pages/ScenariosPage";
 
@@ -1456,5 +1456,62 @@ describe("the page picks between the two zeros", () => {
     expect(v).not.toContain("No scenario run has been stored yet");
     expect(page.markup()).toContain("<table");
     page.unmount();
+  });
+});
+
+
+/* ------------------------------------------------ a page is not the store */
+
+describe("a capped list does not look like the whole store", () => {
+  it("says nothing when the page came back short", () => {
+    // A cap notice on a list that was not capped is the opposite error: it would
+    // suggest missing evidence where there is none.
+    expect(html(<ListCap n={3} limit={RUN_LIMIT} />)).toBe("");
+    expect(html(<ListCap n={RUN_LIMIT - 1} limit={RUN_LIMIT} />)).toBe("");
+  });
+
+  it("says so when the page came back full", () => {
+    // `GET /api/scenario-runs` returns `count = len(runs)` — the size of the
+    // PAGE. Nothing in the response tells "there are exactly 100" from "there
+    // are thousands and these are the newest 100", so a reader counting rows to
+    // judge how much testing has happened gets the same number either way.
+    const out = text(<ListCap n={RUN_LIMIT} limit={RUN_LIMIT} />);
+    expect(out).toContain("newest");
+    expect(out).toContain("100");
+    expect(out).toContain("capped");
+    expect(out).toContain("size of this page rather than of the store");
+  });
+
+  it("the page asks for exactly the number the notice reports", () => {
+    // Two places have to agree or the notice is wrong about its own cause.
+    const src = ScenariosPage.toString();
+    expect(src).not.toContain("limit: 100");     // never inlined a second time
+    expect(RUN_LIMIT).toBe(100);
+  });
+});
+
+describe("an absent dimension is not a dimension that was tried and missed", () => {
+  const COV = {
+    measured: true,
+    bins: ["trajectory:tool_then_answer"],
+    divergence: null,
+    model: null,
+  };
+
+  it("does not claim an absent dimension went unexercised", () => {
+    // The list is built from COUNTABLE bins, so a not-measurable coverpoint and
+    // a classifier-backed bin with no evaluator are both missing from it without
+    // ever having been tested and found wanting. Saying they "were not exercised
+    // by this run" reports missing measurement as a measured negative — the
+    // inversion this whole surface exists to prevent.
+    const out = text(<ExhibitedCoverage coverage={COV} />);
+    expect(out).not.toContain("a dimension absent here was not exercised");
+    expect(out).toContain("not exercised or not measured");
+    expect(out).toContain("It cannot tell you which.");
+  });
+
+  it("still says the bins are not closure", () => {
+    const out = text(<ExhibitedCoverage coverage={COV} />);
+    expect(out).toContain("not closure");
   });
 });
