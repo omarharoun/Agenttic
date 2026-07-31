@@ -300,7 +300,20 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (21, "canary_sets_table", _canary_sets_table),
     (22, "passport_tables", _passport_tables),
     (23, "copilot_sessions_table", _copilot_sessions_table),
-    (24, "verification_evidence_tables", _verification_evidence_tables),
+    # 24-29 are BURNED. The production database at node1 has versions 24-29
+    # applied (feedback_table, agent_config_table, seed_judge_configs,
+    # calibration_splits_table, judge_optimization_requests_table,
+    # generated_suite_snapshots_table, all stamped 2026-07-19) from code that is
+    # in NO branch of this repository. `run_migrations` skips any version already
+    # in `schema_migrations`, so a migration numbered 24 here would be silently
+    # skipped there FOREVER — the table it creates would never be created by the
+    # mechanism that is supposed to create it, and the gap would only be hidden
+    # by the `create_all` drift this module exists to replace.
+    #
+    # Numbering past them is the honest fix: the number is an identity, and two
+    # different migrations sharing one is a schema whose meaning depends on which
+    # codebase last touched it.
+    (30, "verification_evidence_tables", _verification_evidence_tables),
 ]
 
 

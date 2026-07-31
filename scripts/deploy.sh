@@ -72,11 +72,28 @@ cp -f config.prod.yaml config.yaml          # the mounted /app/config.yaml
 cat > docker-compose.override.yml <<YAML
 services:
   app:
-    ports: ["$BIND:$PORT:8700"]            # default 127.0.0.1 — front with TLS to expose
+    # !override REPLACES the base list. Without it compose MERGES \`ports\`, so the
+    # app publishes BOTH 0.0.0.0:8700 (docker-compose.yml) and $BIND:$PORT — two
+    # bindings for one port on one container. Two consequences, both real and both
+    # observed on node1 on 2026-07-31:
+    #   1. the container collides with itself and never starts
+    #      ("failed to bind host port $BIND:$PORT: address already in use",
+    #      while the kernel reports the port free and \`docker run -p\` succeeds);
+    #   2. worse, the public 0.0.0.0 bind this file exists to PREVENT survives,
+    #      so the safety promise in the header above was false whenever the
+    #      container did start.
+    ports: !override ["$BIND:$PORT:8700"]  # default 127.0.0.1 — front with TLS to expose
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
 YAML
+# Fail loudly if the merge still yields more than one published port.
+PUBLISHED="$(docker compose --profile postgres --profile redis config 2>/dev/null | grep -c 'published:' || true)"
+if [ "${PUBLISHED:-0}" -gt 1 ]; then
+  echo "ERROR: $PUBLISHED published ports for one service — the override is not replacing the base list."
+  echo "       (compose < 2.24 has no !override; upgrade it or remove ports: from docker-compose.yml)"
+  exit 1
+fi
 echo "App will bind ${BIND}:${PORT} on the host."
 REMOTE
 
@@ -112,15 +129,37 @@ say "7/8  Bring up Postgres + Redis, run migrations, then the app"
 ssh "$HOST" "bash -se -- '$REMOTE_DIR'" <<'REMOTE'
 set -euo pipefail
 DIR="$1"; cd "$DIR"
-dc() { docker compose --profile postgres --profile redis "$@"; }
-sg docker -c "cd $DIR && docker compose --profile postgres --profile redis up -d --wait postgres redis" \
-  || dc up -d --wait postgres redis
+# ONE way to run compose, chosen once. This used to be
+# `sg docker -c "..." || dc ...`, which is how a deploy came to report success
+# while changing nothing: as root (already able to reach the socket) the `sg`
+# wrapper can exit 0 without the inner command having taken effect, and `||`
+# then never runs the fallback. A deploy that cannot tell you it did nothing is
+# worse than one that fails.
+if docker compose version >/dev/null 2>&1; then
+  dc() { docker compose --profile postgres --profile redis "$@"; }
+else
+  dc() { sg docker -c "cd $DIR && docker compose --profile postgres --profile redis $*"; }
+fi
+
+dc up -d --wait postgres redis
 # run migrations against Postgres as a one-off (app also self-migrates on boot)
-sg docker -c "cd $DIR && docker compose run --rm app agenttic migrate --config /app/config.yaml" \
-  || dc run --rm app agenttic migrate --config /app/config.yaml
-sg docker -c "cd $DIR && docker compose --profile postgres --profile redis up -d --wait app" \
-  || dc up -d --wait app
-docker compose ps || sg docker -c "cd $DIR && docker compose ps"
+dc run --rm app agenttic migrate --config /app/config.yaml
+dc up -d --wait app
+dc ps
+
+# POST-CONDITION: the running app must be the image we just built. Without this
+# the previous failure mode is invisible — the old container keeps serving, its
+# /health answers, and every check below passes against code that was never
+# deployed.
+BUILT="$(docker images -q agenttic-app:latest 2>/dev/null | head -1)"
+RUNNING="$(docker inspect --format '{{.Image}}' "$(dc ps -q app)" 2>/dev/null | sed 's/^sha256://' | cut -c1-12)"
+BUILT_SHORT="$(printf '%s' "${BUILT:-}" | sed 's/^sha256://' | cut -c1-12)"
+if [ -n "$BUILT_SHORT" ] && [ "$RUNNING" != "$BUILT_SHORT" ]; then
+  echo "ERROR: the running app image ($RUNNING) is NOT the image just built ($BUILT_SHORT)."
+  echo "       The container was not recreated. Refusing to report a successful deploy."
+  exit 1
+fi
+echo "Running image matches the build: ${RUNNING:-unknown}"
 
 # Post-ship prune: reclaim the space the just-finished build left behind.
 # SAFE — removes only dangling (untagged) images + the builder cache. It does
