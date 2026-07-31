@@ -12,6 +12,11 @@ harness:
   max_steps: 10
   max_parallel: 5
   transport_retries: 2
+  # Off in production, and stated rather than left to the code default: the
+  # honeypot battery drives real probes against the customer's real agent, so
+  # enabling it spends money on every run. Off means no battery is stored and the
+  # report carries NO harness section — not a synthesised "not measured" one.
+  honeypot_battery: false
 scoring:
   max_parallel: 5            # cases scored concurrently (judge calls)
   calibration_threshold: 0.8
