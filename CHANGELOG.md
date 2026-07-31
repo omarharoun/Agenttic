@@ -1,5 +1,108 @@
 # Changelog
 
+## Unreleased — closure stops counting what nobody measured (NUMBERS MOVE)
+
+> **Release note.** This changes published closure figures and both shipped
+> models' `bins_fingerprint`. It ships alone, and it is announced, because a
+> correction that makes our own numbers look better is the one kind of change a
+> verification product cannot make quietly. **No stored scorecard is re-scored:**
+> old scorecards keep their fingerprint and their figure, and the two
+> fingerprints below are how a reader tells which rule produced a number.
+>
+> | model | fingerprint before | after |
+> |---|---|---|
+> | `cov-baseline-deterministic@v3` | `b604cd60b902b62d` | `cf22f3789194673f` |
+> | `cov-conversational_transactional@v3` | — | `e66444ac33aa1d79` |
+
+Two corrections to the same rule — *measure what was measured, disclose what was
+not* — landing together because shipping only the first would be a restatement
+in our own favour.
+
+### 1. A dimension nobody evaluated is no longer a dimension scored at zero
+
+`CoverpointCoverage.trace_closure` returned a hard `0.0` whenever its denominator
+was empty but its `measurable` flag said True. Those are different questions:
+`measurable` asks *does a producer exist for this dimension*, and it does not ask
+*was any bin of it actually in the denominator*. Four other exclusions —
+`other`, illegal, waived, and **classifier-backed with no evaluator supplied** —
+can empty the list underneath a flag that says True.
+
+That last one is not hypothetical. Both shipped scenario producers collect with
+`classify=None` deliberately, so on a fitted model **every** semantic bin is
+unevaluated. `intent`, `emotional_register` and `policy_vector` each reported
+`0.0` — which reads as *"we looked and the suite never got there"* — over bins
+nothing had looked at, and each dragged the headline down for not having been
+measured. Three of eight dimensions.
+
+They now report `None` and leave the headline, and — this is the half that makes
+it a correction rather than a flattering edit — **they are named in
+`not_measurable` with the reason**, through the same channel that has always
+carried the headline's companion, so the scorecard, the MCP tools and the console
+disclose them without a line of new wiring. A closure figure that silently
+dropped a dimension would be a better-looking number describing a smaller space.
+
+Measured, 12 real offline runs against the fitted model:
+
+```
+headline trace_closure  0.2709 -> 0.3522   (+8.1 points)
+left the denominator:   intent, emotional_register, policy_vector
+```
+
+A real zero is still a zero: a dimension whose bins WERE countable and simply
+never exhibited still reports `0.0`, because that is a gap a generator can be
+told to close.
+
+### 2. `session_shape` is now measured on the runs that instrument it
+
+`measurable` is declared per MODEL, and turn instrumentation is a fact about a
+RUN: `scenario/session.py` stamps a `user_turn` span before every delivery and
+the stored-suite path stamps none, so one flag was guaranteed to be wrong about
+one of them. The per-sample mechanism existed and no coverpoint used it.
+
+`session_shape` now declares `measurable_when="session_turns_instrumented"`. The
+floor stays `measurable=False` with its reason — an arbitrary sample still cannot
+be read for turn shape — and `collect()` raises it for the batch that carried the
+instrumentation. Measured, 10 runs each way:
+
+```
+single-shot batch   session_shape  not measurable, n_unmeasurable=10, named in not_measurable
+multi-turn batch    session_shape  measurable, closure 1.0, n_measurable=10, drops out of not_measurable
+                    headline 0.3314 -> 0.3922
+```
+
+`session_single_turn` is still `<= 1`, still True at zero turns, and still not
+tightened to `== 1`: with neither bin firing the trace lands in `other`, whose
+drift reads as *"the model is missing a dimension"* when the model is fine and the
+run is uninstrumented. What keeps that True out of a closure figure is now the
+gate, and the flag beneath it. `extractors._single`'s docstring asserted this
+gate existed for two releases while nothing referenced it; the claim has been made
+true rather than deleted, and a test pins that exactly one shipped coverpoint
+declares a gate.
+
+### Also: the harness battery has a caller (SPEC-13 P7), off by default
+
+`redteam/honeypot.py` has always separated `resisted` (a fact about the MODEL)
+from `attempted_blocked` (a fact about the HARNESS), and `report_op` has always
+rendered a stored battery — but nothing ran one against a real agent, so the
+distinction lived in dev tooling and never reached a scorecard.
+`run_and_score_op` now runs it when `harness.honeypot_battery` says so,
+discovering the decoy surface from the agent's own `describe()` rather than a
+hand-written descriptor.
+
+**Off by default, and silence is the honest off-state.** It drives real probes
+against a real agent and spends money on every run it is enabled for. When it
+does not run, no battery is stored and the report carries no harness section —
+deliberately not a synthesised NOT MEASURED one, which would have to invent a
+posture and a decoy list and would read as *"we tested the harness and it was
+inconclusive"* when nothing tested it. `NOT MEASURED` is the verdict for a battery
+that RAN and reached the enforcement path zero times; *"we did not run one"* is a
+sign-off question, not something a renderer can infer from a missing row.
+
+It never costs the run: the scorecard is aggregated and stored before the battery
+starts, an adapter it cannot instrument is logged as a fact about harness coverage
+rather than raised, and the failure handlers read the scorecard id defensively so
+the handler cannot raise the exception it exists to contain.
+
 ## Unreleased — the signing gate: a certificate can no longer outrun its evidence (BREAKING)
 
 > **Release note.** This is a breaking change (`sign_manifest`/`build_manifest`

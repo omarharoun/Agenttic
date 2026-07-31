@@ -611,7 +611,12 @@ async def run_and_score_op(
     on_progress: ProgressFn | None = None,
     judge_client=None,
 ) -> Scorecard:
-    """The full run → score → aggregate chain (CLI `run`/`regress` behavior)."""
+    """The full run → score → aggregate chain (CLI `run`/`regress` behavior).
+
+    Optionally followed by the honeypot battery — see
+    :func:`_run_honeypot_battery`, off unless ``harness.honeypot_battery`` says
+    otherwise.
+    """
     from agenttic.server.tracing import span
     with span("run.suite", suite_id=suite_id, agent_id=adapter.agent_id):
         suite, cases, traces = await run_suite_op(
@@ -619,9 +624,70 @@ async def run_and_score_op(
         runs = await score_op(cfg, reg, traces, cases, agent_model_of(adapter),
                               on_progress, judge_client=judge_client)
         rubric = reg.get_rubric(cases[0].rubric_id)
-        return aggregate_op(reg, agent_id=adapter.agent_id, suite=suite,
-                            rubric=rubric, runs=runs, visibility=adapter.visibility,
-                            traces=traces, cfg=cfg)
+        sc = aggregate_op(reg, agent_id=adapter.agent_id, suite=suite,
+                          rubric=rubric, runs=runs, visibility=adapter.visibility,
+                          traces=traces, cfg=cfg)
+        _run_honeypot_battery(cfg, reg, adapter, sc)
+        return sc
+
+
+def _run_honeypot_battery(cfg: dict, reg: Registry, adapter: AgentAdapter,
+                          scorecard) -> None:
+    """Tempt the agent under test with decoy tools; file the result on ``sc``.
+
+    P7's last mile. ``redteam/honeypot.py`` has always distinguished ``resisted``
+    (a fact about the MODEL) from ``attempted_blocked`` (a fact about the
+    HARNESS), and `report_op` has always rendered a stored battery — but nothing
+    ran one against a real agent, so the distinction lived in dev tooling and
+    never reached a customer's scorecard.
+
+    **Off by default, and silence is the honest off-state.** The battery drives
+    real probes against a real agent and spends money every run. When it does not
+    run, no battery is stored and the report carries no harness section. That is
+    deliberate and is `report_op`'s documented rule: synthesising a NOT MEASURED
+    section for a battery that never ran would have to invent a posture and a
+    decoy list, and would read as "we tested the harness and it was inconclusive"
+    when nothing tested it. NOT MEASURED is the verdict for a battery that RAN
+    and reached the enforcement path zero times — a finding, with a fix.
+
+    **Never costs the run.** The scorecard is already aggregated and stored by the
+    time this is called. A battery that raises must not retract a run that
+    succeeded, so every failure is logged and swallowed — but never silently: an
+    adapter the battery cannot instrument (`guarded_twin` accepts only
+    `AnthropicSimpleAgent`) is a fact about coverage of the harness, not a crash,
+    and it is logged as such.
+    """
+    if not bool((cfg.get("harness") or {}).get("honeypot_battery", False)):
+        return
+    import logging
+
+    from agenttic.redteam.descriptor import descriptor_for_adapter
+    from agenttic.redteam.honeypot import (
+        AgentNotInstrumentable, run_honeypot_harness)
+    log = logging.getLogger("agenttic.ops")
+    # Read BEFORE the try, and defensively. The failure handlers below name the
+    # scorecard, so reading it inside them would let the handler raise the very
+    # exception it exists to contain — turning "the battery never costs the run"
+    # into a promise that breaks precisely when something has already gone wrong.
+    sc_id = getattr(scorecard, "scorecard_id", "<unknown>")
+    agent_id = getattr(adapter, "agent_id", "<unknown>")
+    try:
+        # Discovered from the agent's own `describe()`, not hand-built here: a
+        # descriptor written beside the adapter is a note about the agent, and
+        # the battery has to plant decoys among the tools it ACTUALLY declares.
+        descriptor = descriptor_for_adapter(adapter, agent_id=agent_id)
+        report = run_honeypot_harness(descriptor, reg=reg, under_test=adapter)
+        reg.save_honeypot_battery(sc_id, report.enforcement_result())
+    except AgentNotInstrumentable as exc:
+        log.warning(
+            "harness battery NOT RUN for %s: %s — the run and its scorecard "
+            "stand; the harness was not put on trial and the report says "
+            "nothing about it either way", agent_id, exc)
+    except Exception as exc:      # noqa: BLE001 — see the docstring
+        log.warning(
+            "harness battery FAILED for %s (scorecard %s): %s: %s — the run "
+            "stands and no harness claim is made",
+            agent_id, sc_id, type(exc).__name__, exc)
 
 
 @dataclass

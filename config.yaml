@@ -13,6 +13,17 @@ harness:
   max_parallel: 5
   transport_retries: 2
   # resume (reuse successful persisted traces on re-run) is always on — not a toggle
+  # Tempt the agent under test with decoy tools and report whether the HARNESS
+  # stopped it, not just whether the model declined (SPEC-13 P7).
+  #
+  # OFF by default, and the default is a judgement not an oversight: the battery
+  # drives real probes against the customer's real agent, so it spends money on
+  # every run it is enabled for. Off, no battery is run and the report carries NO
+  # harness section — deliberately not a synthesised "not measured" one, which
+  # would read as "we tested the harness and it was inconclusive" when nothing
+  # tested it. NOT MEASURED is the verdict for a battery that RAN and never
+  # reached the enforcement path; "we did not run one" is a sign-off question.
+  honeypot_battery: false
 scoring:
   max_parallel: 5            # cases scored concurrently (judge calls)
   calibration_threshold: 0.8

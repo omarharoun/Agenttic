@@ -645,3 +645,84 @@ class TestAStorageFailureNeverCostsTheRun:
         assert "_BrokenModel" in cov["model"]["problem"]
         assert any("NOT RECORDED" in r.getMessage() for r in caplog.records
                    if r.name == "agenttic.scenario.runner")
+
+
+class TestTheHarnessBatteryIsOffUntilItIsAskedFor:
+    """P7's last mile. `redteam/honeypot.py` always distinguished `resisted` (a
+    fact about the MODEL) from `attempted_blocked` (a fact about the HARNESS),
+    and `report_op` always rendered a stored battery — but nothing ran one
+    against a real agent, so the distinction lived in dev tooling.
+
+    It spends money on every run it is enabled for, so the default is OFF, and
+    the off-state has to be provably SILENT rather than provably reassuring.
+    """
+
+    def test_off_by_default_runs_nothing(self, tmp_path, monkeypatch):
+        from agenttic import ops
+
+        called = []
+        monkeypatch.setattr(
+            "agenttic.redteam.honeypot.run_honeypot_harness",
+            lambda *a, **k: called.append(1))
+        reg = _cdv_reg(tmp_path)
+        # no `harness` block at all, and a `harness` block that omits the key
+        for cfg in ({}, {"harness": {"max_steps": 8}}):
+            ops._run_honeypot_battery(cfg, reg, _scripted_agent(), object())
+        assert called == [], "the battery ran without being asked for"
+
+    def test_an_explicit_false_runs_nothing(self, tmp_path, monkeypatch):
+        from agenttic import ops
+
+        called = []
+        monkeypatch.setattr(
+            "agenttic.redteam.honeypot.run_honeypot_harness",
+            lambda *a, **k: called.append(1))
+        ops._run_honeypot_battery({"harness": {"honeypot_battery": False}},
+                                  _cdv_reg(tmp_path), _scripted_agent(), object())
+        assert called == []
+
+    def test_off_stores_no_battery_so_the_report_says_nothing(self, tmp_path):
+        """`report_op`'s documented rule: no battery stored means NO harness
+        section — deliberately not a synthesised NOT MEASURED one, which would
+        have to invent a posture and a decoy list and would read as "we tested
+        the harness and it was inconclusive" when nothing tested it.
+
+        NOT MEASURED is the verdict for a battery that RAN and reached the
+        enforcement path zero times. "We did not run one" is a different claim.
+        """
+        from agenttic import ops
+
+        reg = _cdv_reg(tmp_path)
+        ops._run_honeypot_battery({"harness": {"honeypot_battery": False}},
+                                  reg, _scripted_agent(), object())
+        assert reg.find_honeypot_battery("sc-anything") is None
+
+    def test_an_uninstrumentable_agent_never_costs_the_run(self, tmp_path,
+                                                            caplog):
+        """`guarded_twin` accepts only `AnthropicSimpleAgent`. A scripted
+        scenario agent is not one, so with the flag ON this hits
+        `AgentNotInstrumentable` — which is a fact about coverage of the harness,
+        not a crash, and must not retract a scorecard that already exists.
+        """
+        import logging as _logging
+
+        from agenttic import ops
+
+        class _SC:
+            scorecard_id = "sc-uninstrumentable"
+
+        reg = _cdv_reg(tmp_path)
+        with caplog.at_level(_logging.WARNING, logger="agenttic.ops"):
+            ops._run_honeypot_battery({"harness": {"honeypot_battery": True}},
+                                      reg, _scripted_agent(), _SC())
+        # it did not raise, it stored nothing, and it SAID so
+        assert reg.find_honeypot_battery("sc-uninstrumentable") is None
+        assert any("harness battery NOT RUN" in r.getMessage()
+                   or "harness battery FAILED" in r.getMessage()
+                   for r in caplog.records)
+
+    def test_the_shipped_config_ships_it_off(self):
+        """The default a customer gets. On would spend money on every run."""
+        from agenttic.config import load_config
+        cfg = load_config("config.yaml")
+        assert cfg["harness"]["honeypot_battery"] is False

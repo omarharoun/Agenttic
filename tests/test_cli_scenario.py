@@ -1030,18 +1030,21 @@ class TestTheListSaysWhatItIsNotShowing:
         assert sum(1 for i in ids if i in out) == 1
 
 
-class TestSessionShapeIsHeldOutByAFlagAndNotByAGate:
-    def test_no_shipped_model_declares_a_measurability_gate(self):
+class TestSessionShapeIsHeldOutByAGateOverAFlag:
+    def test_exactly_session_shape_declares_the_gate(self):
         """The fact ``extractors._single``'s docstring asserts, pinned so the
-        prose cannot drift from the models again.
+        prose cannot drift from the models again — in EITHER direction.
 
-        It used to claim `session_shape` declares
-        ``measurable_when="session_turns_instrumented"``. Nothing does — the
-        registered gate has no reference — and what actually holds the dimension
-        out is the per-model ``measurable=False`` flag. The difference matters:
-        ``session_single_turn`` is ``<= 1``, which is True at ZERO turns, so on
-        this build the predicate IS answered for uninstrumented traces and only
-        the flag stands between that answer and a closure figure.
+        This test previously asserted the opposite, and correctly: the docstring
+        claimed `session_shape` declared
+        ``measurable_when="session_turns_instrumented"`` while nothing in the
+        build referenced the registered gate. The claim has now been made true
+        rather than deleted, and the two move together or not at all.
+
+        The floor stays ``measurable=False`` with its reason, because
+        ``Coverpoint`` refuses ``measurable=True`` beside a gate: an ARBITRARY
+        sample still cannot be read for turn shape, and only a batch that carried
+        the instrumentation earns the number.
         """
         from agenttic.coverage.models.baseline import baseline_model
         from agenttic.coverage.models.conversational_transactional import (
@@ -1052,11 +1055,13 @@ class TestSessionShapeIsHeldOutByAFlagAndNotByAGate:
             shape = next(c for c in model.coverpoints
                          if c.coverpoint_id == "session_shape")
             assert shape.measurable is False
-            assert shape.measurable_when is None
+            assert shape.measurable_when == "session_turns_instrumented"
             assert shape.not_measurable_reason.strip()
-            # and no OTHER coverpoint quietly declares one either
+            # and no OTHER coverpoint quietly declares one — gating a dimension
+            # changes what its closure means and moves the model fingerprint, so
+            # a second one must be a diff a human approves.
             assert [c.coverpoint_id for c in model.coverpoints
-                    if c.measurable_when] == []
+                    if c.measurable_when] == ["session_shape"]
 
     def test_the_predicate_is_true_at_zero_turns(self):
         """Which is why the flag is load-bearing rather than belt-and-braces."""

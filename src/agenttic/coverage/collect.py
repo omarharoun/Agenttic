@@ -261,7 +261,18 @@ class CoverpointCoverage:
         if not self.measurable:
             return None
         c = self.countable()
-        return (sum(1 for b in c if self.exhibited(b)) / len(c)) if c else 0.0
+        # `None`, not `0.0`, when the denominator is empty. `measurable` answers
+        # "does a producer exist for this dimension"; it does NOT answer "was any
+        # bin of it actually in the denominator", and the other four exclusions
+        # (`other`, illegal, waived, and classifier-backed-with-no-evaluator) can
+        # empty the list on a coverpoint whose flag says True. Both shipped
+        # scenario producers collect with `classify=None`, so on a fitted model
+        # every semantic bin is unevaluated and `intent`, `emotional_register`
+        # and `policy_vector` each reported a hard 0.0 — "we looked and the suite
+        # never got there" — over bins nothing had looked at. Three of eight
+        # dimensions, each dragging the headline down for not having been
+        # measured. See `not_measurable`, which now names them.
+        return (sum(1 for b in c if self.exhibited(b)) / len(c)) if c else None
 
     @property
     def stimulus_closure(self) -> float | None:
@@ -270,7 +281,10 @@ class CoverpointCoverage:
         if not self.measurable:
             return None
         c = self.countable()
-        return (sum(1 for b in c if b.stimulus_hits > 0) / len(c)) if c else 0.0
+        # Same rule as `trace_closure`, and it has to be the same rule: two
+        # numbers on one coverpoint disagreeing about whether anything was in the
+        # denominator is how a reader ends up trusting the flattering one.
+        return (sum(1 for b in c if b.stimulus_hits > 0) / len(c)) if c else None
 
     @property
     def unhit(self) -> list[str]:
@@ -448,10 +462,26 @@ class CoverageReport:
         rendered identically: for an uninstrumented batch nothing about this
         output moved.
         """
-        return {c.coverpoint_id: c.not_measurable_reason
-                for c in sorted(self.coverpoints.values(),
-                                key=lambda c: c.coverpoint_id)
-                if not c.measurable}
+        out: dict[str, str] = {}
+        for c in sorted(self.coverpoints.values(),
+                        key=lambda c: c.coverpoint_id):
+            if not c.measurable:
+                out[c.coverpoint_id] = c.not_measurable_reason
+            elif not c.countable():
+                # Flagged measurable, and yet nothing of it was in the
+                # denominator. Its closure is `None` for that reason, so it left
+                # the headline — and a dimension that leaves the headline
+                # silently is precisely the "better-looking number describing a
+                # smaller space" this method exists to prevent. The reason comes
+                # from `uncountable_reason`, the one statement of the exclusion
+                # rule, so this list and the closure fraction can never disagree
+                # about which bins were measured.
+                why = sorted({c.uncountable_reason(b) for b in c.bins.values()})
+                out[c.coverpoint_id] = (
+                    "no bin of this dimension was in the denominator, so it is "
+                    "outside the closure figure and was not measured either way: "
+                    + "; ".join(w for w in why if w))
+        return out
 
     def partial_measurability(self) -> dict[str, dict]:
         """coverpoint_id -> how much of the batch its closure was measured over.

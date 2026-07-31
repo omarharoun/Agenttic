@@ -88,17 +88,21 @@ SESSION_SHAPE = Coverpoint(
     description="Single exchange, multi-turn, or resumed against prior memory.",
     kind="deterministic",
     measurable=False,
+    # The floor, and it stays False: a run that emits no `user_turn` span cannot
+    # be read for turn shape, so an ARBITRARY sample is not measurable here. The
+    # gate raises it for the samples that ARE instrumented — which is what the
+    # reason below has been describing, in words, as an unresolved disagreement.
+    measurable_when="session_turns_instrumented",
     not_measurable_reason=(
-        "the run path a suite takes emits no `user_turn` span: a stored case is "
-        "one dict delivered as one user message (adapters/base.py:32), so there "
-        "is no second human turn for it to exhibit. `scenario/session.py` DOES "
-        "emit the span and a session driven by `scenario/user.py` produces "
-        "several, so this is now a statement about which path a run took rather "
-        "than about the whole build — and it stays not-measured because the flag "
-        "is declared per MODEL, not per sample, so one instrumented batch cannot "
-        "speak for an uninstrumented one. Reported as not measured rather than "
-        "credited to single_turn: a trace with no turn markers is evidence of "
-        "absent instrumentation, not of a single-turn session."),
+        "this run emitted no `user_turn` span, so there is no record of who "
+        "spoke and the turn shape cannot be read off it. A stored case is one "
+        "dict delivered as one user message (adapters/base.py:32) and that path "
+        "emits none; `scenario/session.py` stamps one before every delivery, so "
+        "a scenario session IS readable and is measured here. Reported as not "
+        "measured rather than credited to single_turn: a trace with no turn "
+        "markers is evidence of absent instrumentation, not of a single-turn "
+        "session — and `session_single_turn` is `<= 1`, which is True at zero, "
+        "so crediting it would turn missing instrumentation into a result."),
     bins=[
         _det("single_turn", "session_single_turn"),
         _det("multi_turn", "session_multi_turn"),

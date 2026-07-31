@@ -124,6 +124,24 @@ def gated_session_shape(**overrides) -> Coverpoint:
     return Coverpoint(**kw)
 
 
+def ungated_model() -> CoverageModel:
+    """``baseline_model`` with the gate REMOVED from ``session_shape``.
+
+    The shipped baseline now declares `measurable_when="session_turns_instrumented"`,
+    so it is no longer available as the "declares no gate" reference these
+    fingerprint invariants need. Stripping it here keeps the invariant testable
+    against a real shipped model rather than a toy one.
+    """
+    base = baseline_model(closure_target=TARGET)
+    plain = [c.model_copy(update={"measurable_when": None})
+             if c.measurable_when is not None else c
+             for c in base.coverpoints]
+    return CoverageModel(
+        model_id=base.model_id, version=base.version,
+        archetype_id=base.archetype_id, coverpoints=plain,
+        crosses=base.crosses, closure_target=base.closure_target)
+
+
 def gated_model(cp: Coverpoint | None = None,
                 crosses: list[Cross] | None = None) -> CoverageModel:
     """``baseline_model`` with ``session_shape`` gated — the one-line declaration
@@ -288,18 +306,27 @@ class TestTheFingerprint:
     def test_an_ungated_model_hashes_exactly_as_it_did_before(self):
         """The constraint the whole mechanism had to fit inside: churn here
         invalidates every stored scorecard, and it would be churn recording a
-        change these models did not make."""
-        for m in (baseline_model(closure_target=TARGET),
-                  seed_model(closure_target=TARGET)):
-            assert m.bins_fingerprint() == _legacy_fingerprint(m)
+        change the model did not make.
+
+        The subject is now an explicitly UNGATED model, because the shipped
+        baseline has since declared a gate on `session_shape` — a change it DID
+        make, and one whose fingerprint churn is the point rather than a
+        regression (see the class below). The invariant this protects is
+        unchanged and still exactly what matters: the mere EXISTENCE of the
+        `measurable_when` field invalidates nothing.
+        """
+        assert ungated_model().bins_fingerprint() == _legacy_fingerprint(
+            ungated_model())
 
     def test_declaring_a_gate_does_change_it(self):
         """It is the same act as flipping ``measurable``, made conditional — a
         diff a human approves, never a silent edit."""
-        before = baseline_model(closure_target=TARGET).bins_fingerprint()
+        before = ungated_model().bins_fingerprint()
         after = gated_model().bins_fingerprint()
         assert after != before
         assert after != _legacy_fingerprint(gated_model())
+        # and the shipped baseline is now on the `after` side of that line
+        assert baseline_model(closure_target=TARGET).bins_fingerprint() == after
 
     def test_two_different_gates_hash_differently(self):
         """The gate NAME is in the payload, not merely the fact of one: swapping
@@ -403,9 +430,17 @@ class TestAnInstrumentedBatchIsMeasured:
         mechanism has to have teeth on the batch that earns it."""
         batch = [Sample(conversation(i)) for i in range(3)]
         gated = collect(gated_model(), batch)
-        shipped = collect(baseline_model(closure_target=TARGET), batch)
+        # Against the UNGATED reference, not the shipped baseline: the shipped
+        # baseline now DECLARES this gate, so comparing to it would be comparing
+        # a model to itself and would pass for the wrong reason (it did, briefly,
+        # which is how this line got written).
+        ungated = collect(ungated_model(), batch)
         assert gated.coverpoints["session_shape"].required is True
-        assert gated.trace_closure != shipped.trace_closure
+        assert gated.trace_closure != ungated.trace_closure
+        # the shipped model is the gated one, so it has the teeth in production
+        shipped = collect(baseline_model(closure_target=TARGET), batch)
+        assert shipped.trace_closure == gated.trace_closure
+        assert shipped.coverpoints["session_shape"].measurable is True
 
     def test_it_now_produces_a_hole_the_solver_can_actually_aim_at(self):
         """The other half of teeth: `multi_turn` unhit on an instrumented batch
@@ -563,10 +598,27 @@ class TestUngatedCoverpointsAreUntouched:
         assert cov.trace_closure == 0.5
         assert cov.unhit == ["b"]
 
-    def test_the_shipped_models_are_unaffected_until_they_declare_a_gate(self):
+    def test_exactly_one_shipped_coverpoint_declares_a_gate(self):
+        """This test used to assert that NO shipped coverpoint declared a gate —
+        "unaffected until they declare a gate". `session_shape` now does, which
+        is the release this file was written in advance of.
+
+        Pinned as an exact set rather than relaxed to "some are gated": gating a
+        dimension changes what its closure figure means and changes the model
+        fingerprint, so a second one appearing must be a diff a human approves,
+        never something that slips in under a loosened assertion.
+        """
         for m in (baseline_model(closure_target=TARGET),
                   seed_model(closure_target=TARGET)):
-            assert all(c.measurable_when is None for c in m.coverpoints)
+            gated = {c.coverpoint_id for c in m.coverpoints
+                     if c.measurable_when is not None}
+            assert gated == {"session_shape"}, m.model_id
+            assert all(c.measurable_when == "session_turns_instrumented"
+                       for c in m.coverpoints if c.measurable_when)
+            # the floor stays False, so an arbitrary sample is still not read
+            ss = next(c for c in m.coverpoints
+                      if c.coverpoint_id == "session_shape")
+            assert ss.measurable is False and ss.not_measurable_reason
 
 
 # --------------------------------------------------------------------------- #
@@ -600,3 +652,66 @@ class TestIllegalHitsFollowTheSameRule:
         assert [(i.coverpoint_id, i.bin_id, i.count) for i in rep.illegal_hits] \
             == [("session_shape", "multi_turn", 1)]
         assert rep.closed is False
+
+
+# --------------------------------------------------------------------------- #
+# the other half of the same release: a dimension nobody evaluated is not a
+# dimension measured at zero
+# --------------------------------------------------------------------------- #
+
+class TestAnUnevaluatedDimensionLeavesTheHeadlineAndSaysSo:
+    """`measurable` answers "does a producer exist for this dimension". It does
+    NOT answer "was any bin of it in the denominator" — `other`, illegal, waived
+    and classifier-backed-with-no-evaluator can empty the list underneath a flag
+    that says True.
+
+    Both shipped scenario producers collect with ``classify=None`` on purpose, so
+    on a fitted model EVERY semantic bin is unevaluated. `intent`,
+    `emotional_register` and `policy_vector` each reported a hard ``0.0`` — which
+    reads as "we looked and the suite never got there" — over bins nothing had
+    looked at, and dragged the headline down for not having been measured.
+    """
+
+    def _all_unevaluated(self):
+        from agenttic.coverage.collect import BinCoverage, CoverpointCoverage
+        cov = CoverpointCoverage("intent", "semantic", True, False)
+        cov.bins["refund"] = BinCoverage(bin_id="refund", unevaluated=True)
+        cov.bins["status"] = BinCoverage(bin_id="status", unevaluated=True)
+        return cov
+
+    def test_closure_is_none_and_not_zero(self):
+        cov = self._all_unevaluated()
+        assert cov.measurable is True          # a producer exists in principle
+        assert cov.countable() == []           # and nothing was in the denominator
+        assert cov.trace_closure is None       # not 0.0
+        assert cov.stimulus_closure is None    # and the two agree
+
+    def test_it_is_named_in_not_measurable_rather_than_dropped_silently(self):
+        """A closure figure that silently dropped a dimension would be a better
+        looking number describing a smaller space — the one thing this platform
+        must never ship. Leaving the headline is only honest if something says
+        it left."""
+        from agenttic.coverage.collect import CoverageReport
+        cov = self._all_unevaluated()
+        rep = CoverageReport(model_ref="m", bins_fingerprint="f", n_samples=1,
+                             coverpoints={"intent": cov})
+        assert rep.trace_closure == 0.0        # nothing measurable at all
+        assert "intent" in rep.not_measurable
+        why = rep.not_measurable["intent"]
+        assert "outside the closure figure" in why
+        assert "NEVER EVALUATED" in why        # the specific reason, not a shrug
+
+    def test_a_real_zero_is_still_a_zero(self):
+        """The control. A dimension whose bins WERE countable and simply never
+        exhibited must still report 0.0 — that is a finding a generator can be
+        told to close, and turning it into None would hide real gaps."""
+        from agenttic.coverage.collect import (
+            BinCoverage, CoverageReport, CoverpointCoverage)
+        cov = CoverpointCoverage("trajectory", "deterministic", True, False)
+        cov.bins["a"] = BinCoverage(bin_id="a", trace_hits=0)
+        cov.bins["b"] = BinCoverage(bin_id="b", trace_hits=0)
+        assert cov.countable()                 # they ARE in the denominator
+        assert cov.trace_closure == 0.0
+        assert "trajectory" not in CoverageReport(
+            model_ref="m", bins_fingerprint="f", n_samples=1,
+            coverpoints={"trajectory": cov}).not_measurable

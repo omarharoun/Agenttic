@@ -846,28 +846,28 @@ def _session_turns_instrumented(trace: Trace, scenario=None) -> bool:
 def _single(trace: Trace, scenario=None) -> bool:
     """``<= 1`` human turns — arithmetic, and NOT evidence that there was one.
 
-    This docstring used to say the number *"is only ever read for a trace
-    carrying at least one ``user_turn`` span, because `session_shape` declares
-    ``measurable_when="session_turns_instrumented"``"*. No shipped model declares
-    that, and none ever has: the string ``measurable_when=`` appears nowhere in
-    this build outside ``coverage/model.py`` and ``coverage/collect.py``, which
-    define the mechanism. :func:`_session_turns_instrumented` is registered and
-    nothing references it. Both shipped models take `session_shape` from the one
-    ``Coverpoint`` in ``models/conversational_transactional.py`` (``baseline.py``
-    imports that same object), and it carries ``measurable=False`` and NO gate,
-    for the reason it gives in words: *a trace with no turn markers is evidence
-    of absent instrumentation, not of a single-turn session.*
+    The number is only ever READ for a trace carrying at least one ``user_turn``
+    span, because `session_shape` now declares
+    ``measurable_when="session_turns_instrumented"``. That was false for two
+    releases — this docstring asserted it while nothing in the build referenced
+    the registered gate — and both halves have since been made true together:
+    the coverpoint in ``models/conversational_transactional.py`` names the gate
+    (``baseline.py`` imports that same object), and
+    ``tests/test_cli_scenario.py`` pins that exactly one shipped coverpoint does.
 
-    The two are not alternatives, which is the part worth being exact about.
-    ``Coverpoint`` REFUSES ``measurable=True`` beside a ``measurable_when``, so a
-    gated coverpoint declares the flag too and :func:`collect` raises it for the
-    batch that passes the gate. `session_shape` declares the flag and names no
-    gate, so nothing ever raises it: it is not-measurable for every batch, on
-    every path, permanently — not merely until an instrumented run comes along.
+    The flag and the gate are not alternatives, which is the part worth being
+    exact about. ``Coverpoint`` REFUSES ``measurable=True`` beside a
+    ``measurable_when``, so a gated coverpoint declares ``measurable=False`` too
+    and :func:`collect` raises it for the batch that passes. The floor is the
+    honest default: an ARBITRARY sample cannot be read for turn shape, and only a
+    batch that actually carried the instrumentation earns the number.
 
-    So ``<= 1`` is answered at ZERO turns, on every uninstrumented run, and it
-    returns True there. What keeps that answer out of a closure figure is that
-    coverpoint FLAG and not a per-sample gate:
+    So ``<= 1`` is still answered at ZERO turns, on every uninstrumented run, and
+    it still returns True there — the predicate was never tightened to ``== 1``,
+    because with neither bin firing the trace lands in ``other``, whose drift
+    reads as "the model is missing a dimension" when the model is fine and the
+    run is uninstrumented. What keeps that True out of a closure figure is now
+    the GATE on an uninstrumented sample, and the flag beneath it:
     :meth:`~agenttic.coverage.collect.CoverpointCoverage.countable` is empty for
     a not-measurable coverpoint, so its trace closure is ``None`` rather than a
     percentage, its bins are reported waived with the reason, and
