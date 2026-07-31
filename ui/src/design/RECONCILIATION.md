@@ -479,6 +479,63 @@ zero `user_turn` spans, because it filtered bins on the raw `trace_hits` counter
 instead of `countable()`/`exhibited()`. A fabricated number on the marketing page
 and a fabricated bin in the evidence store were one bug wearing two hats.
 
+## Four baselines — the missed half of the fix above, and a limit we outgrew
+
+The entry above fixed the wheel and **left the prose**. For the rest of that day
+agenttic.io said, in two places on one page, "the other four are not measured at
+all" and "the baseline model covers … session shape". An outside reader found it.
+This entry is the other half.
+
+**1. landing (dark + light) — the sentence stopped naming internals.**
+`ui/src/landing/data.ts` claimed the baseline "covers trajectory, tool use,
+session shape, data condition and action risk" — wrong twice in one line: session
+shape is not covered, and `agent steps` was missing, which v3 split out and does
+measure. It over-claimed and under-claimed simultaneously, and its closing boast
+"it prints that list itself" was false, because the list it prints said the
+opposite.
+
+It now reads plainly — "the path taken, whether a tool failed, how many steps it
+took, the state of the data it was handed, and whether what it did could be
+undone" — and says it only reads turn shape on a run that recorded who spoke.
+Nine internal terms became none. The page grows by roughly two lines of wrapped
+body copy; nothing else on it moves.
+
+**2. capabilities (dark + light) — a limit that had become false.** The page whose
+whole promise is enumerating our own limits said: *"a simulated user — a case is
+one input delivered as one message … There is no counterparty to push back."* We
+had built that counterparty. It withholds a fact until the agent asks, gives up
+if the agent never does, and stores its turns verbatim — and it is the reason
+turn shape is measurable at all now. The entry denied it three fields above a
+`not_measurable_reason` that cites `scenario/session.py` by name.
+
+That is the rarer failure and the worse one: everything else here has been an
+over-claim, and this was the page **under**-claiming. The entry is now narrowed to
+the standard run path the way the environment entry was narrowed when the
+scenario loop landed, and it names the counterparty's own limits — scripted and
+offline by default, never sharing the agent's model, a stand-in and not a person.
+`resumed sessions` got the same treatment: recall ACROSS sessions is still
+untested and `resumed_with_memory` stays waived, but turn-by-turn state WITHIN a
+session is exercised now, so the entry says so.
+
+Both `not_covered` entries grow, so the page gets taller — the same direction as
+the recapture above it, and for the same reason: it confesses more.
+
+**`capabilities.fixture.json` was recaptured in this change** with the recipe in
+`e2e/support/console.ts`. Worth noting what the diff showed: five strings moved,
+and **two of them were already stale** — the `session_shape`
+`not_measurable_reason` had changed when the per-sample gate landed and the
+fixture was never recaptured. A stale capture photographs a page the product can
+no longer serve, which is exactly what the file's own comment warns about.
+
+**A guard, so the prose cannot drift from the models again.**
+`verification.test.tsx` globbed `./pages/*.tsx` **only** — which is precisely why
+`src/landing/data.ts` went unchecked while every console page was scanned. The
+marketing copy was the surface most exposed to an unbounded claim and the one
+surface the guard could not see. The glob now includes `./landing/*.ts`, and
+`landing.test.tsx` reads `coverage/models/baseline.py` directly and fails if the
+page claims the baseline covers session shape while the model declares otherwise
+— pinned to the engine, not to a copy of its wording.
+
 Recaptured with `npx playwright test visual.spec.ts --update-snapshots`, then
 re-run clean: 22 passed. No baseline was deleted, and no test assertion was
 weakened to make a screenshot match.

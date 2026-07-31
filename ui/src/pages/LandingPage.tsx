@@ -114,15 +114,21 @@ export function LandingPage() {
           <div>
             <Eyebrow>Agent verification</Eyebrow>
             <h1>A certificate is not a participation award.</h1>
+            {/* The lede used to read "coverage closure, assertions, a bounded
+                formal check ... the sign-off is negative the signing call
+                raises" — five internal terms in two sentences, one of them
+                ("raises") a Python word, in the first paragraph anybody reads.
+                The jargon rule below this file only ever checked the
+                `#why-refused` slice, so the hero was never looked at. */}
             <p className="lp-hero__lede">
-              Agenttic measures what your agent's run actually exercised —
-              coverage closure, assertions, a bounded formal check. When the
-              sign-off is negative the signing call raises, and no certificate
-              exists.
+              Your tests tell you how the agent did on the situations you
+              thought of. We tell you which ones it was never put in — and when
+              too much was never tried, we refuse to certify it and write
+              nothing at all.
             </p>
             <div className="lp-cta">
-              <Button href="#access">Get your closure figure</Button>
-              <Button variant="ghost" href="#check-it">Verify a certificate yourself</Button>
+              <Button href="#access">See what was never tried</Button>
+              <Button variant="ghost" href="#check-it">Check a certificate yourself</Button>
             </div>
             <div className="lp-hero__meta">
               Sits on the traces you already produce · runs on your machines
@@ -168,15 +174,15 @@ export function LandingPage() {
                       meta="support-triage · sample data" />
           <div className="lp-refusal__notes">
             <p>
-              The message names the gate condition, not a grade. It exits 3, so a
-              CI job that calls it fails with it. No file is written, because the
-              write happens after the signing call returns — and here it never
-              returns.
+              It names what was missing, not a grade. It exits with an error, so
+              a build that runs it fails too. And no file is written — the
+              certificate is only written once the signing step has succeeded,
+              and here it never does.
             </p>
             <p>
-              The reasons mirror the sign-off condition for condition. They list
-              the legs that actually blocked the gate and nothing else, so you are
-              never sent to fix the wrong thing.
+              The reasons are the checks themselves, one for one. It lists only
+              what actually blocked it and nothing else, so you are never sent to
+              go and fix the wrong thing.
             </p>
           </div>
         </div>
@@ -185,7 +191,10 @@ export function LandingPage() {
       {/* ---- THERE IS NO force= ---- */}
       <section id="no-force">
         <div className="wrap">
-          <SectionHeading eyebrow="sign_manifest(…) — no override parameter"
+          {/* The `force=` title stays: it is the page's signature claim and it
+              is explained in the next breath by the sub. The EYEBROW was a bare
+              function signature, which told a reader nothing they could use. */}
+          <SectionHeading eyebrow="The signing step takes no override"
             title={<>There is no <code>force=</code>.</>}
             sub={"It takes no override parameter. Not a disabled one, not an "
               + "environment variable, not an internal flag we hold and you do "
@@ -218,16 +227,28 @@ export function LandingPage() {
           <div className="lp-whyref__body">
             <Eyebrow>Why we said no</Eyebrow>
             <h2>Because most of it was never tried.</h2>
-            {/* The examples here named a service being made to time out and a
-                customer pushing back — fault injection and a simulated user,
-                neither of which exists, and /app/capabilities now says so in
-                almost the same words. The examples are the three dimensions the
-                engine really does read off a recording: the state of the data it
-                was handed, whether a tool it called failed, and whether what it
-                did next was reversible. Note the tense: a tool "comes back" an
-                error. We observe that; we do not cause it. The closing sentence
-                is pinned by landing.test.tsx and left exactly as it was — it was
-                never the part that over-claimed. */}
+            {/* THIS PARAGRAPH IS NOW NARROWER THAN THE PRODUCT — a copy decision
+                is owed, and this note is the record of why.
+
+                It once named a service being made to time out and a customer
+                pushing back. Those were removed as over-claims, correctly: fault
+                injection and a simulated user did not exist, and the tense was
+                narrowed to what the engine could really read off a recording — a
+                tool "comes back" an error, which we OBSERVE and did not cause.
+
+                Both exist now. `scenario/faults.py` stages a timeout on a named
+                call and records whether it fired, was skipped, or was never
+                reached; `scenario/user.py` drives a customer that holds a fact
+                back until the agent asks. So the passive tense here is no longer
+                a limit — it is a description of one of two paths, and the page
+                still describes only that one.
+
+                Left as-is deliberately rather than widened in passing: restoring
+                a marketing claim is a positioning decision, not a correctness
+                fix, and this file's history is what happens when copy moves
+                ahead of the engine. The engineering note is corrected because a
+                false note is the same defect one level up; the copy waits for a
+                decision. The closing sentence is pinned by landing.test.tsx. */}
             <p>
               Think of the situations your agent can end up in — the record it
               was handed is incomplete, or two records contradict each other, or

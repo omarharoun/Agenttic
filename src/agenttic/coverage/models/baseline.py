@@ -6,10 +6,13 @@ was handed data in some state. All are extracted from spans with **zero model
 calls**, so this model can be applied to every run on the normal path without
 adding a cent of cost or a second of latency.
 
-`session_shape` is carried but declared NOT MEASURABLE: it is the one dimension
-here whose evidence nothing in the build produces. It is kept rather than
-deleted because naming what cannot be measured is the product's whole claim —
-deleting it would make the gap invisible instead of stated.
+`session_shape` is the one dimension here whose measurability is a fact about the
+RUN rather than about the model. It carries a per-sample gate
+(``session_turns_instrumented``): a scenario session records who spoke and is
+measured, a stored suite case emits no turn marker and is reported NOT MEASURED.
+The floor stays ``measurable=False`` so an arbitrary sample is never read. It is
+kept rather than deleted because naming what cannot be measured is the product's
+whole claim — deleting it would make the gap invisible instead of stated.
 
 That is what lets the console answer *"what was never exercised?"* on a run the
 operator has already done — instead of leading with a pass rate that is silent
@@ -45,13 +48,17 @@ BASELINE_MODEL_ID = "cov-baseline-deterministic"
 BASELINE_LIMITS = (
     "Baseline model: trajectory, tool condition, agent steps, data condition "
     "and the risk class of the actions the agent took — all decided by "
-    "deterministic predicate, with no model call. Session shape is NOT "
-    "MEASURED and is left out of the closure figure rather than credited to "
-    "single-turn: nothing in a run emits a human turn, so no run can exhibit "
-    "one. Agent steps counts model calls, so a trace carrying no `llm_call` "
-    "spans records no step count rather than a single step. It does NOT cover "
-    "intent, emotional register or policy pressure, which need a fitted rubric "
-    "and a calibrated classifier for this agent's archetype."
+    "deterministic predicate, with no model call. Session shape is measured "
+    "only on a run that RECORDED who spoke: a scenario session emits a turn "
+    "marker before every delivery and is measured, while a stored suite case is "
+    "one input handed over once and emits none, so on that path session shape "
+    "is reported NOT MEASURED and left out of the closure figure rather than "
+    "credited to single-turn — a trace with no turn markers is evidence of "
+    "absent instrumentation, not of a single-turn session. Agent steps counts "
+    "model calls, so a trace carrying no `llm_call` spans records no step count "
+    "rather than a single step. It does NOT cover intent, emotional register or "
+    "policy pressure, which need a fitted rubric and a calibrated classifier "
+    "for this agent's archetype."
 )
 
 
@@ -67,9 +74,11 @@ def baseline_model(version: int = 3, closure_target: float | None = None,
     **v3 splits the old ``session_shape``.** It counted `llm_call` spans, so a
     single exchange containing a tool loop was credited as a multi-turn session.
     The step count moves to ``agent_steps``, where it is true; ``session_shape``
-    keeps the turn question and is declared not measurable until something emits
-    a human turn. Closure across a version boundary is not comparable, by
-    construction — ``bins_fingerprint()`` changes so it cannot be done silently.
+    keeps the turn question and is now decided per sample by the
+    ``session_turns_instrumented`` gate — measured on a run that recorded who
+    spoke, reported not measured on one that did not. Closure across a version
+    boundary is not comparable, by construction — ``bins_fingerprint()`` changes
+    so it cannot be done silently.
 
     ``closure_target=None`` means "ask config" (Hard Rule 7). An explicit value
     still wins, so existing callers are unaffected.

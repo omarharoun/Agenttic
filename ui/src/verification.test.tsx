@@ -142,13 +142,21 @@ describe("no console copy makes an unbounded safety claim", () => {
                   "proven safe", "verified safe", "risk-free", "fully secure",
                   "provably safe", "completely safe"];
 
-  const modules = import.meta.glob("./pages/*.tsx", { eager: true, query: "?raw",
-                                                      import: "default" });
+  // `./landing/*.ts` is in the glob deliberately. It used to scan `./pages/*.tsx`
+  // ONLY, which is exactly how the landing's copy constants went unguarded — and
+  // the sentence that claimed the baseline covers `session_shape` lived there,
+  // in `landing/data.ts`, contradicting the wheel three sections above it. The
+  // marketing copy is the surface most exposed to an unbounded claim and was the
+  // one surface this guard could not see.
+  const modules = import.meta.glob(["./pages/*.tsx", "./landing/*.ts"],
+                                   { eager: true, query: "?raw",
+                                     import: "default" });
 
-  it("across every console page source", () => {
+  it("across every console page and landing copy source", () => {
     // The platform's own vacuity rule applies to its own tests: a guard that
     // scanned nothing would pass and prove nothing.
     expect(Object.keys(modules).length).toBeGreaterThan(10);
+    expect(Object.keys(modules).some((p) => p.includes("/landing/"))).toBe(true);
     const offenders: string[] = [];
     for (const [path, src] of Object.entries(modules)) {
       const low = String(src).toLowerCase();

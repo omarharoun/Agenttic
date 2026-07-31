@@ -219,7 +219,7 @@ export const PROOF_STATES = ["proven", "counterexample", "unbounded", "not_attem
 
 export const LIMITS = [
   { h: "Closure is a statement about a declared model",
-    p: "Not about everything the world can do to your agent. The baseline model covers trajectory, tool use, session shape, data condition and action risk. It does not cover intent, emotional register or policy pressure — and it prints that list itself." },
+    p: "Not about everything the world can do to your agent. Without asking a model, the baseline reads five things off a run: the path taken, whether a tool failed, how many steps it took, the state of the data it was handed, and whether what it did could be undone. It does not read why the customer came, how they felt, or whether they pushed against policy — those need a calibrated judge. And it only reads turn shape on a run that recorded who spoke. It prints this list itself." },
   { h: "A bounded check can refute; it never proves",
     p: "`proven` comes only from exhaustive reachability over the finite tool-authorization guard layer. A bounded check reports `unbounded` when it hits its state limit, and `not_attempted` when no solver is installed — never an assumption of safety." },
   { h: "An uncalibrated judge is labelled, not counted",

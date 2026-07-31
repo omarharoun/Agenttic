@@ -303,35 +303,53 @@ def capabilities() -> dict:
             # capability page that enumerates checks and archetypes without saying
             # what the agent was PUT THROUGH describes the measuring instrument and
             # not the experiment. These stay until a harness exists that can make
-            # them false — and the first one has now been made NARROWER rather
-            # than false: `agenttic cdv` runs an agent in a stateful retail world
-            # (`agenttic.scenario`) that stages the five declared tool conditions
-            # on the call a plan names. Everything a customer runs — a stored
-            # suite through `run_standard` — still gets none of it, so the
-            # disclosure stays and states which path it is about. Widening it to
-            # "we simulate environments" on the strength of a CLI loop and eight
-            # retail tools would be the over-claim this list exists to prevent.
+            # them false — and the first two have now been made NARROWER rather
+            # than false. `agenttic cdv` and `agenttic scenario run` put an agent
+            # in a stateful retail world (`agenttic.scenario`) that stages the
+            # five declared tool conditions on the call a plan names, with a
+            # counterparty that holds a fact back until it is asked. Everything a
+            # customer runs — a stored suite through `run_standard` — still gets
+            # none of it, so both disclosures stay and state which path they are
+            # about. Widening either to "we simulate environments" or "we
+            # simulate users" on the strength of two CLI paths and eight retail
+            # tools would be the over-claim this list exists to prevent.
+            #
+            # The rule this list keeps learning: a limit that has become false is
+            # as much a defect as a claim that was never true. It just fails in
+            # the flattering-in-reverse direction, which is why it survives
+            # longer — nobody audits a page for being too modest.
             "a simulated environment on the standard run path — a suite case is "
             "one input dict handed to the agent once, with no world to act in and "
             "no fault injection: nothing on that path makes a service time out, "
             "return a 500, or refuse a write, and where coverage names a tool "
             "condition there it is reading what the trace or the scenario says "
-            "the condition WAS. The `agenttic cdv` loop is the exception and its "
-            "limits are its own: one offline retail world of eight declared "
-            "tools, faults staged only on tools THIS platform executes (a "
-            "black-box agent calling its own tools cannot be fault-injected), and "
-            "a fault credits a coverage bin only where the injector stamped the "
-            "call it failed",
-            "a simulated user — a case is one input delivered as one message and "
-            "the agent's reply ends the case. There is no counterparty to push "
-            "back, supply a missing detail, change its mind, or ask a second "
-            "question, so nothing on this surface is evidence about what the agent "
-            "does after its first answer",
-            "resumed sessions — every run starts with an empty context and ends "
-            "with the agent's first final output. Nothing is carried across a "
-            "session boundary by the harness, so multi-turn state and recall "
-            "across sessions are untested here (the memory battery above tests a "
-            "memory STORE directly, with no agent in the loop)",
+            "the condition WAS. The scenario paths are the exception — the "
+            "`agenttic cdv` loop and `agenttic scenario run`, which drives one "
+            "scenario and stores it — and their limits are their own: one "
+            "offline retail world of eight declared tools, faults staged only on "
+            "tools THIS platform executes (a black-box agent calling its own "
+            "tools cannot be fault-injected), and a fault credits a coverage bin "
+            "only where the injector stamped the call it failed",
+            "a simulated user on the standard run path — a suite case is one "
+            "input delivered as one message and the agent's reply ends the case, "
+            "so on that path there is no counterparty to push back, supply a "
+            "missing detail, change its mind or ask a second question, and "
+            "nothing on that surface is evidence about what the agent does after "
+            "its first answer. The scenario path is the exception and its limits "
+            "are its own: a simulated customer that withholds a fact until the "
+            "agent asks for it, answers when asked correctly, and gives up or "
+            "hits OUR turn ceiling when it never does. Scripted and offline by "
+            "default; a model-driven one may not share the agent's model; either "
+            "way every turn is stored verbatim so a session can be re-read "
+            "rather than re-run. It is a stand-in, not a person, and evidence it "
+            "produces is declared `user_source: simulated`",
+            "resumed sessions — a run starts with an empty context and nothing "
+            "is carried across a session boundary by the harness, so recall "
+            "ACROSS sessions is untested here and the `resumed_with_memory` bin "
+            "stays waived: nothing seeds prior state for an agent to remember. "
+            "Turn-by-turn state WITHIN one scenario session is exercised and "
+            "recorded. (The memory battery above tests a memory STORE directly, "
+            "with no agent in the loop.)",
             # This one is a limit of the CHECKS rather than of the harness, and
             # it is the one that gets WORSE as the harness improves: while a run
             # is one message the distinction cannot be observed, so the day a
