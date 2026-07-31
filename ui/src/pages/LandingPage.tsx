@@ -10,7 +10,7 @@ import {
   SHOW_SOCIAL_PROOF, ASSISTANTS, type TabKey, SAMPLE_METRICS, SAMPLE_ROWS,
   CONFIDENCE, COVERAGE_CLAIMS, TRUST, FAQ, REFUSAL_REASONS, ON_TOP,
   STAT_BAND, REFUSAL_TRANSCRIPT, REFUSAL_CONDITIONS, LIMITS, PROOF_STATES,
-  VERIFY_TRANSCRIPT, VERIFY_STATES,
+  VERIFY_TRANSCRIPT, VERIFY_STATES, ENGINE_CAPS, ENGINE_SCOPE,
 } from "../landing/data";
 import "../landing/landing.css";
 
@@ -227,33 +227,30 @@ export function LandingPage() {
           <div className="lp-whyref__body">
             <Eyebrow>Why we said no</Eyebrow>
             <h2>Because most of it was never tried.</h2>
-            {/* THIS PARAGRAPH IS NOW NARROWER THAN THE PRODUCT — a copy decision
-                is owed, and this note is the record of why.
+            {/* The copy decision this note used to defer is made.
 
                 It once named a service being made to time out and a customer
-                pushing back. Those were removed as over-claims, correctly: fault
-                injection and a simulated user did not exist, and the tense was
-                narrowed to what the engine could really read off a recording — a
-                tool "comes back" an error, which we OBSERVE and did not cause.
+                pushing back. Those were removed as over-claims, correctly:
+                fault injection and a simulated user did not exist, and the tense
+                was narrowed to what could be read off a recording — a tool
+                "comes back" an error, which we OBSERVE and did not cause.
 
-                Both exist now. `scenario/faults.py` stages a timeout on a named
+                Both exist now (`scenario/faults.py` stages a fault on a named
                 call and records whether it fired, was skipped, or was never
-                reached; `scenario/user.py` drives a customer that holds a fact
-                back until the agent asks. So the passive tense here is no longer
-                a limit — it is a description of one of two paths, and the page
-                still describes only that one.
+                reached; `scenario/user.py` drives a customer who holds a fact
+                back until asked), so the passive tense had stopped being a limit
+                and started being a description that undersold the engine. The
+                active claims live in the ENGINE section below, where they can
+                carry their own scope line; this paragraph stays about the SPACE
+                of situations, which is what the wheel beside it measures.
 
-                Left as-is deliberately rather than widened in passing: restoring
-                a marketing claim is a positioning decision, not a correctness
-                fix, and this file's history is what happens when copy moves
-                ahead of the engine. The engineering note is corrected because a
-                false note is the same defect one level up; the copy waits for a
-                decision. The closing sentence is pinned by landing.test.tsx. */}
+                The closing sentence is pinned by landing.test.tsx. */}
             <p>
               Think of the situations your agent can end up in — the record it
               was handed is incomplete, or two records contradict each other, or
-              a tool it called comes back an error, or the thing it does next
-              cannot be undone. That whole range is the circle.
+              a tool it called times out, or a customer will not volunteer the
+              one detail that matters, or the thing it does next cannot be
+              undone. That whole range is the circle.
             </p>
             <p>
               The filled part is what your tests actually put it through. The gap
@@ -266,6 +263,27 @@ export function LandingPage() {
               question, answered well.
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* ---- THE ENGINE: what we can CAUSE ---- */}
+      <section id="engine">
+        <div className="wrap">
+          <SectionHeading eyebrow="The engine"
+            title="Some of it we can cause, not just wait for."
+            sub="Reading a recording tells you what happened to your agent. It cannot tell you what happens when the order lookup times out on the third call, or when the customer will not say the order number until asked. For that we run your agent in a world." />
+          <div className="lp-grid lp-grid--2">
+            {ENGINE_CAPS.map((t) => (
+              <div className="lp-cell" key={t.h}>
+                <h3>{t.h}</h3>
+                <p>{t.p}</p>
+              </div>
+            ))}
+          </div>
+          <p className="lp-ontop__names">{ENGINE_SCOPE}</p>
+          <p className="lp-ontop__names">
+            <Link to="/engine">How the engine works, end to end →</Link>
+          </p>
         </div>
       </section>
 

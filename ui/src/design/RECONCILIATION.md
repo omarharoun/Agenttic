@@ -571,3 +571,28 @@ early: a concurrent session had LandingPage.tsx, capabilities.py and the fixture
 open and uncommitted, and recapturing then would have baked that in-progress work
 into these PNGs and attributed it to the nav change. Recaptured only once every
 source change was committed. 22 passed. No baseline deleted, no assertion weakened.
+
+## landing (dark + light) — the copy decision the source had been deferring
+
+`LandingPage.tsx` carried a note reading *"THIS PARAGRAPH IS NOW NARROWER THAN
+THE PRODUCT — a copy decision is owed, and this note is the record of why."* It
+had been left deliberately narrow: an earlier pass removed claims about a service
+being made to time out and a customer pushing back, correctly, because neither
+existed — the page was naming the exact capabilities the engine lacked.
+
+They exist now, so the note's condition was met and the decision was made. The
+page gains an **Engine** section stating four things this build does rather than
+observes: a world whose records change behind a policy gateway, a counterparty
+who withholds a fact until asked, a fault staged on a named call and reported as
+fired / skipped / never reached, and the divergence between the corner the
+generator asked for and what the run produced.
+
+What keeps it from becoming the over-claim the rest of the page argues against is
+the scope line directly beneath it: this is the `agenttic scenario run` and
+`agenttic cdv` path, and a stored suite of your own cases still runs one message
+per case and gets none of it. That sentence is pinned by a test, and removing it
+fails the suite — verified by deleting it and watching the assertion fire.
+
+Only the landing baselines move; the section is on that page alone. One
+`console dashboard — dark` failure during re-verify was flake, cleared by two
+subsequent full runs (22 passed).

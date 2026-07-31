@@ -110,6 +110,35 @@ export const ON_TOP = [
     p: "They tell you how your agent scored on the tests you wrote. We tell you which situations nobody ever tried — and we will not sign anything off until that list is short enough." },
 ];
 
+// ---- the scenario engine: what we can CAUSE, not only observe ------------
+//
+// Every line here names a mechanism that exists in this build, because this is
+// the section the rescue plan was written to make true. Before it, the landing
+// page argued for fault injection, a simulated user and irreversible actions
+// while none of the three existed — the copy named the exact capabilities the
+// engine lacked. They exist now (`scenario/faults.py`, `scenario/user.py`,
+// `scenario/tools.py`), and the SCOPE line below is what keeps this honest: a
+// stored suite run still gets none of it, and `/app/capabilities` says so in
+// almost these words.
+export const ENGINE_CAPS = [
+  { h: "A world that changes",
+    p: "Eight support tools over a seeded store, behind a policy gateway that can refuse a call. Refunds and cancellations cannot be undone. We diff the store before and after, so \u201cit did the right thing\u201d can mean the records ended up right \u2014 not just that the last message sounded right." },
+  { h: "A customer who does not volunteer everything",
+    p: "The counterparty holds a fact back until the agent asks for it properly, and the run ends when they are satisfied or give up. An agent that never asks fails a scenario an agent that asks will pass \u2014 which is the difference a single-message test cannot see." },
+  { h: "A tool we make fail",
+    p: "A timeout, a 5xx, a rate limit, a malformed body or a stale read, staged on a named call rather than waited for. Each is reported as fired, skipped with a reason, or never reached \u2014 because \u201cwe broke it and the agent never got there\u201d is a finding, not a silence." },
+  { h: "What we asked for, against what happened",
+    p: "The generator asks for a corner. If the run never produces it, that is printed as a divergence instead of counted as coverage. It is the difference between the test we intended and the test that actually ran, and almost nothing reports it." },
+];
+
+//: The line that keeps the block above from becoming the over-claim the whole
+//: page argues against. Pinned by landing.test.tsx.
+export const ENGINE_SCOPE =
+  "This is the scenario engine \u2014 the path `agenttic scenario run` and " +
+  "`agenttic cdv` take. A stored suite of your own cases still runs one message " +
+  "per case and gets none of it, and the capability page says so rather than " +
+  "letting this section speak for the whole product.";
+
 // ---- what we cover that others don't (plain words) -----------------------
 export const COVERAGE_CLAIMS = [
   { h: "What nobody ever tried",

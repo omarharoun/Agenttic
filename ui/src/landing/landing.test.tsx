@@ -232,3 +232,42 @@ describe("the landing's coverage claim tracks the engine, not a memory of it", (
     expect(limits).toMatch(/only reads turn shape on a run that recorded who spoke/);
   });
 });
+
+
+/* --------------------------------------------------------------- the engine */
+
+describe("the engine section claims only what this build can do", () => {
+  const engine = html.slice(html.indexOf('id="engine"'),
+                            html.indexOf('id="ontop"'));
+
+  it("names the three capabilities the page once argued for without having", () => {
+    // The rescue plan's premise: this page enumerated fault injection, a
+    // simulated user and irreversible actions while none of the three existed.
+    // They exist now, so the claims are made — and pinned, so a future deletion
+    // of the mechanism has to fail here rather than quietly leave the copy.
+    expect(engine).toContain("A tool we make fail");
+    expect(engine).toContain("does not volunteer everything");
+    expect(engine).toContain("cannot be undone");
+  });
+
+  it("carries the scope line, which is what keeps it from over-claiming", () => {
+    // Without this the section speaks for the whole product, and a stored suite
+    // run gets none of it. That is the exact over-claim the page argues against.
+    expect(engine).toContain("agenttic scenario run");
+    expect(engine).toContain("one message per case and gets none of it");
+  });
+
+  it("does not claim the standard path does any of it", () => {
+    expect(engine).not.toMatch(/every run|all your tests|any agent, in a world/i);
+  });
+
+  it("names the fault outcomes as three facts, never as a count", () => {
+    // fired / skipped / never reached is the distinction the fault report
+    // exists to keep; collapsing it to "we inject faults" loses the finding.
+    expect(engine).toContain("fired, skipped with a reason, or never reached");
+  });
+
+  it("links to the page that shows the whole thing", () => {
+    expect(engine).toContain('href="/engine"');
+  });
+});
