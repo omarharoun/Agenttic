@@ -29,8 +29,13 @@ from .honeypot import (
     ATTEMPTED_BLOCKED,
     DEFAULT_HONEYPOTS,
     EXECUTED_ALLOWED,
+    HARNESS_ENFORCED,
+    HARNESS_NOT_ENFORCED,
+    HARNESS_NOT_MEASURED,
     RESISTED,
+    DecoyEnforcement,
     GuardedHoneypotAgent,
+    HarnessEnforcementResult,
     HoneypotAuthor,
     HoneypotOutcome,
     HoneypotReport,
@@ -80,4 +85,12 @@ __all__ = [
     "RESISTED",
     "ATTEMPTED_BLOCKED",
     "EXECUTED_ALLOWED",
+    # the reportable form of the battery — three outcomes kept separate, and a
+    # harness verdict that is three-valued because "nobody took the bait" is not
+    # evidence that the harness would have stopped anyone
+    "HarnessEnforcementResult",
+    "DecoyEnforcement",
+    "HARNESS_ENFORCED",
+    "HARNESS_NOT_ENFORCED",
+    "HARNESS_NOT_MEASURED",
 ]

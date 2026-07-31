@@ -1,10 +1,15 @@
 """The baseline coverage model — applies to ANY run, for free (SPEC-13 Step 59).
 
-The four deterministic coverpoints are archetype-independent: every agent run has
-a trajectory shape, met some tool condition, ran in some session shape, and was
-handed data in some state. All four are extracted from spans with **zero model
+The deterministic coverpoints are archetype-independent: every agent run has a
+trajectory shape, took some number of model steps, met some tool condition, and
+was handed data in some state. All are extracted from spans with **zero model
 calls**, so this model can be applied to every run on the normal path without
 adding a cent of cost or a second of latency.
+
+`session_shape` is carried but declared NOT MEASURABLE: it is the one dimension
+here whose evidence nothing in the build produces. It is kept rather than
+deleted because naming what cannot be measured is the product's whole claim —
+deleting it would make the gap invisible instead of stated.
 
 That is what lets the console answer *"what was never exercised?"* on a run the
 operator has already done — instead of leading with a pass rate that is silent
@@ -21,43 +26,66 @@ from __future__ import annotations
 
 from agenttic.coverage.model import CoverageModel, Cross
 from agenttic.coverage.models.conversational_transactional import (
-    ACTION_RISK, DATA_CONDITION, SESSION_SHAPE, TOOL_CONDITION, TRAJECTORY)
+    ACTION_RISK, AGENT_STEPS, DATA_CONDITION, SESSION_SHAPE, TOOL_CONDITION,
+    TRAJECTORY)
+from agenttic.coverage.targets import closure_target as _target_from_config
 
 BASELINE_MODEL_ID = "cov-baseline-deterministic"
 
 #: what this model deliberately does not cover — printed with the numbers so a
 #: baseline result is never read as a fitted one.
+#  Every clause below is checkable against the model this module returns, because
+#  this string is the only copy that travels with the number. "extracted
+#  deterministically from the trace" was not quite true (tool_condition also
+#  reads what the scenario injected), and the string was silent on the one thing
+#  a reader will hit first on a black-box scan: agent_steps needs `llm_call`
+#  spans, and a trace without them lands in `other`. An unexplained 0% is read as
+#  "the suite never got there" — a finding someone would try to fix — when it
+#  means the step count was never observable.
 BASELINE_LIMITS = (
-    "Baseline model: trajectory, tool, session and data conditions, plus the "
-    "risk class of the actions the agent took — all extracted deterministically "
-    "from the trace. It does NOT cover intent, emotional register or policy "
-    "pressure, which need a fitted rubric and a calibrated classifier for this "
-    "agent's archetype."
+    "Baseline model: trajectory, tool condition, agent steps, data condition "
+    "and the risk class of the actions the agent took — all decided by "
+    "deterministic predicate, with no model call. Session shape is NOT "
+    "MEASURED and is left out of the closure figure rather than credited to "
+    "single-turn: nothing in a run emits a human turn, so no run can exhibit "
+    "one. Agent steps counts model calls, so a trace carrying no `llm_call` "
+    "spans records no step count rather than a single step. It does NOT cover "
+    "intent, emotional register or policy pressure, which need a fitted rubric "
+    "and a calibrated classifier for this agent's archetype."
 )
 
 
-def baseline_model(version: int = 2, closure_target: float = 0.95) -> CoverageModel:
+def baseline_model(version: int = 3, closure_target: float | None = None,
+                   cfg: dict | None = None) -> CoverageModel:
     """The always-applicable deterministic coverage model.
 
-    **v2 adds ``action_risk``**, which is why baseline closure reads lower than
-    it did under v1: the model now asks whether a risky action was ever
-    exercised at all. Under v1 a run could trip a CRITICAL irreversible-action
-    violation without closure moving a single point — coverage recorded what the
-    environment did to the agent and never what the agent did to the world.
-    Comparisons across the version boundary are invalid by construction;
-    ``bins_fingerprint()`` changes so this cannot be done silently.
+    **v2 added ``action_risk``**: under v1 a run could trip a CRITICAL
+    irreversible-action violation without closure moving a single point, because
+    coverage recorded what the environment did to the agent and never what the
+    agent did to the world.
+
+    **v3 splits the old ``session_shape``.** It counted `llm_call` spans, so a
+    single exchange containing a tool loop was credited as a multi-turn session.
+    The step count moves to ``agent_steps``, where it is true; ``session_shape``
+    keeps the turn question and is declared not measurable until something emits
+    a human turn. Closure across a version boundary is not comparable, by
+    construction — ``bins_fingerprint()`` changes so it cannot be done silently.
+
+    ``closure_target=None`` means "ask config" (Hard Rule 7). An explicit value
+    still wins, so existing callers are unaffected.
     """
     return CoverageModel(
         model_id=BASELINE_MODEL_ID,
         version=version,
         archetype_id="",                    # archetype-independent by design
-        coverpoints=[TRAJECTORY, TOOL_CONDITION, SESSION_SHAPE, DATA_CONDITION,
-                     ACTION_RISK],
+        coverpoints=[TRAJECTORY, TOOL_CONDITION, AGENT_STEPS, SESSION_SHAPE,
+                     DATA_CONDITION, ACTION_RISK],
         crosses=[
             # the one cross that pays for itself everywhere: did we ever see how
             # this agent behaves when a tool misbehaves?
             Cross(cross_id="tool_x_trajectory",
                   coverpoints=["tool_condition", "trajectory"], target="all"),
         ],
-        closure_target=closure_target,
+        closure_target=(closure_target if closure_target is not None
+                        else _target_from_config(cfg)),
     )

@@ -23,7 +23,25 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-SCHEMA_VERSION = "0.2.0"  # 0.2.0: + optional Trace.source provenance (MINOR)
+SCHEMA_VERSION = "0.4.0"  # 0.4.0: + optional Trace.session_id (MINOR)
+#
+# 0.3.0 added the ``user_turn``/``env_step`` span kinds. Why both kinds landed in
+# ONE bump: a new ``SpanKind`` member is MINOR by the rule above, and every stored
+# trace stamps ``schema_version`` from this constant. Two bumps for two additive
+# members would give one change two version strings and make traces written
+# between them look like a distinct generation of the schema — for no benefit,
+# since neither member alters how an existing trace validates.
+#
+# 0.4.0 adds ``Trace.session_id``, optional and defaulting to None, so every
+# stored trace and every fixture stays valid unread: a trace without one is a
+# single-shot run, which is what every trace written before this bump was. It is
+# MINOR and not MAJOR because nothing about an existing field moved.
+#
+# The bump costs one line here because the fixtures read SCHEMA_VERSION rather
+# than a literal. That claim was verified, not assumed, before this edit:
+# ``grep -rn '0\.3\.0' tests/ src/`` returns only this module and one prose
+# reference in verification/builtins.py — no fixture, JSON or YAML anywhere in
+# the tree pins a version string.
 
 SpanKind = Literal[
     "llm_call",
@@ -32,6 +50,31 @@ SpanKind = Literal[
     "agent_decision",
     "error",
     "final_output",
+    # The COUNTERPARTY speaking — a human, or a simulated one. The only thing
+    # that starts a turn, and the reason this kind exists: `session_shape`
+    # coverage was counting `llm_call` spans, so one human message that provoked
+    # a three-tool loop was recorded as a multi-turn session. Turns are a
+    # property of who spoke, and nothing in the schema could express that.
+    #
+    # Adding the kind made the bin CONSTRUCTIBLE, which is not the same as
+    # measured — conflating those two is the bug this whole change exists to
+    # undo. A producer now exists: `scenario/session.py` emits `user_turn`, and a
+    # session driven by `scenario/user.py` produces several, which the coverage
+    # extractor credits to `session_multi_turn` off the trace.
+    #
+    # `session_shape` is STILL declared not-measurable, and the reason moved
+    # rather than disappeared: measurability is declared per coverage MODEL, not
+    # per sample, and the path a stored suite takes still emits no turn markers
+    # at all. One instrumented batch cannot speak for an uninstrumented one. See
+    # that coverpoint's own `not_measurable_reason`, and `extractors._single` for
+    # the predicate-versus-reason disagreement the flag is currently hiding.
+    "user_turn",
+    # The environment acting on its own account: a fault injector firing a
+    # timeout, seeded memory being written, a session resumed against prior
+    # state. Distinct from `tool_call`, which is the agent acting ON the
+    # environment — a fault the harness injected must never be readable as
+    # something the agent did.
+    "env_step",
 ]
 
 
@@ -68,6 +111,21 @@ class Trace(BaseModel):
     agent_id: str
     agent_config_hash: str
     test_case_id: str | None = None  # None => live/production trace
+    # The conversation this run belongs to, when it belongs to one.
+    #
+    # ``None`` is the honest default and the reason this is optional: every trace
+    # ever written by this platform is one dict delivered as one user message
+    # (adapters/base.py `run`), which is not a session — it is a run that had no
+    # conversation around it. Stamping those with a synthetic session id would
+    # make "this run was part of a conversation" unfalsifiable, and the
+    # `session_shape` coverpoint exists precisely because that distinction was
+    # being guessed rather than recorded.
+    #
+    # Set by `scenario.session.Session.to_trace`, which owns the id. Deliberately
+    # NOT a foreign key the schema enforces: an ingested trace may carry a
+    # session id minted by a producer this platform has never seen, and refusing
+    # it would mean dropping the one field that says the turns belong together.
+    session_id: str | None = None
     spans: list[Span] = Field(default_factory=list)
     visibility: Literal["glass_box", "black_box"]
     final_output: str

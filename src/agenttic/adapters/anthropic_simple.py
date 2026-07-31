@@ -9,6 +9,7 @@ never crashes (Hard Rule 5).
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import operator
 import time
@@ -110,6 +111,38 @@ class AnthropicSimpleAgent(AgentAdapter):
 
     # -- AgentAdapter interface -------------------------------------------
 
+    def _kb_fingerprint(self) -> str:
+        """Content identity of the knowledge base ``lookup_kb`` reads.
+
+        The KB is not a side input — it is half of what ``lookup_kb`` answers
+        with, so two agents differing only in their KB are two different agents
+        under test. It must therefore reach ``config_hash()``, which the harness
+        uses to decide a case can be RESUMED from a stored trace
+        (``harness/runner.py`` ``done`` map). Hash the CONTENT, not the path:
+        the case that bites is a corrected ``kb.json`` written back to the same
+        filename, where a path-keyed hash would silently serve the old traces.
+
+        An unreadable KB is itself part of the configuration under test (every
+        ``lookup_kb`` call will fail), so name the failure rather than collapsing
+        every broken KB onto one hash — but keep it to the exception TYPE so the
+        value stays deterministic and machine-independent (no paths, no errno
+        text).
+
+        ONE-TIME OPERATIONAL COST, stated rather than discovered: adding this key
+        changes ``describe()`` and therefore ``config_hash()`` for every
+        ``AnthropicSimpleAgent`` that has ever run, including ones whose KB never
+        changed. ``config_hash`` is the resume key (``harness/runner.py`` matches
+        ``t.agent_config_hash``) and part of the result-cache key, so the first
+        run after this lands resumes nothing and re-executes every case at full
+        cost. That is the correct trade — the alternative is the bug this exists
+        to close, where a corrected ``kb.json`` written back to the same filename
+        silently served the old traces — but it is a real bill on the next run and
+        an operator should not have to infer it from a cache miss."""
+        try:
+            return hashlib.sha256(self.kb_path.read_bytes()).hexdigest()[:16]
+        except OSError as exc:
+            return f"unreadable:{type(exc).__name__}"
+
     def describe(self) -> dict:
         return {
             "adapter": "AnthropicSimpleAgent",
@@ -117,6 +150,8 @@ class AnthropicSimpleAgent(AgentAdapter):
             "system_prompt": self.system_prompt,
             "tools": [t["name"] for t in TOOLS],
             "max_steps": self.max_steps,
+            # the tool's DATA, by content — see _kb_fingerprint
+            "kb_sha256": self._kb_fingerprint(),
         }
 
     def run(self, test_input: dict, *, test_case_id: str | None = None) -> Trace:

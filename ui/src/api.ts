@@ -362,6 +362,119 @@ export interface ServiceStatus {
   components: ComponentHealth[];
 }
 
+/* --- stored scenario runs (GET /api/scenario-runs) ------------------------
+ *
+ * One realized scenario driven against one agent through the enforcement
+ * gateway, in a world that can be made to fail on cue. The types below mirror
+ * `registry/sqlite_store._scenario_run_from_payload` exactly, INCLUDING the
+ * nullables — every one of them is a distinct claim and none may be normalised
+ * away on the way in:
+ *
+ *   faults.recorded === false  → the four lists are null: no report was stored,
+ *                                which is not "nothing was staged".
+ *   coverage.measured === false→ bins is null: nobody measured, which is not
+ *                                "measured and credited nothing" (bins: []).
+ *   derived.n_user_turns null  → the trace could not be read. Not zero.
+ */
+export interface ScenarioFault {
+  tool: string;
+  call_index: number;
+  kind: string;                 // timeout|error_5xx|rate_limited|stale_data|malformed_response
+  once: boolean;
+  truncate_pct?: number;        // malformed_response only
+  step?: number;                // once it is an event (fired or skipped)
+  observable?: boolean;         // fired only
+  reason?: string;              // skipped only — why it could not happen
+}
+export interface ScenarioFaultCounts {
+  planned: number; fired: number; skipped: number; never_reached: number;
+}
+/** A recorded fault report, or the ABSENCE of one. The four lists are four
+ *  different facts; only `fired` is a thing that happened to the run. */
+export interface ScenarioFaults {
+  recorded: boolean;
+  source: string | null;        // scenario_plan|requested_tool_condition|explicit|none
+  planned: ScenarioFault[] | null;
+  fired: ScenarioFault[] | null;
+  skipped: ScenarioFault[] | null;
+  never_reached: ScenarioFault[] | null;
+  counts: ScenarioFaultCounts | null;
+  /** present when a stored report could not be reconstructed on read */
+  problem?: string;
+}
+/** One transcript line. `kind`/`discloses`/`revealed_fact`/`delivered` are facts
+ *  about a COUNTERPARTY turn and are absent on an agent reply — hence optional
+ *  rather than a union, which is also how the backend emits them. */
+export interface TranscriptEntry {
+  speaker: string;              // "user" | "agent"
+  text: string;                 // may be "" — the agent said nothing
+  kind?: string;                // open|reveal|pushback|reply|close
+  discloses?: string;           // hidden_facts key, "" when none
+  revealed_fact?: boolean;      // derived: discloses !== ""
+  delivered?: boolean;          // derived: false exactly for the closing turn
+}
+/** One row of `CoverageReport.divergence()`, stored VERBATIM by
+ *  `Registry.save_scenario_run` and served back under the coverage block. It is
+ *  the OPPOSITE of an exhibited bin: the stimulus point asked for this corner
+ *  and the run never produced it.
+ *
+ *  `exhibited` is 0 by construction — the row exists because it is 0 — and is
+ *  carried rather than assumed, so a payload that ever says otherwise shows what
+ *  it says. These rows are a fact about the GENERATOR's reach and are never
+ *  summed into a coverage number. */
+export interface CoverageDivergence {
+  coverpoint_id: string;
+  bin_id: string;
+  requested: number;            // how many samples asked for this corner
+  exhibited: number;            // 0 — that is why the row is here
+}
+export interface ScenarioRunRow {
+  run_id: string; scenario_id: string; agent_id: string; trace_id: string;
+  space_ref: string; space_fingerprint: string; seed: number;
+  created_at: string;           // ISO-8601 UTC; no offset suffix on SQLite
+  ended: string;                // "" for a single-shot run
+  conversational: boolean; world_changed: boolean; n_blocked: number;
+  faults: { recorded: boolean; counts: ScenarioFaultCounts | null };
+}
+export interface ScenarioRunDetail {
+  run_id: string; scenario_id: string; agent_id: string; trace_id: string;
+  space_ref: string; space_fingerprint: string; seed: number;
+  created_at: string;
+  point: Record<string, string>;
+  ticket: string;
+  session_id: string;           // "" for a single-shot run
+  ended: string;
+  transcript: TranscriptEntry[];
+  state_diff: Record<string, { before: unknown; after: unknown }>;
+  blocked: string[];            // tool NAMES the gateway refused
+  interactions: Record<string, unknown>[];
+  faults: ScenarioFaults;
+  elicitation: { disclosed: string[]; withheld: string[] };
+  /** `measured` speaks for `bins` and for NOTHING else — the registry collects
+   *  the two halves at different moments, so `{measured: true, bins: [...],
+   *  divergence: null}` is a real row: the bins were counted and nobody computed
+   *  divergence. `divergence` therefore answers its own presence question:
+   *    null      → NOT RECORDED. Nobody computed it for this run.
+   *    []        → computed, and every requested corner appeared. A measurement.
+   *    [...]     → the point asked for these corners and the run did not produce
+   *                them.
+   *  The key is optional because a row written before the field existed carries
+   *  no key at all; that reads as not recorded, like `null`. */
+  coverage: { measured: boolean; bins: string[] | null;
+              divergence?: CoverageDivergence[] | null };
+  user_provenance: Record<string, unknown>;
+  disclosures: Record<string, unknown>[];
+  derived: {
+    conversational: boolean;
+    n_user_turns: number | null;
+    world_changed: boolean;
+    n_changed_fields: number;
+    n_blocked: number;
+    elicitation_complete: boolean | null;
+    content_sha256: string;
+  };
+}
+
 export const api = {
   /** The verification surface — what this platform tests, enumerated from the
    *  live registries so the page can never overstate what is implemented. */
@@ -730,6 +843,24 @@ export const api = {
 
   listTraces: () => afetch("/api/traces").then((r) => json<any[]>(r)),
   getTrace: (id: string) => afetch(`/api/traces/${id}`).then((r) => json<any>(r)),
+
+  // --- stored scenario runs --------------------------------------------
+  /** This tenant's stored scenario runs, NEWEST FIRST. `scenario_id` and
+   *  `agent_id` are exact matches; `limit` is clamped server-side to 1..500. */
+  listScenarioRuns: (q: { scenario_id?: string; agent_id?: string; limit?: number } = {}) => {
+    const p = new URLSearchParams();
+    if (q.scenario_id) p.set("scenario_id", q.scenario_id);
+    if (q.agent_id) p.set("agent_id", q.agent_id);
+    if (q.limit != null) p.set("limit", String(q.limit));
+    const qs = p.toString();
+    return afetch(`/api/scenario-runs${qs ? `?${qs}` : ""}`).then(
+      (r) => json<{ count: number; runs: ScenarioRunRow[] }>(r));
+  },
+  /** One stored run in full. The body is the registry's view over the wire —
+   *  the route computes nothing of its own. 404 carries a JSON `detail`. */
+  getScenarioRun: (runId: string) =>
+    afetch(`/api/scenario-runs/${encodeURIComponent(runId)}`).then(
+      (r) => json<ScenarioRunDetail>(r)),
   upload: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);

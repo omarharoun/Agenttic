@@ -10,12 +10,14 @@ Requires ANTHROPIC_API_KEY in the environment for commands that call models
 from __future__ import annotations
 
 import os
+import re
 
 import asyncio
 from pathlib import Path
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from agenttic import ops
@@ -347,6 +349,137 @@ def deploy(workflow: Path, env_name: str = "agenttic-workflows",
         f"Run a suite against it:\n  uv run agenttic run --agent {result['name']} "
         f"--suite <suite_id> --managed-agent-id {result['agent_id']} "
         f"--environment-id {result['environment_id']}")
+
+
+@app.command()
+def cdv(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)"),
+        rubric: str = typer.Option(..., "--rubric", "-r", help="rubric id to score with"),
+        space: str = typer.Option("space-conversational_transactional", "--space",
+                                  help="scenario space id"),
+        surface: str = typer.Option("", "--surface",
+                                    help="derive the space from THIS agent's "
+                                         "declared surface (see `agenttic "
+                                         "surface list`); overrides --space"),
+        seed: int = 0,
+        max_scenarios: int = typer.Option(0, "--max-scenarios",
+                                          help="0 = the config/Budget default"),
+        max_rounds: int = 0,
+        model: str = "",
+        no_bias: bool = typer.Option(False, "--no-bias",
+                                     help="control arm: unbiased random stimulus"),
+        mock: bool = typer.Option(False, "--mock",
+                                  help="offline scripted agent + judge (no API key)"),
+        config: str = "config.yaml"):
+    """Coverage-directed generation: generate → run → find holes → aim → repeat.
+
+    Runs generated scenarios against a REAL environment (the retail world in
+    ``agenttic.scenario``), scores them with the existing engine, and stops on
+    closure or budget — then reports the bug-discovery curve and the frozen
+    regression PROPOSALS it found. Nothing is promoted into a suite: that is a
+    human decision (Hard Rule 63), and the proposals are written to the review
+    directory with ``approved: false`` on every entry.
+
+    Convergence and envelope are reported as SCOPE. They are not sign-off gates —
+    ``signs_off`` binds on coverage, assertions and formal only, and this command
+    does not change that.
+    """
+    from agenttic.registry.sqlite_store import NotFoundError
+    from agenttic.reporting.signoff_report import render
+    from agenttic.scenario.runner import (
+        ScenarioAgent, ScriptedSupportClient, scenario_runner)
+    from agenttic.schema.signoff import VerificationSignoff
+    from agenttic.stimulus.spaces.conversational_transactional import seed_space
+    from agenttic.verification.cdv import Budget
+
+    cfg, reg = _ctx(config)
+    if surface:
+        # Derived from ONE AGENT'S declared surface. Without this the loop always
+        # ran the hand-written conversational_transactional space, so every agent
+        # was scored against a generic retail conversation whoever it was — and
+        # the derivation, which exists, was reachable from nothing.
+        from agenttic.redteam.descriptor import resolve_surface
+        from agenttic.stimulus import derive_space
+        try:
+            descriptor = resolve_surface(surface)
+        except KeyError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        scenario_space = derive_space(descriptor)
+        console.print(f"[dim]space derived from surface {surface!r}: "
+                      f"{scenario_space.ref()}[/dim]")
+    else:
+        try:
+            scenario_space = reg.get_scenario_space(space)
+        except NotFoundError:
+            if space != "space-conversational_transactional":
+                raise typer.BadParameter(
+                    f"no scenario space {space!r} in the registry; the only "
+                    "seeded space is space-conversational_transactional. To "
+                    "test an agent against ITS OWN space, use --surface.")
+            scenario_space = seed_space()
+    rubric_obj = reg.get_rubric(rubric)
+
+    if mock:
+        from agenttic.certification.mock_provider import MockAnthropicClient
+        client, judge_client = ScriptedSupportClient(), MockAnthropicClient()
+        agent_model = model or "scripted-support"
+    else:
+        import anthropic
+        client, judge_client = anthropic.Anthropic(), None
+        agent_model = model or cfg["models"]["agent_default"]
+    adapter = ScenarioAgent(model=agent_model, client=client, agent_id=agent,
+                            max_steps=cfg["harness"]["max_steps"])
+
+    cdv_cfg = dict(cfg.get("cdv") or {})
+    budget = Budget(
+        max_scenarios=max_scenarios or int(cdv_cfg.get("max_scenarios", 60)),
+        max_dollars=float(cdv_cfg.get("max_dollars", 5.0)),
+        max_rounds=max_rounds or int(cdv_cfg.get("max_rounds", 6)))
+    console.print(f"[dim]CDV over {scenario_space.ref()} — budget "
+                  f"{budget.max_scenarios} scenarios / ${budget.max_dollars:.2f} / "
+                  f"{budget.max_rounds} rounds[/]")
+
+    out = ops.cdv_op(cfg, reg, adapter, space=scenario_space, rubric=rubric_obj,
+                     run_scenario=scenario_runner(cfg=None), seed=seed,
+                     budget=budget, judge_client=judge_client, bias=not no_bias)
+    res = out.cdv
+
+    table = Table(title="rounds — closure is measured on what runs EXHIBITED")
+    for col in ("round", "scenarios", "biased", "closure", "new signatures",
+                "aimed at"):
+        table.add_column(col)
+    for r in res.rounds:
+        table.add_row(str(r.index), str(r.scenarios), "yes" if r.biased else "no",
+                      f"{r.closure:.1%}", str(r.new_signatures),
+                      escape(", ".join(r.targeted[:3])))
+    console.print(table)
+    console.print(f"stopped: [bold]{res.stopped_because}[/] · "
+                  f"{res.scenarios_run} scenarios · ${res.dollars_spent:.4f} · "
+                  f"closure/$ {res.closure_per_dollar:.3f}")
+    console.print("bug-discovery curve (scenarios → distinct signatures): "
+                  + escape(" ".join(f"{n}:{c}" for n, c in res.bug_curve[::5])))
+    # Holes the loop has GIVEN UP on, printed beside the ones it is still
+    # working. Without this the run prints "N holes remaining" over a list it
+    # has privately decided it will never aim at, which reads as a suite that
+    # has not got there yet rather than as instrumentation that cannot get
+    # there. It was computed and put on `as_dict()`, which nothing calls.
+    if res.unaimable_holes:
+        console.print(f"[yellow]{len(res.unaimable_holes)} hole(s) the loop "
+                      "cannot steer at[/] — a gap in the stimulus space, not in "
+                      "the suite:")
+        for u in res.unaimable_holes[:8]:
+            console.print(f"  · {escape(u.where)}={escape(u.what)} — "
+                          f"{escape(u.reason)}")
+        if len(res.unaimable_holes) > 8:
+            console.print(f"  · … {len(res.unaimable_holes) - 8} more")
+    if res.frozen_regressions:
+        console.print(f"[yellow]{len(res.frozen_regressions)} frozen regression "
+                      f"proposal(s)[/] → {out.regressions_path} "
+                      "(approved: false — promotion is a human decision)")
+    signoff = (out.scorecard.signoff or
+               (out.scorecard.coverage or {}).get("signoff") or {})
+    if signoff:
+        console.print(escape(render(VerificationSignoff.model_validate(signoff))))
+    console.print(f"Scorecard [bold]{out.scorecard.scorecard_id}[/]")
 
 
 @app.command()
@@ -1012,6 +1145,936 @@ def users_list(config: str = "config.yaml"):
     console.print(table)
 
 
+surface_app = typer.Typer(
+    help="What an agent DECLARES it can do — and the test space derived from it.")
+app.add_typer(surface_app, name="surface")
+
+
+@surface_app.command("list")
+def surface_list():
+    """Every agent surface this build can describe."""
+    from agenttic.redteam.descriptor import _SURFACES
+
+    table = Table("surface", "agent id", "tools", "workflows")
+    for name in sorted(_SURFACES):
+        d = _SURFACES[name]()
+        table.add_row(name, d.agent_id, str(len(d.tools)),
+                      ", ".join(w.workflow_id for w in d.workflows) or "—")
+    console.print(table)
+
+
+@surface_app.command("show")
+def surface_show(name: str = typer.Argument(..., help="surface name"),
+                 config: str = "config.yaml"):
+    """Show the surface, the space derived from it, and what cannot be tested.
+
+    The last part is the point. A tool whose risk class the agent never declared
+    cannot be held to a forbidden-tool expectation, and a dimension nothing can
+    realize is a knob wired to nothing — both are named here rather than left for
+    a reader to assume the space covers them.
+    """
+    from agenttic.redteam.descriptor import resolve_surface
+    from agenttic.stimulus import (derive_space, reachable_values,
+                                   realization_findings)
+
+    try:
+        d = resolve_surface(name)
+    except KeyError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    console.print(f"[bold]{d.agent_id}[/bold]  ({len(d.tools)} tools, "
+                  f"{len(d.workflows)} workflows)")
+
+    tools = Table("tool", "mutating", "irreversible")
+    for t in d.tools:
+        def _cell(v):
+            return "—  [dim]undeclared[/dim]" if v is None else ("yes" if v else "no")
+        tools.add_row(t.name, _cell(getattr(t, "mutating", None)),
+                      _cell(getattr(t, "irreversible", None)))
+    console.print(tools)
+
+    space = derive_space(d)
+    console.print(f"\nderived space: [bold]{space.ref()}[/bold]  "
+                  f"fingerprint {space.fingerprint()[:16]}")
+    reach = reachable_values(space)
+    dims = Table("dimension", "reachable values")
+    for dim in space.dimensions:
+        dims.add_row(dim.dim_id, ", ".join(sorted(reach.get(dim.dim_id, []))) or "—")
+    console.print(dims)
+
+    findings = realization_findings(space)
+    if findings:
+        console.print("\n[yellow]declared but not realizable[/yellow] — a "
+                      "dimension nothing varies is a knob wired to nothing:")
+        for f in findings:
+            console.print(f"  · {f}")
+
+    undeclared = [t.name for t in d.tools if getattr(t, "mutating", None) is None]
+    if undeclared:
+        console.print("\n[yellow]risk class undeclared[/yellow] — these cannot be "
+                      "held to a forbidden-tool expectation:")
+        console.print("  " + ", ".join(undeclared))
+
+
+@surface_app.command("save")
+def surface_save(name: str = typer.Argument(..., help="surface name"),
+                 config: str = "config.yaml"):
+    """Derive the space and store it, so `agenttic cdv --space <id>` can run it."""
+    from agenttic.redteam.descriptor import resolve_surface
+    from agenttic.registry.sqlite_store import DuplicateVersionError
+    from agenttic.stimulus import derive_space
+
+    _, reg = _ctx(config)
+    try:
+        space = derive_space(resolve_surface(name))
+    except KeyError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    try:
+        reg.save_scenario_space(space)
+        console.print(f"saved [bold]{space.ref()}[/bold]")
+    except DuplicateVersionError:
+        console.print(f"[dim]{space.ref()} already stored[/dim]")
+    console.print(f"run it: agenttic cdv --agent <id> --rubric <id> "
+                  f"--space {space.space_id}")
+
+
+# --------------------------------------------------------------------------- #
+# Scenarios (P7): run ONE against the world, and read a stored run back.
+#
+# `agenttic cdv` runs hundreds of scenarios and reports closure over the batch;
+# nothing could run ONE and show what happened to it. These three commands are
+# that path, and the first consumer of `Registry.save_scenario_run` — without
+# which a run's transcript, fault report, state diff and refused calls were
+# assembled by the runner and dropped on the floor when the process exited.
+# --------------------------------------------------------------------------- #
+_SCENARIO_SPACE_ID = "space-conversational_transactional"
+
+#: What ended a conversation, in words. EXACT keys, never a prefix or substring
+#: test: `turn_cap` is OUR ceiling and `gave_up` is the counterparty leaving, and
+#: a line that printed both as "ended" would hide the only interesting half of
+#: the fact — which side stopped talking. A reason this table does not know
+#: prints bare rather than glossed; inventing a meaning for an unknown token is
+#: how a reader comes to trust one.
+_ENDED_MEANS = {
+    "satisfied": "the customer got what they came for",
+    "gave_up": "the customer ran out of patience and left",
+    "turn_cap": "WE stopped asking (--max-turns) — the customer did not leave",
+    "unresolved": "it stopped with the customer's problem still open",
+    "record_exhausted": "a replayed counterparty ran out of recorded turns",
+    "simulator_error": "the counterparty simulator failed — this run measured "
+                       "the simulator, not the agent",
+}
+
+#: Enforcement verdicts a world tool call can carry (``scenario/env.py``). THREE
+#: values, not two: `faulted` is a call the gateway ALLOWED and the injector then
+#: broke, which is the environment's doing and not the harness's, and a
+#: two-valued renderer would have to file it under one of the other two.
+_ENFORCEMENT = {
+    "executed": "[green]executed[/]",
+    "blocked": "[red]BLOCKED[/]",
+    "faulted": "[yellow]faulted[/]",
+}
+
+
+def _scenario_space(reg, space_id: str):
+    """The stored space, or the seeded one — the same fallback `cdv` makes.
+
+    Kept identical on purpose: an operator who runs one scenario and then a CDV
+    loop over "the same space" must get the same space, and two fallbacks are
+    where that stops being true.
+    """
+    from agenttic.registry.sqlite_store import NotFoundError
+    from agenttic.stimulus.spaces.conversational_transactional import seed_space
+    try:
+        return reg.get_scenario_space(space_id)
+    except NotFoundError:
+        if space_id != _SCENARIO_SPACE_ID:
+            raise typer.BadParameter(
+                f"no scenario space {space_id!r} in the registry; the only "
+                f"seeded space is {_SCENARIO_SPACE_ID}. `agenttic surface save "
+                "<surface>` stores a space derived from an agent's own "
+                "declared surface.") from None
+        return seed_space()
+
+
+def _short(value, limit: int = 44) -> str:
+    """One cell's worth of a stored value, TRUNCATION MARKED.
+
+    A cut string that does not say it was cut is a value a reader will quote.
+    """
+    text = value if isinstance(value, str) else str(value)
+    return text if len(text) <= limit else text[:limit - 1] + "…"
+
+
+#: A timestamp string that already carries its zone: a trailing ``Z`` or a
+#: ``+HH:MM`` / ``-HHMM`` offset.
+_HAS_OFFSET = re.compile(r"(?:Z|[+-]\d{2}:?\d{2})$")
+
+
+def _utc(value) -> str:
+    """A stored timestamp with its ZONE SAID.
+
+    ``_now()`` writes ``datetime.now(timezone.utc)`` and SQLite hands it back
+    NAIVE, so the string has no offset on it and a reader in Lisbon has no way
+    to tell it is not their own clock. The console page already labels the same
+    field UTC; this is the CLI matching it.
+
+    A label, never a conversion — and never a second one: a backend that does
+    return the offset (Postgres) has already said UTC in its own notation and is
+    left exactly as it came.
+    """
+    text = str(value or "")
+    if not text or _HAS_OFFSET.search(text):
+        return text
+    return f"{text} UTC"
+
+
+def _fault_line(f: dict) -> str:
+    """One fault, said the way ``PlannedFault.describe`` says it.
+
+    Every field is escaped, including the numeric ones: these come out of a
+    stored payload, and rich eats anything in square brackets as a style tag —
+    the defect that printed a tool called ``fetch[v2]`` as ``fetch``.
+    """
+    line = (f"{escape(str(f.get('kind', '?')))} on call "
+            f"#{escape(str(f.get('call_index', '?')))}"
+            f" of {escape(str(f.get('tool', '?')))}")
+    if f.get("step") is not None:
+        line += f" [dim](step {escape(str(f['step']))})[/]"
+    return line
+
+
+def _render_run_header(run: dict) -> None:
+    """Identity, the point the solver drew, and the ticket it realized.
+
+    The two hashes on the space line are not the same KIND of value and must not
+    print as though they were. ``space_fingerprint`` IS 16 characters
+    (``StimulusSpace.fingerprint`` is ``sha256()[:16]``) — a whole value someone
+    can match against a space. ``content_sha256`` is 64, and it used to be cut to
+    16 with no marker, sitting immediately beside the whole one: two identical
+    looking tokens, one of which is a quarter of itself, with nothing on the line
+    saying which. It goes through :func:`_short`, so the cut one carries the cut.
+    """
+    console.print(f"[bold]scenario run[/] {escape(run['run_id'])}")
+    console.print(f"  scenario [bold]{escape(run['scenario_id'])}[/] · agent "
+                  f"[cyan]{escape(run['agent_id'])}[/] · seed {run['seed']}")
+    content = str((run.get("derived") or {}).get("content_sha256") or "")
+    console.print(f"  space {escape(run['space_ref'])} · fingerprint "
+                  f"{escape(run['space_fingerprint'][:16])} · content "
+                  + (escape(_short(content, 17)) if content
+                     else "[dim]not recorded[/]"))
+    if run.get("created_at"):
+        console.print(f"  [dim]run at {escape(_utc(run['created_at']))}[/]")
+    point = run.get("point") or {}
+    console.print("  point: " + (", ".join(
+        f"{escape(k)}={escape(str(v))}" for k, v in sorted(point.items()))
+        or "[dim]not recorded[/]"))
+    console.print(f"\n[bold]ticket[/]\n  {escape(run.get('ticket') or '')}")
+
+
+def _render_tool_calls(trace) -> None:
+    """Every world tool call with the gateway's verdict on it.
+
+    Read off the TRACE, not off the outcome: the outcome carries only the NAMES
+    of the calls that were refused, and "the harness allowed this one and the
+    injector then broke it" is a third state a blocked-list cannot express.
+    """
+    from agenttic.scenario.faults import FAULT_ATTR
+    console.print("\n[bold]tool calls[/] — each one evaluated by the "
+                  "enforcement gateway before it ran")
+    if trace is None:
+        console.print("  [yellow]the trace is no longer stored, so the calls "
+                      "cannot be listed[/] — this is a missing record, not an "
+                      "agent that called nothing.")
+        return
+    spans = [s for s in trace.spans if s.kind == "tool_call"]
+    if not spans:
+        console.print("  the agent called no tool.")
+        return
+    table = Table("#", "tool", "enforcement", "gateway", "fault", "error")
+    for i, s in enumerate(spans, 1):
+        attrs = s.attributes or {}
+        verdict = attrs.get("enforcement")
+        if verdict is None:
+            cell = "[dim]not recorded[/]"
+        else:
+            cell = _ENFORCEMENT.get(verdict, escape(str(verdict)))
+        table.add_row(str(i), escape(s.name), cell,
+                      escape(str(attrs.get("decision_action") or "—")),
+                      escape(str(attrs.get(FAULT_ATTR) or "—")),
+                      escape(_short(s.error or "—")))
+    console.print(table)
+
+
+def _render_faults(faults: dict) -> None:
+    """The four fault lists as FOUR DIFFERENT FACTS.
+
+    `fired` is the only one that happened. `skipped` reached its call and could
+    not fire, and its reason is the finding. `never_reached` was staged on a call
+    the agent never made — a finding about the AGENT, and the one sentence a
+    fault report exists to be able to say. Dropping it would let "we staged a
+    timeout and the agent never called that tool" read as "the world behaved".
+    And a run with no report at all is none of the three.
+    """
+    console.print("\n[bold]faults[/] — planned is not fired, and never-reached "
+                  "is not skipped")
+    if not faults.get("recorded"):
+        console.print("  [yellow]no fault report was recorded for this run[/] — "
+                      "which is not the same claim as no fault having been "
+                      "staged.")
+        return
+    if faults.get("problem"):
+        console.print("  [yellow]the report could not be reconstructed[/]: "
+                      f"{escape(str(faults['problem']))} — the stored lists are "
+                      "shown as they are, and never-reached is not derived.")
+    source = str(faults.get("source") or "none")
+    planned = faults.get("planned") or []
+    # "Nothing was staged" is a claim about the WHOLE report, so it has to be
+    # read off the whole report. Asserting it from `planned` alone let a stored
+    # row carrying a FIRED fault print "the world was left to behave" and then
+    # return without showing the fault — an absence asserted over evidence that
+    # is right there, which is the one thing this renderer exists to prevent.
+    outcomes = ((faults.get("fired") or []) + (faults.get("skipped") or [])
+                + (faults.get("never_reached") or []))
+    if not planned and not outcomes:
+        console.print(f"  nothing was staged [dim](source: {escape(source)})[/] "
+                      "— the world was left to behave.")
+        return
+    if not planned:
+        # The plan is empty and the outcomes are not. One of the two is wrong and
+        # this surface cannot tell which, so it says so and shows the outcomes
+        # rather than picking the reading that happens to be reassuring.
+        console.print(f"  [yellow]the stored plan is empty and "
+                      f"{len(outcomes)} outcome(s) are recorded against it[/] "
+                      f"[dim](source: {escape(source)})[/] — the report "
+                      "disagrees with itself; the outcomes are shown as stored.")
+    if planned:
+        console.print(f"  {len(planned)} staged "
+                      f"[dim](source: {escape(source)})[/]")
+    for f in faults.get("fired") or []:
+        note = ("  [dim]— fired but UNOBSERVABLE: the agent saw no difference[/]"
+                if f.get("observable") is False else "")
+        console.print(f"  [red]FIRED[/]          {_fault_line(f)}{note}")
+    for f in faults.get("skipped") or []:
+        console.print(f"  [yellow]SKIPPED[/]        {_fault_line(f)} — "
+                      f"{escape(str(f.get('reason') or 'no reason recorded'))}")
+    never = faults.get("never_reached")
+    if never is None:
+        console.print("  [yellow]never-reached could not be derived[/] from the "
+                      "stored plan, so it is not reported as empty.")
+    else:
+        for f in never:
+            console.print(f"  [yellow]NEVER REACHED[/]  {_fault_line(f)} — it was "
+                          "staged and the agent never made that call")
+    if never is not None and not (faults.get("fired") or faults.get("skipped")
+                                  or never):
+        # Unreachable from a report `FaultPlan.report` produced: never_reached is
+        # planned minus fired-and-skipped, so an empty plan is the only way all
+        # three empty out. Printing the contradiction beats printing nothing
+        # under a heading that says a fault was staged.
+        console.print(f"  [yellow]the report accounts for none of the "
+                      f"{len(planned)} staged fault(s)[/] — it does not say they "
+                      "fired, were skipped, or were never reached.")
+
+
+def _render_state_diff(diff: dict) -> None:
+    """What the run did to the world. ``{}`` is a sentence, not an empty box."""
+    console.print("\n[bold]state diff[/] — what the run did to the world")
+    if not diff:
+        console.print("  the world was not changed: no field moved.")
+        return
+    table = Table("field", "before", "after")
+    for path in sorted(diff):
+        change = diff[path] if isinstance(diff[path], dict) else {}
+        table.add_row(escape(path), escape(_short(change.get("before"))),
+                      escape(_short(change.get("after"))))
+    console.print(table)
+
+
+def _render_blocked(blocked: list) -> None:
+    console.print("\n[bold]refused by the harness[/]")
+    if not blocked:
+        console.print("  no call was refused.")
+        return
+    console.print(f"  [red]{len(blocked)}[/] call(s): "
+                  + ", ".join(escape(str(b)) for b in blocked))
+    console.print("  [dim]a blocked call is the harness working, not the agent "
+                  "failing.[/]")
+
+
+def _render_conversation(run: dict) -> None:
+    """How it ended — or that there was no conversation to end.
+
+    THREE elicitation states, and only the middle one is green:
+
+    * **nothing was gated.** ``SimulatedSession.completed`` is *satisfied AND
+      nothing still withheld*, so a run the counterparty withheld nothing on is
+      "complete" BY CONSTRUCTION — and this printed it green. That is the M40
+      vacuity rule inverted at the friendliest possible moment: a check that
+      never ran, rendered as a check that passed. It is the common case, not a
+      corner: ``scenario/user.py`` excludes a fact whose value is already in the
+      opening ticket (``already_in_prompt``), and ``realize()`` interpolates the
+      order id into most templates, so most intents gate on nothing at all.
+    * **gated and fully elicited** — the agent had to ask and did. A real pass.
+    * **gated and still withheld** — it never asked, or the customer left first.
+
+    Whether anything was gated is read off the run's OWN record and not guessed
+    at: the gate set is exactly ``disclosed`` ∪ ``withheld`` (``converse()``
+    writes ``withheld = held - disclosed``), so both lists empty is the
+    counterparty having held nothing back. Why a declared hidden fact did not
+    gate is already carried, per fact and with its reason, in ``disclosures``.
+    """
+    derived = run.get("derived") or {}
+    console.print("\n[bold]conversation[/]")
+    if not derived.get("conversational"):
+        console.print("  [dim]single-shot ticket: no conversation was held. "
+                      "`--multi-turn` drives the simulated counterparty.[/]")
+        return
+    ended = str(run.get("ended") or "")
+    gloss = _ENDED_MEANS.get(ended)
+    console.print(f"  ended [bold]{escape(ended or 'unrecorded')}[/]"
+                  + (f" — {gloss}" if gloss else ""))
+    turns = derived.get("n_user_turns")
+    console.print("  " + ("[yellow]turns not counted[/] — the trace could not "
+                          "be read, so this is unknown rather than zero"
+                          if turns is None else
+                          f"{turns} counterparty turn(s) reached the agent"))
+    elicit = run.get("elicitation") or {}
+    disclosed = [str(x) for x in elicit.get("disclosed") or []]
+    withheld = [str(x) for x in elicit.get("withheld") or []]
+    console.print("  elicited: " + (", ".join(escape(x) for x in disclosed)
+                                    or "nothing"))
+    console.print("  still withheld: " + (", ".join(escape(x) for x in withheld)
+                                          or "nothing"))
+    if not disclosed and not withheld:
+        console.print("  [yellow]elicitation NOT EXERCISED[/] — this scenario "
+                      "gated no fact, so there was nothing for the agent to "
+                      "elicit and nothing here could have failed. Not a pass: "
+                      "the check never ran. [dim](Why each declared hidden fact "
+                      "does not gate is under disclosures.)[/]")
+        return
+    complete = derived.get("elicitation_complete")
+    if complete is None:
+        console.print("  [yellow]elicitation completeness not recorded[/] for "
+                      "this run — unknown, which is not complete.")
+    elif complete:
+        console.print(f"  elicitation [green]complete[/] — {len(disclosed)} "
+                      "gated fact(s), every one elicited, customer satisfied")
+    else:
+        console.print("  elicitation [yellow]incomplete[/] — "
+                      + (f"{len(withheld)} gated fact(s) the agent never asked "
+                         "for" if withheld else
+                         "every gated fact was elicited, but the conversation "
+                         "did not end satisfied"))
+
+
+def _render_coverage(coverage: dict) -> None:
+    """Which bins this run EXHIBITED — credited from the trace, never from what
+    the point asked for.
+
+    Three states kept apart: nothing was collected; it was collected and credited
+    nothing; it credited these. The first is not a measurement and the second is,
+    and collapsing them is the vacuity rule inverted.
+    """
+    from agenttic.coverage.model import OTHER_BIN
+    console.print("\n[bold]coverage exhibited[/] — credited from the trace, "
+                  "never from what was requested")
+    if not coverage.get("measured"):
+        console.print("  [yellow]no coverage was collected for this run[/] — "
+                      "not the same as a run that credited nothing.")
+        return
+    bins = coverage.get("bins") or []
+    if not bins:
+        console.print("  measured, and it credited nothing: this run exhibited "
+                      "no bin the model names.")
+        return
+    for b in bins:
+        # rpartition, so the token AFTER the last colon is compared whole. A
+        # bin named `another` is not the `other` bin, and a substring test here
+        # would annotate it as one.
+        _, _, bin_id = str(b).rpartition(":")
+        note = ("  [dim](the unmodelled bin — outside closure)[/]"
+                if bin_id == OTHER_BIN else "")
+        console.print(f"  · {escape(str(b))}{note}")
+
+
+def _corners_never_compared(run: dict) -> list[tuple[str, str]]:
+    """Corners the point REQUESTED that neither half of this run's coverage read
+    mentions — so nothing in the row says whether the run produced them.
+
+    Derived from the stored row and from nothing else, the way
+    ``_faults_view`` re-derives ``never_reached`` instead of trusting a stored
+    copy: the two halves a reader can see printed above are ``coverage.bins``
+    (exhibited) and ``coverage.divergence`` (asked for, never exhibited), and a
+    requested corner named by neither was compared against nothing at all. That
+    is a claim about THIS ROW that the reader can check line by line against the
+    output — not a guess at which coverage model ran, which the row does not
+    record and this function therefore never invents.
+
+    It is not a hypothetical. ``collect()`` records a stimulus hit only for a
+    requested dimension the model happens to name and happens to have that bin
+    for (``coverage/collect.py``: ``if want and want in cov.bins``), and
+    ``divergence()`` additionally skips a coverpoint that is not measurable. On
+    the default path both ``scenario run`` and ``agenttic cdv`` read with
+    ``baseline_model``, whose own ``BASELINE_LIMITS`` says it "does NOT cover
+    intent, emotional register or policy pressure" — three of the five
+    dimensions the shipped stimulus point carries. Those three reached no
+    comparison, and the empty divergence list they produced was printed as
+    *every corner the point requested was exhibited by the run*: a universal
+    claim over a set quietly cut to the 40% of the question anything looked at.
+    Empty set implies success, which is the one shape this product exists to
+    refuse.
+    """
+    mentioned: set[tuple[str, str]] = set()
+    for b in run.get("coverage", {}).get("bins") or []:
+        # rpartition for the same reason `_render_coverage` uses it: the token
+        # after the LAST colon is the bin, compared whole.
+        cp_id, _, bin_id = str(b).rpartition(":")
+        mentioned.add((cp_id, bin_id))
+    for d in run.get("coverage", {}).get("divergence") or []:
+        row = d if isinstance(d, dict) else {}
+        mentioned.add((str(row.get("coverpoint_id")), str(row.get("bin_id"))))
+    return sorted((str(k), str(v))
+                  for k, v in (run.get("point") or {}).items()
+                  if (str(k), str(v)) not in mentioned)
+
+
+def _render_divergence(run: dict) -> None:
+    """The corners the point ASKED FOR that the run never produced.
+
+    Read off the STORED row, like everything else these commands print, and
+    through ONE renderer both commands call. It used to be printed from the live
+    in-memory report by `scenario run` alone and never written down — so the one
+    finding this product exists to make could not be read back out of the row
+    that claimed to hold the run, and the command that stored it was showing a
+    fact the store had dropped.
+
+    THREE states, kept apart the way ``coverage.bins`` keeps its three, and
+    ``measured`` speaks for the bins and NOT for this — a row can read
+    ``{"measured": true, "bins": [...], "divergence": null}``, so the test here
+    is ``divergence is None`` on its own:
+
+    * ``None`` — nobody computed divergence for this run. Not a finding of none.
+    * ``[]``   — it WAS computed, and nothing diverged **among the corners it
+      compared**.
+    * ``[..]`` — the point asked for these and the run did not produce them.
+
+    And a fourth fact that cuts across all three, because the list is silent
+    about it and used to be reported as though it were part of it: **which
+    corners were compared at all.** See :func:`_corners_never_compared`. An
+    empty divergence list is a result about the corners the coverage read could
+    speak for and about no others, so this renderer states the size of that set
+    (``n of m``) and NAMES the corners outside it rather than closing over them
+    with the word "every". A run where all five requested corners were compared
+    and a run where two were must not print the same sentence.
+
+    A fact about the GENERATOR's reach and never about the agent's behaviour,
+    which is why it is a list of named corners and never a percentage.
+    """
+    console.print("\n[bold]divergence[/] — what the point requested of the "
+                  "generator, measured against what the run produced")
+    rows = run.get("coverage", {}).get("divergence")
+    if rows is None:
+        console.print("  [yellow]divergence was not computed for this run[/] — "
+                      "which is not the same claim as nothing having diverged.")
+        return
+
+    point = run.get("point") or {}
+    never = _corners_never_compared(run)
+    n_requested, n_compared = len(point), len(point) - len(never)
+    if not rows:
+        if not point:
+            # A computation that found nothing, over a point this row does not
+            # record: "nothing diverged" would be a universal claim over the
+            # empty set, which is the same defect one step further out.
+            console.print("  computed, and nothing diverged — but this row "
+                          "[yellow]records no stimulus point[/], so there is "
+                          "nothing here it could have been compared against.")
+        elif never:
+            console.print(
+                f"  computed, and nothing diverged among the "
+                f"[bold]{n_compared} of {n_requested}[/] corners the point "
+                "requested that this read could speak for.")
+        else:
+            console.print(
+                f"  computed, and nothing diverged: all {n_requested} corners "
+                "the point requested were exhibited by the run.")
+    for d in rows:
+        row = d if isinstance(d, dict) else {}
+        console.print(f"  [yellow]asked for, never exhibited[/]: "
+                      f"{escape(str(row.get('coverpoint_id', '?')))}="
+                      f"{escape(str(row.get('bin_id', '?')))} — the "
+                      "point requested that corner and the run did not produce it")
+    if not never:
+        return
+    # Printed under every branch above, including `[rows]`: a divergence list
+    # that found something is just as silent about the corners nothing compared,
+    # and "these diverged" reads as "and the rest were fine".
+    console.print(f"  [yellow]{len(never)} of the {n_requested} corners the "
+                  "point requested were never compared to anything[/]:")
+    for cp_id, bin_id in never:
+        console.print(f"  · [yellow]never compared[/]: {escape(cp_id)}="
+                      f"{escape(bin_id)} — neither the exhibited bins nor the "
+                      "divergence list above mentions this corner, so nothing "
+                      "here says whether the run produced it")
+    console.print("  [dim]a dimension the coverage model does not name, has no "
+                  "bin for, or cannot measure reaches no comparison — it is "
+                  "absent from this read, not clean in it.[/]")
+
+
+def _render_disclosures(disclosures: list) -> None:
+    console.print("\n[bold]disclosures[/] — what this run could not represent "
+                  "faithfully")
+    if not disclosures:
+        console.print("  none recorded.")
+        return
+    for d in disclosures:
+        if isinstance(d, dict):
+            kind = escape(str(d.get("kind") or "note"))
+            note = escape(str(d.get("note") or d))
+        else:
+            kind, note = "note", escape(str(d))
+        console.print(f"  · [yellow]{kind}[/]: {note}")
+
+
+def _render_final_answer(trace) -> None:
+    console.print("\n[bold]final answer[/]")
+    if trace is None:
+        console.print("  [yellow]the trace is no longer stored[/], so the "
+                      "agent's answer cannot be shown.")
+        return
+    text = trace.final_output or ""
+    console.print(f"  {escape(text)}" if text
+                  else "  [yellow]the agent produced no final answer.[/]")
+
+
+def _render_transcript_section(run: dict) -> None:
+    """The conversation this run held — or the sentence saying there was none.
+
+    One renderer, both commands, because `scenario run --multi-turn` is the one
+    command that HOLDS a conversation and it was the one command that never
+    showed it: it drove the counterparty, stored every turn, and then printed
+    the tool calls, the faults, the world diff and how it ended without ever
+    printing a word anybody said.
+
+    A single-shot run says so rather than rendering an empty section: "there was
+    no conversation" and "the conversation was empty" are different claims.
+    """
+    console.print("\n[bold]transcript[/]")
+    entries = run.get("transcript") or []
+    if not entries:
+        console.print("  [dim]this run was a single ticket, not a conversation "
+                      "— there are no turns to show.[/]")
+        return
+    _render_transcript(entries)
+
+
+def _render_transcript(entries: list) -> None:
+    """The conversation, turn by turn, with what each turn handed over."""
+    for e in entries:
+        if e.get("speaker") != "user":
+            text = str(e.get("text") or "")
+            console.print("\n  [green]agent[/]: "
+                          + (escape(text) if text
+                             else "[dim](the agent said nothing)[/]"))
+            continue
+        kind = escape(str(e.get("kind") or "unpaired"))
+        head = f"\n  [cyan]customer[/] [dim]({kind})[/]"
+        if e.get("delivered") is False:
+            head += (" [dim]— the closing turn, never handed to the agent[/]")
+        console.print(head + f": {escape(str(e.get('text') or ''))}")
+        if e.get("discloses"):
+            console.print("    [magenta]discloses[/] "
+                          f"{escape(str(e['discloses']))} [dim]— a gated fact "
+                          "the agent had to ask for[/]")
+
+
+scenario_app = typer.Typer(
+    help="Run ONE scenario against the stateful world — and read a past run back.")
+app.add_typer(scenario_app, name="scenario")
+
+
+@scenario_app.command("run")
+def scenario_run_cmd(
+    agent: str = typer.Option("scenario-agent", "--agent", "-a",
+                              help="agent id this run is filed under"),
+    seed: int = typer.Option(0, "--seed",
+                             help="the draw. Same seed + same space = the same "
+                                  "scenario, byte for byte"),
+    intent: str = typer.Option("", "--intent",
+                               help="pin the intent (refund, exchange, status, "
+                                    "complaint, account_change, out_of_scope); "
+                                    "empty = drawn from the space"),
+    tool_condition: str = typer.Option(
+        "", "--tool-condition",
+        help="pin the tool condition, which STAGES A FAULT: timeout, error_5xx, "
+             "rate_limited, stale_data, malformed_response (or all_ok)"),
+    multi_turn: bool = typer.Option(
+        False, "--multi-turn/--single-shot",
+        help="drive the simulated counterparty, who withholds facts until asked "
+             "for them properly"),
+    max_turns: int = typer.Option(8, "--max-turns",
+                                  help="OUR ceiling; a run that hits it ends "
+                                       "turn_cap, reported apart from the "
+                                       "customer leaving"),
+    space: str = typer.Option(_SCENARIO_SPACE_ID, "--space",
+                              help="scenario space id"),
+    model: str = typer.Option("", "--model",
+                              help="empty (default) = the offline scripted "
+                                   "stand-in, no API key, no spend. A model id "
+                                   "runs the real client and costs money."),
+    config: str = "config.yaml",
+):
+    """Realize ONE scenario from the space and run it against a world that can
+    fail — then store it, so it outlives the process.
+
+    Offline by default: the DUT is a deterministic scripted stand-in, NOT a
+    model, and every number below is read off the run it produced. The report
+    keeps the distinctions the artifacts keep — a staged fault that never fired
+    is printed either as SKIPPED with the reason it could not fire or as NEVER
+    REACHED because the agent made no such call, an unchanged world says so in
+    words, and the coverage bins are the ones the trace EXHIBITED, never the ones
+    the point asked for.
+    """
+    from agenttic.coverage.collect import Sample, collect
+    from agenttic.coverage.models.baseline import baseline_model
+    from agenttic.registry.sqlite_store import DuplicateVersionError
+    from agenttic.scenario.runner import (
+        ScenarioAgent, ScriptedSupportClient, multi_turn_scenario_runner,
+        scenario_runner)
+    from agenttic.scenario.tools import RETAIL_POLICY
+    from agenttic.stimulus.realize import realize
+    from agenttic.stimulus.space import SamplingExhausted, sample_point
+
+    cfg, reg = _ctx(config)
+    scenario_space = _scenario_space(reg, space)
+
+    pinned = {k: v for k, v in (("intent", intent),
+                                ("tool_condition", tool_condition)) if v}
+    try:
+        point = sample_point(scenario_space, seed, pinned=pinned)
+    except (ValueError, SamplingExhausted) as exc:
+        # A pinned value the space does not declare, or a combination its
+        # constraints forbid. Both are the operator's typo and neither is worth
+        # a traceback.
+        raise typer.BadParameter(str(exc)) from None
+    scn = realize(point, seed, scenario_space, policy=RETAIL_POLICY)
+
+    if model:
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            raise typer.BadParameter(
+                "--model runs a real model and needs ANTHROPIC_API_KEY; leave "
+                "--model off to run the offline scripted stand-in.")
+        import anthropic
+        client, agent_model = anthropic.Anthropic(), model
+        console.print(f"[dim]DUT: model {escape(model)} — this run spends "
+                      "money.[/]")
+    else:
+        client, agent_model = ScriptedSupportClient(), "scripted-support"
+        console.print("[dim]DUT: the offline scripted stand-in — deterministic, "
+                      "keyless, and NOT a model.[/]")
+    adapter = ScenarioAgent(model=agent_model, client=client, agent_id=agent,
+                            max_steps=int(cfg["harness"]["max_steps"]))
+
+    run_one = (multi_turn_scenario_runner(max_turns=max_turns) if multi_turn
+               else scenario_runner())
+    outcome = run_one(scn, adapter=adapter, store=reg)
+
+    # Coverage from the SAME model and the same collector the scorecard uses, so
+    # this run's bins and a suite's bins are one computation. `classify=None`
+    # keeps it free and offline: classifier-backed bins stay unevaluated rather
+    # than being credited by a guess.
+    # Bound once and stored beside the bins: a bin id is only interpretable
+    # against the model that names it.
+    cov_model = baseline_model(cfg=cfg)
+    report = collect(cov_model,
+                     [Sample(trace=outcome.trace, scenario=scn.as_dict(),
+                             requested=dict(point))])
+    # `countable()` + `exhibited()` rather than the raw `trace_hits` counter:
+    # they are where the coverage model's measurability actually lands, and the
+    # raw counter routes around it. `session_shape` is declared measurable=False
+    # ("a trace with no turn markers is evidence of absent instrumentation, not
+    # of a single-turn session") and its `single_turn` extractor is
+    # `_human_turns(trace) <= 1`, which is True at ZERO turns — so a single-shot
+    # run scored `session_shape:single_turn` off a trace with no `user_turn`
+    # span at all, and the bin then flowed into the store and both UI panels
+    # under the words "credited from what the run EXHIBITED". `report`
+    # already holds that dimension out of `trace_closure`; this makes the stored
+    # bins agree with it. `exhibited()` also picks up per-sample gating
+    # (`measurable_when`), which `trace_hits` cannot see.
+    bins = sorted(f"{cp_id}:{b.bin_id}"
+                  for cp_id, cov in report.coverpoints.items()
+                  for b in cov.countable() if cov.exhibited(b))
+
+    # `divergence` is stored beside the bins because it is the other half of the
+    # same read and the half that carries the finding. Passed VERBATIM — the
+    # rows `CoverageReport.divergence()` returned for THIS run's sample, each one
+    # that method's own dict — and never `or []`: an empty list is a computation
+    # that found nothing diverged, `None` is nobody having computed it, and the
+    # store keeps the two apart on purpose.
+    try:
+        run_id = reg.save_scenario_run(scn, outcome, exhibited_bins=bins,
+                                       divergence=report.divergence(),
+                                       coverage_model=cov_model)
+    except DuplicateVersionError as exc:
+        console.print(f"[red]not stored[/]: {escape(str(exc))}")
+        raise typer.Exit(1) from None
+
+    # Everything below is rendered from the STORED run and the STORED trace,
+    # through the same renderers `scenario transcript` uses. Two consequences,
+    # both wanted: what is printed here is exactly what a reader gets back later,
+    # and a fact the store dropped cannot be shown by the command that stored it.
+    stored = reg.get_scenario_run(run_id)
+    trace = reg.get_trace(stored["trace_id"])   # save_scenario_run proved it exists
+    _render_run_header(stored)
+    _render_transcript_section(stored)
+    _render_tool_calls(trace)
+    _render_final_answer(trace)
+    _render_faults(stored["faults"])
+    _render_state_diff(stored["state_diff"])
+    _render_blocked(stored["blocked"])
+    _render_conversation(stored)
+    _render_coverage(stored["coverage"])
+    # The whole row: divergence is a statement about the POINT, and the point is
+    # the half of it the coverage dict does not carry.
+    _render_divergence(stored)
+    _render_disclosures(stored["disclosures"])
+    console.print(f"\nstored as run [bold]{escape(run_id)}[/] — read it back: "
+                  f"agenttic scenario transcript {escape(run_id)}")
+
+
+@scenario_app.command("transcript")
+def scenario_transcript_cmd(
+    run_id: str = typer.Argument(..., help="run id (see `agenttic scenario list`)"),
+    config: str = "config.yaml",
+):
+    """Read a stored run back, turn by turn.
+
+    A single-shot run says so rather than printing an empty conversation: "no
+    battery was run" and "the battery measured nothing" are different claims and
+    must look different.
+    """
+    from agenttic.registry.sqlite_store import NotFoundError
+    _, reg = _ctx(config)
+    try:
+        run = reg.get_scenario_run(run_id)
+    except NotFoundError:
+        raise typer.BadParameter(
+            f"no scenario run {run_id!r} in this tenant — `agenttic scenario "
+            "list` shows what is stored.") from None
+    try:
+        trace = reg.get_trace(run["trace_id"])
+    except NotFoundError:
+        # Reported, never guessed at: the run's own disclosures already carry
+        # this, and the renderers say "unknown" where they would have said 0.
+        trace = None
+
+    _render_run_header(run)
+    _render_transcript_section(run)
+    _render_final_answer(trace)
+    _render_conversation(run)
+    _render_tool_calls(trace)
+    _render_faults(run["faults"])
+    _render_state_diff(run["state_diff"])
+    _render_blocked(run["blocked"])
+    _render_coverage(run["coverage"])
+    _render_divergence(run)
+    _render_disclosures(run["disclosures"])
+
+
+@scenario_app.command("list")
+def scenario_list_cmd(
+    scenario_id: str = typer.Option("", "--scenario",
+                                    help="only runs of this scenario id"),
+    agent: str = typer.Option("", "--agent", "-a", help="only this agent's runs"),
+    limit: int = typer.Option(20, "--limit", help="most recent N"),
+    config: str = "config.yaml",
+):
+    """Recent scenario runs, newest first."""
+    _, reg = _ctx(config)
+    # ONE row past the page, then dropped. `len(runs)` is the page size and was
+    # printed as though it were the number stored: a capped list that reads as a
+    # complete one is a false claim about how much evidence exists, and it is the
+    # claim an operator makes decisions against ("only 20 runs? then nothing else
+    # ran"). Asking for limit+1 answers "is there more" from the store rather
+    # than from a guess, and without inventing a total nobody counted.
+    n = max(1, int(limit))
+    fetched = reg.list_scenario_runs(scenario_id=scenario_id or None,
+                                     agent_id=agent or None, limit=n + 1)
+    runs, more = fetched[:n], len(fetched) > n
+    if not runs:
+        # Found beside the defect above and the same family: a zero UNDER A
+        # FILTER is a measurement — "nothing matched this query" — and printing
+        # the empty-store sentence for it is a false claim about the store, made
+        # in the one place a reader goes to find out how much evidence exists.
+        narrowed = ", ".join(f for f in (
+            f"--scenario {scenario_id}" if scenario_id else "",
+            f"--agent {agent}" if agent else "") if f)
+        if narrowed:
+            console.print(f"No scenario run matches [bold]{escape(narrowed)}[/]"
+                          " — which is not the same claim as no run being "
+                          "stored. Drop the filter to see what is.")
+        else:
+            console.print("No scenario runs stored. Run one: "
+                          "[bold]agenttic scenario run[/]")
+        return
+    table = Table()
+    # TWO columns, not seven. The run id is the one cell a reader has to COPY,
+    # so it never wraps and is never ellipsized — and seven narrow columns is
+    # exactly what forces rich to break `demo-bot` across two lines, which makes
+    # a value someone has to read into a puzzle. The rest is one sentence per
+    # run, word-wrapped, so every token stays whole at any width.
+    table.add_column("run id", no_wrap=True)
+    table.add_column("what happened")
+    for r in runs:
+        faults = r.get("faults") or {}
+        counts = faults.get("counts")
+        if not faults.get("recorded"):
+            # Never "0 fired": a run that stored no report did not stage nothing.
+            fired = "[dim]fault report not recorded[/]"
+        elif counts is None:
+            # THREE states, not two. `_faults_view` returns `recorded: True` with
+            # `counts: None` for a report that IS stored and could not be
+            # reconstructed on read (it names a tool the world does not have,
+            # say) — and it keeps that apart from `recorded: False` on purpose.
+            # Printing it as "not recorded" is a false claim about the record,
+            # it merges two different absences, and it says the opposite of what
+            # `scenario transcript` prints for the same run.
+            fired = "[yellow]fault report could not be reconstructed[/]"
+        elif not counts["planned"]:
+            # A recorded plan of nothing. Distinct from "not recorded" above and
+            # from "0 fired" below, which would imply something was staged.
+            fired = "no fault staged"
+        else:
+            # FOUR fates, not a ratio. `0/1 fired` is byte-identical for a fault
+            # that reached its call and could not happen (`skipped`) and one the
+            # agent never got to (`never_reached`) — two different facts about
+            # the harness, collapsed in the one place an operator scans. The
+            # detail view has always kept them apart; the list quietly did not.
+            fates = [f"{counts['fired']}/{counts['planned']} fired"]
+            if counts.get("skipped"):
+                fates.append(f"{counts['skipped']} skipped")
+            if counts.get("never_reached"):
+                fates.append(f"{counts['never_reached']} never reached")
+            fired = "faults " + ", ".join(fates)
+        shape = (f"conversation · {escape(r['ended'] or 'unrecorded')}"
+                 if r["conversational"] else "single-shot")
+        world = ("[yellow]world changed[/]" if r["world_changed"]
+                 else "world unchanged")
+        table.add_row(escape(r["run_id"]),
+                      f"{escape(r['agent_id'])} · {shape} · {world} · "
+                      f"{r['n_blocked']} blocked · {fired} · "
+                      f"{escape(str(r['created_at']).replace('T', ' ')[:16])} "
+                      "UTC")
+    console.print(table)
+    console.print(f"[dim]{len(runs)} run(s) shown[/]"
+                  + (f" — [yellow]the list is CAPPED at --limit {n}[/][dim] and "
+                     "there are older runs it does not show"
+                     if more else "[dim] — the complete list for this filter")
+                  + ". Read one: agenttic scenario transcript <run id> — which "
+                  "also prints the scenario id `--scenario` filters on.[/]")
+
+
 standard_app = typer.Typer(help="Canonical standard benchmark suites + metrics.")
 app.add_typer(standard_app, name="standard")
 
@@ -1671,6 +2734,38 @@ def ingest_otel(
                   "agenttic ingest verify-traffic --agent <id>[/]")
 
 
+def _closure_cell(d: dict) -> str:
+    """One coverpoint's closure as a console cell — three states, three texts.
+
+    The rich-console twin of ``reporting.scorecard_report._closure_cell``: same
+    rule, different output language. A dimension nothing in the system can feed
+    is never printed as a percentage (that would be the over-report) and never as
+    ``0%`` (zero is a measurement — "the suite never got there" — which reads as
+    a gap someone could be told to close, and no suite can close this one).
+
+    Why this exists rather than a format spec: ``d["closure"]`` is ``None`` for
+    such a coverpoint, and ``f"{None:>6.0%}"`` raises. The command formatted it
+    directly, so a single not-measurable dimension killed the whole table
+    mid-print — the operator saw trajectory, tool_condition and agent_steps and
+    never reached data_condition, action_risk, the instrumentation-fidelity block
+    or the uninstrumented-tools list. Two renderers exist because Markdown and
+    console markup are different languages, not because the rule differs;
+    ``tests/test_cli_verify_traffic.py`` pins them to the same three states.
+    """
+    if d.get("not_measurable"):
+        why = (d.get("not_measurable_reason") or "").strip()
+        # escaped: a reason containing a bracketed phrase would otherwise be
+        # eaten by rich's markup parser, and half a stated reason is worse than
+        # a whole one — this text IS the disclosure.
+        return "[yellow]not measurable[/]" + (f" — {escape(why)}" if why else "")
+    closure = d.get("closure")
+    if closure is None:
+        # No declaration and no number either: still not a zero, and still not
+        # ours to invent one.
+        return "[yellow]not measured[/]"
+    return f"{closure:>6.0%}"
+
+
 @ingest_app.command("verify-traffic")
 def ingest_verify_traffic(
     agent: str = typer.Option(..., "--agent", "-a", help="agent id to verify"),
@@ -1721,8 +2816,25 @@ def ingest_verify_traffic(
     console.print("\n  [bold]per coverpoint[/]")
     for cp, d in (v.get("per_coverpoint") or {}).items():
         miss = ", ".join(d.get("unhit") or [])
-        console.print(f"    {cp:16} {d['closure']:>6.0%}"
+        console.print(f"    {cp:16} {_closure_cell(d)}"
                       + (f"   missing: {miss}" if miss else ""))
+    waived = v.get("waived_bins") or {}
+    if waived:
+        # Hard Rule 61: a bin outside the closure denominator is named here with
+        # its reason. Without it the `missing:` lists above are shorter than the
+        # model's bin count for no stated cause, and a reader would take the
+        # shortfall for coverage.
+        console.print("\n  [bold]excluded from closure[/]")
+        # Grouped by reason, not per bin: every bin of a not-measurable
+        # coverpoint carries the SAME (long) reason, and printing it once per bin
+        # buries the disclosure in repetition. Grouping shortens nothing that
+        # matters — each bin is still named and each reason still stated in full.
+        by_reason: dict[str, list[str]] = {}
+        for b, why in waived.items():
+            by_reason.setdefault(why, []).append(b)
+        for why, bins in by_reason.items():
+            console.print(f"    [dim]{escape(', '.join(bins))} — "
+                          f"{escape(why)}[/]")
 
     f = v["instrumentation"]
     console.print("\n  [bold]instrumentation fidelity[/]")
@@ -1732,8 +2844,13 @@ def ingest_verify_traffic(
     for w in v.get("warnings") or []:
         console.print(f"  [yellow]![/] {w}")
     if f["uninstrumented_tools"]:
+        # These names come from SOMEONE ELSE'S spans, so they are the one string
+        # here that is neither a repo constant nor a number. Rich silently eats
+        # anything in square brackets as a style tag, so `fetch[v2]` would print
+        # as `fetch` — and this list is the operator's to-do list: a name printed
+        # with a piece missing is a tool they cannot find to instrument.
         console.print("    [dim]instrument these to make action_risk real: "
-                      + ", ".join(f"{n} (×{c})"
+                      + ", ".join(f"{escape(str(n))} (×{c})"
                                   for n, c in f["uninstrumented_tools"]) + "[/]")
 
 
@@ -1876,6 +2993,26 @@ def hook_verify(
     console.print(f"  {len(spans)} tool call(s) across {v['n_traces']} session(s)")
     console.print(f"  closure     {v['trace_closure']:.1%} of "
                   f"{v['closure_target']:.0%}   closed={v['closed']}")
+    # That fraction is over the dimensions something can feed. Any dimension with
+    # no producer left the denominator, and a closure figure that does not say so
+    # is a better-looking number describing a smaller space — the same
+    # over-report, one layer out. `ingest verify-traffic` states it; these two
+    # commands read the IDENTICAL verify_traffic dict, so they say the identical
+    # thing through the identical renderer rather than a second format rule that
+    # could drift into two answers about one coverpoint.
+    #
+    # Keyed on `closure is None` rather than on the flag, because that is the
+    # condition that actually matters here — out of the denominator — and
+    # `_closure_cell` already distinguishes the declared case ("not measurable",
+    # with the reason) from the undeclared one ("not measured"). Unlike its
+    # sibling this command prints no `missing:` lists, so there is no shortened
+    # bin list needing the per-bin `waived_bins` block to explain it.
+    outside = [(cp, d) for cp, d in (v.get("per_coverpoint") or {}).items()
+               if d.get("closure") is None]
+    if outside:
+        console.print("    [dim]outside that denominator:[/]")
+        for cp, d in outside:
+            console.print(f"      {cp:16} {_closure_cell(d)}")
     console.print(f"  properties  {a.get('total', 0)} checked, "
                   f"{a.get('violations', 0)} VIOLATED, "
                   f"{a.get('unexercised', 0)} never exercised")
@@ -1890,8 +3027,11 @@ def hook_verify(
     console.print(f"\n  action_risk trustable {f['action_risk_trustable']:.0%} "
                   f"({f['by_confidence']})")
     if f["uninstrumented_tools"]:
+        # escaped for the same reason as its sibling above: these are tool names
+        # captured from a real agent, and a name printed with a bracketed piece
+        # eaten by rich's markup parser names no tool the operator can go find.
         console.print("  [yellow]unclassifiable[/]: "
-                      + ", ".join(f"{n} (×{c})"
+                      + ", ".join(f"{escape(str(n))} (×{c})"
                                   for n, c in f["uninstrumented_tools"]))
 
 

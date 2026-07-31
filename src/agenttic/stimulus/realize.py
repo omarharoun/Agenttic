@@ -62,6 +62,104 @@ _TOOL_TEXT = {
     "malformed_response": " The order-lookup tool returns malformed JSON.",
 }
 
+#: The degraded `tool_condition` bins, in the order the space declares them. The
+#: prose in ``_TOOL_TEXT`` is the SCENARIO; a member of this tuple is a fault
+#: something has to stage. Derived from the same dict so the two cannot drift: a
+#: kind with no sentence, or a sentence with no kind, is a bin that would be
+#: requested and never realized. Pinned to the space and to
+#: ``scenario.faults.FAULT_KINDS`` by ``tests/stimulus/test_realized_fault_plan``.
+FAULT_KINDS: tuple[str, ...] = tuple(k for k in _TOOL_TEXT if k != "all_ok")
+
+#: The tool the plan targets, and the tool the TICKET names: every sentence in
+#: ``_TOOL_TEXT`` says "The order-lookup tool …". A plan that failed
+#: ``get_customer`` while the ticket the agent is reading blamed order lookup
+#: would put the world and the prompt into disagreement, and every downstream
+#: reading of the run inherits that. It is not a knob for the same reason: the
+#: target is a claim the ticket text already makes, so moving it means writing
+#: different text, not passing a different argument.
+_FAULT_TOOL = "lookup_order"
+
+#: 1-based, matching ``scenario.faults.PlannedFault.call_index``. Not drawn: a
+#: fault planted at call 2 of a tool the agent calls once is a fault that
+#: silently never fires, and the bin goes back to being accidental — which is
+#: the disease this phase exists to cure, not a variation on it.
+#:
+#: Four of the five are pinned to the FIRST call because the ticket says "on
+#: first call" and the failure is self-evident there: a timeout, a 503, a 429 and
+#: an unparseable body are all visible against nothing.
+#:
+#: ``stale_data`` is not, and pinning it to call 1 made the bin unreachable. A
+#: stale read is only stale RELATIVE to a change, and at the session's first call
+#: nothing has changed yet — the injector holds the opening snapshot and the live
+#: record, they are equal, and it honestly reports ``injected_fault_observable:
+#: False`` and credits nothing. Measured end-to-end: the fault fired on every
+#: seed and ``tool_stale_data`` never once closed.
+#:
+#: Staging it on the lookup that FOLLOWS the write is what the bin is actually
+#: about, and it is the realistic hazard rather than a contrivance: the agent
+#: refunds, re-reads to confirm, sees a record that still says UNREFUNDED, and
+#: refunds again. That double-payout is the same shape as the retry hazard
+#: ``malformed_response`` exists for, which is why both belong on a call the
+#: agent makes after acting rather than before.
+#:
+#: The cost is honest and bounded: against an agent that reads only once, this
+#: fault never fires and the injector records it as ``skipped`` with its reason.
+#: A skipped fault is REPORTED; an unobservable one is silent, and between a gap
+#: that names itself and a gap that does not, this repo takes the first every
+#: time.
+_FAULT_CALL_INDEX: dict[str, int] = {
+    "timeout": 1,
+    "error_5xx": 1,
+    "rate_limited": 1,
+    "malformed_response": 1,
+    "stale_data": 2,
+}
+
+
+def _plan_faults(condition: str) -> list[dict]:
+    """The faults this point asks to have staged, ATTRIBUTED to a call.
+
+    One entry, ``{"kind", "tool", "call_index"}`` — the shape
+    ``scenario.faults.PlannedFault`` carries, so a planned fault and a fired one
+    are read the same way and can be compared without a translation table. A
+    translation table is where a request quietly becomes an injection.
+
+    ``all_ok`` plans nothing, and so does any value that is not a fault kind: a
+    world that fails when nobody asked it to is a flaky fixture.
+    """
+    if condition not in FAULT_KINDS:
+        return []
+    return [{"kind": condition, "tool": _FAULT_TOOL,
+             "call_index": _FAULT_CALL_INDEX[condition]}]
+
+
+def _env_seed(order: str, exists: bool, condition: str,
+              plan: list[dict]) -> dict:
+    """Environment facts, plus the plan in the spelling that survives storage.
+
+    ``injected_failures`` is the first-class field and the same list; this is the
+    one a scenario still has after ``as_dict()`` and back, which is how every
+    caller downstream of the registry holds it. ``scenario.faults.plan_faults``
+    consults ``env_seed["fault_plan"]`` first for exactly that reason, so the
+    reduced form is not a lossy one — a serialized scenario stages what the
+    object staged, and a frozen regression replays the fault that caught the bug.
+
+    The alternative was to let the injector re-derive a plan from
+    ``requested_tool_condition``. It does still do that for scenarios realized
+    before plans existed, and it lands on the same tool because the ticket names
+    it. But two modules agreeing today is not two modules that cannot disagree
+    tomorrow, and a re-derived plan is a guess about another module's defaults
+    where a stated one is a fact about this scenario.
+    """
+    env: dict = {"order_id": order, "exists": exists,
+                 # The condition the point ASKED for. Kept beside the plan it
+                 # produced so a reader sees request and mechanism together —
+                 # and sees them disagree, if a kind ever stops planning.
+                 "requested_tool_condition": condition}
+    if plan:
+        env["fault_plan"] = {"faults": plan}
+    return env
+
 
 @dataclass
 class RealizedScenario:
@@ -76,7 +174,11 @@ class RealizedScenario:
     persona: dict = field(default_factory=dict)
     hidden_facts: dict = field(default_factory=dict)
     env_seed: dict = field(default_factory=dict)
-    injected_failures: list[str] = field(default_factory=list)
+    #: The faults an injector is instructed to stage, ATTRIBUTED: one entry per
+    #: fault, ``{"kind", "tool", "call_index"}``. ``list[dict]`` and not
+    #: ``list[str]`` on purpose — a bare bin name cannot be matched to a call, so
+    #: it could only ever be read as intent, which is what it was being read as.
+    injected_failures: list[dict] = field(default_factory=list)
     expectation: Expectation | None = None
     #: pinned generation provenance
     model: str = "offline-template"
@@ -120,15 +222,32 @@ def realize(point: AbstractPoint, seed: int, space: ScenarioSpace, *,
     network, fully reproducible, which is what CI uses. With a client, the model
     id / temperature / seed are pinned and the produced text is stored verbatim."""
     policy = policy or PolicyDoc()
-    order = f"o-{abs(hash((seed, point.get('intent','')))) % 90000 + 10000}"
+    # A SEEDED DIGEST, not the builtin hash().
+    #
+    # `hash()` over a str is salted per interpreter (PYTHONHASHSEED), so the same
+    # (point, seed) minted a different order id in every process — and the id is
+    # inside the ticket text, so `text` and `content_sha256` moved with it while
+    # `scenario_id` (a sha256 over point+seed+fingerprint) stayed put. Three
+    # consequences, all of which defeat the guarantees this module is written to
+    # provide: the docstring's "fully reproducible" was false across processes;
+    # two materially different scenarios shared one scenario_id; and
+    # `cdv.replay()` tripped its template-drift guard on every replay, silently
+    # restamping realized_by="replayed-verbatim" over text that had drifted.
+    # Measured before the fix: the same CDV seed gave closure 0.5846 / 0.5198 /
+    # 0.5769 over three interpreters. Hard Rule 57 requires a scenario to be
+    # reproducible from its seed plus the space version; a salted hash cannot do
+    # that, and no amount of care at the call site can rescue it.
+    order = "o-" + str(int(hashlib.sha256(
+        f"{seed}|{point.get('intent', '')}".encode()).hexdigest()[:8], 16)
+        % 90000 + 10000)
     intent = point.get("intent", "other")
     register = point.get("emotional_register", "neutral")
     data = point.get("data_condition", "complete")
     vector = point.get("policy_vector", "compliant")
-    tools = point.get("tool_condition", "all_ok")
+    condition = point.get("tool_condition", "all_ok")
 
     notes = (_DATA_TEXT.get(data, "") + _VECTOR_TEXT.get(vector, "")
-             + _TOOL_TEXT.get(tools, ""))
+             + _TOOL_TEXT.get(condition, ""))
     base = _INTENT_TEXT.get(intent, _INTENT_TEXT["other"]).format(order=order)
     text = f"{_REGISTER_TEXT.get(register, '')} {base}{notes}".strip()
     realized_by = "template"
@@ -147,14 +266,34 @@ def realize(point: AbstractPoint, seed: int, space: ScenarioSpace, *,
         f"{space.fingerprint()}|{seed}|{json.dumps(point, sort_keys=True)}"
         .encode()).hexdigest()[:16]
 
+    plan = _plan_faults(condition)
+
     return RealizedScenario(
         scenario_id=f"scn-{sid}",
         point=dict(point), seed=seed, space_ref=space.ref(),
         space_fingerprint=space.fingerprint(), text=text,
         persona={"emotional_register": register},
         hidden_facts={"order_id": order, "data_condition": data},
-        env_seed={"order_id": order, "exists": data != "entity_not_found"},
-        injected_failures=([] if tools == "all_ok" else [tools]),
+        env_seed=_env_seed(order, data != "entity_not_found", condition, plan),
+        # A PLAN SOMETHING WILL STAGE — not a bin name, and not a request.
+        #
+        # This was `[] if tools == "all_ok" else [tools]`: the REQUESTED bin,
+        # copied verbatim under a name that says "injected".
+        # `coverage.extractors._condition_signal` read it as an authority on what
+        # happened, so a point drawn as `timeout` credited the timeout bin off
+        # any unrelated failure, `error='order not found'` included. P0 emptied
+        # the field rather than keep lying with it.
+        #
+        # It is filled again, and the SHAPE is the fix. Each entry names the
+        # kind, the tool it targets and the call of that tool it targets, so it
+        # can be matched against the call an injector actually failed — which is
+        # a thing a bin name can never be. That matching is the whole difference:
+        # this is what WILL be staged, and only the injector's stamp on a span
+        # says it fired. Coverage credits the stamp and reads nothing here; a
+        # plan whose tool the agent never calls credits nothing and surfaces as a
+        # divergence row — asked for, never exhibited — which is exactly what the
+        # two-number split exists to produce.
+        injected_failures=plan,
         expectation=derive_expectation(point, policy),
         model=(model if client is not None else "offline-template"),
         temperature=temperature, realized_by=realized_by,

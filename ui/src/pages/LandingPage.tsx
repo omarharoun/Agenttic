@@ -75,16 +75,29 @@ function HowItWorks() {
   );
 }
 
-/** A real captured run, not a mock: the five dimensions the baseline model
- *  measures, plus the three the archetype declares and this model never asks
- *  about. An unmeasured dimension cannot fail, which is why it is drawn rather
- *  than omitted. */
+/** A real captured run, not a mock. Four of the eight dimensions carry a measured
+ *  figure; the other four draw hatched, because an unmeasured dimension cannot
+ *  fail and would otherwise appear in no report at all.
+ *
+ *  `session_shape` was `0.333` here. It cannot be, and never could have been:
+ *  the coverpoint is declared not measurable — nothing in a run emits a human
+ *  turn — so no run emits a figure for it. A number the product cannot produce,
+ *  on the page whose whole length argues that a number needs a denominator, is
+ *  the defect this page is about.
+ *
+ *  Two things this capture does not show, named rather than filled in. There is
+ *  no `agent_steps` figure: that coverpoint did not exist when the run was taken,
+ *  and a value for it here would be a guess. And `closure` below is what this run
+ *  reported under baseline **v2**, which averaged `session_shape` into the mean;
+ *  under v3 the same traces report a different figure. The traces are not in the
+ *  tree, so it cannot be recomputed here — recapturing the whole wheel against a
+ *  v3 run is owed work, and inventing two numbers is not the alternative to it. */
 const LANDING_WHEEL = [
   { id: "trajectory", value: 0.111 },
   { id: "tool_condition", value: 0.167 },
   { id: "action_risk", value: 0.5 },
   { id: "data_condition", value: 0.2 },
-  { id: "session_shape", value: 0.333 },
+  { id: "session_shape", value: null },
   { id: "intent", value: null },
   { id: "emotional_register", value: null },
   { id: "policy_vector", value: null },
@@ -197,17 +210,29 @@ export function LandingPage() {
           <figure className="lp-whyref__art">
             <CoverageWheel dims={LANDING_WHEEL} closure={0.222} target={0.95}
               size={300} hubLabel="tried"
-              label={"A wheel of eight kinds of situation. Five were tried a little,"
-                + " between 11 and 50 percent. Three were never looked at."} />
+              label={"A wheel of eight kinds of situation. Four were tried a little,"
+                + " between 11 and 50 percent. The other four are not measured"
+                + " at all."} />
             <CoverageWheelLegend />
           </figure>
           <div className="lp-whyref__body">
             <Eyebrow>Why we said no</Eyebrow>
             <h2>Because most of it was never tried.</h2>
+            {/* The examples here named a service being made to time out and a
+                customer pushing back — fault injection and a simulated user,
+                neither of which exists, and /app/capabilities now says so in
+                almost the same words. The examples are the three dimensions the
+                engine really does read off a recording: the state of the data it
+                was handed, whether a tool it called failed, and whether what it
+                did next was reversible. Note the tense: a tool "comes back" an
+                error. We observe that; we do not cause it. The closing sentence
+                is pinned by landing.test.tsx and left exactly as it was — it was
+                never the part that over-claimed. */}
             <p>
-              Think of everything that can happen to your agent while it works —
-              a service times out, a customer pushes back, it is asked to do
-              something it cannot undo. That whole range is the circle.
+              Think of the situations your agent can end up in — the record it
+              was handed is incomplete, or two records contradict each other, or
+              a tool it called comes back an error, or the thing it does next
+              cannot be undone. That whole range is the circle.
             </p>
             <p>
               The filled part is what your tests actually put it through. The gap

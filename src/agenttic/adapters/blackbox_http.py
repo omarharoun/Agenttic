@@ -10,6 +10,7 @@ import http.client
 import json
 import socket
 import ssl
+import threading
 import time
 import uuid
 from datetime import datetime, timezone
@@ -133,6 +134,17 @@ class BlackBoxHTTPAgent(AgentAdapter):
         self.cost_per_call_usd = cost_per_call_usd
         self.mapping = mapping
         self.min_interval_s = max(0.0, float(min_interval_s))
+        # The rate-limit clock is SHARED ON PURPOSE. run_suite drives one adapter
+        # instance from up to max_parallel threads (see AgentAdapter.run), and the
+        # limit this enforces is per *agent endpoint*, not per case — a per-case
+        # copy would let max_parallel threads each think they were first and hit a
+        # customer's endpoint at max_parallel times the agreed rate. Shared state
+        # in a threaded harness needs a lock, so it has one.
+        self._rate_lock = threading.Lock()
+        # monotonic time of the most recently CLAIMED departure slot — not of the
+        # last completed call. A thread reserves its slot under the lock, then
+        # waits for it outside the lock so the others aren't queued behind the
+        # sleep. 0.0 means "no slot claimed yet".
         self._last_call = 0.0
         # the safety-test header rides on EVERY request (probe + scan); explicit
         # caller headers (auth) merge on top.
@@ -170,9 +182,29 @@ class BlackBoxHTTPAgent(AgentAdapter):
         return str(body[self.output_field])
 
     def _throttle(self) -> None:
+        """Reserve this request's departure slot, at least ``min_interval_s``
+        after the previously reserved one, and wait for it.
+
+        Claim-then-wait rather than check-then-sleep. The old form read
+        ``_last_call``, slept, and let ``run`` stamp it after the response came
+        back; with concurrent callers every thread read the same stale value,
+        computed the same (already elapsed) wait, and departed together — the
+        rate limit silently became "max_parallel requests at once, every
+        interval". Claiming the slot under the lock makes the spacing hold no
+        matter how many threads arrive, and sleeping outside the lock keeps them
+        from queueing behind each other's sleeps.
+
+        Also fixes a first-request stall: ``_last_call`` starts at 0.0 and
+        ``time.monotonic()`` is an arbitrary epoch (uptime on Linux), so on a
+        freshly booted host ``interval - (monotonic - 0)`` was positive and the
+        very first request slept for no reason. A claimed slot is never earlier
+        than now, and never later than needed."""
         if self.min_interval_s <= 0:
             return
-        wait = self.min_interval_s - (time.monotonic() - self._last_call)
+        with self._rate_lock:
+            slot = max(time.monotonic(), self._last_call + self.min_interval_s)
+            self._last_call = slot
+        wait = slot - time.monotonic()
         if wait > 0:
             time.sleep(wait)
 
@@ -183,9 +215,12 @@ class BlackBoxHTTPAgent(AgentAdapter):
         final = ""
         cost = 0.0
         try:
-            self._throttle()  # gentle traffic: honour the per-agent rate limit
+            # gentle traffic: honour the per-agent rate limit. _throttle both
+            # claims the slot and waits for it, so nothing is stamped here — a
+            # post-response stamp is what made the clock racy (and it silently
+            # skipped rate-limiting the calls that raised).
+            self._throttle()
             body = self._transport(self._request_body(test_input))
-            self._last_call = time.monotonic()
             cost = self.cost_per_call_usd  # the call was actually made
             final = self._extract_reply(body)  # may raise (mapping/missing field)
         except (ConnectionError, OSError):

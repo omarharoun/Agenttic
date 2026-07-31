@@ -195,11 +195,40 @@ export function ResultsPanel({ results }: { results: any }) {
    in front of the reader.
    --------------------------------------------------------------------------- */
 
-function NeverExercised({ sc }: { sc: any }) {
+/** One coverpoint's closure — three states, and the middle one is not a zero.
+ *
+ *  `closure` is `null` for a dimension nothing in the system emits evidence for,
+ *  and this cell used to render `Math.round((v.closure ?? 0) * 100)` — printing
+ *  `0%`, the exact sentence the backend was corrected to stop saying. Zero is a
+ *  measurement: it reads as "the suite never got there", a gap someone can be
+ *  told to close, and no suite can close this one. It survived only because the
+ *  row filter happened to drop these rows; two unrelated decisions, not a
+ *  guarantee.
+ *
+ *  The test is `typeof v.closure === "number"`, character for character the one
+ *  `dimsFromCoverage` uses to decide whether to hatch a sector — the wheel sits
+ *  directly above this table on the same screen, and a table reading 0% beside a
+ *  hatched sector would be the two halves of one panel disagreeing. */
+function ClosureCell({ v }: { v: any }) {
+  if (v.not_measurable) return <span className="muted-sm">not measurable</span>;
+  return typeof v.closure === "number"
+    ? <>{Math.round(v.closure * 100)}%</>
+    : <span className="muted-sm">not measured</span>;
+}
+
+/* Exported for ui/src/results-not-measurable.test.tsx: the not-measurable state
+   is the one this table renders least often and must never get wrong, so it is
+   pinned directly rather than through a whole results payload. */
+export function NeverExercised({ sc }: { sc: any }) {
   const c = cov(sc);
   const per = c.per_coverpoint || {};
   const a = c.assertions;
-  const rows = Object.entries(per).filter(([, v]: any) => (v.unhit || []).length);
+  // A not-measurable coverpoint has an EMPTY `unhit` (you cannot have failed to
+  // exercise what nothing can observe), so filtering on unhit alone hid the
+  // single most important thing this panel exists to say. It is listed on its
+  // own terms, with the reason, instead.
+  const rows = Object.entries(per).filter(
+    ([, v]: any) => (v.unhit || []).length || v.not_measurable);
   const brokenProps = (a?.violated_properties || []) as any[];
   if (!rows.length && !brokenProps.length) return null;
   return (
@@ -228,9 +257,13 @@ function NeverExercised({ sc }: { sc: any }) {
               {rows.map(([id, v]: any) => (
                 <tr key={id}>
                   <td className="ne-cp">{id}</td>
-                  <td className="ne-closure">{Math.round((v.closure ?? 0) * 100)}%</td>
+                  <td className="ne-closure"><ClosureCell v={v} /></td>
                   <td className="ne-bins">
-                    {(v.unhit || []).map((b: string) => (
+                    {v.not_measurable ? (
+                      v.not_measurable_reason
+                        ? <span className="ne-detail">{v.not_measurable_reason}</span>
+                        : null
+                    ) : (v.unhit || []).map((b: string) => (
                       <code key={b} className="ne-bin">{b}</code>
                     ))}
                   </td>

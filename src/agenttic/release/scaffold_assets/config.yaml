@@ -17,6 +17,13 @@ scoring:
   calibration_threshold: 0.8
   advisor_max_tokens: 2048   # per-consult cap on advisor output (API minimum 1024)
   fi_threshold: 0.5          # Future AGI 0-1 score -> binary/three-point cutoff
+coverage:
+  # The trace-closure bar sign-off gates on — closure, not pass rate, is the
+  # headline number. Declared here rather than left absent: a scaffolded project
+  # with no coverage block runs on the built-in fallback, which means the bar it
+  # is judged against is not written down anywhere the operator can edit.
+  # A fraction in (0, 1]; loading refuses anything else.
+  closure_target: 0.95
 live:
   sample_rate: 0.05
   drift_threshold: 0.15

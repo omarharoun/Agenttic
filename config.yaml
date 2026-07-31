@@ -20,6 +20,11 @@ scoring:
   fi_threshold: 0.5          # Future AGI 0-1 score -> binary/three-point cutoff
 generator:
   max_parallel: 4            # tasks generated concurrently (generator model calls)
+coverage:
+  # The trace-closure bar the sign-off gates on (Hard Rule 56 — closure, not
+  # pass rate, is the headline). Lives here rather than in five modules; code
+  # falls back to 0.95 only when no config is on disk (library use).
+  closure_target: 0.95
 live:
   sample_rate: 0.05
   drift_threshold: 0.15

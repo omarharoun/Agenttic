@@ -1,0 +1,397 @@
+/* /engine — the scenario-engine explainer.
+ *
+ * Layout comes from landing.css (`.lp`, `.wrap`, `.lp-hero`, `.lp-states`,
+ * `.lp-limits`, `.lp-proof`, `.lp-prose`), which this page imports: the public
+ * routes share one shell, and a second one would be the divergence SPEC-11
+ * deleted. Only what does not exist there is defined below, `.eng-*`.
+ *
+ * TOKEN-ONLY (Hard Rule 47, enforced by scripts/check-tokens.mjs).
+ *
+ * The one rule this file is really for: `.eng-none` and `.eng-absent` are the
+ * two absences and they must never be mistaken for each other. `.eng-none` is a
+ * MEASURED nothing — it was read and there is nothing in it, which is a result,
+ * so it is drawn as a quiet solid rule. `.eng-absent` is an UNREAD fact — the
+ * page could not get it at all — so it is drawn dashed, in the waiting tone,
+ * with hatching behind it. Shape AND texture differ, not only hue: at the far
+ * end of this page is a section arguing that absent evidence must not look like
+ * a good result, and a colour-blind reader has to be able to see the difference
+ * too.
+ */
+
+/* ---- absences, and the state that is not one --------------------------- */
+
+.eng-none,
+.eng-absent,
+.eng-pending {
+  margin: var(--sp-5) 0 0;
+  padding: var(--sp-4) var(--sp-5);
+  font-size: var(--t-base);
+  line-height: 1.6;
+  max-width: 74ch;
+}
+
+/* measured nothing — a result */
+.eng-none {
+  border-left: 3px solid var(--border-strong);
+  background: var(--panel);
+  color: var(--muted);
+}
+
+/* unread — not a result at all */
+.eng-absent {
+  border: 1px dashed var(--wait-border);
+  border-left-width: 3px;
+  border-left-style: dashed;
+  color: var(--text);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      var(--wait-soft) 0 6px,
+      transparent 6px 12px);
+}
+
+/* still reading — a THIRD look, because the request has not come back and
+   neither absence has been established yet. Dotted, unfilled, no tone. */
+.eng-pending {
+  border-left: 3px dotted var(--border-strong);
+  color: var(--faint);
+}
+
+/* ---- chips (one implementation, two states) ----------------------------- */
+
+.eng-chip {
+  display: inline-flex;
+  align-items: center;
+  font: var(--t-xs)/1 var(--font-mono);
+  letter-spacing: 0.02em;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xs);
+  padding: 6px 9px;
+  white-space: nowrap;
+}
+/* "off" is every negative state on this page: a dimension nothing can feed, a
+   bin no injector stages, a fact that is about something other than the
+   subject. Dashed rather than merely paler — a paler chip reads as a quieter
+   version of the same claim, and these are a different claim. */
+.eng-chip--off {
+  border-style: dashed;
+  color: var(--muted);
+  background: transparent;
+}
+/* A THIRD chip state, and it is not a quieter "off". `--off` says "we know what
+   this is and we do not stage it"; this one says "we cannot account for it at
+   all". Same hatching as `.eng-absent`, because it is the same kind of fact:
+   not a measured negative, an unread one. */
+.eng-chip--unknown {
+  border-style: dashed;
+  border-color: var(--wait-border);
+  color: var(--text);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      var(--wait-soft) 0 5px,
+      transparent 5px 10px);
+}
+
+/* ---- 2 · dimensions ----------------------------------------------------- */
+
+.eng-dims {
+  margin-top: var(--sp-6);
+  display: grid;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.eng-dim {
+  background: var(--panel);
+  padding: var(--sp-5) var(--sp-6);
+}
+/* A not-measurable dimension is hatched, exactly as the coverage wheel hatches
+   the sectors nothing asks about — same meaning, same texture, two surfaces. */
+.eng-dim.is-unmeasurable {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      var(--panel) 0 7px,
+      var(--panel-2) 7px 14px);
+}
+.eng-dim__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.eng-dim__id {
+  font: var(--t-sm)/1 var(--font-mono);
+  color: var(--accent);
+}
+.eng-dim__d {
+  margin: var(--sp-3) 0 0;
+  color: var(--muted);
+  font-size: var(--t-sm);
+  line-height: 1.6;
+  max-width: 78ch;
+}
+.eng-dim__why {
+  margin: var(--sp-3) 0 0;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-soft);
+  color: var(--text);
+  font-size: var(--t-sm);
+  line-height: 1.6;
+  max-width: 78ch;
+}
+
+/* ---- 3 · fault bins + evidence ------------------------------------------ */
+
+.eng-bins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-6);
+}
+.eng-bins__note {
+  margin: var(--sp-3) 0 0;
+  color: var(--muted);
+  font-size: var(--t-sm);
+  max-width: 70ch;
+}
+/* One row per bin the injector does NOT stage, with what this page can say
+   about it. A row we cannot account for is hatched and rules dashed in the
+   waiting tone — the `.eng-absent` vocabulary — so it is never read as the
+   quieter cousin of a bin we can explain. Shape and texture, not only hue. */
+.eng-unstaged {
+  margin: var(--sp-4) 0 var(--sp-6);
+  display: grid;
+  gap: var(--sp-3);
+  max-width: 78ch;
+}
+.eng-unstaged__r {
+  border-left: 3px solid var(--border-strong);
+  background: var(--panel);
+  padding: var(--sp-4) var(--sp-5);
+}
+.eng-unstaged__r.is-unaccounted {
+  border-left-style: dashed;
+  border-left-color: var(--wait-border);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      var(--wait-soft) 0 6px,
+      transparent 6px 12px);
+}
+.eng-unstaged dt {
+  font: var(--t-sm)/1 var(--font-mono);
+  color: var(--accent);
+  margin-bottom: var(--sp-2);
+}
+.eng-unstaged__r.is-unaccounted dt { color: var(--text); }
+.eng-unstaged dd {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--t-sm);
+  line-height: 1.6;
+}
+.eng-unstaged__r.is-unaccounted dd { color: var(--text); }
+
+.eng-ev dd {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.eng-ev__msg {
+  font: var(--t-sm)/1.6 var(--font-mono);
+  color: var(--score-fail);
+  word-break: break-word;
+}
+.eng-ev__none {
+  font: var(--t-sm)/1.6 var(--font-mono);
+  color: var(--muted);
+}
+.eng-ev__facts {
+  font: var(--t-xs)/1.5 var(--font-mono);
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+.eng-ev__note {
+  color: var(--muted);
+  font-size: var(--t-sm);
+  line-height: 1.6;
+}
+
+/* ---- 5 · honeypot outcomes ---------------------------------------------- */
+
+.eng-outcomes {
+  margin-top: var(--sp-6);
+  display: grid;
+  gap: var(--sp-4);
+}
+@media (min-width: 860px) {
+  .eng-outcomes { grid-template-columns: repeat(3, 1fr); }
+}
+.eng-outcome {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  background: var(--panel);
+}
+.eng-outcome__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+.eng-outcome__top code {
+  font: var(--t-sm)/1 var(--font-mono);
+  color: var(--accent);
+}
+.eng-outcome p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--t-sm);
+  line-height: 1.6;
+}
+
+/* ---- 6 · stored runs ---------------------------------------------------- */
+
+.eng-runs {
+  list-style: none;
+  margin: var(--sp-6) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-3);
+}
+.eng-run {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  padding: var(--sp-5);
+}
+.eng-run__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.eng-run__id {
+  font: var(--t-sm)/1.4 var(--font-mono);
+  color: var(--text);
+  word-break: break-all;
+}
+.eng-run__when {
+  font: var(--t-xs)/1.4 var(--font-mono);
+  color: var(--muted);
+}
+.eng-run__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+.eng-run__faults {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-soft);
+  font: var(--t-xs)/1.5 var(--font-mono);
+  color: var(--muted);
+}
+/* the row-level form of the same absence rule as .eng-absent */
+.eng-run__faults.is-absent {
+  border-top-style: dashed;
+  border-top-color: var(--wait-border);
+  color: var(--text);
+  max-width: 70ch;
+}
+/* A RECORDED report that would not rebuild — a different fact from the one
+   above and drawn differently on purpose: the record exists, so this is not the
+   dashed nothing-was-written rule, it is a reading that failed. Solid rule in
+   the provisional colour, the same vocabulary a provisional score uses. */
+.eng-run__faults.is-unreadable {
+  border-top-style: solid;
+  border-top-color: var(--score-provisional-border);
+  color: var(--score-provisional);
+  max-width: 70ch;
+}
+
+.eng-make {
+  margin-top: var(--sp-6);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-6);
+  align-items: flex-start;
+}
+.eng-make .ds-term { flex: 1 1 380px; min-width: 300px; margin: 0; }
+.eng-make p {
+  flex: 1 1 340px;
+  min-width: 280px;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--t-sm);
+  line-height: 1.7;
+}
+
+/* ---- prose, quote, caveats ---------------------------------------------- */
+
+.eng-prose { margin-top: var(--sp-6); }
+.eng-prose p {
+  max-width: 74ch;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 0 0 var(--sp-4);
+}
+.eng-prose p:last-child { margin-bottom: 0; }
+
+/* The console's own words — and, for the unscoped line, the console's own
+   COMPONENT rendered inline. Set apart so it reads as something the tool prints
+   rather than something this page says about the tool. */
+.eng-quote .scope-line { margin: 0; }
+.eng-quote {
+  margin: 0 0 var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  border-left: 3px solid var(--accent-line);
+  background: var(--panel);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  line-height: 1.7;
+  max-width: 74ch;
+}
+
+/* A limit stated in the same section as the claim it bounds. Not a footnote:
+   same type size as the argument, held apart by a rule. */
+.eng-caveat {
+  border-top: 1px solid var(--border);
+  padding-top: var(--sp-4);
+  color: var(--text) !important;
+}
+.eng-caveat b { color: var(--text); }
+
+.eng-limits { margin-top: var(--sp-6); }
+.eng-limits .lp-limits__i p { line-height: 1.65; }
+
+.eng-close__p {
+  color: var(--muted);
+  max-width: 54ch;
+  margin: 0 auto var(--sp-6);
+  line-height: 1.7;
+}
+
+.eng-foot {
+  padding: var(--sp-12) var(--sp-8);
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: var(--t-label);
+  letter-spacing: 0.06em;
+}

@@ -8,6 +8,50 @@ import { readFileSync } from "node:fs";
 const CAPABILITIES = JSON.parse(readFileSync(
   new URL("./capabilities.fixture.json", import.meta.url), "utf8"));
 
+/* The `coverage` blob a scored run carries — the product's headline disclosure,
+ * and until now the one thing this fixture did not have at all.
+ *
+ * The stub used to declare a headline (`trace_closure`) and nothing under it, so
+ * `NeverExercised` — the "what this run never exercised" table — rendered
+ * EMPTY on every snapshot, in both themes. A visual gate that photographs the
+ * table blank cannot notice what the table says, which is exactly how the cell
+ * rendering `Math.round((v.closure ?? 0) * 100)` shipped: `0%` for a coverpoint
+ * whose closure is `null` because nothing measures it. The gate was green the
+ * whole time because the row was never on the page.
+ *
+ * All THREE render states are present, because a fixture that shows only the
+ * happy path is how the gap happened in the first place:
+ *
+ *   measured, with gaps   trajectory 89% (`budget_exceeded` unhit), and five more
+ *   measured, at zero     action_risk 0% — this MUST still print "0%". The
+ *                         correction was never "stop printing 0%"; a suite that
+ *                         touched tools and could not place a single one is a
+ *                         real finding, and softening it trades one lie for
+ *                         another.
+ *   NOT MEASURABLE        session_shape — closure null, `unhit` empty, the flag
+ *                         and the reason set. Must read "not measurable", never
+ *                         "0%": zero is a measurement, and it reads as a gap
+ *                         someone can be told to close. No suite can close this.
+ *
+ * PROVENANCE. Produced by the shipped collector, not transcribed — the rule the
+ * capabilities fixture below is under, for the same reason. `collect()` from
+ * `coverage/models/conversational_transactional.seed_model()` was run over a
+ * 14-case support-triage suite whose deterministic bins are earned from real
+ * spans: declared `http.response.status_code` 503/429, an `error.type` timeout,
+ * a tool result reading "account not found", a real `escalate_to_agent` call, a
+ * `max_steps` attribute, and — for `action_risk` — an agent whose every tool is
+ * an opaque `mcp__acme__run`, which post-hardening earns no risk bin at all.
+ * The three semantic dimensions are classifier-backed; each case's label was
+ * DECLARED and read back by a stand-in, so the numbers are the collector's
+ * arithmetic over a stated suite rather than a model's output.
+ *
+ * Nothing here is hand-tuned, and `ui/src/e2e-coverage-fixture.test.tsx` keeps
+ * it that way: it recomputes the headline from the coverpoints and crosses the
+ * way `CoverageReport.trace_closure` does, so editing one number without the
+ * others fails rather than quietly producing a payload no run can emit. */
+const COVERAGE = JSON.parse(readFileSync(
+  new URL("./coverage.fixture.json", import.meta.url), "utf8"));
+
 /* Deterministic console screens for visual regression.
  *
  * A snapshot is only evidence if the same input always produces the same
@@ -39,14 +83,14 @@ const scorecard = {
   total_cost_usd: 0.4213,
   mean_latency_ms: 2140,
   errored_test_ids: [],
-  coverage: {
-    model_ref: "coverage:conversational@v2",
-    baseline: false,
-    trace_closure: 0.91,
-    closure_target: 0.95,
-    closed: false,
-    assertions: { total: 8, violations: 0, unexercised: 2, verdict: "PASS" },
-  },
+  /* Captured whole — see COVERAGE above. It carries its own `model_ref`
+   * (`coverage:cov-conversational_transactional@v3`, i.e. CoverageModel.ref()),
+   * its own headline and target, and its own assertion roll-up, all from the
+   * same 14 traces. They used to be four hand-written literals sitting next to
+   * each other with nothing making them agree: the headline said 91% closure
+   * while no coverpoint underneath it said anything at all, and the assertion
+   * roll-up was a plausible-looking quartet rather than a run's. */
+  coverage: COVERAGE,
   criteria: [
     { criterion_id: "refuses_unsafe", mean: 1.0, scorer: "code", calibrated: true },
     { criterion_id: "correct_queue", mean: 0.86, scorer: "judge", calibrated: false },
@@ -56,10 +100,21 @@ const scorecard = {
 
 /* `capabilities.fixture.json` is the REAL response, captured by calling
  * server/routes/capabilities.py directly (it enumerates registries and touches
- * no database, so it is reproducible):
+ * no database, so it is reproducible). Recapture — `indent=2`, no trailing
+ * newline, which is byte-exact against the committed file, so the diff is the
+ * endpoint's change and nothing else:
  *
- *   uv run python -c "import json; from agenttic.server.routes.capabilities \
- *     import capabilities; print(json.dumps(capabilities()))"
+ *   uv run python -c "import json, pathlib; \
+ *     from agenttic.server.routes.capabilities import capabilities; \
+ *     pathlib.Path('ui/e2e/support/capabilities.fixture.json') \
+ *       .write_text(json.dumps(capabilities(), indent=2))"
+ *
+ * A stale capture is worse than no capture: these two screenshots then
+ * photograph a page the product can no longer serve, and every field the
+ * endpoint added is rendered by no test at all. So the rule is that this file is
+ * recaptured in the same change that edits the endpoint, and the resulting
+ * movement in capabilities-{dark,light}.png is recorded in
+ * ui/src/design/RECONCILIATION.md with the reason.
  *
  * Hand-writing this one failed twice — first `coverage.baseline` was missing,
  * then `supply_chain.mcp_server.checks`. A deeply nested shape guessed from the

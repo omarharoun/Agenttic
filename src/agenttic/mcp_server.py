@@ -12,6 +12,16 @@ verification layer **mid-session**:
 * ``what_is_untested`` — the unhit bins and unexercised properties, i.e. the list
   of things to go and exercise. The actionable half of a coverage report.
 
+Every tool here that returns a closure figure returns ``not_measurable`` beside
+it, under the same name and the same ``id -> reason`` shape that ``verify_op``,
+the scorecard and ``agenttic ingest verify-traffic`` already use. A dimension
+nothing can feed has ``unhit: []`` (you cannot fail to exercise what nobody
+observes) and sits outside the closure denominator, so a projection that showed
+only ``unhit`` answered *"what is untested?"* with a list that silently omitted
+it — over-reporting by omission, and worse over MCP than anywhere else in the
+product: an LLM reading this JSON has no other surface to cross-check against,
+no table to notice a missing row in, and will act on the list as complete.
+
 Deliberately no ``mcp`` SDK dependency, matching
 :mod:`agenttic.adapters.mcp_server` (the client that probes *other* servers): a
 hand-rolled JSON-RPC 2.0 stdio loop is ~100 lines, adds no supply-chain surface to
@@ -49,7 +59,10 @@ TOOLS: list[dict] = [
         "description": (
             "Coverage closure and safety-property results over the tool calls "
             "captured so far by the agenttic hook. Reports violated properties "
-            "and which properties were never exercised."),
+            "and which properties were never exercised. `closure` is a fraction "
+            "of the dimensions that CAN be measured: any dimension listed in "
+            "`not_measurable` is outside that denominator and the reason says "
+            "why."),
         "inputSchema": {
             "type": "object",
             "properties": {"agent_id": {
@@ -62,7 +75,15 @@ TOOLS: list[dict] = [
         "description": (
             "The actionable half of a coverage report: which situations have "
             "never been exercised and which safety properties have never had "
-            "their antecedent occur. An unexercised property is NOT a pass."),
+            "their antecedent occur. An unexercised property is NOT a pass. "
+            "Answers in THREE parts, all of them part of the answer: "
+            "`unhit_situations` (reachable — go exercise them), "
+            "`not_measurable` (nothing emits the evidence, so no run can close "
+            "them; absent from unhit_situations and from the closure "
+            "denominator), and `other_drift` (reached, but the model had no bin "
+            "for what it saw). `limits` names what this coverage model does not "
+            "examine at all. Treating `unhit_situations` alone as the whole "
+            "answer understates what is untested."),
         "inputSchema": {
             "type": "object",
             "properties": {"agent_id": {"type": "string"}},
@@ -127,6 +148,13 @@ def _verify_session(args: dict) -> dict:
         "closure": v["trace_closure"],
         "closure_target": v["closure_target"],
         "closed": v["closed"],
+        # Always present, `{}` when everything was measurable — a field that
+        # appears only in the interesting case is a field consumers forget to
+        # handle, and the interesting case here is the one that qualifies the
+        # number directly above it. `closure` is a fraction OF THE MEASURABLE
+        # DIMENSIONS; without this key it reads as a fraction of the model, i.e.
+        # a better-looking number describing a smaller space.
+        "not_measurable": v.get("not_measurable") or {},
         "properties_checked": a.get("total"),
         "violations": a.get("violations"),
         "violated": a.get("violated_properties") or [],
@@ -134,6 +162,14 @@ def _verify_session(args: dict) -> dict:
         "action_risk_trustable": v["instrumentation"]["action_risk_trustable"],
         "unclassifiable_tools": v["instrumentation"]["uninstrumented_tools"],
         "scope": v.get("scope_statement"),
+        # `scope` says which POPULATION the figure covers; these two say which
+        # MODEL produced it. `BASELINE_LIMITS` is written to be "the only copy
+        # that travels with the number" (baseline.py:35) precisely so a baseline
+        # closure is never read as a fitted one — and this projection was the one
+        # surface it did not reach, leaving `0.12 of 0.95` looking like a verdict
+        # on intent and policy pressure, which this model does not examine at all.
+        "model_ref": v.get("model_ref"),
+        "limits": v.get("limits"),
         "warnings": v.get("warnings") or [],
     }
 
@@ -152,12 +188,51 @@ def _what_is_untested(args: dict) -> dict:
         "status": "populated",
         "closure": v["trace_closure"],
         "never_exercised_properties": a.get("unexercised_properties") or [],
+        # A measurable coverpoint with nothing unhit is genuinely closed and has
+        # nothing to say here. A NOT-measurable one also reports `unhit: []`, for
+        # the opposite reason, so this filter dropped it into the same silence —
+        # see `not_measurable` below, which is why that key exists.
         "unhit_situations": {
             cp: d.get("unhit") or []
             for cp, d in (v.get("per_coverpoint") or {}).items()
             if d.get("unhit")},
+        # The second half of the answer to this tool's own question. Same key,
+        # same `coverpoint_id -> reason` shape as `ops.verify_op`, the scorecard
+        # and `agenttic ingest verify-traffic`: one vocabulary across every
+        # surface, because a caller who learns "not_measurable" from the CLI must
+        # not have to learn a second word for it here.
+        "not_measurable": v.get("not_measurable") or {},
+        # coverpoint -> share of samples that landed in its `other` bin. Found by
+        # the same sweep and the same defect: on this hook path `agent_steps`
+        # drifts at 1.0 — nothing the hook emits is an `llm_call` span, so every
+        # session's step count is UNOBSERVABLE — while `unhit_situations` lists
+        # `single_step` and `multi_step` as gaps. Without this key the tool sends
+        # the caller to exercise two bins its own instrumentation cannot credit.
+        # Drift is a finding about the MODEL (a dimension it is missing or cannot
+        # read), not a hole in the runs, so it is reported beside the gap list and
+        # never inside it.
+        "other_drift": v.get("other_drift") or {},
+        # What this coverage MODEL does not examine, in its own words. The largest
+        # untested surface here is the one no bin list can show: this is the
+        # deterministic baseline, and intent, emotional register and policy
+        # pressure are outside it entirely. A tool called `what_is_untested` that
+        # omits that is answering a narrower question than it was asked.
+        "model_ref": v.get("model_ref"),
+        "limits": v.get("limits"),
+        # Qualifies the gap list directly above: an unhit `action_risk` bin may be
+        # unhit because nothing exercised it, or because the tools that DID
+        # exercise it carry no risk class and could not be credited. The warning
+        # is the only thing that tells those two apart.
+        "warnings": v.get("warnings") or [],
         "note": ("An unexercised property is not a pass — nothing has been shown "
-                 "about it. Exercise these situations to make the evidence real."),
+                 "about it. Exercise the situations in `unhit_situations` to make "
+                 "the evidence real. `not_measurable` is the other half of the "
+                 "answer and no amount of exercising closes it: nothing emits the "
+                 "evidence those dimensions read, so they carry no unhit bins, "
+                 "they are outside the `closure` denominator, and the fix is "
+                 "instrumentation rather than more runs. A coverpoint in "
+                 "`other_drift` is a third case: it WAS reached, and the model "
+                 "could not classify what it saw."),
     }
 
 

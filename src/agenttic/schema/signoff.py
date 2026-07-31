@@ -30,6 +30,11 @@ from typing import ClassVar, Literal, Protocol
 
 from pydantic import BaseModel, Field
 
+# One definition of the closure bar, config-backed. The literal used to be
+# copied into this module, `coverage/model.py`, `coverage/collect.py` and both
+# shipped models — five chances to disagree about what "closed" means, none of
+# them the file an operator would edit.
+from agenttic.coverage.targets import DEFAULT_CLOSURE_TARGET
 from agenttic.schema.attestation import ScopeSummary, content_hash
 
 LegStatus = Literal["populated", "not_run"]
@@ -70,7 +75,9 @@ class CoverageLeg(BaseModel):
     bins_fingerprint: str = ""
     trace_closure: float = 0.0
     stimulus_closure: float = 0.0
-    closure_target: float = 0.95
+    #: fallback only — a populated leg carries the target the report measured
+    #: against, which comes from config (Hard Rule 7). See coverage/targets.py.
+    closure_target: float = DEFAULT_CLOSURE_TARGET
     closed: bool = False
     unhit_bins: list[str] = Field(default_factory=list)
     waived_bins: dict[str, str] = Field(default_factory=dict)   # bin -> reason
@@ -365,6 +372,12 @@ def build_signoff(
             closure_target=cr.closure_target, closed=cr.closed,
             unhit_bins=[f"{cp.coverpoint_id}.{b}" for cp in cr.coverpoints.values()
                         for b in cp.unhit],
+            # Every bin that left the closure denominator, with the reason —
+            # bins waived on the model, and every bin of a coverpoint declared
+            # not measurable. The sign-off is the signed artifact, so a hole it
+            # does not name is a hole nobody downstream can see (Hard Rule 61).
+            # Same implementation the report uses; they cannot disagree.
+            waived_bins=cr.waived_bins(),
             other_drift=cr.other_drift(),
             illegal_hits=[f"{i.coverpoint_id}.{i.bin_id}" for i in cr.illegal_hits],
             provisional_coverpoints=cr.provisional_coverpoints)
@@ -409,8 +422,25 @@ def build_signoff(
 
     if scorecard is not None:
         s.pass_rate = getattr(scorecard, "task_success_rate", None)
-        if getattr(scorecard, "p95_latency_ms", None) is not None:
-            s.envelope.p95_latency_ms = scorecard.p95_latency_ms
+        # The guard used to be `p95 is not None`, which is true for every
+        # scorecard ever built: `p95_latency_ms` is a float field defaulting to
+        # 0.0. So a suite whose runs all died in the harness — those traces are
+        # synthesized with `total_latency_ms=0.0` (harness/runner.py) — reported
+        # `envelope: populated, p95 0ms`, and signoff_report.py printed it as a
+        # measured performance envelope. Zero milliseconds is not a latency; it
+        # is the absence of one, and this document is where an absence reported
+        # as a measurement does the most damage.
+        #
+        # Only ever UPGRADE to populated here. The cdv branch above may already
+        # have populated the leg from real cost evidence, and an untimed run is
+        # no reason to throw that away.
+        p95 = getattr(scorecard, "p95_latency_ms", None)
+        runs = getattr(scorecard, "run_scores", None)
+        timed = (bool(p95) if runs is None       # no per-run detail to inspect
+                 else any((getattr(r, "latency_ms", 0.0) or 0.0) > 0.0
+                          for r in runs))
+        if p95 is not None and timed:
+            s.envelope.p95_latency_ms = p95
             s.envelope.status = "populated"
 
     if provenance is not None:

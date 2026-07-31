@@ -205,11 +205,27 @@ export function dimsFromCoverage(
   });
 }
 
-/** The eight dimensions the conversational_transactional archetype declares.
- *  The baseline model measures the first five; the rest render as not-measured. */
+/** The nine dimensions the conversational_transactional archetype declares.
+ *
+ *  This list is what gives a dimension a sector even when the run's model never
+ *  reported it, so a coverpoint missing from here is invisible rather than
+ *  hatched — the exact failure the wheel exists to prevent. `agent_steps` is
+ *  declared for that reason: it arrived when `session_shape` was split, and
+ *  without an entry it would draw only on runs that measured it.
+ *
+ *  `session_shape` stays declared and is expected to arrive not-measured: the
+ *  baseline and fitted models both carry it with `measurable: false`, because
+ *  nothing emits a human turn. Its sector should be hatched, not absent.
+ *
+ *  Kept in the models' own coverpoint order so the drawing and the endpoint read
+ *  the same way round. The baseline model measures five of the nine (trajectory,
+ *  tool_condition, agent_steps, data_condition, action_risk); the three semantic
+ *  ones need a fitted model and a classifier, so on a baseline run they hatch
+ *  too. Anything a run does not report hatches. */
 export const DECLARED_COVERPOINTS = [
-  "trajectory", "tool_condition", "action_risk", "data_condition",
-  "session_shape", "intent", "emotional_register", "policy_vector",
+  "trajectory", "tool_condition", "agent_steps", "action_risk",
+  "data_condition", "session_shape", "intent", "emotional_register",
+  "policy_vector",
 ];
 
 

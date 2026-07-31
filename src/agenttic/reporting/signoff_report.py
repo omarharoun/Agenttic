@@ -45,8 +45,17 @@ def render(signoff: VerificationSignoff,
                               + (f" (+{len(c.unhit_bins)-8} more)"
                                  if len(c.unhit_bins) > 8 else "")))
         if c.waived_bins:
-            for b, why in list(c.waived_bins.items())[:4]:
-                lines.append(_bar("    waived", f"{b} — {why}"))
+            # Every bin outside the closure denominator, with the reason it left
+            # (Hard Rule 61). Two things land here and both belong in a signed
+            # artifact: a bin waived on the model version, and every bin of a
+            # coverpoint declared not measurable — the second is why the unhit
+            # list above is shorter than the model's bin count, and without it
+            # that shortfall would be a silent hole.
+            shown = list(c.waived_bins.items())[:8]
+            for b, why in shown:
+                lines.append(_bar("    excluded from closure", f"{b} — {why}"))
+            if len(c.waived_bins) > len(shown):
+                lines.append(_bar("", f"(+{len(c.waived_bins) - len(shown)} more)"))
         if c.illegal_hits:
             lines.append(_bar("    ILLEGAL BIN HITS", ", ".join(c.illegal_hits)))
         if c.other_drift:
@@ -103,8 +112,16 @@ def render(signoff: VerificationSignoff,
                       f"pass^{r.k} {r.pass_hat_k:.0%} over {r.frozen_cases} frozen "
                       f"historical bug(s)" if r.status == "populated" else "not run"))
     e = s.envelope
+    # The leg can be populated by CDV cost evidence while latency was never
+    # measured, and `p95 0ms` inside an otherwise-true leg is a false sub-claim.
+    # Nothing takes zero milliseconds, so zero is the unambiguous signature of an
+    # absent measurement rather than a fast one. Decided here rather than by
+    # widening EnvelopeLeg.p95_latency_ms to `float | None`, which would change
+    # the shape of an already-signed document for a rendering problem.
+    _p95 = (f"p95 {e.p95_latency_ms:.0f}ms" if e.p95_latency_ms
+            else "p95 not measured")
     lines.append(_bar("6 · ENVELOPE",
-                      f"mean ${e.mean_cost_usd:.4f}/run · p95 {e.p95_latency_ms:.0f}ms"
+                      f"mean ${e.mean_cost_usd:.4f}/run · {_p95}"
                       f" · closure/$ {e.closure_per_dollar:.3f}"
                       if e.status == "populated" else "not run"))
     lines.append("")

@@ -419,6 +419,91 @@ class AssertionSetRow(SQLModel, table=True):
     payload: str
 
 
+class HoneypotBatteryRow(SQLModel, table=True):
+    """One honeypot harness-enforcement battery, keyed to the scorecard it was
+    run for so a report can find it from a scorecard id alone (the battery in
+    ``redteam.honeypot`` §6 was built and thrown away until this row existed).
+
+    **Immutable per scorecard**, like a dossier, rather than versioned like a
+    suite. A report renders exactly one battery; a second battery under the same
+    scorecard would leave the renderer choosing between two with no honest basis
+    for the choice, and "latest wins" would silently drop the other. Re-saving
+    therefore raises :class:`DuplicateVersionError`. A run under a different
+    posture (enforce vs log-only) is a different run of the harness against a
+    different DUT configuration, and belongs to its own scorecard.
+
+    ``payload`` — ``HarnessEnforcementResult.to_dict()`` verbatim, one serializer
+    — is the source of truth; the columns are for lookup/listing only. The
+    payload's ``verdict``/``not_measured_reason``/``n_probes``/``attempts`` are
+    NOT read back: they are derived from the counts, so a stored copy is a number
+    that can stop reproducing. See :func:`_honeypot_battery_from_payload`.
+
+    Schema note: fresh registries get this table from the v1 baseline
+    (``SQLModel.metadata.create_all``); a database already at migration head
+    gains it from migration **v24** (``verification_evidence_tables``), which
+    closed that gap for this table together with ``scenario_spaces``,
+    ``coverage_models``, ``assertion_sets`` and ``scenario_runs``."""
+    __tablename__ = "honeypot_batteries"
+    __table_args__ = (UniqueConstraint("tenant_id", "scorecard_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    scorecard_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    posture: str = ""                      # "enforce" | "log-only"
+    created_at: datetime
+    payload: str
+
+
+class ScenarioRunRow(SQLModel, table=True):
+    """One run of one realized scenario against one agent — immutable.
+
+    ``save_scenario_space`` stored the SPACE and nothing stored the RUN, so a
+    scenario's transcript, its fault report, its state diff and the calls the
+    gateway refused were assembled by ``scenario/runner.py`` and thrown away when
+    the process exited. The trace survived (``TraceRow``) and is the one thing
+    NOT copied here: this row stores ``trace_id`` and the trace stays where it
+    already lives, because two copies of a run's spans is two answers to what the
+    agent did.
+
+    **Immutable, keyed like a dossier rather than versioned like a suite.** A
+    scenario re-run is a new run with a new trace and a new ``run_id``; there is
+    no such thing as version 2 of a run that already happened. Re-saving raises
+    :class:`DuplicateVersionError`, and so does a second row against a trace that
+    already has one — a run described twice would leave a reader choosing between
+    two accounts of one trace with no honest basis for the choice.
+
+    ``payload`` is the whole record, written by one serializer
+    (:func:`_scenario_run_payload`). The columns are for lookup and listing only.
+    Nothing DERIVED is read back out of the payload: ``never_reached`` is
+    recomputed from planned/fired/skipped, elicitation completeness is recomputed
+    from ``ended`` + ``withheld``, and the scenario's content hash is recomputed
+    from the text/point/seed/fingerprint that produced it. See
+    :func:`_scenario_run_from_payload` for why.
+
+    Schema note: fresh registries get this table from the v1 baseline
+    (``SQLModel.metadata.create_all``); a database already at migration head
+    gains it from migration **v24** (``verification_evidence_tables``), which
+    creates this table alongside ``scenario_spaces``, ``coverage_models``,
+    ``assertion_sets`` and ``honeypot_batteries``. The gap this note used to
+    record is closed; the note stays because the reason it existed — a table
+    declared after the v1 baseline ran is a table ``run_migrations`` will never
+    add on its own — is still true of the next one anybody declares."""
+    __tablename__ = "scenario_runs"
+    __table_args__ = (UniqueConstraint("tenant_id", "run_id"),
+                      UniqueConstraint("tenant_id", "trace_id"))
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: str = Field(default=DEFAULT_TENANT, index=True)
+    run_id: str = Field(index=True)
+    scenario_id: str = Field(index=True)
+    agent_id: str = Field(index=True)
+    trace_id: str = Field(index=True)
+    space_ref: str = ""
+    space_fingerprint: str = ""
+    seed: int = 0
+    created_at: datetime
+    payload: str
+
+
 class DossierRow(SQLModel, table=True):
     """A certification dossier — immutable once written. Revocation/renewal are
     recorded as dossier_events, never as an UPDATE to this row. Keyed by
@@ -657,6 +742,406 @@ def default_db_filename() -> str:
     if Path("ascore.db").exists():
         return "ascore.db"
     return "agenttic.db"
+
+
+def _honeypot_battery_from_payload(payload: str):
+    """Rebuild a :class:`~agenttic.redteam.honeypot.HarnessEnforcementResult`
+    from a stored battery row.
+
+    The three outcomes are read into three separate fields and are never summed.
+    ``resisted`` is a fact about the MODEL (it declined the bait) and
+    ``attempted_blocked`` is a fact about the HARNESS (the model took the bait
+    and the framework stopped it); a round trip that merged them would restore an
+    unenforcing harness in front of a well-behaved model as identical to an
+    enforcing one — the exact confusion the honeypot slice exists to break.
+
+    ``verdict``, ``not_measured_reason``, ``n_probes`` and ``attempts`` are
+    present in the payload (it is ``to_dict()`` verbatim) and are deliberately
+    NOT read back. They are derived from the counts, and a stale derived value
+    read back would outrank the evidence it was computed from — this repo signs
+    the evidence, never the verdict. The dataclass recomputes them from the
+    counts restored here.
+
+    ``target`` is restored from the storage INVARIANT rather than the payload,
+    for the same reason. ``save_honeypot_battery`` refuses anything that is not
+    :data:`~agenttic.redteam.honeypot.AGENT_UNDER_TEST`, so a row that exists was
+    an agent's battery when it was written; reading the field back would let a
+    tampered payload claim otherwise, and this is the one field whose value
+    decides whether the section describes the customer or a fixture.
+
+    Imported lazily: ``redteam.honeypot`` imports ``agenttic.ops``, which imports
+    this module, so a top-level import would be circular."""
+    from agenttic.redteam.honeypot import (
+        AGENT_UNDER_TEST,
+        ATTEMPTED_BLOCKED,
+        EXECUTED_ALLOWED,
+        RESISTED,
+        DecoyEnforcement,
+        HarnessEnforcementResult,
+    )
+    data = json.loads(payload)
+    counts = data.get("counts") or {}
+    return HarnessEnforcementResult(
+        agent_id=data.get("agent_id", ""),
+        posture=data.get("posture", ""),
+        planted_tools=tuple(data.get("planted_tools") or []),
+        resisted=int(counts.get(RESISTED, 0)),
+        attempted_blocked=int(counts.get(ATTEMPTED_BLOCKED, 0)),
+        executed_allowed=int(counts.get(EXECUTED_ALLOWED, 0)),
+        per_decoy=tuple(
+            DecoyEnforcement(
+                tool_name=d.get("tool_name", ""),
+                probes=int(d.get("probes", 0)),
+                resisted=int(d.get(RESISTED, 0)),
+                attempted_blocked=int(d.get(ATTEMPTED_BLOCKED, 0)),
+                executed_allowed=int(d.get(EXECUTED_ALLOWED, 0)),
+                calls_without_decision=int(d.get("calls_without_decision", 0)),
+                decision_refs=tuple(d.get("decision_refs") or []))
+            for d in (data.get("per_decoy") or [])),
+        calls_without_decision=int(data.get("calls_without_decision", 0)),
+        disclosures=tuple(data.get("disclosures") or []),
+        target=AGENT_UNDER_TEST)   # the storage invariant, not the payload
+
+
+#: A scenario run stored without a fault report at all. ``None`` in the payload,
+#: ``recorded: False`` on read — and never an empty plan, which is the claim
+#: "we staged nothing" rather than "nobody wrote down what was staged".
+_NO_FAULT_REPORT = None
+
+
+def _scenario_run_payload(scenario, outcome, *, run_id: str,
+                          exhibited_bins, divergence, coverage_model=None) -> dict:
+    """The ONE serializer for a scenario run. Evidence only.
+
+    Nothing computable from another field in here is written here: no turn
+    count, no "world changed" flag, no completeness verdict. Those are produced
+    by :func:`_scenario_run_from_payload` on the way out, so a row can never
+    carry a summary that has stopped agreeing with what it summarises.
+
+    ``fault_report`` is the environment's report VERBATIM — including its
+    ``never_reached``, which is recomputed on read and never trusted. Storing the
+    report whole rather than trimmed keeps this a copy of an artifact somebody
+    else produced, which is a thing a reader can check against; a trimmed one is
+    a thing only this module knows the shape of.
+
+    ``exhibited_bins`` is ``None`` when the caller collected no coverage for this
+    run, and a (possibly empty) list when it did. The two are different claims —
+    "nothing measured this run" versus "it was measured and credited nothing" —
+    and collapsing them is the vacuity rule inverted.
+
+    ``divergence`` is :meth:`~agenttic.coverage.collect.CoverageReport.divergence`
+    for THIS run's sample: the bins the point REQUESTED and the trace never
+    exhibited, each row stored exactly as that method emitted it. It was printed
+    live and never stored, so the one finding this product exists to make —
+    *asked for, never exhibited* — could not be read back out of the row that
+    claimed to hold the run. Same three states as ``exhibited_bins``, for the
+    same reason: ``None`` is nobody computed it, ``[]`` is a computation that
+    found nothing, and neither may be printed as the other.
+
+    ``turns`` is the COUNTERPARTY's own record, stored beside ``transcript``
+    rather than in place of it, because the transcript is a JOIN and the join is
+    lossy. Field by field against ``UserTurn.as_dict()``:
+
+    * ``text``, ``kind``, ``discloses`` — kept by the join.
+    * ``expect`` — DROPPED. The values the agent's reply should refer to, having
+      been told them.
+    * ``forbid`` — DROPPED. The values of the facts still WITHHELD at that turn.
+      With ``expect`` it is the entire input to :meth:`UserTurn.grade`, which is
+      how "the agent stated a fact it was never told" is detected — so without
+      the pair no reader of a stored run can re-run that grade at all.
+    * ``reason`` — DROPPED. Only the CLOSING turn's reason survives, folded into
+      ``ended`` (``scenario/user.py``: ``session.ended = turn.reason or
+      "closed"``), and only when a close turn ended the session: a run that hit
+      the caller's ``max_turns`` ceiling ends ``turn_cap`` with no close turn to
+      have carried one.
+    * ``source`` — DROPPED. It is per TURN (``scripted`` / ``llm`` /
+      ``replayed-verbatim``) where ``user_provenance`` answers per SESSION, and
+      a replay rewrites the source of every turn it serves.
+
+    The join can also drop a whole turn: ``conversation_transcript`` pairs the
+    n-th ``role="user"`` entry with ``turns[n]`` and DISCLOSES a mismatch rather
+    than guessing, so a recorded turn that never reached the transcript exists
+    in this list and nowhere else.
+
+    Two copies of ``kind``/``text``/``discloses`` is the price, and it is the
+    right one for the reason ``fault_report`` is stored whole: a join's own
+    input is what lets a reader check the join. The key is ABSENT from a row
+    written before this field existed and reads back as ``None`` — "the
+    counterparty's record was not kept" is not "the counterparty took no turns".
+    """
+    fault_report = dict(outcome.fault_report or {}) or _NO_FAULT_REPORT
+    return {
+        "run_id": run_id,
+        "scenario_id": scenario.scenario_id,
+        "agent_id": outcome.trace.agent_id,
+        "trace_id": outcome.trace.trace_id,
+        "space_ref": scenario.space_ref,
+        "space_fingerprint": scenario.space_fingerprint,
+        "seed": int(scenario.seed),
+        "point": dict(scenario.point),
+        "ticket": scenario.text,
+        "session_id": outcome.session_id,
+        "ended": outcome.ended,
+        "turns": [dict(t) for t in outcome.turns],
+        "transcript": [dict(t) for t in outcome.transcript],
+        "state_diff": dict(outcome.state_diff),
+        "blocked": list(outcome.blocked),
+        "interactions": [dict(i) for i in outcome.interactions],
+        "fault_report": fault_report,
+        "disclosed": list(outcome.disclosed),
+        "withheld": list(outcome.withheld),
+        "user_provenance": dict(outcome.user_provenance),
+        "disclosures": [dict(d) if isinstance(d, dict) else {"note": str(d)}
+                        for d in outcome.disclosures],
+        "exhibited_bins": (None if exhibited_bins is None
+                           else sorted({str(b) for b in exhibited_bins})),
+        # Verbatim, and NOT `or None`: an empty list is a measurement here.
+        "divergence": (None if divergence is None
+                       else [dict(d) for d in divergence]),
+        # WHOSE VOCABULARY those two are in. Both are derived — a function of the
+        # trace AND of a coverage model — and neither can be recomputed here: the
+        # store has no model and no collector. What it can do is refuse to let
+        # them be uninterpretable. `trajectory:tool_then_answer` means nothing
+        # without the model that names that bin, and comparing two runs' bin
+        # lists across a model version is the goalpost move `bins_fingerprint`
+        # exists to catch. Absent -> null, meaning the producer did not say.
+        "coverage_model": _coverage_model_ref(coverage_model),
+    }
+
+
+def _coverage_model_ref(model) -> dict | None:
+    """Identify the model a stored bin list was measured against, or ``None``.
+
+    ``None`` is "the producer did not record which model this was" — not "there
+    was no model". A reader that cannot tell those apart would treat an
+    unattributed bin list as if it were attributed.
+    """
+    if model is None:
+        return None
+    try:
+        return {"ref": model.ref(), "bins_fingerprint": model.bins_fingerprint()}
+    except Exception:   # noqa: BLE001 — an object that is not a coverage model
+        # Recorded as unusable rather than silently dropped: a producer passing
+        # the wrong thing is a defect a reader should be able to see.
+        return {"ref": None, "bins_fingerprint": None,
+                "problem": f"not a coverage model: {type(model).__name__}"}
+
+
+def _faults_view(report: dict | None) -> dict:
+    """The stored fault report, with everything derivable RE-DERIVED.
+
+    ``never_reached`` is a function of planned/fired/skipped: it is every planned
+    fault no event mentions. A stored copy is a fourth list that can disagree with
+    the three it was computed from — and it is the one a UI reads to say "we
+    staged this and the agent never got there", which is the single most
+    load-bearing sentence a fault report can produce. So it is recomputed, and by
+    the artifact's own code: :meth:`~agenttic.scenario.faults.FaultPlan.report` is
+    reconstructed and re-run, rather than its set logic being reimplemented here
+    where the two could drift.
+
+    Reconstruction also VALIDATES. ``PlannedFault.__post_init__`` refuses a kind
+    that is not a fault kind and a tool the world does not have, so a payload
+    describing an impossible fault cannot be served as though it described a real
+    one. When that happens the stored lists are returned untouched with
+    ``never_reached: None`` and a ``problem`` naming the failure — the evidence is
+    still shown, the derivation is reported as unavailable, and nothing is
+    invented in its place.
+
+    ``recorded: False`` (all four lists ``None``) is the third state: this run
+    stored no report, which is not the same as a report with an empty plan.
+
+    ``planned``/``fired``/``skipped`` are returned exactly as stored rather than
+    re-serialized out of the reconstruction, so a payload carrying a field this
+    module has never heard of still shows it. Only ``never_reached`` — which no
+    payload gets a say in — is emitted in the plan's own serialization.
+    """
+    if not report:
+        return {"recorded": False, "source": None, "planned": None,
+                "fired": None, "skipped": None, "never_reached": None,
+                "counts": None}
+    planned = list(report.get("planned") or [])
+    fired = list(report.get("fired") or [])
+    skipped = list(report.get("skipped") or [])
+    source = str(report.get("source") or "")
+    try:
+        from agenttic.scenario.faults import (
+            FaultPlan, FiredFault, PlannedFault, SkippedFault)
+
+        def _fault(d: dict) -> PlannedFault:
+            return PlannedFault(
+                tool=str(d.get("tool", "")), call_index=int(d.get("call_index", 0)),
+                kind=str(d.get("kind", "")), once=bool(d.get("once", True)),
+                truncate_pct=int(d.get("truncate_pct", 50)))
+
+        plan = FaultPlan(tuple(_fault(p) for p in planned), source=source)
+        rebuilt = plan.report(
+            [FiredFault(fault=_fault(f), step=int(f.get("step", 0)),
+                        observable=bool(f.get("observable", True)))
+             for f in fired],
+            [SkippedFault(fault=_fault(s), step=int(s.get("step", 0)),
+                          reason=str(s.get("reason", "")))
+             for s in skipped])
+    except Exception as exc:  # noqa: BLE001 — an unreadable plan is not an empty one
+        return {"recorded": True, "source": source, "planned": planned,
+                "fired": fired, "skipped": skipped, "never_reached": None,
+                "counts": None,
+                "problem": f"{type(exc).__name__}: {exc}"}
+    out = {"recorded": True, "source": source, "planned": planned,
+           "fired": fired, "skipped": skipped,
+           "never_reached": rebuilt["never_reached"]}
+    out["counts"] = {k: len(out[k])
+                     for k in ("planned", "fired", "skipped", "never_reached")}
+    return out
+
+
+def _scenario_run_from_payload(payload: str, *, trace=None) -> dict:
+    """Rebuild one stored scenario run, deriving everything derivable.
+
+    The evidence is returned as stored. Everything that is a FUNCTION of that
+    evidence is recomputed here and lives under ``derived``, for the reason
+    :func:`_honeypot_battery_from_payload` gives: this repo signs the evidence and
+    never the verdict, and a stale derived value read back outranks the thing it
+    was computed from.
+
+    What is derived, and why each one:
+
+    * ``content_sha256`` — recomputed by building the
+      :class:`~agenttic.stimulus.realize.RealizedScenario` this run's stored
+      ticket/point/seed/fingerprint describe and asking IT. That is the hash that
+      says which scenario this was; storing a copy would let a row claim a
+      provenance its own contents contradict.
+    * ``n_user_turns`` — counted off the TRACE's ``user_turn`` spans, which is
+      what ``coverage/extractors.py`` counts and what
+      ``ScenarioOutcome.user_turns`` documents as the authority. ``None`` when no
+      trace was supplied: an uncounted conversation is not a conversation with
+      zero turns.
+    * ``conversational`` — whether this run went down the session path at all,
+      from the presence of a session id. Deliberately NOT called ``multi_turn``:
+      ``session_shape`` already owns that word and a session that closed after one
+      turn is a conversation and is not multi-turn, so a second answer to that
+      question is exactly what this must not add.
+    * ``world_changed`` / ``n_changed_fields`` / ``n_blocked`` — counts over the
+      state diff and the refused calls.
+    * ``elicitation_complete`` — recomputed by
+      :class:`~agenttic.scenario.user.SimulatedSession`, whose ``completed``
+      property is the definition (satisfied AND nothing still withheld). ``None``
+      for a single-shot run, which elicited nothing because it was never asked to.
+
+    Three fields are returned as stored and are deliberately NOT summarised into
+    anything, because each already has an owner: ``turns`` (no count beside it —
+    ``derived.n_user_turns`` is counted off the trace and is the one answer to
+    "how many turns"), ``coverage.bins`` and ``coverage.divergence``. Each of the
+    three carries ``None`` for "not recorded" and ``[]`` for "recorded, and
+    empty", and no reader is given a boolean that merges the two.
+    """
+    data = json.loads(payload)
+    state_diff = dict(data.get("state_diff") or {})
+    blocked = list(data.get("blocked") or [])
+    session_id = str(data.get("session_id") or "")
+    withheld = list(data.get("withheld") or [])
+    disclosed = list(data.get("disclosed") or [])
+    ended = str(data.get("ended") or "")
+    bins = data.get("exhibited_bins")
+    # `.get`, not `or`: `[]` is a result and `None`/absent is its absence. A row
+    # written before either field existed has no key and reads back as `None`.
+    divergence = data.get("divergence")
+    turns = data.get("turns")
+
+    derived: dict = {
+        "conversational": bool(session_id),
+        "world_changed": bool(state_diff),
+        "n_changed_fields": len(state_diff),
+        "n_blocked": len(blocked),
+        "n_user_turns": (None if trace is None else
+                         sum(1 for s in trace.spans if s.kind == "user_turn")),
+        "content_sha256": _scenario_content_sha256(data),
+        "elicitation_complete": None,
+    }
+    if session_id:
+        from agenttic.scenario.user import SimulatedSession
+        derived["elicitation_complete"] = SimulatedSession(
+            ended=ended, disclosed=disclosed, withheld=withheld).completed
+
+    return {
+        "run_id": str(data.get("run_id") or ""),
+        "scenario_id": str(data.get("scenario_id") or ""),
+        "agent_id": str(data.get("agent_id") or ""),
+        "trace_id": str(data.get("trace_id") or ""),
+        "space_ref": str(data.get("space_ref") or ""),
+        "space_fingerprint": str(data.get("space_fingerprint") or ""),
+        "seed": int(data.get("seed") or 0),
+        "point": dict(data.get("point") or {}),
+        "ticket": str(data.get("ticket") or ""),
+        "session_id": session_id,
+        "ended": ended,
+        # As stored, unnormalised — the counterparty's record, which is what
+        # makes the transcript join beside it checkable rather than merely
+        # readable. `None` = this row never kept one.
+        "turns": None if turns is None else list(turns),
+        "transcript": [_transcript_entry(t)
+                       for t in (data.get("transcript") or [])],
+        "state_diff": state_diff,
+        "blocked": blocked,
+        "interactions": list(data.get("interactions") or []),
+        "faults": _faults_view(data.get("fault_report")),
+        "elicitation": {"disclosed": disclosed, "withheld": withheld},
+        # `measured` speaks for `bins` and for nothing else. `divergence` answers
+        # its own presence question through `null` vs `[]`, because the two are
+        # collected by different callers at different moments and a single flag
+        # covering both would let "nobody looked for divergence" be read off a
+        # `measured: true` that only ever meant the bins were counted.
+        "coverage": {"measured": bins is not None,
+                     "bins": None if bins is None else list(bins),
+                     "divergence": (None if divergence is None
+                                    else list(divergence)),
+                     # Which model's vocabulary the two above are in. `null` =
+                     # the producer did not record one, which is not the same as
+                     # the bins being model-free — nothing here is.
+                     "model": data.get("coverage_model")},
+        "user_provenance": dict(data.get("user_provenance") or {}),
+        "disclosures": list(data.get("disclosures") or []),
+        "derived": derived,
+    }
+
+
+def _transcript_entry(entry: dict) -> dict:
+    """One transcript line, with its two derived flags.
+
+    ``revealed_fact`` is whether this turn handed over a gated fact, from the
+    ``hidden_facts`` key the counterparty named — a boolean nobody stores,
+    because the key IS the evidence and a flag beside it could contradict it.
+    ``delivered`` says whether the agent was given the turn: a ``close`` is what
+    the customer said after the agent's last answer and is never handed over
+    (``ScenarioOutcome.user_turns`` counts the same way), so a UI that drew it as
+    a message the agent ignored would be describing a turn that never reached it.
+    """
+    speaker = str(entry.get("speaker") or "")
+    out = {"speaker": speaker, "text": str(entry.get("text") or "")}
+    if speaker != "user":
+        return out
+    kind = str(entry.get("kind") or "")
+    discloses = str(entry.get("discloses") or "")
+    out.update({"kind": kind, "discloses": discloses,
+                "revealed_fact": bool(discloses), "delivered": kind != "close"})
+    return out
+
+
+def _scenario_content_sha256(data: dict) -> str:
+    """This run's scenario fingerprint, recomputed from what was stored.
+
+    Through :class:`~agenttic.stimulus.realize.RealizedScenario` rather than a
+    second copy of its digest, so there is one definition of what a scenario's
+    content hash is. Imported lazily: ``stimulus.realize`` is reachable from
+    ``agenttic.scenario``, which imports this module.
+    """
+    from agenttic.stimulus.realize import RealizedScenario
+    return RealizedScenario(
+        scenario_id=str(data.get("scenario_id") or ""),
+        point=dict(data.get("point") or {}),
+        seed=int(data.get("seed") or 0),
+        space_ref=str(data.get("space_ref") or ""),
+        space_fingerprint=str(data.get("space_fingerprint") or ""),
+        text=str(data.get("ticket") or "")).content_sha256()
 
 
 class Registry:
@@ -1449,6 +1934,255 @@ class Registry:
                 AssertionSetRow.tenant_id == self.tenant
             ).order_by(AssertionSetRow.set_id, AssertionSetRow.version)).all()
             return [{"set_id": r.set_id, "version": r.version} for r in rows]
+
+    # -- honeypot batteries (immutable, keyed to their scorecard) --------------
+
+    def save_honeypot_battery(self, scorecard_id: str, result) -> None:
+        """Persist one honeypot harness-enforcement battery against the scorecard
+        it was run for, so ``ops.report_op`` can find it from a scorecard id.
+
+        Append-only in the strictest form the artifact allows: immutable. A
+        second battery for the same scorecard raises
+        :class:`DuplicateVersionError` rather than shadowing the first — see
+        :class:`HoneypotBatteryRow` for why this is keyed like a dossier rather
+        than versioned like a suite.
+
+        The scorecard must already exist in this tenant. A battery filed against
+        an id nothing resolves is a battery no report will ever render: it would
+        look saved and be permanently unreachable, so this raises
+        :class:`NotFoundError` instead of storing an orphan.
+
+        A battery run against the scripted demo DUT is REFUSED
+        (:class:`~agenttic.redteam.honeypot.DemoBatteryNotStorable`). The only
+        execution path the battery has today builds its own target around
+        ``HoneypotVulnerableClient``, a fixture that models a plausibly
+        vulnerable agent; its three outcomes describe that fixture and nobody's
+        agent. Storing one would put a fabricated harness verdict on a customer's
+        scorecard, and the section gives a reader no way to tell. The check lives
+        here rather than in the renderer because this is the boundary a mistake
+        cannot be walked back across — a row outlives the process that wrote it."""
+        from agenttic.redteam.honeypot import (AGENT_UNDER_TEST,
+                                               DemoBatteryNotStorable)
+        target = getattr(result, "target", None)
+        if target != AGENT_UNDER_TEST:
+            raise DemoBatteryNotStorable(
+                f"battery for scorecard {scorecard_id} was run against "
+                f"{target!r}, not the agent under test. A scorecard section "
+                "must describe the agent it is about; storing this would report "
+                "a fixture's enforcement behaviour as the customer's.")
+        self.get_scorecard(scorecard_id)      # NotFoundError if unknown here
+        with Session(self.engine) as s:
+            exists = s.exec(select(HoneypotBatteryRow).where(
+                HoneypotBatteryRow.tenant_id == self.tenant,
+                HoneypotBatteryRow.scorecard_id == scorecard_id)).first()
+            if exists:
+                raise DuplicateVersionError(
+                    f"honeypot battery for scorecard {scorecard_id} already "
+                    "stored (immutable)")
+            s.add(HoneypotBatteryRow(
+                tenant_id=self.tenant, scorecard_id=scorecard_id,
+                agent_id=result.agent_id, posture=result.posture,
+                created_at=_now(), payload=json.dumps(result.to_dict())))
+            s.commit()
+
+    def find_honeypot_battery(self, scorecard_id: str):
+        """The battery stored for ``scorecard_id``, or ``None`` when no battery
+        was run for it.
+
+        ``None`` is a third state, not an empty battery: a scorecard that was
+        never put on trial and a battery that ran and reached the harness zero
+        times are different claims, and only the second one is a finding (see
+        ``ops.report_op``)."""
+        with Session(self.engine) as s:
+            row = s.exec(select(HoneypotBatteryRow).where(
+                HoneypotBatteryRow.tenant_id == self.tenant,
+                HoneypotBatteryRow.scorecard_id == scorecard_id)).first()
+            return _honeypot_battery_from_payload(row.payload) if row else None
+
+    def get_honeypot_battery(self, scorecard_id: str):
+        """Like :meth:`find_honeypot_battery`, but raises ``NotFoundError`` when
+        no battery was stored (the ``get_*`` convention in this module)."""
+        result = self.find_honeypot_battery(scorecard_id)
+        if result is None:
+            raise NotFoundError(f"honeypot battery for scorecard {scorecard_id}")
+        return result
+
+    def list_honeypot_batteries(self, agent_id: str | None = None) -> list[dict]:
+        """Stored batteries (this tenant), oldest-first. ``verdict`` and
+        ``counts`` are re-derived from the stored payload rather than read from a
+        denormalised column, for the reason given in
+        :func:`_honeypot_battery_from_payload`."""
+        with Session(self.engine) as s:
+            q = select(HoneypotBatteryRow).where(
+                HoneypotBatteryRow.tenant_id == self.tenant)
+            if agent_id is not None:
+                q = q.where(HoneypotBatteryRow.agent_id == agent_id)
+            rows = s.exec(q.order_by(HoneypotBatteryRow.id)).all()
+        out = []
+        for r in rows:
+            res = _honeypot_battery_from_payload(r.payload)
+            out.append({"scorecard_id": r.scorecard_id, "agent_id": r.agent_id,
+                        "posture": r.posture, "verdict": res.verdict,
+                        "counts": res.counts(),
+                        "created_at": r.created_at.isoformat()})
+        return out
+
+    # -- scenario runs (immutable, one per trace) ------------------------------
+
+    def save_scenario_run(self, scenario, outcome, *, run_id: str = "",
+                          exhibited_bins=None, divergence=None,
+                          coverage_model=None) -> str:
+        """Persist one scenario run. Returns its ``run_id``.
+
+        ``scenario`` is the :class:`~agenttic.stimulus.realize.RealizedScenario`
+        that was run and ``outcome`` the
+        :class:`~agenttic.scenario.runner.ScenarioOutcome` it produced. The agent
+        id is read off the outcome's TRACE rather than taken as an argument: the
+        trace is the record of who ran, and a second answer to that is a row that
+        can name an agent the run does not.
+
+        ``run_id`` defaults to the trace id, which is already unique per tenant
+        and is the natural identity of a run — one run, one trace.
+
+        Three refusals, all at this boundary because a row outlives the process
+        that wrote it:
+
+        * the trace must already be stored in this tenant. A run filed against a
+          trace nothing resolves is a run no surface can ever render in full: it
+          would look saved and be permanently half-readable. ``NotFoundError``,
+          the same orphan rule ``save_honeypot_battery`` applies to its scorecard.
+          (``scenario_runner(persist=False)`` produces exactly such an outcome —
+          store the trace first, or let the runner do it.)
+        * a ``run_id`` already used raises :class:`DuplicateVersionError`. A run is
+          immutable: re-running the scenario produces a new trace and a new run,
+          never version 2 of the one that already happened.
+        * a trace that already has a run raises the same. Two rows describing one
+          trace would leave a reader choosing between two accounts of a single run.
+
+        ``exhibited_bins`` is the coverage this run EXHIBITED, when the caller
+        collected it. Left out entirely it stores as "not measured", which reads
+        back differently from an empty list — see :func:`_scenario_run_payload`.
+
+        ``divergence`` is the other half of that same coverage read, and the half
+        that carries the finding: the rows
+        :meth:`~agenttic.coverage.collect.CoverageReport.divergence` returned for
+        this run's sample — the corners the point ASKED FOR that the run never
+        produced. Passed through verbatim, list of dicts, each row that method's
+        own. Left out it stores as ``None`` — NOT RECORDED, nobody computed it —
+        which is a different row from ``divergence=[]``, a computation that found
+        nothing diverged. Both read back under ``coverage`` and neither is
+        allowed to look like the other:
+
+        * ``None`` — nobody asked this run whether it diverged.
+        * ``[]``   — it was asked, and everything the point requested appeared.
+        * ``[..]`` — the point asked for these corners and the run did not
+          produce them ("asked for, never exhibited").
+        """
+        trace = outcome.trace
+        self.get_trace(trace.trace_id)        # NotFoundError if unknown here
+        run_id = run_id or trace.trace_id
+        payload = _scenario_run_payload(scenario, outcome, run_id=run_id,
+                                        exhibited_bins=exhibited_bins,
+                                        divergence=divergence,
+                                        coverage_model=coverage_model)
+        with Session(self.engine) as s:
+            clash = s.exec(select(ScenarioRunRow).where(
+                ScenarioRunRow.tenant_id == self.tenant,
+                ScenarioRunRow.run_id == run_id)).first()
+            if clash:
+                raise DuplicateVersionError(
+                    f"scenario run {run_id} already stored (immutable)")
+            same_trace = s.exec(select(ScenarioRunRow).where(
+                ScenarioRunRow.tenant_id == self.tenant,
+                ScenarioRunRow.trace_id == trace.trace_id)).first()
+            if same_trace:
+                raise DuplicateVersionError(
+                    f"trace {trace.trace_id} is already stored as scenario run "
+                    f"{same_trace.run_id}; one run is one trace")
+            s.add(ScenarioRunRow(
+                tenant_id=self.tenant, run_id=run_id,
+                scenario_id=scenario.scenario_id, agent_id=trace.agent_id,
+                trace_id=trace.trace_id, space_ref=scenario.space_ref,
+                space_fingerprint=scenario.space_fingerprint,
+                seed=int(scenario.seed), created_at=_now(),
+                payload=json.dumps(payload)))
+            s.commit()
+        return run_id
+
+    def find_scenario_run(self, run_id: str) -> dict | None:
+        """The stored run, or ``None`` when this tenant has no such run.
+
+        The trace is loaded so the turn count can be taken off it (the authority
+        on what the run exhibited). A trace that has gone missing leaves
+        ``derived.n_user_turns`` at ``None`` with a disclosure, rather than at
+        zero — "nobody counted" and "there were none" are different claims.
+        """
+        with Session(self.engine) as s:
+            row = s.exec(select(ScenarioRunRow).where(
+                ScenarioRunRow.tenant_id == self.tenant,
+                ScenarioRunRow.run_id == run_id)).first()
+        if row is None:
+            return None
+        try:
+            trace = self.get_trace(row.trace_id)
+            missing = None
+        except NotFoundError:
+            trace, missing = None, (
+                f"trace {row.trace_id} is no longer stored, so the turn count "
+                "could not be taken off it")
+        out = _scenario_run_from_payload(row.payload, trace=trace)
+        out["created_at"] = row.created_at.isoformat()
+        if missing:
+            out["disclosures"] = list(out["disclosures"]) + [
+                {"kind": "trace_missing", "note": missing}]
+        return out
+
+    def get_scenario_run(self, run_id: str) -> dict:
+        """Like :meth:`find_scenario_run`, raising ``NotFoundError`` when there is
+        no such run (the ``get_*`` convention in this module)."""
+        run = self.find_scenario_run(run_id)
+        if run is None:
+            raise NotFoundError(f"scenario run {run_id}")
+        return run
+
+    def list_scenario_runs(self, *, scenario_id: str | None = None,
+                           agent_id: str | None = None,
+                           limit: int = 100) -> list[dict]:
+        """Stored runs (this tenant), NEWEST FIRST, one summary row each.
+
+        The summary numbers are re-derived from each payload rather than read
+        from a denormalised column, for the reason
+        :func:`_scenario_run_from_payload` gives. ``n_user_turns`` is absent
+        here: it is counted off the trace, and a list is not the place to load
+        one trace per row — the detail view is where that claim is made.
+        """
+        with Session(self.engine) as s:
+            q = select(ScenarioRunRow).where(
+                ScenarioRunRow.tenant_id == self.tenant)
+            if scenario_id is not None:
+                q = q.where(ScenarioRunRow.scenario_id == scenario_id)
+            if agent_id is not None:
+                q = q.where(ScenarioRunRow.agent_id == agent_id)
+            rows = s.exec(q.order_by(ScenarioRunRow.id.desc())
+                          .limit(max(1, int(limit)))).all()
+        out = []
+        for r in rows:
+            run = _scenario_run_from_payload(r.payload)
+            faults = run["faults"]
+            out.append({
+                "run_id": r.run_id, "scenario_id": r.scenario_id,
+                "agent_id": r.agent_id, "trace_id": r.trace_id,
+                "space_ref": r.space_ref,
+                "space_fingerprint": r.space_fingerprint,
+                "seed": r.seed, "created_at": r.created_at.isoformat(),
+                "ended": run["ended"],
+                "conversational": run["derived"]["conversational"],
+                "world_changed": run["derived"]["world_changed"],
+                "n_blocked": run["derived"]["n_blocked"],
+                "faults": {"recorded": faults["recorded"],
+                           "counts": faults["counts"]},
+            })
+        return out
 
     # -- dossiers (immutable) + append-only dossier_events ---------------------
 

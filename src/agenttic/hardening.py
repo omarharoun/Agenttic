@@ -260,15 +260,46 @@ def _live_failure_reason(catch: dict) -> str:
     return base
 
 
+#: Keys a span carries *instead of* the request content they describe.
+#: ``ingest.mapping.map_span`` hashes request bodies rather than storing them and
+#: separately names the tool it called, so an input built only from these NAMES
+#: the prompt without being it. This is the "non-empty input" that must not be
+#: trusted: promote it as a reconstruction and the case's ``input`` is a 64-char
+#: digest (or a bare tool name), which an adapter that later runs the case hands
+#: to the agent as its task. It looks runnable; it isn't.
+_NON_CONTENT_INPUT_KEYS = frozenset({"content_sha256", "parts", "tool_name"})
+
+
+def _carries_content(span_input: dict) -> bool:
+    """True when a span's input holds actual request CONTENT.
+
+    Conservative in both directions. A span that carries a digest *alongside*
+    real content keys is usable — the content is there. A span built only from
+    the reference/metadata keys is not, and that includes the ``{"tool_name":
+    ...}``-only shape an ingested tool_call has whenever the producer captured
+    no arguments (``map_span`` sets ``content_sha256`` only when it found
+    content, so keying the check on the digest missed that shape entirely)."""
+    return bool(set(span_input) - _NON_CONTENT_INPUT_KEYS)
+
+
 def _reconstruct_input(trace: Trace) -> tuple[dict, bool]:
     """Best-effort reconstruction of a case *input* from a production trace.
 
-    Returns ``(input, complete)``. ``complete`` is False when nothing usable
-    could be recovered (e.g. a black-box trace with only a final-output span) —
-    the promoted case is then additionally marked ``partial``. We only ever
-    reconstruct the input; ground truth is never invented from a trace."""
+    Returns ``(input, complete)``. ``complete`` is False when no span carried
+    real request content — a black-box trace with only a final-output span, or an
+    OTel-ingested trace whose inputs survive as content hashes and tool names.
+    The input is then EMPTY rather than reference-shaped: a promoted case must be
+    an obvious blank for a reviewer to fill in, not quietly carry a hash or a
+    tool name that an adapter would replay as the agent's prompt. The case is
+    additionally tagged ``partial``. We only ever reconstruct the input; ground
+    truth is never invented from a trace.
+
+    Every such catch therefore has the SAME empty input, which
+    ``promote_live_failures_op`` has to account for — see the ``partial`` carve
+    out in its de-dupe: fingerprinting an absence would collapse N distinct
+    production failures into one promoted case."""
     for span in trace.spans:
-        if span.input:
+        if _carries_content(span.input):
             return dict(span.input), True
     return {}, False
 
@@ -367,7 +398,15 @@ def promote_live_failures_op(
         for c in existing_cases
     ]
     existing_ids = {c.test_id for c in kept}
-    existing_prints = {fingerprint(c) for c in kept}
+    # ``partial`` cases are deliberately absent from the content index: their
+    # input is empty (nothing was reconstructable), so their fingerprint is a
+    # hash of an absence and identical for every one of them. Indexing that would
+    # make the FIRST unreconstructable catch shadow every later one — N distinct
+    # production failures promoting to one case and N-1 reported as
+    # skipped_duplicates. De-dupe is about near-identical *content*; with no
+    # content the only honest identity is the catch's own trace, which
+    # ``existing_ids`` (test_id == live_test_id(trace_id)) already enforces.
+    existing_prints = {fingerprint(c) for c in kept if "partial" not in c.tags}
 
     added: list[str] = []
     skipped: list[str] = []
@@ -395,12 +434,13 @@ def promote_live_failures_op(
             rubric_id=rubric_id,
         )
         fp = fingerprint(case)
-        if tid in existing_ids or fp in existing_prints:
+        if tid in existing_ids or (complete and fp in existing_prints):
             skipped.append(trace_id)
             continue
         kept.append(case)
         existing_ids.add(tid)
-        existing_prints.add(fp)
+        if complete:                  # see the existing_prints comment above
+            existing_prints.add(fp)
         added.append(trace_id)
         manifest["cases"][tid] = {
             "why": _live_failure_reason(catch),

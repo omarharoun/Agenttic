@@ -12,11 +12,24 @@ import {
   hasVerification, scopeNote, scopeTag,
 } from "./verification";
 
+/* `model_ref` is `coverage:<model_id>@v<version>` (CoverageModel.ref). The two
+ * model ids that exist are `cov-baseline-deterministic` and
+ * `cov-conversational_transactional`; these fixtures used to carry
+ * `coverage:baseline@v1` and `coverage:conversational@v2`, which name no model
+ * the backend can produce. Nothing renders the string — it is only tested for
+ * presence — which is exactly why the invented values survived. A fixture that
+ * cannot occur is not evidence the screen handles what will occur.
+ *
+ * The version is `v3` because both shipped models are at 3: the `session_shape`
+ * split bumped them. Correcting the id to a real one while leaving `@v2` behind
+ * still named a ref no run can emit — half a fix reads as a whole one. If a
+ * model version moves again, these move with it. */
 const UNSCOPED = { task_success_rate: 0.6 };
 const BASELINE = {
   task_success_rate: 0.6,
   coverage: {
-    model_ref: "coverage:baseline@v1", baseline: true, trace_closure: 0.42,
+    model_ref: "coverage:cov-baseline-deterministic@v3", baseline: true,
+    trace_closure: 0.42,
     closure_target: 0.95, closed: false, limits: "Baseline model only.",
     assertions: { total: 8, violations: 1, unexercised: 3, verdict: "FAIL" },
   },
@@ -24,7 +37,7 @@ const BASELINE = {
 const FITTED = {
   task_success_rate: 0.9,
   coverage: {
-    model_ref: "coverage:conversational@v2", baseline: false,
+    model_ref: "coverage:cov-conversational_transactional@v3", baseline: false,
     trace_closure: 0.97, closure_target: 0.95, closed: true,
     assertions: { total: 8, violations: 0, unexercised: 0, verdict: "PASS" },
   },

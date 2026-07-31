@@ -18,6 +18,15 @@ Invariants:
 * **Graceful degradation** — a span missing GenAI attributes still maps to a
   partial ``Span`` (no fabricated fields) and is recorded as an
   ``incomplete_span`` note; ingest never raises on a producer's malformed span.
+* **No stand-in answer** — because ingest hashes content instead of storing it,
+  a trace can arrive with no recoverable completion text. Its ``final_output``
+  is then the explicit :data:`NO_OUTPUT_CAPTURED` marker, never the digest of
+  the answer and never a span name: a consumer must be able to tell "no output
+  was captured" from "the output was this text".
+* **A declared failure survives ingest** — a span whose producer set OTLP status
+  ERROR arrives carrying that fact whether or not anyone wrote a sentence about
+  it (:func:`status_is_error`). Coverage must not depend on an upstream producer
+  being generous with prose.
 """
 from __future__ import annotations
 
@@ -56,6 +65,113 @@ E_EVIDENCE = "enforcement.evidence"
 _TOOL_OPS = {"execute_tool", "tool", "invoke_tool"}
 _LLM_OPS = {"chat", "text_completion", "generate_content", "completion", "embeddings"}
 
+#: Stamped as a trace's ``final_output`` when the producer's spans carried no
+#: completion CONTENT. Ingest hashes bodies rather than storing them (see
+#: :func:`map_span`), so a trace whose producer never set ``gen_ai.completion``
+#: has no recoverable answer text — only a digest *of* the answer, or a span
+#: name. Emitting either as ``final_output`` is a lie a consumer cannot detect:
+#: ``scoring.judge._evidence_body`` renders ``trace.final_output`` verbatim under
+#: the header "AGENT FINAL OUTPUT", so a judge model would be shown 64 hex chars
+#: (or "invoke_agent final_output") and asked to grade it as the agent's answer.
+#: Say the unavailability instead, in the ``PREFIX:detail`` shape the rest of the
+#: platform already uses for non-results (``HARNESS_FAILURE`` / ``UPSTREAM_ERROR``
+#: / ``BLACKBOX_FAILURE``, see ``scoring.engine.EXECUTION_FAILURE_PREFIXES``).
+#: Detect it with ``str(trace.final_output).startswith(NO_OUTPUT_CAPTURED)``.
+NO_OUTPUT_CAPTURED = "NO_OUTPUT_CAPTURED"
+
+# --- OTLP span status ------------------------------------------------------
+# `Status` is a FIELD on the span, not an attribute, so ``attributes = dict(a)``
+# below copies none of it. Everything a consumer will ever learn about the
+# producer's verdict has to be put onto the Span here or it is gone.
+
+#: Canonical spelling of ``StatusCode.ERROR`` — the proto3 JSON enum name, which
+#: is what OTLP/JSON is defined to emit. Producers in the wild also send the
+#: enum's integer (``2``), the bare ``"ERROR"``, and lowercase variants; all of
+#: them denote the same enum member, so normalising to one spelling loses no
+#: information and spares every downstream reader the same four-way test.
+OTEL_STATUS_ERROR = "STATUS_CODE_ERROR"
+
+#: Where the normalised verdict is parked. Not a new key we invented: it is the
+#: attribute an OTel collector already writes when it flattens span status, and
+#: the one ``coverage.extractors._declares_failure`` already reads
+#: (``_OTEL_STATUS_KEYS``). Publishing the declaration under the name the
+#: ecosystem uses means no consumer has to learn an Agenttic-specific field, and
+#: no second implementation of "did this span fail" comes into existence.
+A_OTEL_STATUS = "otel.status_code"
+
+#: Spellings of the same enum member. ``"2"`` is here because OTLP/JSON encodes
+#: 64-bit fields as strings and hand-rolled encoders carry that habit over to
+#: enums — and because ``coverage.extractors._OTEL_ERROR_VALUES`` already accepts
+#: it. The two tests of "did this fail" must not diverge on an encoding.
+_ERROR_STATUS_TOKENS = frozenset({"2", "error", "status_code_error"})
+
+#: Stamped as a span's ``error`` when the producer declared ERROR and supplied no
+#: message. ``span.set_status(StatusCode.ERROR)`` with no description is ordinary
+#: instrumentation, and the resulting ``{"code": 2}`` used to map to
+#: ``Span.error = None`` — a call the producer explicitly called FAILED arriving
+#: indistinguishable from one that succeeded, which credited `tool_all_ok` to an
+#: ingested ``charge_card`` that had failed.
+#:
+#: Why a marker and not just the attribute: the two are NOT equivalent, and both
+#: are needed.
+#:
+#: * The attribute (:data:`A_OTEL_STATUS`) is the machine-readable declaration —
+#:   an enum token a consumer compares, never parses out of prose. That is the
+#:   channel coverage bins on.
+#: * ``Span.error`` is the channel almost everything else in the platform reads,
+#:   and it reads *only* that: ``verification.builtins`` folds it into the text an
+#:   assertion matches, ``interop.inspect_log`` renders ``[error] {span.error}``,
+#:   ``scoring.judge`` puts it in the evidence body, ``connect`` surfaces it as
+#:   the reason a connection check failed. Leaving it None for a declared failure
+#:   keeps the failure invisible in every one of those places.
+#:
+#: Why the marker says so little: it is deliberately NOT prose, because ingest
+#: hashes message content and a synthesized sentence would be read as text the
+#: producer wrote. It follows the platform's ``PREFIX:detail`` non-result shape
+#: (as :data:`NO_OUTPUT_CAPTURED` does) and it interpolates NOTHING from the
+#: producer — only the canonical token. That last point is not fastidiousness:
+#: ``coverage.extractors`` substring-matches ``span.error`` for status codes and
+#: condition phrases, so echoing a producer's bytes into this field is exactly
+#: how a fabricated `tool_error_5xx` would be born.
+#:
+#: Detect it with ``str(span.error).startswith(ERROR_NO_MESSAGE)``.
+ERROR_NO_MESSAGE = "ERROR_NO_MESSAGE"
+
+
+def status_is_error(status: dict | None) -> bool:
+    """Did the producer declare this span FAILED?
+
+    The single implementation of that question on the ingest side —
+    :func:`infer_kind` and :func:`map_span` both call it, so the two can never
+    again disagree. They did: ``infer_kind`` accepted ``"ERROR"`` while the error
+    mapping accepted only ``2`` and ``"STATUS_CODE_ERROR"``, so a span could
+    arrive with ``kind="error"`` and ``error=None`` at the same time.
+
+    Accepts every encoding of the enum member ``StatusCode.ERROR`` that reaches
+    us: the proto3 integer ``2`` (and its string form, from encoders that
+    stringify numbers), the JSON enum name, and the bare ``"ERROR"``, in any
+    case. It does NOT infer: an ``OK``/``UNSET`` status is not an error however
+    it is spelled, and a ``message`` without an error code is not one either —
+    OTLP says ``Status.message`` is only meaningful on ERROR, so a producer that
+    set one anyway has told us nothing we may act on. Inferring a failure from a
+    stray message would over-report, which on this product is the worse defect.
+    """
+    if not isinstance(status, dict):
+        return False
+    code = status.get("code")
+    if isinstance(code, bool):
+        return False              # int(True) == 1 is not an OK status either
+    if isinstance(code, (int, float)):
+        return code == 2          # exact: int(2.7) == 2 would invent a verdict
+    return str(code or "").strip().lower() in _ERROR_STATUS_TOKENS
+
+
+def error_status_marker() -> str:
+    """The :data:`ERROR_NO_MESSAGE` marker, in the platform's ``PREFIX:detail``
+    non-result shape. Constant by construction — see the constant's note on why
+    nothing from the producer is interpolated into it."""
+    return f"{ERROR_NO_MESSAGE}:otel_ingest status={OTEL_STATUS_ERROR}"
+
 
 def _sha(content: Any) -> str:
     if isinstance(content, (dict, list)):
@@ -86,10 +202,16 @@ def is_decision_span(sp: OtelSpan) -> bool:
 
 
 def infer_kind(sp: OtelSpan) -> SpanKind:
+    """What kind of step this span is. WHAT it was outranks HOW IT ENDED.
+
+    The error test stays last on purpose: a tool call that returned 503 is still
+    a tool call, and demoting it to ``kind="error"`` would hide it from
+    ``coverage.extractors._faults``, which reads tool conditions off ``tool_call``
+    spans only (see its docstring for why ``error`` spans are excluded there).
+    """
     a = sp.attributes
     op = str(a.get(A_OPERATION, "")).lower()
     name = (sp.name or "").lower()
-    status_code = sp.status.get("code")
     if is_decision_span(sp) or A_TOOL_NAME in a or op in _TOOL_OPS \
             or name.startswith("execute_tool"):
         return "tool_call"
@@ -97,7 +219,7 @@ def infer_kind(sp: OtelSpan) -> SpanKind:
         return "llm_call"
     if op in {"retrieval", "search"} or "db.system" in a or "retriev" in name:
         return "retrieval"
-    if sp.status.get("code") in (2, "STATUS_CODE_ERROR") or status_code == "ERROR":
+    if status_is_error(sp.status):
         return "error"
     if "final" in name:
         return "final_output"
@@ -183,7 +305,23 @@ def map_span(sp: OtelSpan) -> tuple[Span, bool]:
     if incomplete:
         attributes["agenttic.ingest.incomplete"] = True
 
-    err = sp.status.get("message") if sp.status.get("code") in (2, "STATUS_CODE_ERROR") else None
+    # The producer's verdict, carried on BOTH channels because they are read by
+    # different consumers (see ERROR_NO_MESSAGE): the enum on the attribute a
+    # consumer compares, the marker on the field a consumer displays.
+    #
+    # A whitespace-only message counts as no message. It is truthy — `if s.error`
+    # passes on `"   "` — so leaving it through would put a span into the error
+    # channel carrying nothing to show, which is the exact failure mode the
+    # marker exists to prevent, one step further down.
+    err: str | None = None
+    if status_is_error(sp.status):
+        # setdefault, not assignment: if the producer already flattened its own
+        # status onto this attribute we keep THEIR bytes. The verdict still
+        # reaches every consumer via `error` below, so nothing is lost by
+        # declining to overwrite a producer's own declaration.
+        attributes.setdefault(A_OTEL_STATUS, OTEL_STATUS_ERROR)
+        msg = sp.status.get("message")
+        err = str(msg) if str(msg or "").strip() else error_status_marker()
 
     span = Span(
         span_id=sp.span_id,
@@ -201,6 +339,21 @@ def map_span(sp: OtelSpan) -> tuple[Span, bool]:
         attributes=attributes,
     )
     return span, incomplete
+
+
+def no_output_marker(*, digest: str = "", span_name: str = "") -> str:
+    """Build the :data:`NO_OUTPUT_CAPTURED` marker, carrying whatever reference
+    we do have so the missing text stays *traceable* while staying obviously not
+    the text. The reference is deliberately labelled (``sha256=``/``last_span=``)
+    — an unlabelled digest is exactly what made this indistinguishable from a
+    real answer."""
+    if digest:
+        ref = f"sha256={digest}"
+    elif span_name:
+        ref = f"last_span={span_name}"
+    else:
+        ref = "no_reference"
+    return f"{NO_OUTPUT_CAPTURED}:otel_ingest {ref}"
 
 
 def map_decision(sp: OtelSpan, agent_id: str) -> Decision | None:
@@ -278,8 +431,13 @@ def spans_to_traces(spans: list[OtelSpan]) -> tuple[list[Trace], list[Decision],
                 incomplete.append(sp.span_id)
                 notes.append(f"incomplete_span:{sp.span_id}")
             if span.kind == "final_output" and not final_output:
-                fo = sp.attributes.get("gen_ai.completion") or sp.name
-                final_output = str(fo)
+                # Only the raw ``gen_ai.completion`` attribute is real answer
+                # text. A final_output span WITHOUT it (e.g. an @instrument
+                # session whose body raised before setting an output) has no
+                # answer to lift — the span name is not one.
+                fo = sp.attributes.get("gen_ai.completion")
+                final_output = (str(fo) if fo not in (None, "")
+                                else no_output_marker(span_name=sp.name or ""))
             if is_decision_span(sp):
                 dec = map_decision(sp, agent_id)
                 if dec is not None:
@@ -288,9 +446,13 @@ def spans_to_traces(spans: list[OtelSpan]) -> tuple[list[Trace], list[Decision],
             notes.append(f"empty_trace:{trace_id}")
             continue
         if not final_output:
-            # fall back to the last span's output hash reference, else its name
+            # No span carried a completion at all. There is nothing to fall back
+            # ON: the last span's output hash is a reference to the answer, not
+            # the answer, and its name is neither. Report the gap explicitly.
             last = built_spans[-1]
-            final_output = last.output.get("content_sha256", "") or last.name
+            final_output = no_output_marker(
+                digest=last.output.get("content_sha256", ""),
+                span_name=last.name)
 
         trace = Trace(
             trace_id=trace_id,

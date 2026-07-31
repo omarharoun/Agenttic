@@ -18,6 +18,8 @@ const CertificatePage = lazy(() =>
   import("./pages/CertificatePage").then((m) => ({ default: m.CertificatePage })));
 const AssistantPage = lazy(() =>
   import("./pages/AssistantPage").then((m) => ({ default: m.AssistantPage })));
+const EnginePage = lazy(() =>
+  import("./pages/EnginePage").then((m) => ({ default: m.EnginePage })));
 const AppShell = lazy(() =>
   import("./AppShell").then((m) => ({ default: m.AppShell })));
 const LoginPage = lazy(() =>
@@ -51,6 +53,20 @@ export const routes: RouteRecord[] = [
   { path: "/verify", element: suspense(<VerifyPage />) },
   { path: "/api-docs", element: <ApiDocsPage />, entry: "src/pages/ApiDocsPage.tsx" },
   { path: "/methodology", element: <MethodologyPage />, entry: "src/pages/MethodologyPage.tsx" },
+  /* The scenario-engine explainer. Public, but code-split and NOT in
+     vite.config.ts's prerender set — unlike the other public content routes —
+     because it imports `formatCreated` from the CONSOLE's ScenariosPage. An
+     eager import would pull a console page into the landing's initial chunk,
+     which is the thing scripts/check-bundle.mjs exists to stop (it guards
+     AppShell by name; this route would have walked past it). Lazy keeps both
+     modules in chunks fetched only at /engine — measured with `vite build`:
+     EnginePage 24.0 kB (8.0 kB gz) and ScenariosPage 22.8 kB (6.9 kB gz), i.e.
+     ~15 kB gz that would otherwise sit in a 103 kB gz landing payload against a
+     150 kB budget. The cost is that this page ships no static HTML: its two
+     live reads (/api/capabilities and the reader's OWN stored runs) could not
+     be baked in either way, but its quoted vocabularies could have been, and
+     are not. */
+  { path: "/engine", element: suspense(<EnginePage />) },
   // public pricing — plans + free-credits offer (prerendered, hydrates live)
   { path: "/pricing", element: <PricingPage />, entry: "src/pages/PricingPage.tsx" },
   // public service-status board — Agenttic's own uptime (prerendered shell, live-polled)

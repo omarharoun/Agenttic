@@ -437,6 +437,8 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
     app.include_router(passport_router, prefix="/api", dependencies=protected)
     from agenttic.server.routes.feeds import router as feeds_router
     app.include_router(feeds_router, prefix="/api", dependencies=protected)
+    from agenttic.server.routes.scenarios import router as scenarios_router
+    app.include_router(scenarios_router, prefix="/api", dependencies=protected)
     app.include_router(camp_router, prefix="/api", dependencies=protected)
 
     if UI_DIST.is_dir():

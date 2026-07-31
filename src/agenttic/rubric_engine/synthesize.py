@@ -8,8 +8,14 @@ clauses, forbidden actions).
 
 The rubric and its suite are a matched pair (Hard Rule 41): synthesis emits the
 ``required_suite_features`` the archetype demands, and ``synthesize_suite`` drives
-suite generation so every feature the rubric needs is exercised by a case —
-mechanically guaranteed, never left to chance.
+suite generation so every feature the rubric needs has a case — mechanically
+guaranteed, never left to chance.
+
+What is guaranteed is a SLOT, not an exercise. Where the generator produces
+nothing for a feature, ``synthesize_suite`` emits a scaffold: a labelled
+placeholder carrying :data:`SCAFFOLD_TAG`. ``evaluate.feature_coverage`` splits
+the two, so "the suite matches the rubric" is a claim about real cases and the
+placeholders are counted separately, by name.
 """
 
 from __future__ import annotations
@@ -196,6 +202,18 @@ _FEATURE_PROMPT = {
 }
 
 
+#: Marks a case as a PLACEHOLDER for a feature rather than an exercise of it.
+#:
+#: Without this tag the suite-match gate was a tautology: ``_scaffold_case``
+#: writes ``feature:<f>`` on itself, ``evaluate.integrity_check`` derived its
+#: "covered" set from exactly that tag, and ``synthesize_suite`` emits a scaffold
+#: for every otherwise-uncovered required feature — so "missing" was provably
+#: always empty and the gate could never fire. A scaffold has ``input=
+#: {"feature_scaffold": <f>}``; it is a note to whoever fills it in, and the
+#: scorer already refuses to score it (``CheckConfigError`` -> errored run).
+SCAFFOLD_TAG = "scaffold"
+
+
 def _scaffold_case(suite_id: str, rubric_id: str, feature: str, n: int) -> TestCase:
     return TestCase(
         test_id=f"{suite_id}-feat-{feature}-{n}",
@@ -203,7 +221,7 @@ def _scaffold_case(suite_id: str, rubric_id: str, feature: str, n: int) -> TestC
         task_description=f"[{feature}] {_FEATURE_PROMPT.get(feature, feature)}",
         input={"feature_scaffold": feature},
         tags=["adversarial" if feature in ("pressure_case", "unauthorized_write")
-              else "edge_case", f"feature:{feature}"],
+              else "edge_case", f"feature:{feature}", SCAFFOLD_TAG],
         rubric_id=rubric_id,
     )
 
@@ -216,9 +234,13 @@ def synthesize_suite(
     generator=None,
 ) -> tuple[TestSuite, list[TestCase]]:
     """Produce the suite matched to ``draft``: generator cases (if any) PLUS a
-    guaranteed scaffold case for every required feature not otherwise covered, so
-    the rubric's criteria are all exercisable. The suite is returned UNAPPROVED
-    (Step 8 human gate)."""
+    scaffold case naming every required feature not otherwise covered. The suite
+    is returned UNAPPROVED (Step 8 human gate).
+
+    A scaffold guarantees the feature is not silently dropped. It does NOT
+    guarantee the feature is exercised — it is an empty slot with a label, and
+    ``evaluate.feature_coverage`` reports it as such. Reading a full scaffold set
+    as a matched suite is the mistake this used to make."""
     rubric_id = draft.rubric.rubric_id
     cases: list[TestCase] = []
     if generator is not None and business_context.strip():

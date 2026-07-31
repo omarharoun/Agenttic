@@ -47,6 +47,70 @@ def _pct(x: float) -> str:
     return f"{100 * x:.0f}%"
 
 
+def _demark(line: str) -> str:
+    """Markdown emphasis and list bullets out; the PDF carries emphasis in the
+    font, not in asterisks. Deliberately dumb — this strips syntax, it does not
+    parse Markdown, and anything it does not recognise is left alone rather than
+    mangled."""
+    text = line.replace("**", "").replace("`", "")
+    if text.startswith("- "):
+        text = "  - " + text[2:]
+    return text
+
+
+def _as_pdf_lines(lines: list[str]) -> list[tuple[str, str]]:
+    """Markdown lines -> ``(kind, text)`` the PDF primitives can render.
+
+    Tables are the reason this exists rather than a one-line strip. The
+    verification block emits a real Markdown table, and pouring `| a | b |`
+    straight into `multi_cell` prints the pipes. Worse, the block emits the
+    HEADER even when it has no rows — a scorecard whose coverage carries no
+    per-coverpoint detail produces a two-line table of nothing — and an empty
+    table in a customer PDF reads as data that failed to load rather than as data
+    that was never there. A header with no rows is dropped entirely; the fact it
+    would have introduced is already carried by the closure sentence above it.
+    """
+    out: list[tuple[str, str]] = []
+    rows: list[str] = []
+
+    def flush() -> None:
+        # rows[0] is the header; anything less than two rows is a header alone
+        if len(rows) >= 2:
+            for r in rows:
+                out.append(("body", "   ".join(c.strip() for c in r if c.strip())))
+        rows.clear()
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("|"):
+            cells = [c for c in stripped.strip("|").split("|")]
+            if all(set(c.strip()) <= set("-: ") for c in cells):
+                continue                     # the |---|---| separator
+            rows.append(cells)
+            continue
+        flush()
+        if stripped.startswith("## "):
+            out.append(("section", stripped[3:]))
+        elif stripped.startswith("### "):
+            out.append(("sub", stripped[4:]))
+        elif stripped:
+            out.append(("body", _demark(line)))
+    flush()
+    return out
+
+
+def _verification_lines(sc) -> list[str]:
+    """The Markdown report's verification section, borrowed verbatim.
+
+    Imported inside the function because ``scorecard_report`` and this module are
+    peers and a module-level import between them would be a cycle waiting to
+    happen the first time either grows a shared helper.
+    """
+    from agenttic.reporting.scorecard_report import _verification_block
+
+    return _verification_block(sc)
+
+
 class _Report(FPDF):
     def header(self):  # noqa: D401 — fpdf hook
         pass
@@ -101,8 +165,35 @@ def render_pdf(sc: Scorecard, rubric: Rubric, previous: Scorecard | None = None)
                  if sc.visibility_tier == "glass_box"
                  else "Black-box tier: input/output scoring only; trajectory criteria "
                       "were not assessable.")
-    cost_note = (f"Mean cost ${sc.mean_cost_usd:.4f} per run, p95 latency "
-                 f"{sc.p95_latency_ms:.0f} ms. {tier_note}")
+    # Zero is the signature of an absent measurement, not of a fast agent —
+    # nothing takes zero milliseconds. A suite whose runs all died in the harness
+    # gets `total_latency_ms=0.0` synthesized traces, and "p95 latency 0 ms" in a
+    # customer-facing PDF reads as a performance result.
+    _lat = (f"p95 latency {sc.p95_latency_ms:.0f} ms"
+            if sc.p95_latency_ms else "p95 latency not measured")
+    cost_note = (f"Mean cost ${sc.mean_cost_usd:.4f} per run, {_lat}. {tier_note}")
+
+    # --- verification, BEFORE the pass rate ---------------------------------
+    # The Markdown report leads with this (scorecard_report.py:82) and the PDF
+    # did not render it at all, so the same scorecard told two materially
+    # different stories: one opened with "Coverage closure 29% - NOT CLOSED",
+    # the other with a large green task-success percentage and no mention that
+    # most of the model was never exercised. Demoting the pass rate in one
+    # renderer and not the other is worse than not demoting it anywhere, because
+    # the PDF is the artefact that gets attached to an email.
+    #
+    # The LINES come from `_verification_block` rather than from a second
+    # implementation here — this file decides typography, never wording. Two
+    # copies of the sentence "coverage closure X% of target Y%" would eventually
+    # disagree, and the one a customer read would be whichever renderer they
+    # happened to use.
+    for kind, text in _as_pdf_lines(_verification_lines(sc)):
+        if kind == "section":
+            section(text)
+        elif kind == "sub":
+            body(text, size=10, color=CLAY)
+        else:
+            body(text)
 
     section("Executive summary")
     if n_scored == 0:

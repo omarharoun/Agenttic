@@ -1,11 +1,18 @@
 """Seed coverage model for the `conversational_transactional` archetype
 (SPEC-13 Step 59) — authored, versioned IP.
 
-Six dimensions. Four are **deterministic by construction** (extracted from spans,
-never provisional): trajectory, tool_condition, session_shape, data_condition.
-Two are semantic and therefore **classifier-backed and PROVISIONAL until measured
-against humans** (SPEC-3 discipline): intent, emotional_register. The
-deterministic dimensions deliberately carry most of the model's weight.
+The deterministic dimensions (extracted from spans, never provisional) are
+trajectory, tool_condition, agent_steps, session_shape and data_condition, plus
+action_risk. The semantic ones are **classifier-backed and PROVISIONAL until
+measured against humans** (SPEC-3 discipline): intent, emotional_register,
+policy_vector. The deterministic dimensions deliberately carry most of the
+model's weight.
+
+`agent_steps` and `session_shape` used to be one coverpoint that counted
+`llm_call` spans and called the answer a session. They are separated here, and
+`session_shape` is declared NOT MEASURABLE: this build has no producer of human
+turns, so reporting every run as "single_turn coverage" was a claim about a
+dimension nothing had exercised.
 
 The required crosses are where the value is: `intent × policy_vector` at "all"
 means every intent must be exercised under out-of-policy pressure and under an
@@ -16,6 +23,7 @@ from __future__ import annotations
 
 from agenttic.coverage.model import (
     Bin, Classifier, CoverageModel, Coverpoint, Cross)
+from agenttic.coverage.targets import closure_target as _target_from_config
 
 
 def _det(bin_id: str, ref: str, label: str = "") -> Bin:
@@ -63,14 +71,47 @@ TOOL_CONDITION = Coverpoint(
         OTHER,
     ])
 
+AGENT_STEPS = Coverpoint(
+    coverpoint_id="agent_steps",
+    description=("How many model calls one exchange took. This is what the old "
+                 "`session_shape` was measuring; it is a real and useful axis, "
+                 "and it is not a session."),
+    kind="deterministic",
+    bins=[
+        _det("single_step", "agent_steps_single"),
+        _det("multi_step", "agent_steps_multi"),
+        OTHER,
+    ])
+
 SESSION_SHAPE = Coverpoint(
     coverpoint_id="session_shape",
     description="Single exchange, multi-turn, or resumed against prior memory.",
     kind="deterministic",
+    measurable=False,
+    not_measurable_reason=(
+        "the run path a suite takes emits no `user_turn` span: a stored case is "
+        "one dict delivered as one user message (adapters/base.py:32), so there "
+        "is no second human turn for it to exhibit. `scenario/session.py` DOES "
+        "emit the span and a session driven by `scenario/user.py` produces "
+        "several, so this is now a statement about which path a run took rather "
+        "than about the whole build — and it stays not-measured because the flag "
+        "is declared per MODEL, not per sample, so one instrumented batch cannot "
+        "speak for an uninstrumented one. Reported as not measured rather than "
+        "credited to single_turn: a trace with no turn markers is evidence of "
+        "absent instrumentation, not of a single-turn session."),
     bins=[
         _det("single_turn", "session_single_turn"),
         _det("multi_turn", "session_multi_turn"),
-        _det("resumed_with_memory", "session_resumed_with_memory"),
+        Bin(bin_id="resumed_with_memory",
+            predicate_ref="session_resumed_with_memory",
+            label="resumed_with_memory",
+            waived=True,
+            reason=("nothing in the harness seeds prior memory or sets the "
+                    "`resumed` span attribute, so the only way this bin was "
+                    "ever reached was an agent that happened to name a tool "
+                    "`memory_*` — coincidence, not evidence. Waived until a "
+                    "harness that resumes a session against seeded state "
+                    "exists.")),
         OTHER,
     ])
 
@@ -162,23 +203,26 @@ POLICY_VECTOR = Coverpoint(
     ])
 
 
-def seed_model(version: int = 2) -> CoverageModel:
+def seed_model(version: int = 3, closure_target: float | None = None,
+               cfg: dict | None = None) -> CoverageModel:
     """The authored seed model. Crosses are declared narrowly and deliberately —
     six dimensions at ~5 values is 15,625 combinations, so only the crosses that
     carry risk are targets.
 
-    **v2 adds ``action_risk``.** New bins change ``bins_fingerprint()``, so v2
-    closure is NOT comparable with v1 closure — it will read lower, because the
-    model now asks a question it never asked before. That is the honest
-    direction; a version bump is how it stays honest rather than looking like a
-    regression.
+    **v2 added ``action_risk``. v3 splits `session_shape` into `agent_steps`
+    (model calls, measured) and `session_shape` (human turns, not measurable
+    here) and puts the closure target in config.** New and moved bins change
+    ``bins_fingerprint()``, so closure across a version boundary is not
+    comparable — which is the point. A version bump is how that stays visible
+    rather than looking like a regression or, worse, an improvement.
     """
     return CoverageModel(
         model_id="cov-conversational_transactional",
         version=version,
         archetype_id="conversational_transactional",
-        coverpoints=[TRAJECTORY, TOOL_CONDITION, SESSION_SHAPE, DATA_CONDITION,
-                     ACTION_RISK, INTENT, EMOTIONAL_REGISTER, POLICY_VECTOR],
+        coverpoints=[TRAJECTORY, TOOL_CONDITION, AGENT_STEPS, SESSION_SHAPE,
+                     DATA_CONDITION, ACTION_RISK, INTENT, EMOTIONAL_REGISTER,
+                     POLICY_VECTOR],
         crosses=[
             Cross(cross_id="intent_x_policy",
                   coverpoints=["intent", "policy_vector"], target="all"),
@@ -192,6 +236,15 @@ def seed_model(version: int = 2) -> CoverageModel:
             # that actually hurts, so it is a declared target rather than a hope
             Cross(cross_id="action_x_tool",
                   coverpoints=["action_risk", "tool_condition"], target="all"),
+            # NO cross names `session_shape`. It is not an oversight and not a
+            # judgement call: crossing a not-measurable coverpoint with a measured
+            # one puts its unfed bins back into the headline as combinations
+            # (`session_single_turn` is True on every trace), so
+            # CoverageModel refuses it — see
+            # CoverageModel._cross_axes_are_measurable. `intent × session_shape`
+            # becomes available the day a session runner emits `user_turn` spans
+            # and the coverpoint is flipped measurable, not before.
         ],
-        closure_target=0.95,
+        closure_target=(closure_target if closure_target is not None
+                        else _target_from_config(cfg)),
     )

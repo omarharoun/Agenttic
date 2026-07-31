@@ -252,6 +252,29 @@ def _copilot_sessions_table(conn) -> None:
     CopilotSessionRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _verification_evidence_tables(conn) -> None:
+    """v24 — the five verification-evidence tables that were declared after the
+    v1 baseline ran and never given a migration of their own.
+
+    A database created before each class existed is at head and does not have the
+    table: ``run_migrations`` never re-runs v1, so nothing adds it. The SERVER
+    survives this by accident — ``UIStore.__init__`` calls ``create_all`` on the
+    registry engine on every workspace build — but ``Registry.__init__`` runs
+    migrations and nothing else, so the CLI (and any library caller) raises
+    ``OperationalError: no such table`` instead. That accident is exactly the
+    ``create_all`` drift this module's docstring says it exists to replace.
+
+    ``checkfirst=True``, so this is a no-op wherever the drift already won."""
+    import agenttic.registry.sqlite_store  # noqa: F401
+    from agenttic.registry.sqlite_store import (
+        AssertionSetRow, CoverageModelRow, HoneypotBatteryRow, ScenarioRunRow,
+        ScenarioSpaceRow,
+    )
+    for model in (ScenarioSpaceRow, CoverageModelRow, AssertionSetRow,
+                  HoneypotBatteryRow, ScenarioRunRow):
+        model.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -277,6 +300,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (21, "canary_sets_table", _canary_sets_table),
     (22, "passport_tables", _passport_tables),
     (23, "copilot_sessions_table", _copilot_sessions_table),
+    (24, "verification_evidence_tables", _verification_evidence_tables),
 ]
 
 

@@ -23,7 +23,7 @@ import hashlib
 import json
 import random
 from dataclasses import dataclass
-from typing import Iterable, Sequence
+from typing import Sequence
 
 #: a drawn point: dimension_id -> value
 AbstractPoint = dict[str, str]
@@ -321,21 +321,10 @@ def sample_point_targeting(space: ScenarioSpace, seed: int,
         return sample_point(space, seed)
 
 
-def coverage_holes_to_targets(holes: Iterable, *,
-                              dim_ids: Iterable[str]) -> list[BinRef]:
-    """Translate ``CoverageReport.holes()`` entries into solver targets. Only
-    bin-holes on dimensions the space declares can be targeted; cross-holes are
-    decomposed into their component bins."""
-    known = set(dim_ids)
-    out: list[BinRef] = []
-    for h in holes:
-        kind = getattr(h, "kind", None)
-        where = getattr(h, "where", "")
-        what = getattr(h, "what", "")
-        if kind == "bin" and where in known:
-            out.append(BinRef(where, what))
-        elif kind == "cross":
-            # "a×b" over the cross's coverpoints — handled by the caller, which
-            # knows the cross's dimension order; ignored here.
-            continue
-    return out
+# NB: hole -> target translation lives in ``verification.cdv.holes_to_targets``,
+# not here. A second copy used to sit in this module; its docstring claimed to
+# decompose cross-holes and its body dropped them on the floor, so a coverage
+# hole that only exists as a CONJUNCTION — the expensive kind, the one directed
+# generation exists for — silently produced no target at all. It had no callers.
+# One implementation, and it is the one that needs the CoverageModel to know a
+# cross's dimension order.

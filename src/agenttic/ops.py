@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from dataclasses import dataclass
 from typing import Callable, Literal
 
 from agenttic.adapters.anthropic_simple import AnthropicSimpleAgent
@@ -192,6 +193,90 @@ async def run_suite_op(
     return suite, cases, traces
 
 
+def _errored_score(trace: Trace, case: TestCase, err: str) -> RunScore:
+    """The one shape a case that could not be scored takes. Shared by the async
+    batch path and the sequential one so an outage reads identically on both —
+    a scoring-infra failure is kept and surfaced, never silently dropped and
+    never scored as an agent failure."""
+    return RunScore(trace_id=trace.trace_id, test_id=case.test_id,
+                    criterion_scores=[], passed=False,
+                    cost_usd=trace.total_cost_usd,
+                    latency_ms=trace.total_latency_ms, steps=trace.total_steps,
+                    scoring_error=err)
+
+
+def _prepare_scoring(cfg: dict, reg: Registry, traces: list[Trace],
+                     cases: list[TestCase], agent_model: str, *,
+                     judge_client=None, rubric_override: Rubric | None = None,
+                     fi_evaluator=None, fi_evaluate_fn=None):
+    """Resolve the judge, the FI evaluator, and per-case (rubric, uncalibrated).
+
+    Pure registry work — no model calls — done FIRST, in one sequential pass, so
+    the per-rubric cache stays single-threaded and a missing rubric aborts the
+    batch here rather than half-way through a fan-out with some cases already
+    scored. Extracted so the concurrent path and the sequential one configure
+    scoring identically; two copies of judge selection would be two chances to
+    violate Hard Rule 4.
+    """
+    from agenttic.scoring.corpus import uncalibrated_criteria
+
+    judge = make_judge(cfg, agent_model, client=judge_client)
+    if fi_evaluator is None:
+        from agenttic.scoring.fi_eval import FiEvaluator
+        fi_evaluator = FiEvaluator(
+            threshold=cfg.get("scoring", {}).get("fi_threshold", 0.5),
+            evaluate_fn=fi_evaluate_fn)
+    prepared, cache = [], {}
+    for trace, case in zip(traces, cases):
+        rubric = rubric_override or reg.get_rubric(case.rubric_id)
+        # Hard Rule 6: mark provisional every criterion whose calibration isn't
+        # demonstrated — all judge criteria, plus heuristic checks not proven by
+        # the shipped calibration corpus. Computed once per rubric version.
+        rkey = f"{rubric.rubric_id}:{rubric.version}"
+        uncal = cache.get(rkey)
+        if uncal is None:
+            uncal = uncalibrated_criteria(
+                [c.criterion_id for c in rubric.criteria],
+                {c.criterion_id: c.scorer for c in rubric.criteria})
+            cache[rkey] = uncal
+        prepared.append((trace, case, rubric, uncal))
+    return judge, fi_evaluator, prepared
+
+
+def score_traces_sync(cfg: dict, reg: Registry, traces: list[Trace],
+                      cases: list[TestCase], agent_model: str, *,
+                      judge_client=None, pass_threshold: float = 0.7,
+                      rubric_override: Rubric | None = None,
+                      fi_evaluator=None, fi_evaluate_fn=None) -> list[RunScore]:
+    """Score a batch WITHOUT an event loop. Same configuration, same errored-run
+    shape, one after another.
+
+    For the CDV loop this is not a preference, it is a requirement.
+    ``run_until_closure`` drives its executor in a plain sequential ``for`` loop
+    (``cdv.py:252``), so the async fan-out has nothing to overlap — one trace per
+    call — and ``asyncio.run`` per scenario would build and tear down an event
+    loop hundreds of times per run. It also cannot run under the network block
+    the offline proof depends on: a selector event loop opens a
+    ``socket.socketpair`` for its self-pipe, so a fixture that refuses
+    ``socket.socket`` refuses the loop, and the scoring leg would silently
+    degrade to "judge unavailable" on exactly the runs meant to prove the wiring
+    works offline. A sequential batch needs no loop and has no such coupling.
+    """
+    judge, fi_evaluator, prepared = _prepare_scoring(
+        cfg, reg, traces, cases, agent_model, judge_client=judge_client,
+        rubric_override=rubric_override, fi_evaluator=fi_evaluator,
+        fi_evaluate_fn=fi_evaluate_fn)
+    out: list[RunScore] = []
+    for trace, case, rubric, uncal in prepared:
+        try:
+            out.append(score_run(trace, case, rubric, judge, uncalibrated=uncal,
+                                 pass_threshold=pass_threshold,
+                                 fi_evaluator=fi_evaluator))
+        except Exception as exc:  # noqa: BLE001 — scoring failure is data
+            out.append(_errored_score(trace, case, f"{type(exc).__name__}: {exc}"))
+    return out
+
+
 async def score_op(
     cfg: dict,
     reg: Registry,
@@ -209,34 +294,11 @@ async def score_op(
     trace. Partial batch scoring: a case that fails to score becomes an errored
     RunScore (kept, surfaced, excluded from quality aggregates) rather than
     aborting the whole batch — mirroring the harness's per-case resilience."""
-    judge = make_judge(cfg, agent_model, client=judge_client)
-    if fi_evaluator is None:
-        from agenttic.scoring.fi_eval import FiEvaluator
-        fi_evaluator = FiEvaluator(
-            threshold=cfg.get("scoring", {}).get("fi_threshold", 0.5),
-            evaluate_fn=fi_evaluate_fn)
-    from agenttic.scoring.corpus import uncalibrated_criteria
+    judge, fi_evaluator, prepared = _prepare_scoring(
+        cfg, reg, traces, cases, agent_model, judge_client=judge_client,
+        rubric_override=rubric_override, fi_evaluator=fi_evaluator,
+        fi_evaluate_fn=fi_evaluate_fn)
     total = len(cases)
-    _uncal_cache: dict[str, set[str]] = {}
-
-    # Resolve rubric + calibration for every case FIRST, in one sequential pass.
-    # It is pure registry work (no model calls), it keeps the per-rubric cache
-    # single-threaded, and a missing rubric still aborts the batch here rather
-    # than half-way through a fan-out with some cases already scored.
-    prepared = []
-    for trace, case in zip(traces, cases):
-        rubric = rubric_override or reg.get_rubric(case.rubric_id)
-        # Hard Rule 6: mark provisional every criterion whose calibration isn't
-        # demonstrated — all judge criteria, plus heuristic checks not proven by
-        # the shipped calibration corpus. Computed once per rubric version.
-        rkey = f"{rubric.rubric_id}:{rubric.version}"
-        uncal = _uncal_cache.get(rkey)
-        if uncal is None:
-            uncal = uncalibrated_criteria(
-                [c.criterion_id for c in rubric.criteria],
-                {c.criterion_id: c.scorer for c in rubric.criteria})
-            _uncal_cache[rkey] = uncal
-        prepared.append((trace, case, rubric, uncal))
 
     # Scoring a case costs one judge call per judge criterion, and cases are
     # independent of each other — so run them concurrently instead of one after
@@ -258,11 +320,7 @@ async def score_op(
                         "index": i, "total": total, "test_id": case.test_id,
                         "error": err,
                     })
-                return RunScore(
-                    trace_id=trace.trace_id, test_id=case.test_id,
-                    criterion_scores=[], passed=False,
-                    cost_usd=trace.total_cost_usd, latency_ms=trace.total_latency_ms,
-                    steps=trace.total_steps, scoring_error=err)
+                return _errored_score(trace, case, err)
             if on_progress:
                 on_progress("case_scored", {
                     "index": i, "total": total, "test_id": case.test_id,
@@ -276,7 +334,13 @@ async def score_op(
         *(score_one(i, *p) for i, p in enumerate(prepared))))
 
 
-def verify_op(traces: list) -> tuple[list, dict]:
+def _round4(x: float | None) -> float | None:
+    """Round for the wire, keeping "not measured" distinct from zero."""
+    return None if x is None else round(x, 4)
+
+
+def verify_op(traces: list, *, cfg: dict | None = None,
+              samples: list | None = None, cdv_result=None) -> tuple[list, dict]:
     """Run the SPEC-13 verification layer over a batch of traces.
 
     Deterministic and free: assertions (Step 62) and the baseline coverage model
@@ -284,15 +348,76 @@ def verify_op(traces: list) -> tuple[list, dict]:
     run. It is what lets a report lead with *what was never exercised* instead of
     a pass rate that is silent about everything the suite never tried.
 
+    ``cfg`` is the loaded config, threaded through to the coverage model so the
+    closure target comes from ``coverage.closure_target`` (Hard Rule 7) rather
+    than a literal. Keyword-only and optional, because the SPEC-8 library API
+    calls this from processes that have no config at all — but a caller that HAS
+    one must pass it: without it the model measures against
+    ``DEFAULT_CLOSURE_TARGET`` and says so in the log, and ``coverage/targets.py``
+    deliberately will not go looking for a config file to guess with.
+
+    **Non-results are verified against nothing.** A trace the adapter could not
+    complete carries an execution-failure marker instead of an answer
+    (``HARNESS_FAILURE:timeout``, ``BLACKBOX_FAILURE:ConnectionError`` — see
+    ``coverage.collect.nonresult_marker``, which reads the prefix tuple straight
+    off the scoring engine so all three subsystems agree on what a non-result is).
+    Both legs here refuse them, for the same reason and with the same measured
+    consequence:
+
+    * **Coverage.** ``collect`` does the refusing (it is the boundary every caller
+      crosses, including the CDV loop) and counts what it refused onto the report,
+      which is where the three ``samples*`` keys below come from. A single harness
+      failure had been reporting closure 5.2% on its own: the marker string is
+      non-empty so it read as ``trajectory=direct_answer``, and a transport error
+      saying "404 Not Found" read as ``data_condition=entity_not_found``.
+    * **Assertions.** Filtered here, because this loop is the only caller. On a
+      batch where every case died in transport, ``never_secret_in_output`` was
+      scoring PASS — the marker string contains no secret — so a run that never
+      reached the agent reported a property exercised and clean. That is the M40
+      vacuity rule (unexercised is not a pass) failing at its own entry point. If
+      NOTHING in the batch ran, no assertion result exists and the sign-off's
+      assertion leg stays ``not_run``, which is the honest verdict.
+
+    **The stimulus side** (``samples``). ``Sample`` carries three things — the
+    trace, the realized scenario, and ``requested``, the abstract point the
+    solver drew (``coverage/collect.py:35``) — and ``requested`` is the ONLY
+    source of ``stimulus_hits``. This function built its samples as
+    ``Sample(trace=t)`` and nothing else, so on every run the product has ever
+    performed ``stimulus_closure`` was 0.0 and ``divergence()`` was ``[]``: *what
+    we asked to test* versus *what the run exhibited* has never once been
+    visible. A caller that HAS the scenarios (``cdv_op``) passes them here, and
+    the two new summary keys report the gap. A scenario that requested a timeout
+    and got a clean run is a DIVERGENCE, not coverage.
+
+    The coverage MODEL stays ``baseline_model(cfg)`` either way, so the
+    scorecard's coverage and the CDV loop's own report are the same computation
+    over the same inputs and cannot disagree.
+
+    **``cdv_result`` populates scope, not the gate.** It fills the sign-off's
+    convergence and envelope legs, which were permanently ``not_run`` because no
+    production caller ever passed one. ``signs_off`` (``schema/signoff.py:202``)
+    binds on coverage closed + assertions populated with zero violations + zero
+    formal counterexamples + no illegal-bin hits, and ``refusal_reasons`` mirrors
+    it condition for condition. Neither leg is in that expression, and passing
+    one here does not make the gate stricter — it makes the report true. Framing
+    this as tightening certification would be an overclaim.
+
     Returns (assertion_results, coverage_summary). The coverage summary carries
     the serialized sign-off under ``"signoff"`` — see :func:`signoff_from_run`,
     which is what the signing gate evaluates."""
-    from agenttic.coverage.collect import Sample, collect
+    from agenttic.coverage.collect import Sample, collect, nonresult_marker
     from agenttic.coverage.models.baseline import BASELINE_LIMITS, baseline_model
     from agenttic.verification.assertions import evaluate, rollup_assertions
 
+    # Partition once, up front, so the two legs cannot disagree about which runs
+    # happened. Non-results are still handed to `collect` — it is the component
+    # that counts and names them, and routing them around it would drop the
+    # disclosure on the floor.
+    ran = [t for t in traces if nonresult_marker(t) is None]
+    nonresults = [t for t in traces if nonresult_marker(t) is not None]
+
     results: list = []
-    for t in traces:
+    for t in ran:
         try:
             results.extend(evaluate(t))
         except Exception:  # noqa: BLE001 — verification must never break a run
@@ -301,18 +426,45 @@ def verify_op(traces: list) -> tuple[list, dict]:
     report = None
     summary: dict = {}
     try:
-        report = collect(baseline_model(), [Sample(trace=t) for t in traces])
+        report = collect(baseline_model(cfg=cfg),
+                         list(samples) if samples is not None
+                         else [Sample(trace=t) for t in traces])
         summary = {
             "model_ref": report.model_ref,
             "bins_fingerprint": report.bins_fingerprint,
             "baseline": True,
             "limits": BASELINE_LIMITS,
+            # All three travel together, always. A renderer that shows
+            # `trace_closure` without `non_results` is showing a figure over an
+            # undisclosed denominator — which is the same over-report the
+            # exclusion was made to remove, one layer further out.
+            "samples": report.n_samples,
+            "samples_submitted": report.n_submitted,
+            "non_results": report.n_nonresults,
+            "non_result_reasons": dict(sorted(report.nonresult_reasons.items())),
             "trace_closure": round(report.trace_closure, 4),
+            # The other half of the two-number story. 0.0 with an empty
+            # divergence list is the honest reading for a run whose caller held
+            # no scenarios — nothing was requested, so nothing can be reported
+            # unrequested. It is NOT a finding, and a renderer must not print it
+            # as one.
+            "stimulus_closure": round(report.stimulus_closure, 4),
+            "stimulus_vs_trace_divergence": report.divergence(),
             "closure_target": report.closure_target,
             "closed": report.closed,
+            # `closure` is None for a coverpoint nothing can feed, and the two
+            # extra keys say which one and why. Every consumer of this blob — the
+            # report, the console, the CLI — must render that as NOT MEASURED;
+            # printing 0% would turn "we cannot see this" into "the suite missed
+            # it", and printing the bins it happens to match would be the
+            # over-report this split exists to remove.
+            "not_measurable": report.not_measurable,
+            "waived_bins": report.waived_bins(),
             "per_coverpoint": {
-                cp.coverpoint_id: {"closure": round(cp.trace_closure, 4),
-                                   "unhit": cp.unhit, "other_hits": cp.other_hits}
+                cp.coverpoint_id: {"closure": _round4(cp.trace_closure),
+                                   "unhit": cp.unhit, "other_hits": cp.other_hits,
+                                   "not_measurable": not cp.measurable,
+                                   "not_measurable_reason": cp.not_measurable_reason}
                 for cp in report.coverpoints.values()},
             "crosses": {x.cross_id: round(x.closure, 4)
                         for x in report.crosses.values()},
@@ -323,6 +475,21 @@ def verify_op(traces: list) -> tuple[list, dict]:
     except Exception:  # noqa: BLE001
         report = None
         summary = {}
+
+    if nonresults and "non_results" not in summary:
+        # Coverage collection failed, so the report is not here to carry the
+        # count — but the runs still did not happen, and this is the last place
+        # that knows. The assertion leg below was filtered on exactly these
+        # traces; a summary that stayed silent about them would leave a consumer
+        # unable to tell a batch of 8 real runs from a batch of 10 where 2 died.
+        counts: dict[str, int] = {}
+        for t in nonresults:
+            k = nonresult_marker(t) or "unknown"
+            counts[k] = counts.get(k, 0) + 1
+        summary["samples"] = len(ran)
+        summary["samples_submitted"] = len(traces)
+        summary["non_results"] = len(nonresults)
+        summary["non_result_reasons"] = dict(sorted(counts.items()))
 
     if results:
         summary["assertions"] = rollup_assertions(results)
@@ -339,7 +506,8 @@ def verify_op(traces: list) -> tuple[list, dict]:
             signoff_id=f"signoff-{cfg_hash[:12] or 'unpinned'}",
             agent_id=agent_id, agent_config_hash=cfg_hash,
             coverage_report=report,
-            assertion_results=results or None)
+            assertion_results=results or None,
+            cdv_result=cdv_result)
         summary["signoff"] = signoff.model_dump(mode="json")
     except Exception:  # noqa: BLE001 — verification must never break a run
         pass
@@ -375,12 +543,24 @@ def aggregate_op(
     runs: list[RunScore],
     visibility: str,
     traces: list | None = None,
+    cfg: dict | None = None,
+    samples: list | None = None,
+    cdv_result=None,
 ) -> Scorecard:
     """Aggregate RunScores into an immutable, persisted Scorecard.
 
     When ``traces`` are supplied the SPEC-13 verification layer runs too, so the
     scorecard carries coverage + assertion evidence and the report can lead with
-    it (Hard Rule 56: closure, not pass rate, is the headline)."""
+    it (Hard Rule 56: closure, not pass rate, is the headline).
+
+    ``cfg`` exists only to reach :func:`verify_op`'s coverage model with the
+    configured closure target. Optional so no existing caller breaks; a caller
+    that holds a config should pass it, or the run is scored against the built-in
+    default while ``config.yaml`` says something else.
+
+    ``samples`` and ``cdv_result`` are pass-throughs to :func:`verify_op` for the
+    one caller that holds a stimulus side (:func:`cdv_op`). Both default to
+    ``None``, so every existing caller is bit-identical."""
     sc = Scorecard.aggregate(
         scorecard_id=uuid.uuid4().hex[:12], agent_id=agent_id,
         suite_id=suite.suite_id, suite_version=suite.version,
@@ -400,7 +580,8 @@ def aggregate_op(
             except Exception:  # noqa: BLE001 — a missing trace must not break scoring
                 continue
     if traces:
-        assertions, coverage = verify_op(traces)
+        assertions, coverage = verify_op(traces, cfg=cfg, samples=samples,
+                                         cdv_result=cdv_result)
         sc = sc.model_copy(update={
             "assertions": assertions,
             "assertion_set_ref": "assertions:builtin-default@v1",
@@ -440,7 +621,216 @@ async def run_and_score_op(
         rubric = reg.get_rubric(cases[0].rubric_id)
         return aggregate_op(reg, agent_id=adapter.agent_id, suite=suite,
                             rubric=rubric, runs=runs, visibility=adapter.visibility,
-                            traces=traces)
+                            traces=traces, cfg=cfg)
+
+
+@dataclass
+class CDVOutcome:
+    """What one coverage-directed run produced. ``cdv`` is the loop's own result
+    (closure, rounds, bug curve, frozen proposals), ``runs`` the per-scenario
+    artifacts, ``scorecard`` the persisted evidence."""
+
+    cdv: object
+    runs: list
+    scorecard: Scorecard
+    #: where the frozen-regression PROPOSALS were written, or "" if there were
+    #: none. Proposals only — promotion goes through the human gate (HR63).
+    regressions_path: str = ""
+
+
+def cdv_op(cfg: dict, reg: Registry, adapter: AgentAdapter, *, space,
+           rubric: Rubric, run_scenario, coverage_model=None, policy=None,
+           seed: int = 0, budget=None, judge_client=None, bias: bool = True,
+           on_progress: ProgressFn | None = None) -> CDVOutcome:
+    """Coverage-directed generation against a real agent (SPEC-13 Step 61).
+
+    Generate a seeded batch from the scenario space, run each scenario against a
+    real environment, extract coverage from **scenario + trace**, rank the holes,
+    and aim the next batch at them — until the closure target or the budget.
+    This is the loop ``verification/cdv.py`` has always implemented and never
+    been given an executor for; :func:`agenttic.scenario.runner.harness_executor`
+    is the executor.
+
+    ``run_scenario`` is REQUIRED and keyword-only, with no default. A default
+    that JSON-dumped ``scenario.text`` into one ``adapter.run()`` call would
+    reproduce exactly the defect this exists to remove, and would do it behind a
+    ``ConvergenceLeg(status="populated")``.
+
+    ``policy`` defaults to the retail world's :data:`RETAIL_POLICY`, not to a
+    bare ``PolicyDoc``: the default document names ``create_exchange`` /
+    ``update_account`` / ``delete_account``, three tools no environment in this
+    build has, and an expectation whose ``forbidden_tools`` cannot be called is a
+    check that can never fail — vacuous, in exactly the sense M40 refuses for
+    assertions.
+
+    ``bias=False`` runs plain unbiased random. It is the control arm: "the solver
+    aims at holes" is a claim, and the only way to check it is to run the same
+    seeds without the aiming.
+
+    **Re-measured after P4, and the number moved for the other reason.** The
+    previous entry here said the aiming changed closure by roughly nothing
+    because the top-ranked holes were the five ``tool_condition`` fault bins and
+    nothing in this build could inject a fault — a fault-injector gap. The
+    injector exists now (``scenario/faults.py``), and running the same three
+    seeds (5/11/23, 60 scenarios, 6 rounds, ``--surface support``, scripted
+    agent) with the injector disabled and enabled says which half that diagnosis
+    got right:
+
+    ===============================  ==============  ==============
+    arm                              biased          unbiased
+    ===============================  ==============  ==============
+    injector off (the old build)     0.5846 ×3       0.5846 ×3
+    injector on                      0.656/.693/.696 0.700/.742/.715
+    ===============================  ==============  ==============
+
+    The injector was worth +7 to +16 points of closure and is what took
+    ``tool_condition`` from one creditable bin of six (0.1667, ``all_ok`` alone)
+    to four or five, and the ``tool_x_trajectory`` cross from 0.0741 to
+    0.24–0.39.
+
+    **The aiming was a separate defect, and it has since been fixed.** It used to
+    COST 2–5 points against random on every seed, for a reason in the round
+    targets rather than the divergence rows: ``CoverageReport.holes`` gives every
+    cross hole the same structural rank (3.0) and breaks the tie alphabetically,
+    and ``holes_to_targets`` kept only the components that are stimulus
+    dimensions — ``trajectory`` is not one. So the top of the list was
+    ``all_ok×budget_exceeded``, ``all_ok×direct_answer``, … — seven cells whose
+    only aimable component was ``all_ok``, the bin a suite gets for free. A batch
+    of 10 consumed the first 10 holes, so every biased round in every seed aimed
+    at ``tool_condition=all_ok`` and ``error_5xx``, spent 39 of 60 scenarios on
+    ``all_ok`` (already hit, 36 exhibited), and asked for ``rate_limited`` zero
+    times. Unbiased random spread across all six values and closed more.
+
+    ``holes_to_targets`` now demotes components already exhibited, collapses
+    duplicate target sets, advances through the ranked list across rounds instead
+    of re-consuming the first ``batch_size``, and returns the holes it cannot
+    steer as ``unaimable_holes`` rather than dropping them on a bare ``continue``.
+    Measured on the same setup, and over 21 seeds because three is not evidence:
+
+    ==================  ==============  ==============  ==============
+    arm                 seeds 5/11/23   wins over 21    mean closure
+    ==================  ==============  ==============  ==============
+    before              .656/.693/.696  3/21            0.6783 (−0.0495)
+    after               .745/.707/.754  10/21           0.7342 (+0.0063)
+    unbiased control    .700/.742/.715  —               0.7279
+    ==================  ==============  ==============  ==============
+
+    Read that honestly: what is fixed is that aiming no longer costs closure. It
+    still loses on 9 of 21 seeds and wins by less than a point on the mean, so
+    directed generation is not yet a decisive lever, and a report that called it
+    one would be claiming more than the table says.
+
+    Provenance, because these numbers have already moved once since: the table
+    above was measured with ``stale_data`` still staged on call #1 of
+    ``lookup_order``, where a stale read is indistinguishable from a fresh one
+    and the bin could not close. Re-running the three acceptance seeds after that
+    was fixed (``realize._FAULT_CALL_INDEX``) gives biased .745/.707/.754 against
+    unbiased .700/.742/.746 — still 2 of 3, with seed 23's UNBIASED arm gaining
+    the difference (.7148 → .7457). The 21-seed means predate the fix and are not
+    restated here as though they did not; whoever re-runs them should replace
+    this paragraph rather than edit the table around it.
+
+    The remaining ceiling is a PRODUCER gap again, not a targeting one. Under the
+    support-surface pairing the solver asked for ``data_condition=ambiguous``
+    14–24 times per seed for zero exhibits, and likewise ``contradictory`` — the
+    retail world has no tool that answers "multiple matches" or contradicts
+    itself, so no amount of aiming can reach them. Those rows are visible in
+    ``report.divergence()``, which is the honest place for them; an "unproductive
+    aim" rule that stopped pinning them was built, measured WORSE (0.7288 vs
+    0.7345), and removed rather than shipped as a tuned constant that loses
+    closure.
+
+    **Every scenario it executes is persisted as a scenario run**, one row per
+    scenario, by :func:`~agenttic.scenario.runner.persist_scenario_run` inside
+    the executor. It is the only thing in ``src/`` besides the single-scenario
+    CLI command that ever calls ``Registry.save_scenario_run``, and until it did,
+    this loop — the only path that drives real scenarios against a real agent —
+    dropped every transcript, fault report, state diff and blocked call on the
+    floor. Additive: it changes neither what this returns nor the scorecard, and
+    a storage failure is logged rather than raised (see that function).
+
+    The ephemeral ``TestSuite`` this builds is NEVER persisted — it exists
+    because ``Scorecard.aggregate`` needs a suite id and version. That does not
+    route around the Step 8 human gate, which guards *running a stored suite*
+    (``harness/runner.py``); generated CDV stimulus is not a stored suite, and
+    Hard Rule 63's gate is on PROMOTION, honoured by writing proposals and
+    nothing else.
+    """
+    import json
+    from pathlib import Path
+
+    from agenttic.coverage.models.baseline import baseline_model
+    from agenttic.registry.sqlite_store import DuplicateVersionError
+    from agenttic.scenario.runner import harness_executor
+    from agenttic.scenario.tools import RETAIL_POLICY
+    from agenttic.verification.cdv import Budget, run_until_closure
+
+    cdv_cfg = dict(cfg.get("cdv") or {})
+    coverage_model = coverage_model or baseline_model(cfg=cfg)
+    if budget is None:
+        budget = Budget(**{k: v for k, v in cdv_cfg.items()
+                           if k in ("max_scenarios", "max_dollars", "max_rounds")})
+    suite_id = f"cdv:{space.space_id}"
+    # `coverage_model` is the one resolved above, handed to BOTH the executor
+    # (which stores each run's exhibited bins and divergence) and
+    # `run_until_closure` (which computes the round closure). Two models in one
+    # run would be two answers to what a scenario covered.
+    execute, runs = harness_executor(
+        cfg, reg, adapter, rubric=rubric, run_scenario=run_scenario,
+        suite_id=suite_id, judge_client=judge_client, on_progress=on_progress,
+        coverage_model=coverage_model)
+
+    res = run_until_closure(
+        space, coverage_model, execute, budget, seed=seed,
+        batch_size=int(cdv_cfg.get("batch_size", 10)),
+        policy=policy if policy is not None else RETAIL_POLICY, bias=bias)
+
+    # Vacuity guard. A flat bug curve produced by a detector that never ran is
+    # the same error `unexercised` exists to prevent: it would print "0 distinct
+    # failure signatures, curve FLAT" over a batch where nothing was ever
+    # decided. The oracle counts as a detector — it is deterministic and needs no
+    # judge — so the question is whether ANY verdict was reached, from either
+    # source. NOT `frozen_regressions`: a scoring outage marks a run not-passed
+    # (deny-by-default) and therefore freezes a proposal with signature
+    # "unknown", so counting proposals would let the outage vouch for itself.
+    detector_ran = any(
+        (r.score is not None and r.score.scoring_error is None) or r.oracle_findings
+        for r in runs)
+    cdv_result = res if detector_ran else None
+
+    try:
+        reg.save_scenario_space(space)      # append-only; a re-run stores nothing
+    except DuplicateVersionError:
+        pass
+
+    run_id = uuid.uuid4().hex[:12]
+    regressions_path = ""
+    if res.frozen_regressions:
+        review_dir = Path((cfg.get("paths") or {}).get("review_dir") or "review")
+        review_dir.mkdir(parents=True, exist_ok=True)
+        path = review_dir / f"cdv-{space.space_id}-v{space.version}-{run_id}.json"
+        path.write_text(json.dumps(
+            {"run_id": run_id, "space_id": space.space_id,
+             "space_version": space.version, "agent_id": adapter.agent_id,
+             "note": ("PROPOSED regression cases. Nothing here is in a suite: "
+                      "promotion is a human decision (Hard Rule 63)."),
+             "regressions": [{"scenario": f.scenario, "seed": f.seed,
+                              "signature": f.signature, "approved": f.approved}
+                             for f in res.frozen_regressions]},
+            indent=2, sort_keys=True))
+        regressions_path = str(path)
+
+    suite = TestSuite(suite_id=suite_id, version=space.version,
+                      business_context=f"CDV stimulus over {space.ref()}",
+                      test_ids=[r.scenario.scenario_id for r in runs],
+                      approved=False)
+    sc = aggregate_op(
+        reg, agent_id=adapter.agent_id, suite=suite, rubric=rubric,
+        runs=[r.score for r in runs if r.score is not None],
+        visibility=adapter.visibility, traces=[r.trace for r in runs],
+        samples=[r.sample() for r in runs], cdv_result=cdv_result, cfg=cfg)
+    return CDVOutcome(cdv=res, runs=runs, scorecard=sc,
+                      regressions_path=regressions_path)
 
 
 def generate_op(cfg: dict, reg: Registry, business_doc: str, suite_id: str,
@@ -511,12 +901,45 @@ def _scorecard_with_context(reg: Registry, scorecard_id: str):
 
 
 def report_op(reg: Registry, scorecard_id: str) -> str:
-    """Render a scorecard to client-ready Markdown (with regression diff)."""
-    return render_markdown(*_scorecard_with_context(reg, scorecard_id))
+    """Render a scorecard to client-ready Markdown (with regression diff), plus
+    the honeypot harness-enforcement section when a battery was stored for this
+    scorecard (``Registry.save_honeypot_battery``).
+
+    **No battery stored ⇒ no section, not a "not measured" section.** The two are
+    different claims and blurring them is the honesty defect available here:
+
+    * A stored battery that reached the harness zero times renders NOT MEASURED,
+      and that is a *finding* — probes ran, the enforcement path was exercised
+      zero times, and the reason names the fix (stronger lures, or a target that
+      can be tempted).
+    * A scorecard with no battery was never put on trial at all. Synthesising a
+      NOT MEASURED section for it would have to invent a posture and a
+      planted-decoy list for a battery that never ran, and would read to a
+      customer as "we tested the harness and it was inconclusive" when nothing
+      tested it.
+
+    Absence of the section is not a pass either: nothing in this report claims
+    the harness enforces anything unless the section says so. Whether a battery
+    *should* have been run for a given agent is a sign-off question — ``schema.
+    signoff`` legs carry an explicit ``not_run`` status for exactly that — not
+    something a renderer can infer from a missing row."""
+    sc, rubric, previous = _scorecard_with_context(reg, scorecard_id)
+    return render_markdown(sc, rubric, previous,
+                           harness=reg.find_honeypot_battery(scorecard_id))
 
 
 def report_pdf_op(reg: Registry, scorecard_id: str) -> bytes:
-    """Render a scorecard to a polished, on-brand PDF (same content as Markdown)."""
+    """Render a scorecard to a polished, on-brand PDF.
+
+    Same content as the Markdown report **except** the honeypot
+    harness-enforcement section: ``pdf_report.render_pdf`` has no ``harness=``
+    parameter yet, so a battery stored for this scorecard shows up in
+    :func:`report_op` and not here. Forwarding it from this side is not the fix —
+    the PDF renders the verification section by borrowing ``_verification_block``
+    from ``scorecard_report`` precisely so the two documents cannot drift in
+    wording, and the harness section has to arrive the same way (borrowing
+    ``_harness_enforcement_block``). Until that lands the PDF is silent about the
+    harness rather than disagreeing with the Markdown about it."""
     from agenttic.reporting.pdf_report import render_pdf
     return render_pdf(*_scorecard_with_context(reg, scorecard_id))
 

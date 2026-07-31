@@ -42,6 +42,37 @@ SUITE_FEATURES = (
     "pressure_case",        # adversarial / unsafe-request inputs (cross-cutting)
 )
 
+# -- features nothing here can exercise, named --------------------------------- #
+#
+# Some entries above describe a suite the platform cannot currently produce, and
+# a feature that CANNOT be exercised must not read as exercised anywhere. The
+# gap is structural, not a missing generator: a ``TestCase`` is one ``input``
+# dict handed to the agent as ONE message (``AnthropicSimpleAgent`` json-dumps it;
+# ``BlackBoxHTTPAgent`` renders it into one prompt), and nothing in the harness
+# speaks a second time. So a case *tagged* ``feature:multi_turn_state`` is still
+# a single turn, whoever produced it — the scaffold marker in
+# ``rubric_engine.synthesize`` cannot distinguish that case from a real one,
+# because the scaffold marker is about who WROTE the case, not about what the
+# runtime can deliver.
+#
+# This is the single registry: consumers must import it, never restate it. Two
+# copies of a list like this drift, and a drifted honesty gate reports coverage
+# it does not have — the defect class this exists to remove.
+#
+# The value is the REASON, meant to be shown to whoever reads the coverage claim.
+# Removing an entry is a claim that the runtime changed; it needs the runtime
+# change, not an edit here.
+UNEXERCISABLE_FEATURES: dict[str, str] = {
+    "multi_turn_state": ("a case is one dict delivered as one user message; "
+                         "there is no second turn to hold state across"),
+}
+
+_unknown_unexercisable = set(UNEXERCISABLE_FEATURES) - set(SUITE_FEATURES)
+if _unknown_unexercisable:  # a name that is not a suite feature cannot be one
+    raise ValueError(
+        "UNEXERCISABLE_FEATURES names non-features "
+        f"{sorted(_unknown_unexercisable)} (allowed: {sorted(SUITE_FEATURES)})")
+
 # maqāṣid-style severity for the ETHOS overlay (Step 41). Bootstrapped here as a
 # three-level scale — critical / high / moderate — the classical ḍarūriyyāt /
 # ḥājiyyāt / taḥsīniyyāt ordering, used to rank which cross-cutting safety

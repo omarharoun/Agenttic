@@ -9,6 +9,36 @@ Semantics (SPEC.md Step 3):
 
 Note: adapters are sync and executed via ``asyncio.to_thread``; on timeout the
 worker thread is abandoned (acceptable for MVP, documented limitation).
+
+**Adapter concurrency contract (load-bearing, not folklore).** ``run_suite``
+holds ONE adapter object and calls ``adapter.run`` from up to ``max_parallel``
+worker threads at once. Therefore:
+
+* ``AgentAdapter.run`` must be re-entrant. Anything it writes to ``self`` is
+  shared across every in-flight case, so per-run state stored there is a data
+  race — the last writer wins and the other runs read a foreign case's state.
+  Per-run state belongs in locals, or in the returned ``Trace``.
+* ``describe()``/``config_hash()`` are read concurrently and must stay pure.
+
+Two adapters in this repo held per-run state on ``self`` and were unsafe at
+``max_parallel > 1``. Both are fixed, and they are recorded here because the two
+fixes are DIFFERENT and the difference is the contract:
+
+* ``redteam.honeypot.GuardedHoneypotAgent`` accumulated ``_decisions`` across
+  concurrent cases. That state is genuinely per-run, so it moved off ``self``
+  into a ``ContextVar`` — ``asyncio.to_thread`` gives each case its own context,
+  so each run reads its own list.
+* ``adapters.blackbox_http.BlackBoxHTTPAgent`` keeps ``_last_call`` on ``self``
+  DELIBERATELY. A rate limiter that each case had a private copy of would not be
+  a rate limit. Shared state that is meant to be shared is locked instead of
+  copied: the slot is claimed under ``_rate_lock`` and slept for outside it.
+
+So "per-run state on ``self`` is a race" and "no state may live on ``self``" are
+not the same rule, and only the first one is true. Both halves are pinned by
+``tests/test_harness.py::TestAdapterConcurrencyContract`` — including
+``test_shared_rate_limit_clock_still_spaces_concurrent_requests``, which exists
+so the contract is not overstated — rather than described only here. See that
+test before changing the sharing model.
 """
 
 from __future__ import annotations
@@ -133,6 +163,12 @@ async def run_suite(
             trace: Trace | None = None
             for attempt in range(config.transport_retries + 1):
                 try:
+                    # SHARED INSTANCE: this is the same `adapter` object for
+                    # every case, entered from up to max_parallel threads at
+                    # once. Whatever run() writes to self is visible to — and
+                    # overwritten by — the other in-flight cases. See the
+                    # adapter concurrency contract in the module docstring;
+                    # per-run state belongs in locals or in the Trace.
                     trace = await asyncio.wait_for(
                         asyncio.to_thread(adapter.run, tc.input, test_case_id=tc.test_id),
                         timeout=config.timeout_seconds,

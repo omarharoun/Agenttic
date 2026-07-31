@@ -7,10 +7,13 @@ ground truth a production trace can't carry). De-dupe holds and healthy traces
 are not promotable. Covers the pure ops and the HTTP surface.
 """
 
+import json
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 from agenttic import hardening
+from agenttic.ingest import ingest_otlp_payload
 from agenttic.hardening import (
     DEFAULT_LIVE_CATCH_THRESHOLD,
     LIVE_SOURCE_SUITE,
@@ -25,6 +28,8 @@ from tests.test_api import client  # noqa: F401 — reuse the app+fakes fixture
 
 NOW = datetime(2026, 6, 20, tzinfo=timezone.utc)
 AGENT = "prod-agent"
+OTEL_FIXTURE = Path(__file__).parent / "fixtures/ingest/otel_genai_spans.json"
+OTEL_TRACE_ID = "5b8efff798038103d269b633813fc60c"
 
 
 def _trace(agent=AGENT, *, question="refund my last order", with_input=True,
@@ -123,6 +128,73 @@ class TestPromoteLive:
         assert cases[0].input == {}
         assert "partial" in cases[0].tags        # clearly flagged, not invented
 
+    def test_every_unreconstructable_catch_is_promoted_not_deduped(self, tmp_path):
+        """Two distinct production failures, neither reconstructable, must promote
+        to TWO cases.
+
+        An unreconstructable catch has an empty input, so its ``fingerprint`` is a
+        hash of an absence — identical for every such catch. Fingerprint-de-duping
+        those made one catch shadow all the others: N real caught failures went in
+        and 1 case came out, with the remaining N-1 reported as
+        ``skipped_duplicates``. De-dupe is a content rule, and there is no content
+        here to be near-identical about."""
+        reg = Registry(tmp_path / "db.sqlite")
+        t1 = _seed_live(reg, {"helpful": 0.0}, with_input=False,
+                        visibility="black_box")
+        t2 = _seed_live(reg, {"helpful": 0.0}, with_input=False,
+                        visibility="black_box")
+        res = promote_live_failures_op(reg, AGENT, rubric_id="r-live")
+        assert sorted(res["added"]) == sorted([t1, t2])
+        assert res["skipped_duplicates"] == []
+        _suite, cases = reg.get_suite(res["regression_suite_id"])
+        assert {c.test_id for c in cases} == {live_test_id(t1), live_test_id(t2)}
+        # each keeps its own provenance — which is the point of promoting both
+        detail = hardening.regression_detail(reg, res["regression_suite_id"])
+        assert {c["provenance"]["source_trace_id"] for c in detail["cases"]} == \
+            {t1, t2}
+
+    def test_a_partial_case_already_in_the_suite_does_not_shadow_a_new_one(
+            self, tmp_path):
+        # the same collapse across two promotions: the stored partial case must
+        # not be indexed by content either
+        reg = Registry(tmp_path / "db.sqlite")
+        t1 = _seed_live(reg, {"helpful": 0.0}, with_input=False,
+                        visibility="black_box")
+        r1 = promote_live_failures_op(reg, AGENT, rubric_id="r-live")
+        assert r1["added"] == [t1]
+        t2 = _seed_live(reg, {"helpful": 0.0}, with_input=False,
+                        visibility="black_box")
+        r2 = promote_live_failures_op(reg, AGENT, rubric_id="r-live")
+        assert r2["added"] == [t2] and r2["version"] == 2
+        assert r2["skipped_duplicates"] == [t1]   # same trace, honestly a dupe
+        _suite, cases = reg.get_suite(r2["regression_suite_id"])
+        assert len(cases) == 2
+
+    def test_tool_name_only_input_is_not_a_reconstruction(self, tmp_path):
+        """``map_span`` writes ``content_sha256`` only when it FOUND content, but
+        writes ``tool_name`` whenever the span named a tool. So an ingested
+        tool_call whose arguments were never captured arrives as
+        ``{"tool_name": ...}`` — non-empty, digest-free, and not a prompt. Keying
+        the guard on the digest let that shape through as a complete
+        reconstruction, handing a reviewer a case whose whole input is the name of
+        a tool."""
+        reg = Registry(tmp_path / "db.sqlite")
+        span = Span(span_id="s1", kind="tool_call", name="lookup_kb",
+                    start_time=NOW, end_time=NOW, input={"tool_name": "lookup_kb"})
+        tr = Trace(trace_id=uuid.uuid4().hex, agent_id=AGENT,
+                   agent_config_hash="h", test_case_id=None, spans=[span],
+                   visibility="glass_box", final_output="(unhelpful)",
+                   schema_version=SCHEMA_VERSION)
+        reg.save_trace(tr, mode="live")
+        reg.save_live_scores(AGENT, tr.trace_id, {"helpful": 0.0})
+
+        assert hardening.live_catch_candidates(
+            reg, AGENT)[0]["input_reconstructed"] is False
+        res = promote_live_failures_op(reg, AGENT, rubric_id="r-live")
+        _suite, cases = reg.get_suite(res["regression_suite_id"])
+        assert cases[0].input == {}
+        assert "partial" in cases[0].tags
+
     def test_dedupe_and_append_version_bump(self, tmp_path):
         reg = Registry(tmp_path / "db.sqlite")
         t1 = _seed_live(reg, {"helpful": 0.0})
@@ -155,6 +227,57 @@ class TestPromoteLive:
         _seed_live(reg, {"helpful": 1.0})
         res = promote_live_failures_op(reg, AGENT, rubric_id="r-live")
         assert res["added"] == [] and res["total_cases"] == 0
+
+    def test_ingested_digest_input_promotes_as_incomplete(self, tmp_path):
+        """An OTel-ingested trace stores its prompt as a CONTENT HASH — ingest
+        hashes bodies rather than keeping them. A promoted case must therefore
+        not claim a reconstructed input: the digest is not the prompt, and an
+        adapter replaying the case would hand the agent 64 hex characters as its
+        task. Before this was fixed the case came back tagged only
+        ``live``/``needs-review``, so the human approval gate was the sole thing
+        standing between a hash and the agent."""
+        reg = Registry(tmp_path / "db.sqlite")
+        ingest_otlp_payload(reg, json.loads(OTEL_FIXTURE.read_text()))
+        trace = reg.get_trace(OTEL_TRACE_ID)
+        # precondition: the ingested spans really do carry digests, not content
+        with_input = [s for s in trace.spans if s.input]
+        assert with_input and all("content_sha256" in s.input for s in with_input)
+
+        reg.save_live_scores(trace.agent_id, trace.trace_id, {"helpful": 0.0})
+        # the gap is visible before anyone promotes
+        cand = hardening.live_catch_candidates(reg, trace.agent_id)[0]
+        assert cand["input_reconstructed"] is False
+
+        res = promote_live_failures_op(reg, trace.agent_id, rubric_id="r-live")
+        assert res["added"] == [trace.trace_id]
+        _suite, cases = reg.get_suite(res["regression_suite_id"])
+        case = cases[0]
+        assert case.input == {}                  # a digest is not a prompt
+        assert "partial" in case.tags            # ...and the case says so
+        prov = hardening.regression_detail(
+            reg, res["regression_suite_id"])["cases"][0]["provenance"]
+        assert prov["input_reconstructed"] is False
+
+    def test_span_carrying_content_alongside_a_hash_is_still_reconstructed(
+            self, tmp_path):
+        # the digest rule is conservative on purpose: reject the pure-reference
+        # shape only, never a span that also carries real content
+        reg = Registry(tmp_path / "db.sqlite")
+        span = Span(span_id="s1", kind="llm_call", name="chat",
+                    start_time=NOW, end_time=NOW,
+                    input={"content_sha256": "a" * 64, "parts": 1,
+                           "question": "where is my package"})
+        tr = Trace(trace_id=uuid.uuid4().hex, agent_id=AGENT,
+                   agent_config_hash="h", test_case_id=None, spans=[span],
+                   visibility="glass_box", final_output="(unhelpful)",
+                   schema_version=SCHEMA_VERSION)
+        reg.save_trace(tr, mode="live")
+        reg.save_live_scores(AGENT, tr.trace_id, {"helpful": 0.0})
+
+        res = promote_live_failures_op(reg, AGENT, rubric_id="r-live")
+        _suite, cases = reg.get_suite(res["regression_suite_id"])
+        assert cases[0].input["question"] == "where is my package"
+        assert "partial" not in cases[0].tags
 
     def test_trace_allowlist_narrows_selection(self, tmp_path):
         reg = Registry(tmp_path / "db.sqlite")

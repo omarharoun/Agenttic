@@ -23,3 +23,8 @@ graphify-out/
 # playwright (runner may emit at repo root)
 test-results/
 playwright-report/
+
+# generated run output — `paths.review_dir`. These are PROPOSED regression cases
+# written by `agenttic cdv`; promotion is a human decision (HR63) and the
+# proposals themselves are per-run artifacts, not source.
+review/

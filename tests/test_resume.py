@@ -151,6 +151,72 @@ class _CostingAgent(AgentAdapter):
                      schema_version=SCHEMA_VERSION)
 
 
+def _scripted_kb_agent(kb, answer, *, agent_id="kbagent"):
+    """Reference adapter wired to a one-shot fake client that always replies
+    ``answer`` — so a re-run is observable in the trace, and a resume is too."""
+    def create(**_kw):
+        return NS(stop_reason="end_turn",
+                  usage=NS(input_tokens=1, output_tokens=1),
+                  content=[NS(type="text", text=answer)])
+    return AnthropicSimpleAgent(model="m", kb_path=kb, agent_id=agent_id,
+                                client=NS(messages=NS(create=create)))
+
+
+class TestKnowledgeBaseIdentity:
+    """The KB is what ``lookup_kb`` answers WITH, so it is part of the agent
+    under test. If it doesn't reach ``config_hash()``, the harness's resume map
+    treats a re-run against a rewritten KB as already done and serves the old
+    traces — a silently stale scorecard."""
+
+    def test_config_hash_tracks_kb_content_not_path(self, tmp_path):
+        kb = tmp_path / "kb.json"
+        kb.write_text(json.dumps({"refund_policy": "30 days"}))
+        agent = _scripted_kb_agent(kb, "x")
+        before = agent.config_hash()
+        # SAME path, corrected content — the case a path-keyed hash misses
+        kb.write_text(json.dumps({"refund_policy": "14 days"}))
+        assert agent.config_hash() != before
+        assert agent.describe()["kb_sha256"] != "unreadable:FileNotFoundError"
+
+    def test_identical_kb_content_at_a_different_path_hashes_the_same(self, tmp_path):
+        body = json.dumps({"refund_policy": "30 days"})
+        a_path, b_path = tmp_path / "a" / "kb.json", tmp_path / "b" / "kb.json"
+        for p in (a_path, b_path):
+            p.parent.mkdir()
+            p.write_text(body)
+        # content identity, not location: the same KB moved is the same agent
+        assert (_scripted_kb_agent(a_path, "x").config_hash()
+                == _scripted_kb_agent(b_path, "x").config_hash())
+
+    def test_missing_kb_is_named_deterministically(self, tmp_path):
+        agent = _scripted_kb_agent(tmp_path / "gone.json", "x")
+        assert agent.describe()["kb_sha256"] == "unreadable:FileNotFoundError"
+        assert agent.config_hash() == agent.config_hash()   # stays stable
+
+    def test_rewritten_kb_defeats_resume(self, tmp_path):
+        reg = Registry(tmp_path / "kb.db")
+        kb = tmp_path / "kb.json"
+        kb.write_text(json.dumps({"refund_policy": "30 days"}))
+        suite = TestSuite(suite_id="s", business_context="x", approved=True,
+                          test_ids=["c0"])
+        cases = [TestCase(test_id="c0", suite_id="s", task_description="t",
+                          input={"q": "refund_policy"}, rubric_id="r")]
+        cfg = HarnessConfig(timeout_seconds=5)
+
+        t1 = asyncio.run(run_suite(_scripted_kb_agent(kb, "old"), suite, cases,
+                                   reg, cfg))
+        assert t1[0].final_output == "old"
+        # unchanged KB: same agent, resumed — the second script never runs
+        t2 = asyncio.run(run_suite(_scripted_kb_agent(kb, "new"), suite, cases,
+                                   reg, cfg))
+        assert t2[0].final_output == "old"
+        # KB rewritten in place: a different agent, so the case must re-run
+        kb.write_text(json.dumps({"refund_policy": "14 days"}))
+        t3 = asyncio.run(run_suite(_scripted_kb_agent(kb, "new"), suite, cases,
+                                   reg, cfg))
+        assert t3[0].final_output == "new"
+
+
 class TestRunResume:
     def test_successful_cases_not_rerun(self, tmp_path):
         reg = Registry(tmp_path / "r.db")

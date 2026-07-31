@@ -1,0 +1,348 @@
+/* Scenario runs — the console surface for the scenario engine.
+ *
+ * Token-only (Hard Rule 47): every colour here is a var() from design/tokens.css,
+ * so both themes follow and `npm run lint:tokens` stays green.
+ *
+ * The load-bearing rule of this stylesheet: THREE FAULT STATES, THREE
+ * TREATMENTS, and none of them carried by hue alone. A fault that FIRED, a
+ * fault that reached its call and could NOT fire, and a fault staged on a call
+ * the agent never made are three different facts about a run, and a reader who
+ * cannot tell them apart at a glance has been told something false. So each gets
+ * its own border STYLE (solid / dashed / dotted), its own fill (soft tint /
+ * soft tint / hatch texture), its own glyph, and its own word. Colour is the
+ * fourth signal, never the first.
+ */
+
+.scn-page { max-width: 1100px; }
+
+/* ---- filters ------------------------------------------------------------ */
+.scn-filters { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-5); }
+.scn-filters input { min-width: 200px; }
+
+/* ---- sections ----------------------------------------------------------- */
+.scn-sec { border-top: 1px solid var(--border); padding: var(--sp-6) 0 var(--sp-2); }
+.scn-sec > h3 {
+  font: 400 var(--t-h3) / 1.2 var(--font-serif); margin: 0;
+  letter-spacing: -0.01em;
+}
+.scn-sec > h4 { font-size: var(--t-title); margin: var(--sp-5) 0 var(--sp-2); font-weight: 500; }
+.scn-eyebrow {
+  font: 600 var(--t-label) / 1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: var(--track-caps); color: var(--faint); margin-bottom: var(--sp-2);
+}
+.scn-sub { color: var(--muted); font-size: var(--t-sm); max-width: 80ch; margin: var(--sp-2) 0 0; }
+
+/* ---- the two kinds of "nothing here" -----------------------------------
+   A MEASURED absence (`.scn-none`) is a result: the run was watched and the
+   thing did not happen. An UNRECORDED absence (`.scn-absent`) is the vacuity
+   case: nobody wrote it down, so there is no result to report. They must never
+   look alike, which is why they are two classes and not one. */
+.scn-none {
+  border-left: 2px solid var(--border-strong); background: var(--panel-2);
+  padding: var(--sp-3) var(--sp-4); margin-top: var(--sp-3);
+  font-size: var(--t-sm); color: var(--text); border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.scn-none b { font-weight: 600; }
+.scn-absent {
+  border-left: 2px dotted var(--score-provisional); background: transparent;
+  padding: var(--sp-3) var(--sp-4); margin-top: var(--sp-3);
+  font-size: var(--t-sm); color: var(--muted); font-style: italic;
+}
+.scn-absent b { color: var(--score-provisional); font-style: normal; font-weight: 600; }
+
+/* ---- stimulus ----------------------------------------------------------- */
+.scn-ticket {
+  margin: var(--sp-3) 0 0; padding: var(--sp-4) var(--sp-5);
+  border: var(--card-border); border-left: 3px solid var(--accent-line);
+  border-radius: var(--card-radius); background: var(--card-bg);
+  font: 400 var(--t-lg) / 1.55 var(--font-serif); color: var(--text);
+}
+.scn-point { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-4); }
+.scn-bin {
+  display: inline-flex; align-items: baseline; gap: var(--sp-2);
+  border: 1px solid var(--border); border-radius: var(--r-pill);
+  padding: 3px var(--sp-3); background: var(--panel);
+}
+.scn-bin__k {
+  font: 600 var(--t-label) / 1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--faint);
+}
+.scn-bin__v { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--text); }
+
+.scn-meta { display: flex; flex-wrap: wrap; gap: var(--sp-5); margin-top: var(--sp-4); }
+.scn-meta > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.scn-meta dt, .scn-meta__k {
+  font: 600 var(--t-label) / 1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--faint);
+}
+.scn-meta__v {
+  font-family: var(--font-mono); font-size: var(--t-xs); color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* ---- transcript --------------------------------------------------------- */
+.scn-turns { margin-top: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
+.scn-turn {
+  border: 1px solid var(--border-soft); border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4); background: var(--panel);
+}
+.scn-turn--user { border-left: 3px solid var(--info); }
+.scn-turn--agent { border-left: 3px solid var(--accent-line); background: var(--panel-2); }
+.scn-turn__head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.scn-who {
+  font: 600 var(--t-label) / 1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+}
+.scn-turn--user .scn-who { color: var(--info); }
+.scn-turn--agent .scn-who { color: var(--accent); }
+.scn-kind { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--faint); }
+.scn-turn__text { font-size: var(--t-base); line-height: 1.5; color: var(--text); }
+.scn-turn__text.is-silent { color: var(--muted); font-style: italic; }
+
+/* The counterparty handing over a gated fact — the whole reason a simulated
+   user exists. An agent that never asks is never given this. */
+.scn-reveal {
+  display: inline-flex; align-items: center; gap: 4px;
+  font: 600 var(--t-xs) / 1 var(--font-ui);
+  color: var(--score-pass); background: var(--score-pass-soft);
+  border: 1px solid var(--score-pass-border); border-radius: var(--r-xs);
+  padding: 2px 6px;
+}
+.scn-reveal code { font-family: var(--font-mono); font-weight: 400; }
+/* The closing line, which the agent was never handed. Drawn as not-delivered so
+   it can never be read as a message the agent ignored. */
+.scn-undelivered {
+  font: 600 var(--t-xs) / 1 var(--font-ui); color: var(--faint);
+  border: 1px dashed var(--border-strong); border-radius: var(--r-xs); padding: 2px 6px;
+}
+.scn-turn.is-undelivered { opacity: 0.72; border-style: dashed; }
+
+/* ---- ledgers ------------------------------------------------------------ */
+.scn-tbl { width: 100%; border-collapse: collapse; margin-top: var(--sp-3); font-size: var(--t-sm); }
+.scn-tbl th {
+  text-align: left; font: 600 var(--t-label) / 1 var(--font-ui);
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--faint);
+  padding: 0 var(--sp-2) var(--sp-2);
+}
+.scn-tbl td {
+  padding: 7px var(--sp-2); border-top: 1px solid var(--border-soft);
+  vertical-align: top;
+}
+.scn-tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+.scn-scroll { width: 100%; overflow-x: auto; }
+
+/* enforcement decision — three outcomes the gateway can record, plus the
+   fourth state that is NOT an outcome: nothing was recorded on the span. */
+.scn-enf {
+  display: inline-block; font: 600 var(--t-xs) / 1 var(--font-mono);
+  border-radius: var(--r-xs); padding: 3px 7px; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.scn-enf--executed {
+  color: var(--score-pass); background: var(--score-pass-soft);
+  border-color: var(--score-pass-border);
+}
+.scn-enf--blocked {
+  color: var(--score-fail); background: var(--score-fail-soft);
+  border-color: var(--score-fail-border);
+}
+.scn-enf--faulted {
+  color: var(--score-provisional); background: var(--score-provisional-soft);
+  border-color: var(--score-provisional-border); border-style: dashed;
+}
+.scn-enf--unrecorded {
+  color: var(--muted); background: transparent;
+  border-color: var(--border-strong); border-style: dotted; font-style: italic;
+}
+.scn-why { color: var(--muted); font-size: var(--t-xs); margin-top: 3px; overflow-wrap: anywhere; }
+/* A record that exists and would not rebuild. Not `.scn-why` (a muted aside,
+   which is how "no report" and "none staged" read) — a stored report nobody
+   could read is a finding about the record, so it carries the provisional
+   colour the rest of the console uses for "we could not tell". */
+.scn-unreadable {
+  color: var(--score-provisional); font-size: var(--t-xs); font-style: italic;
+  border-bottom: 1px dashed var(--score-provisional-border); cursor: help;
+}
+
+/* ---- faults: three states, three treatments ----------------------------- */
+.scn-faults { list-style: none; margin: var(--sp-3) 0 0; padding: 0;
+              display: flex; flex-direction: column; gap: var(--sp-2); }
+.scn-fault {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4); border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  font-size: var(--t-sm);
+}
+.scn-fault__tag {
+  font: 600 var(--t-label) / 1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: var(--track-caps); white-space: nowrap;
+}
+.scn-fault__glyph { font-size: var(--t-base); line-height: 1; }
+.scn-fault__what { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--text); }
+.scn-fault__why { color: var(--muted); font-size: var(--t-xs); flex-basis: 100%; }
+
+/* IT HAPPENED — solid rule, filled tint, filled glyph. */
+.scn-fault--fired {
+  border-left: 3px solid var(--score-fail); background: var(--score-fail-soft);
+}
+.scn-fault--fired .scn-fault__tag, .scn-fault--fired .scn-fault__glyph { color: var(--score-fail); }
+
+/* IT REACHED ITS CALL AND COULD NOT HAPPEN — dashed rule, half-filled glyph,
+   and the reason is mandatory, so it is never mistaken for "it fired". */
+.scn-fault--skipped {
+  border-left: 3px dashed var(--score-provisional);
+  background: var(--score-provisional-soft);
+}
+.scn-fault--skipped .scn-fault__tag,
+.scn-fault--skipped .scn-fault__glyph { color: var(--score-provisional); }
+
+/* THE AGENT NEVER GOT THERE — dotted rule, hatch texture instead of a tint, and
+   a hollow glyph. Nothing happened to the run; this is a measurement of the
+   agent's path, not of the environment's behaviour. */
+.scn-fault--never {
+  border-left: 3px dotted var(--border-strong); color: var(--muted);
+  background-image: repeating-linear-gradient(
+    45deg, var(--hairline) 0, var(--hairline) 1px, transparent 1px, transparent 6px);
+}
+.scn-fault--never .scn-fault__tag, .scn-fault--never .scn-fault__glyph { color: var(--muted); }
+.scn-fault--never .scn-fault__what { color: var(--muted); }
+
+/* IT IS IN THE PLAN AND NOBODY DERIVED WHAT BECAME OF IT — the vacuity row, so
+   it borrows the UNRECORDED vocabulary of `.scn-absent` (dotted provisional
+   rule, no tint, italic) rather than the three RESULT treatments above. It must
+   not read as a quieter `--never`: that is the derivation this row exists
+   because the registry declined to make. */
+.scn-fault--staged {
+  border-left: 3px dotted var(--score-provisional); background: transparent;
+  color: var(--muted); font-style: italic;
+}
+.scn-fault--staged .scn-fault__tag,
+.scn-fault--staged .scn-fault__glyph { color: var(--score-provisional); }
+.scn-fault--staged .scn-fault__what { color: var(--muted); font-style: normal; }
+
+.scn-legend {
+  display: flex; flex-wrap: wrap; gap: var(--sp-4); margin-top: var(--sp-3);
+  font-size: var(--t-xs); color: var(--muted);
+}
+.scn-legend em { color: var(--text); font-style: normal; }
+
+/* ---- state diff --------------------------------------------------------- */
+.scn-before { color: var(--muted); text-decoration: line-through; }
+.scn-after { color: var(--score-pass); }
+.scn-arrow { color: var(--faint); padding: 0 var(--sp-2); }
+
+/* ---- coverage bins ------------------------------------------------------ */
+.scn-bins { margin-top: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-3); }
+.scn-bins__dim { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2); }
+.scn-bins__k {
+  font: 600 var(--t-label) / 1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--faint); min-width: 12ch;
+}
+.scn-bins code {
+  font-family: var(--font-mono); font-size: var(--t-xs);
+  background: var(--panel-2); border: 1px solid var(--border-soft);
+  border-radius: var(--r-xs); padding: 1px 5px; color: var(--text);
+}
+
+/* THE UNMODELLED BIN — exhibited, and outside closure. It is a real thing the
+   run did, so it is not drawn as an absence; but it credits nothing, so it is
+   not drawn as a modelled bin either. Dashed rule + the words, never colour
+   alone. Matches the CLI's annotation, which reads the same last-colon token. */
+.scn-bins__other {
+  display: inline-flex; align-items: baseline; gap: var(--sp-2);
+  border: 1px dashed var(--score-provisional-border); border-radius: var(--r-xs);
+  padding: 1px 5px; cursor: help;
+}
+.scn-bins .scn-bins__other code {
+  background: transparent; border: 0; padding: 0; color: var(--score-provisional);
+}
+.scn-bins__outside {
+  font: 600 var(--t-label) / 1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: var(--track-caps); color: var(--score-provisional);
+  white-space: nowrap;
+}
+
+/* ---- divergence: asked for, never exhibited -----------------------------
+   The OPPOSITE of an exhibited bin, and it may never borrow one's treatment:
+   `.scn-bins code` is a corner the run reached, these are corners it did not.
+   Dashed rule + hatch (nothing filled it) + a hollow glyph + the words. The
+   two absent states above it — `.scn-absent` (nobody computed) and `.scn-none`
+   (computed, nothing diverged) — carry their own treatments already. */
+.scn-diverge {
+  list-style: none; margin: var(--sp-3) 0 0; padding: 0;
+  display: flex; flex-direction: column; gap: var(--sp-2);
+}
+.scn-diverge__row {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4); font-size: var(--t-sm);
+  border-left: 3px dashed var(--score-provisional);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background-image: repeating-linear-gradient(
+    45deg, var(--hairline) 0, var(--hairline) 1px, transparent 1px, transparent 6px);
+}
+.scn-diverge__glyph { font-size: var(--t-base); line-height: 1; color: var(--score-provisional); }
+.scn-diverge__tag {
+  font: 600 var(--t-label) / 1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: var(--track-caps); color: var(--score-provisional);
+  white-space: nowrap;
+}
+.scn-diverge__what { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--text); }
+.scn-diverge__what b { color: var(--text); font-weight: 600; }
+.scn-diverge__count { color: var(--muted); font-size: var(--t-xs); }
+
+/* A corner NOTHING COMPARED. Not a third flavour of divergence — the opposite
+   of one: a divergence row is a RESULT (we looked, it never came), and this is
+   the vacuity case (nobody looked, because the coverage model has no bin for
+   this dimension). So it drops the hatch, which means "asked for and nothing
+   filled it", and takes the UNRECORDED vocabulary `.scn-absent` already owns:
+   dotted rule, no fill, italic. Same rule as `.scn-none` vs `.scn-absent` one
+   screen up — the two absences must never look alike. */
+.scn-diverge__row--uncompared {
+  border-left-style: dotted; background-image: none; font-style: italic;
+  color: var(--muted);
+}
+.scn-diverge__row--uncompared .scn-diverge__what,
+.scn-diverge__row--uncompared .scn-diverge__what b { color: var(--muted); }
+.scn-diverge__row--uncompared .scn-diverge__tag { font-style: normal; }
+
+/* ---- disclosures -------------------------------------------------------- */
+.scn-disc { list-style: none; margin: var(--sp-3) 0 0; padding: 0; font-size: var(--t-sm); }
+.scn-disc li {
+  border-left: 2px solid var(--border-strong); padding: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-2); color: var(--muted);
+}
+.scn-disc b { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--text); }
+
+/* ---- run list ----------------------------------------------------------- */
+.scn-runs td.scn-runs__id { font-family: var(--font-mono); font-size: var(--t-xs); }
+
+/* THE RUN ID — the one value an operator carries off this screen (it is the
+   argument to `agenttic scenario transcript <id>`). The cut is DRAWN, in the
+   provisional colour the console uses for "this is not the whole story", so a
+   prefix can never pass for a complete id; the whole value is in `title` and in
+   the copy control beside it. */
+.scn-id { display: inline-flex; align-items: baseline; gap: var(--sp-2); }
+.scn-id__text { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--text); }
+.scn-id__cut { color: var(--score-provisional); font-weight: 600; }
+.scn-id__copy {
+  font: 600 var(--t-label) / 1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: var(--track-caps); color: var(--muted);
+  background: transparent; border: 1px solid var(--border);
+  border-radius: var(--r-xs); padding: 3px 6px; cursor: pointer;
+}
+.scn-id__copy:hover { color: var(--accent); border-color: var(--accent-line); }
+.scn-id__copy:focus-visible { outline: none; box-shadow: var(--ring); }
+.scn-tag {
+  display: inline-block; font: 600 var(--t-xs) / 1 var(--font-ui);
+  border: 1px solid var(--border); border-radius: var(--r-xs);
+  padding: 2px 6px; color: var(--muted); white-space: nowrap;
+}
+.scn-tag--conv { color: var(--info); border-color: var(--info-border); background: var(--info-soft); }
+.scn-selected td { background: var(--accent-soft); }
+
+@media (max-width: 760px) {
+  .scn-meta { gap: var(--sp-3); }
+  .scn-bins__k { min-width: 0; }
+}

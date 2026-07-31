@@ -20,6 +20,7 @@ import { HardeningPage } from "./pages/HardeningPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { OptimizePage } from "./pages/OptimizePage";
 import { ResourcesPage } from "./pages/ResourcesPage";
+import { ScenariosPage } from "./pages/ScenariosPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { TrainingCampPage } from "./pages/TrainingCampPage";
 
@@ -93,6 +94,10 @@ const NAV_GROUPS: { title: string; items: { to: string; icon: string; label: str
   { title: "Issues", items: [
     { to: "/app/issues", icon: "🔎", label: "Issues report" },
     { to: "/app/capabilities", icon: "◎", label: "What we test" },
+    // Beside "What we test" on purpose: that page enumerates what the engine
+    // CAN exercise, this one shows what a single run actually did — the ticket,
+    // the faults, what moved in the world, and which bins the trace exhibited.
+    { to: "/app/scenarios", icon: "◍", label: "Scenario runs" },
   ]},
   { title: "Fix", items: [
     { to: "/app/training-camp", icon: "🎯", label: "Training Camp" },
@@ -238,6 +243,11 @@ export function AppShell() {
             <Route path="build" element={<EditorPage />} />
             <Route path="executions" element={<ExecutionsPage />} />
             <Route path="results" element={<ResultsHistoryPage />} />
+            {/* Stored scenario-engine runs. Reached from /engine's closing CTA
+                and by URL. Deliberately NOT in NAV_GROUPS yet: the sidebar sits
+                inside all ten committed console visual baselines, so one new
+                entry invalidates every one of them — see routing.test.tsx. */}
+            <Route path="scenarios" element={<ScenariosPage />} />
             <Route path="capabilities" element={<CapabilitiesPage />} />
             <Route path="issues" element={<IssuesPage />} />
             <Route path="compare" element={<ComparePage />} />

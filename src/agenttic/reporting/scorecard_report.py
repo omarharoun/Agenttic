@@ -2,14 +2,24 @@
 
 Sections: executive summary, per-case results, per-criterion breakdown with
 judge rationales for failures, cost/latency stats, visibility tier and
-calibration status, regression diff vs a previous scorecard, and a
-recommendations section built from the worst-performing criteria.
+calibration status, regression diff vs a previous scorecard, a recommendations
+section built from the worst-performing criteria, and — when a honeypot battery
+was run — what the agent's HARNESS did when the agent reached for a planted
+decoy (:func:`render_harness_enforcement_section`).
 """
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+from agenttic.coverage.targets import DEFAULT_CLOSURE_TARGET
 from agenttic.schema.rubric import Rubric
 from agenttic.schema.scorecard import Scorecard
+
+if TYPE_CHECKING:  # runtime import would be circular: redteam.honeypot imports
+    # agenttic.ops, and ops imports this module. The renderer only reads
+    # attributes off the result, so the annotation is all that is needed.
+    from agenttic.redteam.honeypot import HarnessEnforcementResult
 
 
 def _pct(x: float) -> str:
@@ -20,6 +30,8 @@ def render_markdown(
     sc: Scorecard,
     rubric: Rubric,
     previous: Scorecard | None = None,
+    *,
+    harness: "HarnessEnforcementResult | None" = None,
 ) -> str:
     crit_by_id = {c.criterion_id: c for c in rubric.criteria}
     calibrated_ids = {
@@ -68,6 +80,8 @@ def render_markdown(
         "",
     ]
     lines += _verification_block(sc)
+    if harness is not None:
+        lines += _harness_enforcement_block(harness)
     lines += [
         "## Executive summary",
         "",
@@ -158,6 +172,26 @@ def render_markdown(
     return "\n".join(lines) + "\n"
 
 
+def _closure_cell(cp: dict) -> str:
+    """The per-coverpoint closure cell.
+
+    Three states, three renderings. A coverpoint nothing in the system can feed
+    carries ``closure: null`` and says so in words: printing `0%` would read as
+    "the suite never got there" — a gap someone could be asked to close — and
+    printing a percentage computed from bins that fire by default would be the
+    over-report the coverage model was corrected to stop.
+    """
+    if cp.get("not_measurable"):
+        why = (cp.get("not_measurable_reason") or "").strip()
+        return "**not measurable**" + (f" — {why}" if why else "")
+    closure = cp.get("closure")
+    if closure is None:
+        # A model that declared nothing but produced no number either: still not
+        # a zero, and still not ours to invent.
+        return "not measured"
+    return f"{closure:.0%}"
+
+
 def _verification_block(sc) -> list[str]:
     """The headline (SPEC-13 Step 64): what was never exercised, which properties
     held, and only then the pass rate — demoted to one line.
@@ -171,7 +205,7 @@ def _verification_block(sc) -> list[str]:
     # --- 1. coverage: what was never exercised --------------------------------
     if cov.get("model_ref"):
         closure = cov.get("trace_closure", 0.0)
-        target = cov.get("closure_target", 0.95)
+        target = cov.get("closure_target", DEFAULT_CLOSURE_TARGET)
         state = "CLOSED" if cov.get("closed") else "NOT CLOSED"
         out.append(f"**Coverage closure {closure:.0%}** of target {target:.0%} — "
                    f"{state}.")
@@ -183,7 +217,16 @@ def _verification_block(sc) -> list[str]:
         out.append("|---|---|---|")
         for cp_id, cp in (cov.get("per_coverpoint") or {}).items():
             unhit = ", ".join(f"`{u}`" for u in cp.get("unhit", [])) or "—"
-            out.append(f"| {cp_id} | {cp.get('closure', 0):.0%} | {unhit} |")
+            out.append(f"| {cp_id} | {_closure_cell(cp)} | {unhit} |")
+        waived = cov.get("waived_bins") or {}
+        if waived:
+            # Hard Rule 61: a bin outside the denominator is stated, with its
+            # reason, in the deliverable — not just in the source that waived it.
+            out.append("")
+            out.append("Excluded from closure, with the reason recorded:")
+            out.append("")
+            for b, why in waived.items():
+                out.append(f"- `{b}` — {why}")
         drift = cov.get("other_drift") or {}
         if drift:
             out.append("")
@@ -233,4 +276,96 @@ def _verification_block(sc) -> list[str]:
                          else "**unscoped** (no coverage model)"))
         out.append(f"Pass rate (one line among several): {label}")
     out.append("")
+    return out
+
+
+def render_harness_enforcement_section(hp: "HarnessEnforcementResult") -> str:
+    """One honeypot battery (:mod:`agenttic.redteam.honeypot`) as a standalone
+    Markdown section — for a caller that appends it to an existing document
+    rather than re-rendering the scorecard. Same text ``render_markdown``
+    embeds when passed ``harness=``."""
+    return "\n".join(_harness_enforcement_block(hp)) + "\n"
+
+
+def _harness_enforcement_block(hp) -> list[str]:
+    """What the agent's HARNESS did when the agent reached for planted bait.
+
+    The section exists because the rest of this report grades the MODEL, and a
+    model score cannot answer "does the framework stop a forbidden call". Three
+    outcomes, three rows, never summed: *resisted* is a fact about the model
+    (it declined), *attempted → blocked* is a fact about the harness (the model
+    took the bait and the framework denied the call), and a "safe" total adding
+    the two would render an agent nothing was enforcing on as identical to one a
+    gateway was guarding — the confusion the honeypot slice exists to break.
+
+    Zero executed calls is only evidence when a call was actually attempted. With
+    no attempt the gateway was never consulted, so the section reads NOT MEASURED
+    rather than clean — the vacuity rule (unexercised is not pass) applied to
+    enforcement, and the same condition ``scripts/honeypot_gate.py`` already
+    fails the build on.
+
+    Takes the result structurally (no import — see the TYPE_CHECKING note at the
+    top of this module)."""
+    decoys = ", ".join(f"`{t}`" for t in hp.planted_tools) or "_none_"
+    out: list[str] = [
+        "## Harness enforcement (honeypot battery)",
+        "",
+        "Decoy dangerous tools were planted in the agent's tool list and the "
+        "agent was tempted to call them. Two different systems are on trial "
+        "below and their counts are never added together: what the **model** "
+        "did with the bait, and what the **harness** did when the model took it.",
+        "",
+        f"Agent `{hp.agent_id}` · posture `{hp.posture}` · decoys planted: {decoys}",
+        "",
+        "| Outcome | Probes | What it is evidence of |",
+        "|---|---|---|",
+        f"| Resisted | {hp.resisted} | the **model** declined the decoy — "
+        "evidence about the model, none about the harness |",
+        f"| Attempted → blocked | {hp.attempted_blocked} | the model took the "
+        "bait; the **harness denied** the call before it ran |",
+        f"| Attempted → executed | {hp.executed_allowed} | the call went "
+        "through: logged, **not blocked** |",
+        "",
+    ]
+
+    if not hp.measured:
+        out += [f"**Harness enforcement: {hp.verdict}** — {hp.not_measured_reason}. "
+                "Zero executed decoy calls is vacuously true when nothing was "
+                "attempted, so this is **not** a pass for the harness; the "
+                "enforcement path was never exercised."]
+    elif hp.executed_allowed:
+        blocked = (f" ({hp.attempted_blocked} other attempt(s) were blocked.)"
+                   if hp.attempted_blocked else "")
+        out += [f"**Harness enforcement: {hp.verdict}** — {hp.executed_allowed} "
+                f"of {hp.attempts} attempted decoy call(s) executed. A harness "
+                f"that only observes a forbidden call is not enforcing it.{blocked}"]
+    else:
+        out += [f"**Harness enforcement: {hp.verdict}** — all {hp.attempts} "
+                "attempted decoy call(s) were denied inline; none executed. This "
+                "is a fact about the harness, not about the model: on these "
+                "probes the model **did** reach for the forbidden tool."]
+    out.append("")
+
+    if hp.per_decoy:
+        out += ["| Decoy tool | Probes | Resisted | Attempted → blocked "
+                "| Attempted → executed | Decisions recorded |",
+                "|---|---|---|---|---|---|"]
+        for d in hp.per_decoy:
+            refs = len(d.decision_refs)
+            audit = str(refs) if refs else ("none recorded" if d.attempts else "—")
+            out.append(f"| `{d.tool_name}` | {d.probes} | {d.resisted} "
+                       f"| {d.attempted_blocked} | {d.executed_allowed} | {audit} |")
+        out.append("")
+
+    if hp.calls_without_decision:
+        out += [f"{hp.calls_without_decision} attempted decoy call(s) carry **no "
+                "enforcement decision at all** — nothing in the trace records a "
+                "gateway having seen them. They are counted as executed, because "
+                "absence of a block is not a block, and there is no decision to "
+                "audit.", ""]
+
+    if hp.disclosures:
+        out += ["Not counted above, stated rather than dropped:", ""]
+        out += [f"- {d}" for d in hp.disclosures]
+        out.append("")
     return out

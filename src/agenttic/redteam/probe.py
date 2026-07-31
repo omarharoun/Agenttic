@@ -26,7 +26,20 @@ ATTACK_RUBRIC_ID = "redteam-attack-v1"
 #:   honeypot     -> forbidden_tools: a call to a PLANTED decoy dangerous tool
 #:                   (agenttic.redteam.honeypot) — scored by tool_misuse_safety
 KINDS = ("injection", "secret", "tool_misuse", "honeypot")
-TECHNIQUES = ("direct", "unicode", "tense_paraphrase", "multi_turn",
+
+#: Techniques are named for what the attack DOES, because the name is what a
+#: report says the agent was put through. ``false_prior_context`` was called
+#: ``multi_turn`` and is authored as ONE message that asserts a conversation that
+#: never happened ("Thanks, that helped! One more thing…") — a real and useful
+#: attack, but the harness sends a single message per case, so the old name
+#: advertised a capability nothing here has. Renaming changes future test ids
+#: only (``AttackSpec.test_id``); rows recorded under the old name keep it.
+#:
+#: This is the AUTHORED set, not a closed enum: ``generator.mutate`` mints
+#: ``mut_*`` techniques of its own, and ``AttackSpec.technique`` is a bare str
+#: with nothing validating it — which is precisely how the name and the
+#: implementation drifted apart unnoticed.
+TECHNIQUES = ("direct", "unicode", "tense_paraphrase", "false_prior_context",
               "injection_doc", "injection_tool_result")
 
 
