@@ -539,3 +539,35 @@ page claims the baseline covers session shape while the model declares otherwise
 Recaptured with `npx playwright test visual.spec.ts --update-snapshots`, then
 re-run clean: 22 passed. No baseline was deleted, and no test assertion was
 weakened to make a screenshot match.
+
+## Eight baselines — the Engine link, and the disclosures the gate made false
+
+Two causes, separated as always, because one "regenerated the baselines" line is
+how an unintended pixel change gets laundered through an intended one.
+
+**1. Six public baselines — `SiteNav` gained an Engine entry.** `/engine` shipped
+routed, returning 200, and reachable only by typing the URL: nothing in the site
+linked to it. A public page that can only be found by someone who already knew it
+was there is not published. It now sits beside Methodology, which answers a
+different question — Methodology is how we SCORE, Engine is what we run the agent
+THROUGH: the world, the counterparty, the injected faults. Every public
+screenshot contains the header, so landing / pricing / methodology shift by one
+nav item in both themes. Nothing else on those pages moved.
+
+**2. capabilities (dark + light) — the page says something true that it used to
+say falsely.** `session_shape` carries a per-sample gate now
+(`session_turns_instrumented`), so the disclosure that read "nothing in a run
+emits a human turn, so no run can exhibit one" had become false in the modest
+direction: a scenario session records who spoke and IS measured; a stored suite
+case emits no turn marker and is reported NOT MEASURED. Two `not_covered` entries
+were narrowed rather than deleted for the same reason — `agenttic cdv` and
+`agenttic scenario run` do put an agent in a stateful world with a counterparty
+that withholds a fact, while everything a customer runs through `run_standard`
+still gets none of it, so both disclosures stay and now name the path they are
+about. The page grew because it says more, not because it was restyled.
+
+These were deliberately left failing across two commits rather than regenerated
+early: a concurrent session had LandingPage.tsx, capabilities.py and the fixture
+open and uncommitted, and recapturing then would have baked that in-progress work
+into these PNGs and attributed it to the nav change. Recaptured only once every
+source change was committed. 22 passed. No baseline deleted, no assertion weakened.
