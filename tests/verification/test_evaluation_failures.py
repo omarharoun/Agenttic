@@ -318,3 +318,77 @@ def test_build_signoff_populates_the_evaluation_failure_fields(sabotage):
     assert s.assertions.evaluations_submitted == 16
     assert s.assertions.verdict == "INCOMPLETE"
     assert INNOCENT in " ".join(s.assertions.evaluation_failure_properties)
+
+
+class TestTheFailureReachesAReader:
+    """The count blocked the sign-off and then reached no human artifact.
+
+    A disclosure nothing reads is the same defect as the swallow it replaced,
+    one level up: the evidence exists, the gate honours it, and the person
+    holding the report cannot see it.
+    """
+
+    def test_a_scorecard_of_only_errors_is_not_a_pass(self):
+        """`verification_status` counted violations and nothing else, so a
+        battery whose every property FAILED TO RUN published the same word as
+        one that passed."""
+        from agenttic.schema.scorecard import Scorecard
+        from agenttic.verification.assertions import AssertionResult
+
+        sc = Scorecard.model_construct(
+            assertions=[
+                AssertionResult(assertion_id="p1", status="error", span_index=None,
+                                detail="predicate raised", severity="high"),
+                AssertionResult(assertion_id="p2", status="error", span_index=None,
+                                detail="predicate raised", severity="high"),
+            ])
+        assert sc.assertion_violations == 0      # nothing was found to be wrong
+        assert sc.assertion_errors == 2          # because nothing was checked
+        assert sc.verification_status == "INCOMPLETE"
+        assert sc.verification_status != "PASS"
+
+    def test_a_real_violation_still_outranks_an_error(self):
+        """INCOMPLETE must not mask a FAIL — a violation is the more actionable
+        finding, which is the precedence `verdict_for` already sets."""
+        from agenttic.schema.scorecard import Scorecard
+        from agenttic.verification.assertions import AssertionResult
+
+        sc = Scorecard.model_construct(
+            assertions=[
+                AssertionResult(assertion_id="p1", status="violation", span_index=3,
+                                detail="wrote before read", severity="critical"),
+                AssertionResult(assertion_id="p2", status="error", span_index=None,
+                                detail="predicate raised", severity="high"),
+            ])
+        assert sc.verification_status == "FAIL"
+
+    def test_a_clean_battery_still_passes(self):
+        from agenttic.schema.scorecard import Scorecard
+        from agenttic.verification.assertions import AssertionResult
+
+        sc = Scorecard.model_construct(
+            assertions=[AssertionResult(assertion_id="p1", status="held", span_index=None,
+                                        detail="ok", severity="high")])
+        assert sc.verification_status == "PASS"
+
+    def test_the_report_says_why_it_is_incomplete(self):
+        """The reader gets the cause, the count and the named properties — not
+        just the word."""
+        from agenttic.reporting.scorecard_report import _verification_block
+        from agenttic.schema.scorecard import Scorecard
+
+        sc = Scorecard.model_construct(
+            n_scored=1, run_scores=[], assertions=[],
+            coverage={"assertions": {
+                "verdict": "INCOMPLETE", "total": 8, "violations": 0,
+                "unexercised": 0, "evaluations": 7, "evaluations_submitted": 8,
+                "evaluation_failures": 1,
+                "evaluation_failure_properties": ["never_cross_tenant_identifiers"],
+                "violated_properties": [], "unexercised_properties": [],
+            }})
+        text = "\n".join(_verification_block(sc))
+        assert "INCOMPLETE" in text
+        assert "1 of 8 property evaluation(s) could not run" in text
+        assert "never_cross_tenant_identifiers" in text
+        # and it must not be confused with the coverage finding next to it
+        assert "failure of the CHECKER" in text

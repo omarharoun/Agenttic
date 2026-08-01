@@ -36,6 +36,11 @@ export interface CoverageSummary {
   limits?: string | null;
   assertions?: {
     total?: number; violations?: number; unexercised?: number; verdict?: string;
+    // Properties whose evaluation could not RUN. Modelled explicitly because
+    // the strip styled the battery on `violations` alone, so an INCOMPLETE
+    // verdict — nothing found wrong because nothing was checked — rendered in
+    // the SUCCESS colour.
+    evaluation_failures?: number;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [k: string]: any;
   } | null;
@@ -107,9 +112,15 @@ export function VerificationStrip({ sc }: { sc: any }) {
         <>
           <div className="stat">
             <span className="lab">Assertions</span>
-            <span className={`val sm ${a.violations ? "err" : "ok"}`}>
+            <span className={`val sm ${
+              a.violations ? "err" : (a.evaluation_failures ? "warn" : "ok")}`}>
               {a.verdict}
               <span className="muted-sm"> {a.violations}/{a.total} broken</span>
+              {!!a.evaluation_failures && (
+                <span className="muted-sm">
+                  {" "}· {a.evaluation_failures} could not be evaluated
+                </span>
+              )}
             </span>
           </div>
           <div className="stat">

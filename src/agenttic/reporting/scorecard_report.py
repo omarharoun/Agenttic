@@ -255,6 +255,23 @@ def _verification_block(sc) -> list[str]:
         unex = asrt.get("unexercised_properties") or []
         if unex:
             out.append("- Unexercised: " + ", ".join(f"`{u}`" for u in unex[:8]))
+        # The reason behind an INCOMPLETE verdict. Without this the reader gets
+        # the word and no cause: the count and the named properties were
+        # computed, stored and used to refuse the sign-off, and then reached no
+        # human-readable artifact — a disclosure nothing reads, which is the
+        # defect this whole channel exists to remove, one level up.
+        failed = asrt.get("evaluation_failures", 0)
+        if failed:
+            submitted = asrt.get("evaluations_submitted", asrt.get("total", 0))
+            out.append(f"- ⚠️ **{failed} of {submitted} property evaluation(s) "
+                       "could not run.** This is a failure of the CHECKER, not "
+                       "of the agent, and not the same as a property never being "
+                       "exercised: nothing here says whether those properties "
+                       "hold.")
+            named = asrt.get("evaluation_failure_properties") or []
+            if named:
+                out.append("  - Could not evaluate: "
+                           + ", ".join(f"`{n}`" for n in named[:8]))
     else:
         out.append("**Assertions: not run** on this scorecard.")
     out.append("")

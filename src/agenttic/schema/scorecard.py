@@ -134,9 +134,31 @@ class Scorecard(BaseModel):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
+    def assertion_errors(self) -> int:
+        """Properties whose evaluation could not RUN — the checker broke, not the
+        agent. Distinct from ``unexercised``, which is a finding about the suite
+        (the antecedent never occurred). Collapsing the two would hide a broken
+        checker behind a coverage gap."""
+        return sum(1 for a in self.assertions if a.status == "error")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
     def verification_status(self) -> str:
-        """FAIL if any assertion violated, regardless of criteria scores."""
-        return "FAIL" if self.assertion_violations else "PASS"
+        """FAIL if any assertion violated, INCOMPLETE if any could not be
+        evaluated, else PASS. Independent of criteria scores (Hard Rule 59).
+
+        The INCOMPLETE arm is not cosmetic. This returned PASS over a battery of
+        nothing but `error` rows, because it counted violations and nothing else
+        — so a scorecard whose entire property check had failed to run published
+        the same word as one that passed. It ranks below FAIL for the reason
+        `verdict_for` gives: a real violation is the more actionable finding.
+        Kept in step with :func:`agenttic.verification.assertions.verdict_for`
+        and ``AssertionLeg.verdict``, which use this exact vocabulary; a fourth
+        opinion about the same battery is how they drift.
+        """
+        if self.assertion_violations:
+            return "FAIL"
+        return "INCOMPLETE" if self.assertion_errors else "PASS"
 
     def violated_properties(self) -> list[str]:
         """The named properties that failed — what the report prints."""

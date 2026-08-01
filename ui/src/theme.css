@@ -3167,6 +3167,9 @@ a.btn-primary, button.btn-primary,
 }
 .verif-strip .val.ok { color: var(--score-pass); }
 .verif-strip .val.err { color: var(--score-fail); }
+/* INCOMPLETE: nothing was found wrong because something was not checked.
+   Neither pass nor fail — it must not borrow either colour. */
+.verif-strip .val.warn { color: var(--wait); }
 .verif-strip .val.wait { color: var(--score-provisional); }
 
 /* --- the same vocabulary, in table-cell form -----------------------------
