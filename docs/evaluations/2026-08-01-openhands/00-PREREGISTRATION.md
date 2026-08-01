@@ -118,3 +118,78 @@ hazards this design avoided rather than fixed.
       directional prior, **not** a citation.
 - [ ] Notify the maintainers with the draft, the suite and the reproduction
       steps, and give them 3–5 working days before publishing.
+
+---
+
+## CORRECTION — 2026-08-02, still before any run
+
+**The subject named above conflates two different artifacts.** Found while
+grounding the adapter in the subject's own source rather than trusting the
+shortlist that produced this entry.
+
+`OpenHands/OpenHands` (repo id `771302083`, 82,778 stars) at commit
+`c7a765d900df294cbbf0f405ae26c9cbbd0fcc29` is **Agent Canvas** — in its own
+README, *"the self-hosted developer control center for coding agents and
+automations… run OpenHands, Claude Code, Codex, Gemini, or any ACP-compatible
+agent."* It is a TypeScript/React/Electron application. It is not a Python coding
+agent, it is not driven by `openhands --headless --json`, and it would map to a
+different archetype entirely, if any.
+
+The CLI with that interface is a **different repository**:
+
+| | |
+|---|---|
+| repo | `OpenHands/OpenHands-CLI` |
+| licence | MIT |
+| stars | **232** |
+| latest release | `1.16.0`, published 2026-05-08 (about three months ago) |
+| tag commit | `2963442dacc7cea44e39b7c4e73724295c853465` |
+| head commit | `2df8a2835d3f1bd2f2eadf5a7a2e1ad0dfb0d271`, dated 2026-06-27 |
+| interface | its README documents `openhands --headless --json -t "task"` — VERIFIED |
+
+A third repo, `OpenHands/software-agent-sdk` (MIT, 947 stars, pushed
+2026-08-01), is *"a clean, modular SDK for building AI agents with OpenHands
+V1"* — the most actively maintained of the three, but an SDK rather than a
+runnable CLI.
+
+### What this invalidates
+
+1. **The star count above must never describe what we evaluate.** 82,778 belongs
+   to the control centre. The CLI's own repo has 232. Publishing "we evaluated
+   OpenHands, 82k stars" while driving a 232-star CLI would be exactly the
+   misrepresentation this document exists to prevent — and it is the kind of
+   thing a hostile reader finds in ten seconds.
+2. **"Well enough known that the result is interesting" is now an open
+   question.** The CLI is the published command-line interface of a widely used
+   project, so its reach is larger than its star count suggests — but 232 is not
+   82,778 and the report may not imply otherwise.
+3. **The "expect it to do well" prior is unverified for this artifact.** It rested
+   on OpenHands being the reference scaffold behind strong SWE-bench Verified
+   entries. That reputation attaches to the Python agent lineage, now
+   `software-agent-sdk`, not to the control centre and not necessarily to the
+   packaged CLI at `1.16.0`.
+4. **"Actively maintained" is weaker than claimed.** The flagship was pushed
+   today; the CLI's last tagged release is three months old and its head commit
+   is from 2026-06-27.
+
+### What survives
+
+The **interface** claim, which is the part the adapter depends on:
+`openhands --headless --json -t "<task>"` is real and documented in the CLI's own
+README. The glass-box argument — JSONL events map to spans, so the black-box
+criterion defect in `scoring/engine.py` never applies — is unaffected.
+
+The **suite** claim is unaffected: `swebench-verified-v1` is vendored, carries
+zero judge criteria, and its behaviour under the coding archetype was measured
+directly.
+
+### Status
+
+Subject is **NOT settled**. Adapter work continues, because it targets the CLI's
+headless JSONL either way and is the same code for any of these candidates. No
+run happens, and nothing is published, until the subject line above is replaced
+by one that survives a reader checking it.
+
+The original entry is left exactly as written. It is wrong, it is dated, and the
+correction is dated after it — which is the only way a pre-registration is worth
+anything.
