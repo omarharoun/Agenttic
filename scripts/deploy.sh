@@ -179,8 +179,17 @@ else
 fi
 
 dc up -d --wait postgres redis
-# run migrations against Postgres as a one-off (app also self-migrates on boot)
-dc run --rm app agenttic migrate --config /app/config.yaml
+# run migrations against Postgres as a one-off (app also self-migrates on boot).
+#
+# `-T` IS LOAD-BEARING. This whole block is fed to `bash -s` over ssh STDIN, and
+# `docker compose run` attaches stdin by default — so without -T the migrate
+# container CONSUMES THE REST OF THIS SCRIPT. Every line below it is eaten, the
+# block exits 0, and the deploy reports success having never recreated the app.
+# That is exactly what happened on node1 on 2026-07-31 and 2026-08-01: the build
+# succeeded, migrations ran, /health answered from the OLD container, and the new
+# image was never started. A deploy that silently skips its own remaining steps
+# is the same defect as one that lies about them.
+dc run --rm -T app agenttic migrate --config /app/config.yaml
 dc up -d --wait app
 dc ps
 
