@@ -8,6 +8,9 @@ When a key IS present, the runner drives the real judge over the labeled corpus.
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 from agenttic.scoring.judge_calibration import (
     JudgeCalibrationBlocked,
     _build,
@@ -54,6 +57,49 @@ class TestBlockerWhenNoKey:
     def test_cost_estimate_is_small(self):
         est = estimate_cost({"models": {"judge_strong": "claude-haiku-4-5-20251001"}})
         assert est["est_usd"] is None or est["est_usd"] < 0.5
+
+
+class TestCostEstimateIsSelfConsistent:
+    """``estimate_cost`` returns a computed number and a human-readable
+    characterisation of it in the SAME dict. That pair is printed by
+    ``agenttic calibrate-judge`` and served from /api/public/calibration, so the
+    two must never disagree — a hardcoded adjective contradicting the number
+    beside it is exactly what makes a reader stop trusting the rest."""
+
+    @staticmethod
+    def _shipped_cfg() -> dict:
+        import yaml
+        root = Path(__file__).resolve().parents[1]
+        return yaml.safe_load((root / "config.yaml").read_text())
+
+    def test_prose_claims_no_bound_the_computed_figure_breaks(self):
+        est = estimate_cost(self._shipped_cfg())
+        assert est["est_usd"] is not None
+        claimed = [float(m) for m in
+                   re.findall(r"\$\s*([0-9]+(?:\.[0-9]+)?)", est["est_usd_order"])]
+        for bound in claimed:
+            assert est["est_usd"] <= bound, (
+                f"est_usd_order claims ${bound} but est_usd is "
+                f"${est['est_usd']} in the same payload")
+
+    def test_prose_does_not_misattribute_the_model_it_priced(self):
+        """The figure is priced off ``models.judge_strong``; the prose must not
+        describe it as something cheaper (e.g. 'a light judge model')."""
+        cfg = self._shipped_cfg()
+        est = estimate_cost(cfg)
+        assert "light" not in est["est_usd_order"], (
+            "est_usd is priced at models.judge_strong "
+            f"({cfg['models']['judge_strong']}), not a light judge model")
+
+    def test_est_usd_is_the_configured_judge_strong_rate(self):
+        from agenttic.pricing import token_cost
+        cfg = self._shipped_cfg()
+        est = estimate_cost(cfg)
+        assert est["est_usd"] == round(token_cost(
+            cfg, cfg["models"]["judge_strong"],
+            est["est_input_tokens"], est["est_output_tokens"]), 4)
+        # 15 records x (700 in @ $5 + 180 out @ $25) per MTok
+        assert est["est_usd"] == 0.12
 
 
 class TestRunsWithFakeJudgeClient:

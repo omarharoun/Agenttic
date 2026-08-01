@@ -25,10 +25,18 @@ def _trace(tid, confidence=None):
 
 
 def _patch(monkeypatch, *, pass_pattern, confidence=None, extra_crit=None):
-    """pass_pattern: list of bools, one per score_op call (i.e. per run)."""
+    """pass_pattern: list of bools, one per score_op call (i.e. per run).
+
+    Returns the shared call log, so a test can assert what the harness was asked
+    for as well as what came back."""
     calls = {"n": 0}
 
-    async def fake_run_suite(cfg, reg, adapter, sid, version, on_progress=None):
+    async def fake_run_suite(cfg, reg, adapter, sid, version, on_progress=None,
+                             *, trial=0):
+        # `trial` is recorded, not ignored: run_standard must ask the harness for
+        # a DISTINCT trial per repetition, or the harness resume map hands every
+        # trial the same persisted traces and pass^k collapses onto pass@1.
+        calls.setdefault("trials", []).append(trial)
         tid = f"{sid}-c0"
         return (None, [SimpleNamespace(test_id=tid)], [_trace(tid, confidence)])
 
@@ -46,6 +54,7 @@ def _patch(monkeypatch, *, pass_pattern, confidence=None, extra_crit=None):
 
     monkeypatch.setattr(ops, "run_suite_op", fake_run_suite)
     monkeypatch.setattr(ops, "score_op", fake_score)
+    return calls
 
 
 def _run(**kw):

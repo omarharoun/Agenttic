@@ -158,13 +158,21 @@ async def run_suite_op(
     suite_id: str,
     version: int | None = None,
     on_progress: ProgressFn | None = None,
+    *,
+    trial: int = 0,
 ) -> tuple[TestSuite, list[TestCase], list[Trace]]:
     """Harness step: execute every case of a suite, persisting all traces.
 
     Enforces the spend ceiling: a pre-run estimate gate (raises
     BudgetExceededError before any spend if projected cost breaches a cap,
     unless budget.warn_only) and a RunBudget that aborts remaining cases once
-    actual execution cost crosses the per-run cap."""
+    actual execution cost crosses the per-run cap.
+
+    ``trial`` is the repetition index for callers that run the same suite more
+    than once (pass^k). It is threaded to the harness because resume is always
+    on here, and a resume map with no trial dimension makes repetition free and
+    therefore meaningless — see ``harness.runner.run_suite``. Default 0 is the
+    single-run behaviour every other caller wants."""
     from agenttic.budget import RunBudget, check_pre_run
     from agenttic.cost import estimate_for_run
 
@@ -188,7 +196,12 @@ async def run_suite_op(
                       transport_retries=h["transport_retries"]),
         on_event=on_progress,
         budget=RunBudget(max_run_usd=max_run) if max_run else None,
-        resume=True,  # resilience is mandatory — resume is always on
+        # Resilience is mandatory — resume is always on. What makes that safe
+        # for repeated runs is `trial`: resume is ordinal, so trial t can only
+        # reuse a t-th prior trace and never trial 0's. Without it this line
+        # silently turned every pass^k into pass@1.
+        resume=True,
+        trial=trial,
     )
     return suite, cases, traces
 
@@ -340,7 +353,8 @@ def _round4(x: float | None) -> float | None:
 
 
 def verify_op(traces: list, *, cfg: dict | None = None,
-              samples: list | None = None, cdv_result=None) -> tuple[list, dict]:
+              samples: list | None = None, cdv_result=None,
+              unresolved_evidence: list | None = None) -> tuple[list, dict]:
     """Run the SPEC-13 verification layer over a batch of traces.
 
     Deterministic and free: assertions (Step 62) and the baseline coverage model
@@ -395,19 +409,40 @@ def verify_op(traces: list, *, cfg: dict | None = None,
 
     **``cdv_result`` populates scope, not the gate.** It fills the sign-off's
     convergence and envelope legs, which were permanently ``not_run`` because no
-    production caller ever passed one. ``signs_off`` (``schema/signoff.py:202``)
-    binds on coverage closed + assertions populated with zero violations + zero
-    formal counterexamples + no illegal-bin hits, and ``refusal_reasons`` mirrors
-    it condition for condition. Neither leg is in that expression, and passing
-    one here does not make the gate stricter — it makes the report true. Framing
-    this as tightening certification would be an overclaim.
+    production caller ever passed one. ``VerificationSignoff.signs_off`` binds on
+    coverage closed + assertions populated with zero violations AND zero failed
+    evaluations + zero formal counterexamples + no illegal-bin hits, and
+    ``refusal_reasons`` mirrors it condition for condition. Neither leg is in
+    that expression, and passing one here does not make the gate stricter — it
+    makes the report true. Framing this as tightening certification would be an
+    overclaim.
+
+    **Evidence that could not be evaluated is disclosed, never dropped.** This
+    loop was ``try: results.extend(evaluate(t)) / except Exception: continue``,
+    and ``evaluate`` ran all eight properties in one comprehension — so ONE
+    unrelated predicate raising on a trace deleted that trace's results for all
+    eight properties, and ``continue`` removed it from the denominator with no
+    disclosure anywhere. Measured, control vs treatment: a trace that genuinely
+    violates ``never_write_without_prior_read`` reports verdict FAIL /
+    violations 1; make an unrelated property raise on the same trace and it
+    reports verdict PASS / violations 0 — and since ``signs_off`` binds on
+    ``violations == 0``, the swallowed error also satisfied the SIGNING gate.
+    ``evaluate`` now isolates each property, ``unresolved_evidence`` carries
+    traces this function was never handed, and both surface as
+    ``assertions.evaluation_failures``, which blocks sign-off.
+
+    ``unresolved_evidence`` is a list of ``(ref, reason)`` for runs whose trace
+    could not be loaded at all (see :func:`aggregate_op`). They are evidence that
+    was expected and is missing, so they count as an evaluation failure of every
+    property rather than quietly shrinking the batch.
 
     Returns (assertion_results, coverage_summary). The coverage summary carries
     the serialized sign-off under ``"signoff"`` — see :func:`signoff_from_run`,
     which is what the signing gate evaluates."""
     from agenttic.coverage.collect import Sample, collect, nonresult_marker
     from agenttic.coverage.models.baseline import BASELINE_LIMITS, baseline_model
-    from agenttic.verification.assertions import evaluate, rollup_assertions
+    from agenttic.verification.assertions import (
+        ASSERTIONS, evaluate, evaluation_error, rollup_assertions)
 
     # Partition once, up front, so the two legs cannot disagree about which runs
     # happened. Non-results are still handed to `collect` — it is the component
@@ -416,12 +451,24 @@ def verify_op(traces: list, *, cfg: dict | None = None,
     ran = [t for t in traces if nonresult_marker(t) is None]
     nonresults = [t for t in traces if nonresult_marker(t) is not None]
 
+    def _all_failed(exc: BaseException) -> list:
+        """One `error` result per registered property, so a wholesale failure
+        keeps the per-property denominator intact instead of shrinking it."""
+        return [evaluation_error(spec, exc) for spec in ASSERTIONS.values()]
+
     results: list = []
     for t in ran:
         try:
             results.extend(evaluate(t))
-        except Exception:  # noqa: BLE001 — verification must never break a run
-            continue
+        except Exception as exc:  # noqa: BLE001 — verification must never break a run
+            # `evaluate` already isolates a single raising predicate, so getting
+            # here means nothing about this trace could be checked. Record that,
+            # do not `continue`: an evaluation that could not run is not an
+            # evaluation that passed.
+            results.extend(_all_failed(exc))
+    for ref, reason in (unresolved_evidence or []):
+        results.extend(_all_failed(
+            RuntimeError(f"evidence for run {ref} could not be loaded: {reason}")))
 
     report = None
     summary: dict = {}
@@ -560,28 +607,44 @@ def aggregate_op(
 
     ``samples`` and ``cdv_result`` are pass-throughs to :func:`verify_op` for the
     one caller that holds a stimulus side (:func:`cdv_op`). Both default to
-    ``None``, so every existing caller is bit-identical."""
+    ``None``, so every existing caller is bit-identical.
+
+    When ``traces`` are resolved from the registry, any run whose trace cannot be
+    loaded is reported to :func:`verify_op` as unresolved evidence rather than
+    dropped. Verification then runs over a denominator that matches the
+    scorecard's run count, or says out loud that it does not."""
     sc = Scorecard.aggregate(
         scorecard_id=uuid.uuid4().hex[:12], agent_id=agent_id,
         suite_id=suite.suite_id, suite_version=suite.version,
         rubric_id=rubric.rubric_id, rubric_version=rubric.version,
         run_scores=runs, visibility_tier=visibility)
+    unresolved: list[tuple[str, str]] = []
     if traces is None:
         # Resolve traces from the registry so EVERY caller gets verification —
         # the server run-node (which the console uses) and the red-team paths
         # aggregate from RunScores and never held Trace objects. Without this the
         # verification layer would silently never reach the console.
+        #
+        # A run whose trace cannot be loaded is KEPT AND NAMED, not `continue`d.
+        # This loop used to drop it silently, so coverage closure and the
+        # assertion battery were computed over fewer traces than the scorecard
+        # has run_scores — "97% closure" printed next to 20 runs when only 12
+        # traces were readable, with nothing on the artifact saying so. Missing
+        # evidence is an evaluation that could not run (see verify_op), which is
+        # disclosed and blocks sign-off.
         traces = []
         for r in runs:
             if not r.trace_id:
+                unresolved.append((r.test_id, "no trace_id recorded on the run"))
                 continue
             try:
                 traces.append(reg.get_trace(r.trace_id))
-            except Exception:  # noqa: BLE001 — a missing trace must not break scoring
-                continue
-    if traces:
+            except Exception as exc:  # noqa: BLE001 — a missing trace must not break scoring
+                unresolved.append((r.trace_id, type(exc).__name__))
+    if traces or unresolved:
         assertions, coverage = verify_op(traces, cfg=cfg, samples=samples,
-                                         cdv_result=cdv_result)
+                                         cdv_result=cdv_result,
+                                         unresolved_evidence=unresolved)
         sc = sc.model_copy(update={
             "assertions": assertions,
             "assertion_set_ref": "assertions:builtin-default@v1",

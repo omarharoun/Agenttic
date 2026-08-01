@@ -154,7 +154,12 @@ def _patch_all_suites(monkeypatch):
         "std-faithfulness-v1": "faithfulness_grounded",
     }
 
-    async def fake_run_suite(cfg, reg, adapter, sid, version, on_progress=None):
+    async def fake_run_suite(cfg, reg, adapter, sid, version, on_progress=None,
+                     *, trial=0):   # trial: run_standard asks for k
+        # INDEPENDENT repetitions; the real op threads it to the harness
+        # resume map. This stub ignores it because these tests fake the
+        # run entirely — pass^k independence is pinned in
+        # tests/test_pass_k_independence.py against the REAL harness.
         tid = f"{sid}-c0"
         expected = {"reference_context": REF} if sid == "std-faithfulness-v1" else {}
         case = SimpleNamespace(test_id=tid, expected=expected)
@@ -220,7 +225,12 @@ def test_no_reference_case_is_excluded_and_labeled(monkeypatch):
     from agenttic import ops
     from agenttic.schema.scorecard import CriterionScore, RunScore
 
-    async def fake_run_suite(cfg, reg, adapter, sid, version, on_progress=None):
+    async def fake_run_suite(cfg, reg, adapter, sid, version, on_progress=None,
+                     *, trial=0):   # trial: run_standard asks for k
+        # INDEPENDENT repetitions; the real op threads it to the harness
+        # resume map. This stub ignores it because these tests fake the
+        # run entirely — pass^k independence is pinned in
+        # tests/test_pass_k_independence.py against the REAL harness.
         tid = f"{sid}-c0"
         case = SimpleNamespace(test_id=tid, expected={"reference_context": ""})
         return (None, [case], [_trace(tid)])

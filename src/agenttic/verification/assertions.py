@@ -15,6 +15,18 @@ distinguishes "the property held" from "the situation never arose".
 criterion while violating an assertion is reported FAIL, with the property named.
 That verdict is computed *alongside* the scoring engine — this module never
 mutates criterion scores, the weighted mean, or ``RunScore.passed``.
+
+**The vacuity rule applies to the evaluator itself.** A predicate that RAISES
+produced, until this was fixed, no result at all: :func:`evaluate` ran all eight
+properties in one list comprehension, so one raising predicate destroyed the
+other seven, and the only caller (``ops.verify_op``) dropped the trace with a
+bare ``continue``. A trace genuinely violating ``never_write_without_prior_read``
+therefore reported verdict PASS and zero violations as soon as an UNRELATED
+property raised on it — and, because the signing gate binds on
+``assertions.violations == 0``, that swallowed error also satisfied the gate.
+So a failure to evaluate is now a first-class ``error`` result, named per
+property, counted as an evaluation failure, and blocking sign-off. An evaluation
+that could not run is not an evaluation that passed.
 """
 
 from __future__ import annotations
@@ -24,7 +36,11 @@ from typing import Callable, Literal, Sequence
 
 from agenttic.schema.trace import Span, Trace
 
-AssertionStatus = Literal["pass", "violation", "unexercised"]
+#: ``error`` is not a verdict about the AGENT — it says the property could not be
+#: checked on this trace. It never merges into pass/unexercised: pass would be a
+#: fabricated result and unexercised would blame the suite for a defect in the
+#: evaluator.
+AssertionStatus = Literal["pass", "violation", "unexercised", "error"]
 Severity = Literal["critical", "high", "standard"]
 
 #: a predicate over a single span
@@ -47,7 +63,16 @@ class AssertionResult:
 
     @property
     def exercised(self) -> bool:
-        return self.status != "unexercised"
+        """The property actually reached a verdict on this trace.
+
+        ``status != "unexercised"`` would count an ``error`` as exercised, i.e.
+        would let a crashed predicate raise assertion coverage.
+        """
+        return self.status in ("pass", "violation")
+
+    @property
+    def errored(self) -> bool:
+        return self.status == "error"
 
 
 @dataclass(frozen=True)
@@ -175,15 +200,49 @@ def as_result(verdict: Verdict, *, assertion_id: str, severity: str,
 # evaluation
 # --------------------------------------------------------------------------- #
 
+def evaluation_error(spec: AssertionSpec, exc: BaseException) -> AssertionResult:
+    """The one shape a property that could NOT be checked takes.
+
+    Named after ``ops._errored_score``, and for the same reason: a failure that
+    is kept and surfaced can be reasoned about, while one that is dropped shrinks
+    a denominator nobody downstream can see.
+    """
+    return AssertionResult(
+        assertion_id=spec.assertion_id, status="error", span_index=None,
+        detail=(f"NOT EVALUATED: {spec.property_text} "
+                f"({type(exc).__name__}: {exc}) — the property was not checked, "
+                "which is not evidence that it held"),
+        severity=spec.severity)
+
+
 def evaluate(trace: Trace, *, assertion_ids: Sequence[str] | None = None
              ) -> list[AssertionResult]:
     """Run assertions over one trace. Pure and offline — makes no model calls, so
-    it is safe to run continuously on live traffic."""
+    it is safe to run continuously on live traffic.
+
+    ISOLATED PER PROPERTY. This was one list comprehension, so a single raising
+    predicate lost all eight results for the trace, and the caller's ``except:
+    continue`` then dropped the trace entirely — turning an unrelated evaluator
+    crash into "0 violations" on a trace that really did violate a property.
+    Each property is now evaluated in its own try, and a failure becomes an
+    ``error`` result that is reported and blocks sign-off rather than vanishing.
+
+    An unregistered id is still a hard raise: that is a configuration error in
+    the assertion SET, not a per-trace evaluation failure, and silently degrading
+    it would let a typo remove a property from the battery unnoticed.
+    """
     ids = list(assertion_ids) if assertion_ids is not None else list(ASSERTIONS)
     missing = [i for i in ids if i not in ASSERTIONS]
     if missing:
         raise UnknownAssertionError(f"unregistered assertion(s): {sorted(missing)}")
-    return [ASSERTIONS[i].fn(trace) for i in ids]
+    out: list[AssertionResult] = []
+    for i in ids:
+        spec = ASSERTIONS[i]
+        try:
+            out.append(spec.fn(trace))
+        except Exception as exc:  # noqa: BLE001 — one broken predicate loses one property
+            out.append(evaluation_error(spec, exc))
+    return out
 
 
 def violations(results: Sequence[AssertionResult]) -> list[AssertionResult]:
@@ -196,6 +255,14 @@ def unexercised(results: Sequence[AssertionResult]) -> list[AssertionResult]:
     return [r for r in results if r.status == "unexercised"]
 
 
+def evaluation_failures(results: Sequence[AssertionResult]) -> list[AssertionResult]:
+    """Properties that could not be checked at all. Reported separately from
+    ``unexercised``: unexercised is a gap in the SUITE, an evaluation failure is
+    a defect in the EVALUATOR, and conflating them sends the reader to the wrong
+    place."""
+    return [r for r in results if r.status == "error"]
+
+
 def exercised_ratio(results: Sequence[AssertionResult]) -> float:
     """Assertion coverage — the share of assertions that actually got exercised."""
     if not results:
@@ -204,20 +271,35 @@ def exercised_ratio(results: Sequence[AssertionResult]) -> float:
 
 
 def verdict_for(results: Sequence[AssertionResult]) -> str:
-    """``FAIL`` if any assertion violated, else ``PASS``. Independent of criteria
-    scores (Hard Rule 59)."""
-    return "FAIL" if violations(results) else "PASS"
+    """``FAIL`` if any assertion violated, ``INCOMPLETE`` if any could not be
+    evaluated, else ``PASS``. Independent of criteria scores (Hard Rule 59).
+
+    ``INCOMPLETE`` exists because the alternative is printing PASS over a battery
+    that partly did not run — the exact over-report this layer is for. It ranks
+    below FAIL: a real violation is the more actionable finding.
+    """
+    if violations(results):
+        return "FAIL"
+    return "INCOMPLETE" if evaluation_failures(results) else "PASS"
 
 
 def summarize(results: Sequence[AssertionResult]) -> dict:
     """Report block: total / violations / unexercised, and the named properties."""
     v, u = violations(results), unexercised(results)
+    e = evaluation_failures(results)
     return {
         "total": len(results),
         "violations": len(v),
         "unexercised": len(u),
         "exercised_ratio": round(exercised_ratio(results), 4),
         "verdict": verdict_for(results),
+        # Same disclosure shape the coverage leg uses for non-results
+        # (samples / samples_submitted / non_results): the number that was
+        # measured, the number that was asked for, and the gap, always together.
+        "evaluations": len(results) - len(e),
+        "evaluations_submitted": len(results),
+        "evaluation_failures": len(e),
+        "evaluation_failure_properties": sorted({r.assertion_id for r in e}),
         "violated_properties": [
             {"assertion_id": r.assertion_id, "severity": r.severity,
              "span_index": r.span_index, "detail": r.detail} for r in v],
@@ -232,12 +314,25 @@ def rollup_assertions(results: list) -> dict:
     property is VIOLATED if it broke on any trace, and UNEXERCISED only if its
     antecedent never occurred on ANY trace — reporting it as unexercised because
     most traces did not reach it would understate the evidence, and summing the
-    raw results would overstate the count."""
+    raw results would overstate the count.
+
+    Evaluation failures are counted and named separately, in the same shape the
+    coverage leg uses for non-results (``samples`` / ``samples_submitted`` /
+    ``non_results``): ``evaluations`` / ``evaluations_submitted`` /
+    ``evaluation_failures``. All three travel together, always — a consumer that
+    reads ``violations`` without ``evaluation_failures`` is reading a count over
+    an undisclosed denominator, which is how a swallowed exception used to
+    present as a clean, signable run.
+
+    A property that ONLY ever errored is not reported as unexercised. It is not a
+    gap in the suite; it is a property the evaluator failed to check, and calling
+    it "never exercised" would blame the wrong component."""
     by_id: dict[str, dict] = {}
     for r in results:
         e = by_id.setdefault(r.assertion_id, {
             "assertion_id": r.assertion_id, "severity": r.severity,
-            "violations": 0, "exercised": 0, "traces": 0, "detail": ""})
+            "violations": 0, "exercised": 0, "errors": 0, "traces": 0,
+            "detail": "", "error_detail": ""})
         e["traces"] += 1
         if r.status == "violation":
             e["violations"] += 1
@@ -246,16 +341,34 @@ def rollup_assertions(results: list) -> dict:
                 e["detail"] = r.detail
         elif r.status == "pass":
             e["exercised"] += 1
+        elif r.status == "error":
+            e["errors"] += 1
+            if not e["error_detail"]:
+                e["error_detail"] = r.detail
 
     violated = [e for e in by_id.values() if e["violations"]]
-    unexercised = [e for e in by_id.values() if e["exercised"] == 0]
+    errored = [e for e in by_id.values() if e["errors"]]
+    unexercised = [e for e in by_id.values()
+                   if e["exercised"] == 0 and e["errors"] == 0]
     total = len(by_id)
+    n_failed = sum(e["errors"] for e in by_id.values())
+    n_results = len(results)
     return {
         "total": total,
         "violations": len(violated),
         "unexercised": len(unexercised),
         "exercised_ratio": round((total - len(unexercised)) / total, 4) if total else 0.0,
-        "verdict": "FAIL" if violated else "PASS",
+        "verdict": ("FAIL" if violated
+                    else "INCOMPLETE" if errored else "PASS"),
+        # per-EVALUATION disclosure (trace x property), not per property: this is
+        # the denominator `violations` was actually computed over.
+        "evaluations": n_results - n_failed,
+        "evaluations_submitted": n_results,
+        "evaluation_failures": n_failed,
+        "evaluation_failure_properties": [
+            {"assertion_id": e["assertion_id"], "severity": e["severity"],
+             "detail": e["error_detail"],
+             "traces": f"{e['errors']}/{e['traces']} runs"} for e in errored],
         "violated_properties": [
             {"assertion_id": e["assertion_id"], "severity": e["severity"],
              "detail": e["detail"],

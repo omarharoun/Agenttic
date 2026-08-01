@@ -15,8 +15,8 @@ product has ever performed ``stimulus_closure`` was 0.0 and ``divergence()`` was
 ``[]``. *What we asked to test* versus *what the run exhibited* — the two-number
 story the coverage module was built around — has never once been visible.
 
-The anti-overclaim tests matter as much as the enabling ones: ``signs_off``
-(``schema/signoff.py:202``) binds on coverage + assertions + formal ONLY.
+The anti-overclaim tests matter as much as the enabling ones:
+``VerificationSignoff.signs_off`` binds on coverage + assertions + formal ONLY.
 Convergence and envelope are SCOPE. This phase makes the report true; it does not
 make the gate stricter, and a later phase must not quietly reinterpret it as
 having done so.

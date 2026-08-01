@@ -222,8 +222,9 @@ def estimate_cost(cfg: dict | None = None, path: str | Path | None = None) -> di
         usd = None
     return {"n_records": n, "est_input_tokens": tin, "est_output_tokens": tout,
             "est_usd": usd,
-            "est_usd_order": "well under $0.10 for a light judge model over "
-                             f"{n} short records"}
+            "est_usd_order": f"one judge call per record over {n} short "
+                             "records, priced at the configured rate for "
+                             "models.judge_strong"}
 
 
 def judge_blocker(cfg: dict | None = None, path: str | Path | None = None) -> dict:

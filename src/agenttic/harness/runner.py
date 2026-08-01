@@ -103,12 +103,19 @@ async def run_suite(
     on_event: Callable[[str, dict], None] | None = None,
     budget=None,  # optional agenttic.budget.RunBudget — abort remaining cases on cap
     resume: bool = True,  # reuse successful persisted traces (don't re-spend)
+    trial: int = 0,       # which repetition of this suite this is (pass^k)
 ) -> list[Trace]:
     """Run every test case; return traces in test-case order.
 
     ``on_event(event_type, data)`` is called from the event loop (never from
     worker threads) with ``case_started`` / ``case_finished`` events so a UI
-    can show live progress. It must be fast and must not raise."""
+    can show live progress. It must be fast and must not raise.
+
+    ``trial`` identifies WHICH repetition of this suite this call is, and is the
+    only thing that makes repeated runs independent while resume stays on. Trial
+    ``t`` may resume only the ``t``-th successful persisted trace of a case, so a
+    caller asking for k trials owes the agent k executions of every case. See the
+    resume block below for why deleting resume was not the alternative."""
     if not suite.approved:
         raise SuiteNotApprovedError(
             f"suite {suite.suite_id} v{suite.version} is not approved; "
@@ -122,17 +129,46 @@ async def run_suite(
     total = len(test_cases)
 
     # Resume: map test_case_id -> a prior SUCCESSFUL trace for this exact agent
-    # config. Infra/upstream failures are NOT reused (they get re-run); genuine
-    # agent outputs are. Lets a partially-failed run resume without re-spending.
+    # config AND this exact trial. Infra/upstream failures are NOT reused (they
+    # get re-run); genuine agent outputs are. Lets a partially-failed run resume
+    # without re-spending.
+    #
+    # THE TRIAL DIMENSION IS LOAD-BEARING, not bookkeeping. This map used to be
+    # keyed on test_case_id alone, and `ops.run_suite_op` hard-codes resume on.
+    # So when the pass^k runner asked for k repetitions of a suite, trial 1 ran
+    # the agent and trials 2..k read trial 1's persisted traces straight back
+    # and returned them unchanged: the agent was invoked ONCE, every trial saw
+    # byte-identical output, and pass^k was therefore an alias for pass@1 —
+    # structurally, for every agent, forever. The workspace databases show it:
+    # 17 cases x 4 runs at k=3 left 17 traces per (agent, config_hash), and
+    # every recorded pass^k equals its pass@1 exactly.
+    #
+    # The fix keeps resume and makes it ORDINAL. Successful traces for a case
+    # are taken oldest-first (`store.traces` orders by insertion), and trial `t`
+    # may only reuse the t-th of them. Deleting resume instead would have traded
+    # a false reliability number for a re-spend of the whole suite on any mid-run
+    # crash, which is the failure this mechanism exists to prevent. With ordinal
+    # resume BOTH hold: a k=3 run that died half-way through trial 1 resumes the
+    # cases trial 1 finished, re-runs the rest, and still owes the agent k
+    # independent executions of every case — because trial t needs a t-th trace
+    # and only its own execution can produce one.
+    #
+    # `trial=0` (every non-k caller) is the old single-trial behaviour, with one
+    # deliberate difference: the OLDEST successful trace wins rather than the
+    # newest, so a resumed run is reproducible instead of depending on how many
+    # times the suite happened to be run before.
     _FAIL_PREFIXES = ("HARNESS_FAILURE", "UPSTREAM_ERROR", "BLACKBOX_FAILURE")
     done: dict[str, Trace] = {}
-    if resume and hasattr(store, "traces"):
+    if resume and trial >= 0 and hasattr(store, "traces"):
         cfg_hash = adapter.config_hash()
         try:
+            by_case: dict[str, list[Trace]] = {}
             for t in store.traces(adapter.agent_id, mode="batch"):
                 if (t.test_case_id and t.agent_config_hash == cfg_hash
                         and not str(t.final_output).startswith(_FAIL_PREFIXES)):
-                    done[t.test_case_id] = t  # later (newer) trace wins
+                    by_case.setdefault(t.test_case_id, []).append(t)
+            done = {cid: ts[trial] for cid, ts in by_case.items()
+                    if len(ts) > trial}
         except Exception:  # noqa: BLE001 — resume is best-effort
             done = {}
 
@@ -140,7 +176,7 @@ async def run_suite(
         if tc.test_id in done:
             if on_event:
                 on_event("case_resumed", {"index": index, "total": total,
-                                          "test_id": tc.test_id,
+                                          "test_id": tc.test_id, "trial": trial,
                                           "trace_id": done[tc.test_id].trace_id})
             return done[tc.test_id]
         async with sem:

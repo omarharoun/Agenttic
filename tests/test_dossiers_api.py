@@ -37,7 +37,12 @@ AUTH = {"Authorization": "Bearer testtoken"}
 
 
 def _install_passing(monkeypatch):
-    async def frs(cfg, reg, adapter, sid, version, on_progress=None):
+    async def frs(cfg, reg, adapter, sid, version, on_progress=None,
+                     *, trial=0):   # trial: run_standard asks for k
+        # INDEPENDENT repetitions; the real op threads it to the harness
+        # resume map. This stub ignores it because these tests fake the
+        # run entirely — pass^k independence is pinned in
+        # tests/test_pass_k_independence.py against the REAL harness.
         cases = [SimpleNamespace(test_id=f"{sid}-c{i}") for i in range(6)]
         traces = [Trace(trace_id=c.test_id + "-t", agent_id="a",
                         agent_config_hash="h", test_case_id=c.test_id,

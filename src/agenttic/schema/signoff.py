@@ -10,7 +10,8 @@ quietly reading as success:
 
 * **coverage** — closure per coverpoint and cross, unhit bins, waivers with
   reasons, `other`-bin drift
-* **assertions** — total, violations, unexercised (vacuous)
+* **assertions** — total, violations, unexercised (vacuous), and
+  evaluations that could not run at all (which block sign-off)
 * **formal** — properties proven / counterexampled / unbounded / not attempted,
   each with its scope
 * **convergence** — the bug-discovery curve and scenarios since the last new
@@ -96,9 +97,23 @@ class AssertionLeg(BaseModel):
     violated_properties: list[str] = Field(default_factory=list)
     unexercised_properties: list[str] = Field(default_factory=list)
 
+    #: (trace x property) evaluations that could not run at all — a predicate
+    #: that raised, or a trace the evaluator could not load. Disclosed in the
+    #: same shape the coverage leg discloses non-results, and BLOCKING: the leg
+    #: used to report `violations=0` over a silently reduced denominator, and
+    #: `signs_off` bound on that zero, so an unrelated crash in one predicate
+    #: turned a real violation into a signed pass. Defaults to 0 so every
+    #: sign-off issued before this field existed re-validates and still signs.
+    evaluations: int = 0
+    evaluations_submitted: int = 0
+    evaluation_failures: int = 0
+    evaluation_failure_properties: list[str] = Field(default_factory=list)
+
     @property
     def verdict(self) -> str:
-        return "FAIL" if self.violations else "PASS"
+        if self.violations:
+            return "FAIL"
+        return "INCOMPLETE" if self.evaluation_failures else "PASS"
 
 
 class FormalLeg(BaseModel):
@@ -200,12 +215,19 @@ class VerificationSignoff(BaseModel):
 
     @property
     def signs_off(self) -> bool:
-        """The sign-off verdict: closure met, no assertion violations, no formal
-        counterexample, and no illegal-bin hit. Deny-by-default — a leg that did
-        not run cannot contribute a pass."""
+        """The sign-off verdict: closure met, no assertion violations, every
+        property actually evaluated, no formal counterexample, and no illegal-bin
+        hit. Deny-by-default — a leg that did not run cannot contribute a pass.
+
+        ``evaluation_failures == 0`` is the vacuity rule turned on the evaluator
+        itself. Without it, ``violations == 0`` was satisfiable by CRASHING: one
+        raising predicate wiped every result for that trace, the caller dropped
+        it, and the leg reported zero violations over a denominator nobody could
+        see. A property that could not be checked is not a property that held."""
         return (self.coverage.status == "populated" and self.coverage.closed
                 and self.assertions.status == "populated"
                 and self.assertions.violations == 0
+                and self.assertions.evaluation_failures == 0
                 and self.formal.counterexample == 0
                 and not self.coverage.illegal_hits)
 
@@ -250,6 +272,14 @@ class VerificationSignoff(BaseModel):
             why.append(
                 f"{self.assertions.violations} property violation(s): "
                 + "; ".join(self.assertions.violated_properties[:3]))
+        if self.assertions.evaluation_failures:
+            why.append(
+                f"{self.assertions.evaluation_failures} of "
+                f"{self.assertions.evaluations_submitted} property evaluation(s) "
+                "could not run, so this battery is INCOMPLETE, not clean"
+                + (": " + "; ".join(
+                    self.assertions.evaluation_failure_properties[:3])
+                   if self.assertions.evaluation_failure_properties else ""))
         if self.formal.counterexample:
             why.append(f"{self.formal.counterexample} formal counterexample(s)")
         if self.coverage.illegal_hits:
@@ -392,6 +422,12 @@ def build_signoff(
             status="populated", total=summ["total"],
             violations=summ["violations"], unexercised=summ["unexercised"],
             exercised_ratio=summ["exercised_ratio"],
+            evaluations=summ.get("evaluations", 0),
+            evaluations_submitted=summ.get("evaluations_submitted", 0),
+            evaluation_failures=summ.get("evaluation_failures", 0),
+            evaluation_failure_properties=[
+                f"{e['assertion_id']} ({e.get('traces', '')}) — {e['detail']}"
+                for e in summ.get("evaluation_failure_properties", [])],
             violated_properties=[
                 f"{v['assertion_id']} ({v.get('traces', '')}) — {v['detail']}"
                 for v in summ["violated_properties"]],

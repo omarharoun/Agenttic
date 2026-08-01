@@ -128,9 +128,17 @@ async def run_standard(cfg, reg, adapter, *, k: int = 3, suite_ids=None,
     total_cost = 0.0
 
     for sid in suite_ids:
-        for _ in range(k):
+        for trial in range(k):
+            # `trial` is what makes the k repetitions INDEPENDENT. `run_suite_op`
+            # hard-codes resume on (crash resilience), and the harness resume map
+            # used to be keyed on test_case_id alone — so trials 2..k read trial
+            # 1's persisted traces back and returned them unchanged. The agent
+            # was called once, every trial produced identical output, and pass^k
+            # below was arithmetically forced to equal pass@1 for every agent.
+            # Passing the trial index makes resume ordinal: trial t can only
+            # reuse a t-th prior trace, so k trials cost k real executions.
             suite, cases, traces = await ops.run_suite_op(
-                cfg, reg, adapter, sid, None, on_progress)
+                cfg, reg, adapter, sid, None, on_progress, trial=trial)
             runs = await ops.score_op(cfg, reg, traces, cases, model, on_progress,
                                       judge_client=judge_client,
                                       fi_evaluate_fn=fi_evaluate_fn)

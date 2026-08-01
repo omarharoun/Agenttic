@@ -7,7 +7,7 @@ CFG = {
                "judge_executor": "claude-sonnet-4-6",
                "judge_strong": "claude-opus-4-8"},
     "pricing": {"claude-sonnet-4-6": {"input": 3.0, "output": 15.0},
-                "claude-opus-4-8": {"input": 15.0, "output": 75.0},
+                "claude-opus-4-8": {"input": 5.0, "output": 25.0},
                 "default": {"input": 3.0, "output": 15.0}},
     "cost": {"expected_agent_steps": 2, "expected_input_tokens": 1000,
              "expected_output_tokens": 200, "judge_input_tokens": 1000,
@@ -23,8 +23,8 @@ class TestEstimateMath:
             judge_model="claude-opus-4-8")
         # agent: 2 calls * (1000*3 + 200*15)/1e6 = 2 * 0.006 = 0.012 per case * 10
         assert est.projected_agent_usd == round(0.012 * 10, 6)
-        # judge: 2 criteria * (1000*15 + 100*75)/1e6 = 2 * 0.0225 = 0.045 * 10
-        assert est.projected_judge_usd == round(0.045 * 10, 6)
+        # judge: 2 criteria * (1000*5 + 100*25)/1e6 = 2 * 0.0075 = 0.015 * 10
+        assert est.projected_judge_usd == round(0.015 * 10, 6)
         assert est.projected_usd == round(est.projected_agent_usd
                                           + est.projected_judge_usd, 6)
 
