@@ -47,8 +47,8 @@ Rule 20 extended to the landing (Hard Rule 47). Colours there must be a
 
 ## Visual regression baselines
 
-`ui/e2e/visual.spec.ts` holds the token layer to its appearance: 16 committed
-screenshots (5 console screens + 3 public routes, each in both themes) plus a
+`ui/e2e/visual.spec.ts` holds the token layer to its appearance: 20 committed
+screenshots (6 console screens + 4 public routes, each in both themes) plus a
 mechanism check that a token override visibly changes **both** a console screen
 and the landing — because if it did not, the snapshots would pass whether or not
 those surfaces actually draw from `tokens.css`.
@@ -596,3 +596,160 @@ fails the suite — verified by deleting it and watching the assertion fire.
 Only the landing baselines move; the section is on that page alone. One
 `console dashboard — dark` failure during re-verify was flake, cleared by two
 subsequent full runs (22 passed).
+
+## Two NEW baselines — the two screens the engine shipped without
+
+Nothing moved. This entry is not a reconciliation of a diff; it is the record of
+two screens joining the gate for the first time, and the count in
+**Visual regression baselines** above goes 16 → 20 for that reason alone. The
+sixteen existing PNGs are byte-identical across this change.
+
+`/app/scenarios` and `/engine` shipped with the scenario engine and had **no
+baseline at all**. Every other console screen and every other public route was
+under the gate, so the suite reported eight green screens while the two newest
+ones — the two with the most new markup on them — were watched by nothing. A
+token that stopped resolving there, a table that lost its rule, a disclosure that
+reflowed into an unreadable column: all of it would have gone through unremarked,
+and the green count would not have changed.
+
+### `scenarios-{dark,light}.png` — the console scenario-run list
+
+**What it is.** `/app/scenarios`, signed in, on arrival: the page header, the
+agent/scenario filter form, and the table of stored runs. No run is selected, so
+the per-run detail view below the table is deliberately out of frame — it mounts
+only after `inspect`, and one baseline answerable for both halves could not tell
+anyone which half had moved.
+
+**What state.** The rows come from `e2e/support/scenario-runs.fixture.json`
+through the shared `stubApi()`, on the same terms as every other console
+baseline: real captured output, not transcription, so the screenshot is of a
+table the product can actually produce.
+
+**What a diff here would mean.** The run table's rendering changed. This screen's
+job is keeping four different fault-report states apart — `no report`, `report
+unreadable`, `none staged`, and a real fired / skipped / never-reached count —
+and they are drawn as four visually distinct cells on purpose, because two of
+them are absences of different kinds and merging them says the opposite of what
+the run record says. So a diff is either a token change reaching the table, or
+one of those four states collapsing into the look of another. The second is the
+defect this screen exists to prevent, which makes this the wrong baseline to
+regenerate without reading the cells first.
+
+**A guard, because an empty table is a stable image.** `api.listScenarioRuns()`
+reads `r.runs ?? []`, so a stub whose shape drifts yields zero rows and no error
+at all — the page renders `ScenarioEmpty`, a short empty state with no run cell
+on it anywhere, and the gate photographs that quite happily. It is the same
+failure the coverage fixture had, where `NeverExercised` rendered blank on every
+snapshot for months. `scenariosReady()` in `visual.spec.ts` now asserts the table
+has rows before the capture fires, so that outcome is a red test rather than a
+green screenshot of nothing.
+
+### `engine-{dark,light}.png` — the public scenario-engine explainer
+
+`/engine` is the first PUBLIC route under the gate that is **stubbed**, and it is
+the first that is **not prerendered**. Both departures are deliberate and both
+are the reason it is written out in `visual.spec.ts` rather than added to the
+`PUBLIC` list.
+
+**What state, and why.** The **signed-out visitor**, with each endpoint answered
+the way a real deployment answers one:
+
+| read | how it is answered here | why that is honest |
+| --- | --- | --- |
+| `/api/capabilities` | the captured `capabilities.fixture.json` | the endpoint is mounted with no auth dependency (`server/app.py`), so a visitor genuinely receives this payload — same fixture, same real endpoint as the `/app` capabilities baseline |
+| `/api/scenario-runs` | `401 {"detail": "authentication required (API token or login session)"}` | the router is mounted `dependencies=protected`, so a visitor genuinely receives a 401 |
+
+That is a real state of the real page rather than a contrivance: it is what
+everyone who is not logged in sees, and the page is written for it — it says it
+cannot show a stored run and refuses to draw a specimen one. The alternative,
+feeding it the console's captured runs, would pin a public page rendering
+evidence no visitor can obtain, on the one page whose entire argument is that an
+illustration must never stand where evidence belongs. The signed-in variant of
+this page — the `.eng-runs` list — is therefore covered by **no baseline**, and
+that is recorded here rather than quietly implied.
+
+**Why not leave it unstubbed like the other public routes.** Because "unstubbed"
+is not a state, it is whatever the server does. Under `vite preview` there is no
+backend at all and `server.proxy` in `vite.config.ts` applies to the dev server
+only, so both reads come back as the SPA's HTML shell, `api.ts` raises *"Expected
+JSON but the server returned text/html"*, and every live section on the page
+renders its could-not-read prose. That image is perfectly deterministic — and it
+asserts nothing except that a broken deployment keeps breaking identically. It is
+the same class of mistake as the capabilities baseline that was once an error
+screen: stable, green forever, and blind to the thing it was pointed at.
+
+**Why `loaded()` is not enough on this route.** `/engine` is lazy and omitted
+from `vite.config.ts`'s `PRERENDER` set on purpose (it imports `formatCreated`
+from the console's `ScenariosPage`, so an eager import would drag a console page
+into the landing's initial chunk). It therefore boots as the SPA shell and builds
+client-side, and `loaded()`'s `#root > *` is satisfied by the empty
+`.route-loading` Suspense fallback the instant the router mounts — a blank shell
+that would capture, diff clean forever, and prove nothing. `engineReady()` closes
+that: the hero `h1` must be on the page (the chunk executed), no `.eng-pending`
+may remain (both reads settled), `.eng-dims` must have rendered (the capabilities
+read succeeded — its failure state, `.eng-absent` prose, is just as pixel-stable
+and would pin the could-not-read path), and the stored-run section must carry the
+signed-out copy (the state this baseline claims to be).
+
+**What a diff here would mean.** Either the token layer moved under a public
+page that draws from the same `tokens.css` as the console, or this page's account
+of its own limits changed. The second is the interesting one and it is expected
+from time to time: the coverage dimensions, the fault bins and the whole
+`not_covered` list are read from `capabilities.fixture.json`, so recapturing that
+fixture — which is required in the same change that edits the endpoint — moves
+`engine-{dark,light}.png` as well as `capabilities-{dark,light}.png`. Two screens
+now answer for that payload instead of one. A diff that appears on the engine
+pair *without* the capabilities pair is not that, and needs a different
+explanation.
+
+### What was and was not verified when this entry was written
+
+`npx tsc --noEmit`, `npx eslint e2e/visual.spec.ts`, and `npx vitest run`
+(25 files, 420 tests, all passing). The two PNGs did not exist yet: Playwright
+writes a missing baseline on first run, so the capture step is what creates them,
+and it is also the first time `scenariosReady()` and `engineReady()` are
+exercised. If either fires during that capture, the screen is not in the state
+this entry describes and the images must not be committed.
+
+**A finding recorded rather than fixed, in the manner of the
+`playwright.config.ts` note above.** `tsconfig.json` has `"include": ["src"]`, so
+`npm run verify`'s `tsc --noEmit` step does not typecheck `e2e/` at all — neither
+the specs nor `e2e/support/console.ts`. `eslint` covers them, but without
+type-aware rules. The spec added here was typechecked explicitly against the same
+compiler options to compensate, and the only errors that surfaced (`Buffer`,
+`node:fs`) are present identically on the pre-change file and come from
+`@types/node` not being installed. Widening the `include` belongs to whoever owns
+`tsconfig.json`; noting it here is what stops it from being rediscovered.
+
+## capabilities (dark + light), recaptured — the fixture had gone stale
+
+Not a design change and not a token change: `e2e/support/capabilities.fixture.json`
+had drifted from the endpoint it is a capture of. One `not_covered` string had
+moved on in the product —
+
+  before: "The `agenttic cdv` loop is the exception"
+  after:  "The scenario paths are the exception — the `agenttic cdv` loop and
+           `agenttic scenario run`, which drives one scenario and stores it"
+
+— because `agenttic scenario run` now exists and puts an agent in the same
+stateful world, so the disclosure that named only `cdv` had become too narrow.
+
+This was found while adding the /engine baseline, and it mattered more there than
+on /app/capabilities: **the engine page renders `not_covered` verbatim**, so
+capturing it against the stale fixture would have pinned a sentence the product
+no longer serves — on the one page whose argument is that an illustration must
+never stand where evidence belongs. The fixture was recaptured with the recipe
+documented beside it in `console.ts` (`indent=2`, no trailing newline, so the
+diff is the endpoint's change and nothing else); exactly one line moved. The two
+capabilities baselines follow from that one line.
+
+The rule this is under, stated so the next person does not have to rediscover it:
+**a fixture is a capture, and a stale capture is worse than no capture** — the
+screenshot then photographs a page the product can no longer serve, and the
+baseline defends the wrong thing forever while looking green.
+
+Also in this change, unrelated to pixels: the fixture resolver's
+`details[id]`/`traces[id]` lookups were reaching the prototype chain, so an id
+of `constructor` resolved to a function and the stub answered 200 with a
+zero-length body — a failure mode the real endpoint cannot produce. Both now go
+through an own-property guard, the same one `EnginePage.evidenceFor()` uses.

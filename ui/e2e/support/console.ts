@@ -52,6 +52,96 @@ const CAPABILITIES = JSON.parse(readFileSync(
 const COVERAGE = JSON.parse(readFileSync(
   new URL("./coverage.fixture.json", import.meta.url), "utf8"));
 
+/* Stored scenario runs — the evidence /app/scenarios and /engine read back.
+ *
+ * PROVENANCE, the same rule `capabilities.fixture.json` is under below: this is
+ * the shipped code's own output, not a description of it. Six REAL runs, each
+ * one `agenttic scenario run` driven in-process against a throwaway registry —
+ * `realize()` -> `scenario_runner()` / `multi_turn_scenario_runner()` ->
+ * `Registry.save_scenario_run()`, carrying cli.py's own exhibited-bins and
+ * `divergence` computation — and then dumped through the SAME three reads the
+ * routes make: `list_scenario_runs()`, `get_scenario_run(id)`, and
+ * `get_trace(run.trace_id)`. Offline throughout: no API key, the DUT is the
+ * deterministic scripted stand-in and NOT a model, and the capture stubs
+ * `socket` out before the first run so a run that reached the network would
+ * fail rather than pass quietly.
+ *
+ * THE SET IS THE POINT. This screen's whole design is keeping absences apart —
+ * a fault that fired, one that reached its call and could not happen, one staged
+ * on a call the agent never made, a divergence list empty because nothing
+ * diverged rather than because nobody looked — and a fixture holding one happy
+ * run photographs none of it. Every fate below was
+ * OBSERVED and printed by the capture, not chosen for it (the seeds are the
+ * NEVER_REACHED / SKIPPED / FIRED constants in tests/test_cli_scenario.py):
+ *
+ *   seed 3  refund / timeout             fault FIRED
+ *   seed 3  account_change --multi-turn  5 transcript turns, `order_id` ELICITED
+ *                                        (the counterparty withheld it until it
+ *                                        was asked for), and a fault NEVER
+ *                                        REACHED in the same run
+ *   seed 6  refund / malformed_response  fault SKIPPED — it reached its call and
+ *                                        could not fire, with the reason stored
+ *   seed 7  out_of_scope / timeout       fault NEVER REACHED — staged on a
+ *                                        lookup the agent never made
+ *   seed 2  exchange / all_ok            nothing staged; `divergence: []` — the
+ *                                        run WAS asked and nothing diverged,
+ *                                        which is not "nobody asked" (`null`)
+ *   seed 4  status / all_ok              nothing staged, world unchanged
+ *
+ * Four of the six changed the world (non-empty `state_diff`); two did not, so
+ * "unchanged" is on screen as a rendered fact rather than as an untested branch.
+ *
+ * WHAT IS NOT HERE, and was not invented to fill the hole: every run carries
+ * `n_blocked: 0`. A sweep of 48 offline runs (24 seeds x single-shot and
+ * multi-turn) produced no gateway refusal at all — the scripted stand-in only
+ * ever calls tools the world declares — so "the calls the gateway refused" is
+ * photographed in its empty state. Of the four enforcement verdicts the call
+ * table draws, the captured spans carry `executed` (13 calls) and `faulted` (1,
+ * where the staged fault replaced what the tool would have returned); `blocked`
+ * and `unrecorded` are rendered by nothing here. Writing a refusal by hand would
+ * make the one panel on this screen that nothing verified look like the ones
+ * that were.
+ *
+ * Two more of the page's states are likewise unexercised, and for a reason worth
+ * knowing: every run here has `faults.recorded: true` and `coverage.measured:
+ * true`, because `agenttic scenario run` always writes a fault report and always
+ * collects bins. "Nobody wrote it down" and "nobody measured" are rows a
+ * DIFFERENT writer produces, and no real run this command can drive will emit
+ * one — so they stay unphotographed rather than forged.
+ *
+ * RECAPTURE — the same rule `capabilities.fixture.json` is under: recapture in
+ * the change that alters what a run stores, and record the movement in
+ * ui/src/design/RECONCILIATION.md. Six `agenttic scenario run` invocations
+ * against a throwaway registry, in the order they were STORED (the list is
+ * newest-first, so this is the table read bottom-up):
+ *
+ *   --agent support-triage --seed 4 --intent status       --tool-condition all_ok
+ *   --agent support-triage --seed 2 --intent exchange     --tool-condition all_ok
+ *   --agent support-triage --seed 7 --intent out_of_scope --tool-condition timeout
+ *   --agent support-triage --seed 6 --intent refund --tool-condition malformed_response
+ *   --agent support-triage --seed 3 --intent account_change --multi-turn
+ *   --agent support-triage --seed 3 --intent refund       --tool-condition timeout
+ *
+ * then `{list: {runs, count}, details: {<run_id>: ...}, traces: {<trace_id>: ...}}`
+ * written with `indent=2` and no trailing newline — `list` is
+ * `Registry.list_scenario_runs()` under the route's own `{"runs": ..., "count":
+ * len(runs)}` envelope, `details` is `get_scenario_run(run_id)` per row, and
+ * `traces` is `get_trace(row.trace_id).model_dump(mode="json")` per row.
+ *
+ * Two clocks were pinned during the capture so a RECAPTURE diffs on what a run
+ * STORES rather than on when it ran: the registry's `_now()` (created_at lands
+ * the evening before the frozen NOW below) and `uuid.uuid4()` (run, trace and
+ * span ids). Neither changes what a run does. Recapturing then reproduces this
+ * file byte for byte with ONE exception, checked rather than assumed: each
+ * trace's `total_latency_ms` is a measured duration and moves with the machine.
+ * It reaches no pixel — the page takes `.spans` off the trace and nothing else —
+ * so it is left as captured rather than rounded into a number no run emitted.
+ *
+ * Nothing on the screen is read against the wall clock either: `formatCreated()`
+ * spaces out the stored ISO string and computes no relative time. */
+const SCENARIO_RUNS = JSON.parse(readFileSync(
+  new URL("./scenario-runs.fixture.json", import.meta.url), "utf8"));
+
 /* Deterministic console screens for visual regression.
  *
  * A snapshot is only evidence if the same input always produces the same
@@ -144,15 +234,114 @@ const ROUTES: Record<string, unknown> = {
   "/api/capabilities": CAPABILITIES,
 };
 
-/** Serve every /api call from the table above; never touch the network. */
+/* --- routes whose body depends on the request ----------------------------- *
+ *
+ * `ROUTES` above is a table of STATIC bodies, matched by exact path and then by
+ * prefix. The prefix fallback is what lets one key answer a whole family, and it
+ * is a trap the moment a route has a detail form: `/api/scenario-runs/<id>`
+ * startsWith the list key `/api/scenario-runs`, so the DETAIL request would be
+ * answered with `{runs, count}` — which `getScenarioRun` hands to the page as a
+ * run with no run_id, no transcript, no fault report and no coverage. It does
+ * not throw. It renders a screenful of absences that are all artefacts of the
+ * stub, and the gate photographs them as the feature.
+ *
+ * So these three are resolved HERE, ahead of both lookups and anchored at both
+ * ends. They are not `ROUTES` keys because their bodies depend on the id and the
+ * query; a `ROUTES` entry naming the same path would be a second answer to one
+ * question, which is the failure the `no-dupe-keys` note in eslint.config.js was
+ * written for.
+ */
+
+/** Just enough of a row to filter on. */
+type ScenarioRunLike = { scenario_id: string; agent_id: string };
+
+/** `GET /api/scenario-runs`, with the real endpoint's contract applied to the
+ *  captured rows so the stub answers the request that was actually made:
+ *
+ *  * exact match on a NON-EMPTY `scenario_id`/`agent_id`. `?agent_id=` and an
+ *    absent `agent_id` are the same request — routes/scenarios.py `_filter()`,
+ *    where an empty string arriving as a real filter answered "no runs" for a
+ *    query that named no agent;
+ *  * `limit` clamped to 1..500, defaulting to 50, as the route clamps it;
+ *  * `count` is `len(runs)` — the size of the PAGE, never of the store.
+ *
+ *  /engine asks for 5 and /app/scenarios for 100. A stub that returned all six
+ *  rows to both would put a row on the engine page that the deployment it is
+ *  meant to be reading would not have sent. */
+function scenarioRunList(q: URLSearchParams): unknown {
+  const scenarioId = q.get("scenario_id") ?? "";
+  const agentId = q.get("agent_id") ?? "";
+  const asked = Number(q.get("limit") ?? 50);
+  const limit = Math.min(Math.max(1, Number.isFinite(asked) ? asked : 50), 500);
+  const runs = (SCENARIO_RUNS.list.runs as ScenarioRunLike[])
+    .filter((r) => (!scenarioId || r.scenario_id === scenarioId)
+                && (!agentId || r.agent_id === agentId))
+    .slice(0, limit);
+  return { runs, count: runs.length };
+}
+
+/** One stubbed reply. The STATUS is part of the fixture: an id the capture does
+ *  not carry gets the 404 its route gives it, because a stale 200 would show one
+ *  run's evidence under a different run's id — and the page has a rendered state
+ *  for a detail it could not load, which a 200 would keep it out of. */
+type Reply = { status: number; body: unknown };
+
+/** Own-property lookup, never the prototype chain.
+ *
+ *  A bare `table[id]` answers `__proto__`, `constructor` and `toString` with an
+ *  inherited value — for `constructor` that is a FUNCTION, which
+ *  `JSON.stringify` renders as `undefined`, so the stub would reply 200 with a
+ *  zero-length body and api.ts would raise a parse error instead of the page
+ *  showing its not-found state. A stub that fails differently from the real
+ *  endpoint photographs a state the product cannot produce.
+ *
+ *  This is the same guard `EnginePage.evidenceFor()` already uses, for the same
+ *  reason; a fixture resolver is not exempt from it. */
+function own<T>(table: Record<string, T>, id: string): T | undefined {
+  return Object.prototype.hasOwnProperty.call(table, id) ? table[id] : undefined;
+}
+
+/** Which fixture answers this request. The order is load-bearing; see above. */
+function reply(url: URL): Reply {
+  const path = url.pathname;
+
+  if (path === "/api/scenario-runs") {
+    return { status: 200, body: scenarioRunList(url.searchParams) };
+  }
+  const run = /^\/api\/scenario-runs\/([^/]+)$/.exec(path);
+  if (run) {
+    const id = decodeURIComponent(run[1]);
+    const detail = own(SCENARIO_RUNS.details, id);
+    return detail
+      ? { status: 200, body: detail }
+      : { status: 404, body: { detail: `scenario run ${id} not found` } };
+  }
+  /* The page reads the tool calls and the gateway's verdict on each off the
+   * TRACE, not off the run record. Left unstubbed it falls through to `[]`,
+   * `t?.spans ?? []` reads no spans, and the screen reports that the trace could
+   * not be read — a finding about a request rather than a picture of the
+   * feature. */
+  const trace = /^\/api\/traces\/([^/]+)$/.exec(path);
+  if (trace) {
+    const id = decodeURIComponent(trace[1]);
+    const stored = own(SCENARIO_RUNS.traces, id);
+    return stored
+      ? { status: 200, body: stored }
+      : { status: 404, body: { detail: `trace ${id} not found` } };
+  }
+
+  const exact = ROUTES[path];
+  if (exact !== undefined) return { status: 200, body: exact };
+  const prefixed = Object.entries(ROUTES).find(([k]) => path.startsWith(k));
+  return { status: 200, body: prefixed ? prefixed[1] : [] };
+}
+
+/** Serve every /api call from the fixtures above; never touch the network. */
 export async function stubApi(page: Page) {
   await page.route("**/api/**", async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    const body = ROUTES[path]
-      ?? Object.entries(ROUTES).find(([k]) => path.startsWith(k))?.[1]
-      ?? [];
+    const { status, body } = reply(new URL(route.request().url()));
     await route.fulfill({
-      status: 200, contentType: "application/json", body: JSON.stringify(body),
+      status, contentType: "application/json", body: JSON.stringify(body),
     });
   });
 }
