@@ -198,6 +198,21 @@ dc ps
 # the previous failure mode is invisible — the old container keeps serving, its
 # /health answers, and every check below passes against code that was never
 # deployed.
+# STALENESS: the image must be NEWER than the source just synced. `up -d` does
+# NOT rebuild an existing image, so a run can sync new source, skip the build
+# entirely, and leave running==built — both stale, and the identity check below
+# passes because it only compares those two to each other. Observed on node1 on
+# 2026-08-01: source dated 15:46 served by an image built the previous day.
+NEWEST_SRC="$(find src ui/src config.yaml config.prod.yaml Dockerfile -type f -newer /proc/self 2>/dev/null | head -1)"
+IMG_EPOCH="$(date -d "$(docker inspect --format '{{.Created}}' agenttic-app:latest 2>/dev/null)" +%s 2>/dev/null || echo 0)"
+SRC_EPOCH="$(find src ui/src config.yaml Dockerfile -type f -printf '%T@\n' 2>/dev/null | sort -rn | head -1 | cut -d. -f1)"
+if [ "${IMG_EPOCH:-0}" -gt 0 ] && [ "${SRC_EPOCH:-0}" -gt "${IMG_EPOCH:-0}" ]; then
+  echo "ERROR: agenttic-app:latest was built BEFORE the newest source file here."
+  echo "       image: $(date -d @"$IMG_EPOCH" 2>/dev/null)   source: $(date -d @"$SRC_EPOCH" 2>/dev/null)"
+  echo "       \`up -d\` does not rebuild an existing image. Force it (\`up -d --build\`)"
+  echo "       or, on a host that pins an image, ship one: docker save | ssh docker load."
+  exit 1
+fi
 BUILT="$(docker images -q agenttic-app:latest 2>/dev/null | head -1)"
 RUNNING="$(docker inspect --format '{{.Image}}' "$(dc ps -q app)" 2>/dev/null | sed 's/^sha256://' | cut -c1-12)"
 BUILT_SHORT="$(printf '%s' "${BUILT:-}" | sed 's/^sha256://' | cut -c1-12)"
