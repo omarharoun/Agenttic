@@ -23,6 +23,7 @@ import {
 } from "../assistant";
 import { Seal } from "./Seal";
 import { type AssistantCert, useAssistantCert } from "../useAssistantCert";
+import { HexMark } from "./Icons";
 
 const POLL_MS = 800;
 
@@ -85,7 +86,7 @@ function MessageBubble({ m, onDecide, decideBusy }: {
   const thinking = !isUser && m.status === "streaming" && !m.text;
   return (
     <div className={`asst-msg ${isUser ? "user" : "assistant"}`}>
-      {!isUser && <span className="asst-avatar" aria-hidden>⬡</span>}
+      {!isUser && <span className="asst-avatar" aria-hidden><HexMark size={14} /></span>}
       <div className="asst-msg-body">
         {/* transparent tool-use trail */}
         {!isUser && m.steps && m.steps.length > 0 && (

@@ -18,6 +18,7 @@ import {
 import { badgeUrl, certUrl, gradeColor } from "../cert";
 import { SCORE_MEANING } from "../workflow/templates";
 import { Seal } from "./Seal";
+import { HexMark } from "./Icons";
 
 type Phase = "idle" | "scanning" | "graded" | "error";
 
@@ -479,7 +480,7 @@ function GradedActions({ job, onReset }: { job: ScanJob; onReset: () => void }) 
   return (
     <div className="scan-actions">
       <div className="scan-cert-head">
-        <span className="seal-mark"><span className="sm-hex" aria-hidden>⬡</span> Tested with Agenttic</span>
+        <span className="seal-mark"><span className="sm-hex" aria-hidden><HexMark size={13} /></span> Tested with Agenttic</span>
         <span className="scan-cert-grade" style={{ color: gradeColor(grade) }}>Grade {grade}</span>
       </div>
       <p className="scan-cert-blurb">

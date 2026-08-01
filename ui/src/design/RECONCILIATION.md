@@ -753,3 +753,47 @@ Also in this change, unrelated to pixels: the fixture resolver's
 of `constructor` resolved to a function and the stub answered 200 with a
 zero-length body — a failure mode the real endpoint cannot produce. Both now go
 through an own-property guard, the same one `EnginePage.evidenceFor()` uses.
+
+## All 20 baselines — one mark, everywhere
+
+The brand mark changed shape (a hexagon with the cube's lower face inscribed in
+it) and, more importantly, stopped being drawn two different ways.
+
+**It was two marks, not one.** `HexMark` in `components/Icons.tsx` declares
+itself "the single source of truth", and two places used it — `SiteNav` and
+`MethodologyPage`. Eleven others drew the mark as the CHARACTER `⬡` (U+2B21):
+the console logo and its loading state, the copilot launcher, brand, empty state
+and avatar, the auth lockup, the assistant avatar, the scan trust seal, the
+guided-flow banner, and the certificate seal's centre — where it was an SVG
+`<text>` element. A character has no consistent metrics across platforms, so the
+"logo" was whatever glyph each machine's font stack resolved, at whatever optical
+size that font chose. All of them now render the component.
+
+Two consequences worth recording rather than discovering later:
+
+**1. The mark stopped meaning "error".** `CopilotPanel`'s `ERROR_UI` table used
+`⬡` as the icon for `out_of_credits`, beside `⚠ ◔ ◷ ⚙`. With one logo, the brand
+mark denoting a failure state dilutes it; that entry is now `◈`.
+
+**2. A whole logo change did not fail a single visual test.** `maxDiffPixels` is
+an absolute 120-pixel budget (chosen deliberately — see the note in
+`playwright.config.ts` about a ratio letting a green accent repaint through). The
+nav mark renders at 15x15 = 225px of area, so replacing it moved fewer pixels
+than the budget absorbs and all 26 tests passed against baselines showing the OLD
+mark. That is the tolerance behaving as designed for antialiasing and failing to
+police a small brand element.
+
+It also means `--update-snapshots` was a no-op: Playwright rewrites a baseline
+only when the comparison FAILS. `--update-snapshots=all` is what actually
+refreshed them, and without it the committed images would have kept depicting a
+logo the product no longer ships — the next real diff measured against a stale
+reference. The mark was verified rendering by assertion instead of by pixel: the
+console logo resolves to an `<svg>` with exactly 2 paths whose `d` attributes are
+the hexagon and the inner face.
+
+Assets regenerated from the same two paths: `public/favicon.svg` (now carrying
+the gilt gradient, since a file handed to a browser cannot read a CSS variable),
+`public/favicon.ico` (6 frames, 16-256), and the mark inside
+`public/og-image.svg` + its PNG. The component stays `currentColor` so the token
+rule holds — the gradient exists only in the brand asset files, which are not
+components.

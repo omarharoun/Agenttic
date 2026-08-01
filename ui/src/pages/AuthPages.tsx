@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
+import { HexMark } from "../components/Icons";
 
 function Brand() {
   return (
     <Link to="/" className="brand" style={{ textDecoration: "none", color: "var(--text)",
       fontWeight: 600, fontSize: 19, fontFamily: "var(--font-serif)" }}>
-      <span style={{ color: "var(--accent)" }}>⬡</span> Agenttic
+      <HexMark className="hex" size={17} /> Agenttic
     </Link>
   );
 }

@@ -5,6 +5,7 @@ import { ResultsPanel } from "../panels/ResultsPanel";
 import { useFlowStore } from "../store";
 import { StepActivity } from "./StepActivity";
 import { STEPS, type Template, TEMPLATES, isConfigurable, stepById } from "./templates";
+import { HexMark } from "../components/Icons";
 
 const AGENT_FIELDS = ["agent_id", "variant", "model", "system_prompt", "url",
   "managed_agent_id", "environment_id", "cost_per_call_usd",
@@ -260,7 +261,7 @@ export function GuidedFlow({ results, onPickTemplate }: {
     <div className="guided">
       <div className="guided-inner">
         <div className="flow-banner">
-          <div className="step-num" style={{ width: 40, height: 40 }}>⬡</div>
+          <div className="step-num" style={{ width: 40, height: 40 }}><HexMark size={18} /></div>
           <div style={{ flex: 1 }}>
             <h2>{workflowName}</h2>
             <p>Fill in each step top to bottom, then hit Run. Steps light up as the run flows through them.</p>

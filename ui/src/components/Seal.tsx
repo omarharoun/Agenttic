@@ -12,6 +12,7 @@
    ========================================================================== */
 
 import { gradeColor } from "../cert";
+import { HexMark } from "./Icons";
 
 /** Circular safety-certified seal. Pass a `grade` to stamp it in the middle;
  *  otherwise the hex mark sits center. */
@@ -51,8 +52,19 @@ export function Seal({ grade, size = 132, title = "Agenttic Safety Certified" }:
         <text x="60" y="60" className="seal-grade" fill={ring}
               textAnchor="middle" dominantBaseline="central">{grade}</text>
       ) : (
-        <text x="60" y="60" className="seal-hex" fill={ring}
-              textAnchor="middle" dominantBaseline="central">⬡</text>
+        /* The mark as GEOMETRY, not as a glyph in whatever font resolved.
+           `⬡` (U+2B21) has no consistent metrics across platforms — it is the
+           reason the seal's centre drifted off-axis on some machines — and it
+           is not the brand shape at all now that the mark carries an inner
+           face. Scaled from the same 24-unit artwork `HexMark` uses so the two
+           can never diverge; centred by translating the artwork's own centre
+           (12,12) onto the seal's (60,60). */
+        <g transform="translate(60,60) scale(1.55) translate(-12,-12)"
+           fill="none" stroke={ring} strokeWidth="2"
+           strokeLinejoin="round" strokeLinecap="round">
+          <path d="M12 2l8.66 5v10L12 22l-8.66-5V7z" />
+          <path d="M12 12l8.66 5L12 22l-8.66-5z" />
+        </g>
       )}
       {/* tiny stars flanking */}
       <text x="22" y="64" fill={ring} fontSize="9" textAnchor="middle">✦</text>
@@ -65,7 +77,7 @@ export function Seal({ grade, size = 132, title = "Agenttic Safety Certified" }:
 export function SealMark({ label = "Tested with Agenttic" }: { label?: string }) {
   return (
     <span className="seal-mark" title="Agenttic Safety Certification">
-      <span className="sm-hex" aria-hidden="true">⬡</span>
+      <span className="sm-hex" aria-hidden="true"><HexMark size={13} /></span>
       <span className="sm-text">{label}</span>
     </span>
   );

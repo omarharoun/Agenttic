@@ -20,6 +20,7 @@ import {
   type CopilotToolEvent,
 } from "../api";
 import { Markdown } from "./markdown";
+import { HexMark } from "../components/Icons";
 
 interface ToolAct { tool: string; ok?: boolean; kind?: string; summary?: string; }
 
@@ -43,7 +44,7 @@ const BILLING_URL = "/pricing";
 const ERROR_UI: Record<string, { title: string; icon: string; tone: string }> = {
   unavailable:    { title: "Copilot unavailable",    icon: "⚠", tone: "warn" },
   rate_limited:   { title: "One moment",             icon: "◔", tone: "warn" },
-  out_of_credits: { title: "Out of credits",         icon: "⬡", tone: "credits" },
+  out_of_credits: { title: "Out of credits",         icon: "◈", tone: "credits" },
   daily_limit:    { title: "Daily limit reached",    icon: "◷", tone: "warn" },
   not_configured: { title: "Copilot not configured", icon: "⚙", tone: "warn" },
   generic:        { title: "Something went wrong",   icon: "⚠", tone: "warn" },
@@ -188,7 +189,7 @@ export default function CopilotPanel({ open, onClose }: {
       <aside className={`cp-panel ${open ? "open" : ""}`} role="complementary"
              aria-label="Agenttic Copilot" aria-hidden={!open}>
         <header className="cp-head">
-          <span className="cp-brand"><span className="cp-brand-ic" aria-hidden>⬡</span>Copilot</span>
+          <span className="cp-brand"><span className="cp-brand-ic" aria-hidden><HexMark size={14} /></span>Copilot</span>
           <span className="cp-brand-sub">Agent</span>
           <span style={{ flex: 1 }} />
           <button className="cp-x" onClick={onClose} aria-label="Close Copilot" title="Close (Esc)">✕</button>
@@ -204,7 +205,7 @@ export default function CopilotPanel({ open, onClose }: {
         <div className="cp-thread" role="log" aria-live="polite" aria-label="Copilot conversation">
           {empty ? (
             <div className="cp-empty">
-              <div className="cp-empty-ic" aria-hidden>⬡</div>
+              <div className="cp-empty-ic" aria-hidden><HexMark size={22} /></div>
               <h2 className="cp-empty-title">What can I help you do?</h2>
               <p className="cp-empty-sub">
                 I can look things up and run tasks for you — list your agents, check
@@ -221,7 +222,7 @@ export default function CopilotPanel({ open, onClose }: {
           ) : (
             messages.map((m) => (
               <div key={m.id} className={`cp-msg ${m.role}`}>
-                {m.role === "assistant" && <span className="cp-av" aria-hidden>⬡</span>}
+                {m.role === "assistant" && <span className="cp-av" aria-hidden><HexMark size={13} /></span>}
                 <div className="cp-msg-body">
                   {/* live tool activity */}
                   {m.role === "assistant" && m.tools && m.tools.length > 0 && (

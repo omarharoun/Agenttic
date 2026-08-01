@@ -23,6 +23,7 @@ import { ResourcesPage } from "./pages/ResourcesPage";
 import { ScenariosPage } from "./pages/ScenariosPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { TrainingCampPage } from "./pages/TrainingCampPage";
+import { HexMark } from "./components/Icons";
 
 /* The Copilot panel is code-split: its chunk (chat + Markdown renderer) loads
    only when the user first opens the drawer, so it never weighs on the public
@@ -41,7 +42,7 @@ function CopilotDock() {
       <button className={`cp-launch ${open ? "hidden" : ""}`} onClick={toggle}
               aria-label="Open Agenttic Copilot" aria-expanded={open}
               title="Ask the Copilot">
-        <span className="cp-launch-ic" aria-hidden>⬡</span>
+        <span className="cp-launch-ic" aria-hidden><HexMark size={16} /></span>
         <span className="cp-launch-label">Copilot</span>
       </button>
       {mounted && (
@@ -176,7 +177,7 @@ export function AppShell() {
     return (
       <div className="app-shell">
         <div className="app-loading">
-          <span className="app-loading-brand"><span className="ic">⬡</span> Agenttic</span>
+          <span className="app-loading-brand"><span className="ic"><HexMark size={15} /></span> Agenttic</span>
           <span className="spinner" />
           <span className="app-loading-note">Loading your workspace…</span>
         </div>
@@ -192,7 +193,7 @@ export function AppShell() {
     <div className="app-shell">
       <nav className="app-nav">
         <a className="logo" href="/" title="Agenttic home">
-          <span className="ic">⬡</span> Agenttic
+          <span className="ic"><HexMark size={15} /></span> Agenttic
         </a>
         <NavLink to="/app" end className="nav-home">
           <span className="ic">▦</span> Dashboard

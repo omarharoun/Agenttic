@@ -22,7 +22,10 @@
 
   <!-- brand -->
   <g transform="translate(84,74)">
-    <path d="M14 0l24 14v28L14 56 -10 42V14z" transform="translate(10,0)" fill="none" stroke="#C9A227" stroke-width="3.4" stroke-linejoin="round"/>
+    <g transform="translate(10,0)" fill="none" stroke="#C9A227" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M14 0l24 14v28L14 56 -10 42V14z"/>
+      <path d="M14 28l24 14-24 14-24-14z"/>
+    </g>
     <text x="70" y="40" fill="#EAEBE6" font-size="38" letter-spacing="2">Agenttic</text>
   </g>
 
