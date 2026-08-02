@@ -105,7 +105,48 @@ say "5/8  Compose override (port bind + service ordering) + config"
 ssh "$HOST" "bash -se -- '$REMOTE_DIR' '$BIND' '$PORT'" <<'REMOTE'
 set -euo pipefail
 DIR="$1"; BIND="$2"; PORT="$3"; cd "$DIR"
-cp -f config.prod.yaml config.yaml          # the mounted /app/config.yaml
+
+# --------------------------------------------------------------------------
+# The mounted /app/config.yaml. This `cp -f` destroyed node1's HOST-APPENDED
+# certification block on 2026-08-01, and nobody noticed for a day: the block
+# carried the certificate signing key, so production silently fell back to the
+# deterministic, publicly-known DEV key and published it as its issuer key —
+# every certificate forgeable, and every certificate signed with the real key
+# no longer verifiable. The signing key was not recoverable.
+#
+# It is the same failure as the compose-override clobber guarded above: this
+# script writes files a host may legitimately own. So it now BACKS UP first
+# (always, unconditionally — the override's .bak is the only reason that
+# incident was recoverable) and REFUSES when the host's config differs from
+# what we are about to write.
+#
+# Secrets belong in .env, which this script preserves, and NOT in config.yaml,
+# which it overwrites. The keys were moved there on 2026-08-02.
+# --------------------------------------------------------------------------
+if [ -f config.yaml ]; then
+  cp -a config.yaml "config.yaml.bak-$(date +%s)"
+  # keep the 5 most recent backups; a host should not fill its disk with these
+  ls -1t config.yaml.bak-* 2>/dev/null | tail -n +6 | xargs -r rm -f
+fi
+if [ -f config.yaml ] && ! cmp -s config.yaml config.prod.yaml; then
+  if [ "${ALLOW_CONFIG_CLOBBER:-0}" != "1" ]; then
+    cat >&2 <<'MSG'
+ERROR: the host's config.yaml differs from config.prod.yaml. Something on this
+       host has customised it — on node1 that was an appended `certification:`
+       block holding the signing key, and overwriting it published a forgeable
+       dev key as the issuer identity for a day.
+
+       Diff them, fold anything host-specific into config.prod.yaml (or move
+       secrets into .env, which this script preserves), then re-run.
+       A timestamped backup was just written beside it.
+
+       Re-run with ALLOW_CONFIG_CLOBBER=1 only if you are certain.
+MSG
+    exit 1
+  fi
+  echo "ALLOW_CONFIG_CLOBBER=1 set — overwriting a customised host config."
+fi
+cp -f config.prod.yaml config.yaml
 cat > docker-compose.override.yml <<YAML
 services:
   app:
