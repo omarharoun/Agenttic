@@ -103,7 +103,7 @@ def instrumentation_fidelity(traces: list) -> dict:
     }
 
 
-def verify_traffic(traces: list) -> dict:
+def verify_traffic(traces: list, *, cfg: dict | None = None) -> dict:
     """Run the verification layer over a population of production traces.
 
     Returns the normal verification summary plus an ``instrumentation`` block and
@@ -113,7 +113,7 @@ def verify_traffic(traces: list) -> dict:
     """
     from agenttic.metrics.runner import verify_run
 
-    out = verify_run(traces)
+    out = verify_run(traces, cfg=cfg)
     fidelity = instrumentation_fidelity(traces)
     out["instrumentation"] = fidelity
     out["population"] = "production_traffic"

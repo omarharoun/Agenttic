@@ -2854,7 +2854,7 @@ def ingest_verify_traffic(
     Deterministic and free: zero model calls.
     """
     from agenttic.verification.traffic import traffic_window, verify_traffic
-    _cfg, reg = _ctx(config)
+    cfg, reg = _ctx(config)
 
     traces = traffic_window(reg, agent_id=agent, limit=limit or None)
     if not traces:
@@ -2863,7 +2863,7 @@ def ingest_verify_traffic(
             "agenttic ingest otel <spans.json>")
         raise typer.Exit(code=1)
 
-    v = verify_traffic(traces)
+    v = verify_traffic(traces, cfg=cfg)
     if v.get("status") != "populated":
         console.print(f"[red]Verification did not run:[/] {v.get('note')}")
         raise typer.Exit(code=1)

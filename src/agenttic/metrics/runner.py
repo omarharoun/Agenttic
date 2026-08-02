@@ -64,7 +64,7 @@ def _confidence_of(trace) -> float | None:
     return float(m.group(1)) if m else None
 
 
-def verify_run(traces: list) -> dict:
+def verify_run(traces: list, *, cfg: dict | None = None) -> dict:
     """The verification component of the harness.
 
     Runs the SPEC-13 layer over every trace the harness produced and returns a
@@ -72,6 +72,13 @@ def verify_run(traces: list) -> dict:
     and the serialized sign-off. Deterministic and free — zero model calls — so
     it runs on every harness invocation rather than being something a
     certification path has to remember to ask for.
+
+    ``cfg`` reaches the coverage model's ``closure_target``. Without it the model
+    falls back to its built-in 0.95 and SAYS SO on stderr — which is how this was
+    found: the standard run called this with no config, so a tenant configuring
+    `coverage.closure_target` was measured against a number they did not choose
+    and were never told about. `config.yaml` also says 0.95, so the defect was
+    invisible until someone changed it.
 
     Returns ``{"status": "not_run", ...}`` when there are no traces, never a
     fabricated pass: a harness run that produced nothing is the absence of
@@ -82,7 +89,7 @@ def verify_run(traces: list) -> dict:
                 "note": "no traces were produced, so nothing was verified"}
     try:
         from agenttic.ops import verify_op
-        _results, summary = verify_op(traces)
+        _results, summary = verify_op(traces, cfg=cfg)
     except Exception as exc:      # noqa: BLE001 — verification never breaks a run
         return {"status": "error", "note": f"verification failed: {exc}"}
     if not summary:
@@ -196,7 +203,7 @@ async def run_standard(cfg, reg, adapter, *, k: int = 3, suite_ids=None,
     # A/B/C with no closure, no action_risk, no assertions and no sign-off —
     # while the certificate path refused the same agent on the same evidence.
     # Two verdicts, two code paths, nothing reconciling them.
-    verification = verify_run(all_traces)
+    verification = verify_run(all_traces, cfg=cfg)
 
     idx = compute_index(components)
     return {
