@@ -193,3 +193,69 @@ by one that survives a reader checking it.
 The original entry is left exactly as written. It is wrong, it is dated, and the
 correction is dated after it — which is the only way a pre-registration is worth
 anything.
+
+---
+
+## CORRECTION 2 — 2026-08-02, still before any evaluation run
+
+The adapter was built, then the subject was run **once**, on a trivial task
+("create hello.txt"), to check the adapter against reality. That single run
+falsified three things asserted above or assumed while building. None of it
+changes the plan; all of it changes what the report may claim.
+
+**This was not an evaluation run.** No suite, no scoring, no k. It is disclosed
+here because the pre-registration is the place where the record is kept, and a
+run that happened is a run that happened.
+
+### 1. "each line is an agent event" — false
+
+> *"streams JSONL where each line is an agent event"* (the section above)
+
+`--json` does **not** silence the human interface. Event lines arrive
+interleaved with Rich terminal chrome: a startup banner, a boxed conversation
+summary, `Goodbye! 👋`. **27 of the run's 33 stdout lines were decoration.**
+
+The adapter had been treating every unparseable line as a dropped event, so it
+would have attached "27 events could not be read" to every single trace — a
+false alarm on every run, and the exact noise a genuinely dropped event would
+have hidden in. Fixed: a line that never opened as an object is chrome and is
+ignored; a line that opened as an object and failed to parse is lost evidence
+and is counted.
+
+### 2. The agent does not answer with a message
+
+It calls the `finish` tool, and the answer is in `action.message`. An adapter
+reading only `MessageEvent` — which is what reading the SDK's event schema
+leads you to build — finds **no answer at all** and records a completed task as
+a non-result. Every case would have come back a harness failure, and the report
+would have blamed the subject for a defect that was ours. This is the finding
+that most nearly wrecked the evaluation, and nothing short of running the binary
+would have surfaced it.
+
+### 3. There is no `--model` flag, and the model is ignored by default
+
+The CLI takes the model from `LLM_MODEL`, and **only** when
+`--override-with-envs` is passed; its own help says *"By default, environment
+variables are ignored."* Two silent failure modes: pass `--model` and argparse
+rejects the command, so every case is a non-result that reads like the subject
+failing; or set the env var without the flag and the CLI quietly runs whatever
+`openhands login` last stored.
+
+**This is a provenance requirement, not a convenience.** A run that cannot say
+which model produced the evidence is not evidence. The adapter now sets both
+together, and when no model is pinned it says so on the trace rather than
+letting a reader assume.
+
+### What this does to the schedule
+
+Nothing is invalidated. The interface claim survives in the form that matters —
+`openhands --headless --json -t "<task>"` is real, it was driven end to end, and
+the events map to spans, so the trace is glass-box exactly as argued. The subject
+is still **NOT settled** (see Correction 1), and the dry run still does not
+publish.
+
+**Standing method note, added to the commitments above:** an adapter is not
+finished when its offline tests pass. Reading the subject's source gives you the
+schema of what it emits; only running the subject tells you what actually comes
+out. Every future adapter gets one real smoke run against the live binary before
+any evaluation is scheduled on it.
