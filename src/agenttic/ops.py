@@ -13,6 +13,7 @@ separation in ``scoring.judge.make_judge`` — no caller can route around them.
 from __future__ import annotations
 
 import asyncio
+import os
 import uuid
 from dataclasses import dataclass
 from typing import Callable, Literal
@@ -34,13 +35,88 @@ from agenttic.scoring.judge import make_judge
 
 ProgressFn = Callable[[str, dict], None]
 
-AdapterVariant = Literal["reference", "blackbox", "managed"]
+#: How an agent under test is driven. The last two exist so that adding an agent
+#: is a CONFIG change, not a source change — the whole point of the integration
+#: ladder documented in ``adapters/cli_spec.py``:
+#:
+#:   blackbox  — HTTP endpoint + a declarative ``connect.Mapping``
+#:   acp       — any Agent Client Protocol agent, over its own protocol
+#:   cli       — any local binary, described by a spec in ``agents:`` config
+#:
+#: ``acp`` is the one to prefer for a local agent: it is the only tier where the
+#: agent DECLARES what its tools do, so ``action_risk`` is classified explicitly
+#: instead of guessed from tool names.
+AdapterVariant = Literal["reference", "blackbox", "managed", "acp", "cli"]
 
 #: User-facing message when a managed (Anthropic-hosted) agent is selected
 #: without a deployed agent/environment. Shown verbatim in the guided UI.
 MANAGED_UNAVAILABLE_MSG = (
     "Anthropic-hosted (managed) agents must be deployed first and aren't "
     "available yet — use the built-in test agent or your own API agent.")
+
+
+def declared_agents(cfg: dict) -> dict:
+    """Every agent declared in config under ``agents:``. Data, not code."""
+    agents = cfg.get("agents")
+    return dict(agents) if isinstance(agents, dict) else {}
+
+
+def build_declared_adapter(cfg: dict, *, variant: str, agent_id: str,
+                           model: str = "", conversation_id: str = "") -> AgentAdapter:
+    """Build an ``acp`` or ``cli`` agent from its declaration in config.
+
+    Adding an agent to the platform is a ``config.yaml`` entry:
+
+    .. code-block:: yaml
+
+        agents:
+          openhands:
+            driver: acp                    # acp | cli
+            command: ["openhands", "acp"]
+            version: "1.16.0"
+            api_key_env: LLM_API_KEY
+
+    No module, no import, no release. That is the whole point: a verification
+    platform that needs a source change per subject cannot verify other people's
+    agents, only its own.
+    """
+    from agenttic.adapters.acp_agent import ACPAgent
+    from agenttic.adapters.cli_spec import CLISpecAgent
+
+    declared = declared_agents(cfg)
+    spec = declared.get(agent_id)
+    if not isinstance(spec, dict):
+        known = ", ".join(sorted(declared)) or "none"
+        raise AgentConfigError(
+            f"no agent named {agent_id!r} is declared in config under `agents:` "
+            f"(declared: {known}). Add it there — a {variant} agent is described "
+            "by configuration, not by code.")
+
+    driver = str(spec.get("driver") or variant).strip()
+    command = spec.get("command")
+    if not command:
+        raise AgentConfigError(
+            f"agent {agent_id!r} has no `command`: give the argv that starts it.")
+
+    timeout = float(spec.get("timeout_s")
+                    or cfg.get("harness", {}).get("timeout_seconds", 900))
+    api_key = os.environ.get(str(spec.get("api_key_env") or ""), "")
+
+    if driver == "acp":
+        env = dict(os.environ)
+        for k, v in (spec.get("env") or {}).items():
+            env[str(k)] = str(v).replace("{model}", model or "")
+        if model and spec.get("model_env"):
+            env[str(spec["model_env"])] = model
+        return ACPAgent(
+            agent_id=agent_id, command=list(command), cwd=spec.get("cwd"),
+            env=env, timeout_s=timeout, version=str(spec.get("version") or ""),
+            model=model or str(spec.get("model") or ""),
+            conversation_id=conversation_id)
+    return CLISpecAgent(
+        agent_id=agent_id, spec=dict(spec), model=model or str(spec.get("model") or ""),
+        api_key=api_key, cwd=spec.get("cwd"), timeout_s=timeout,
+        version=str(spec.get("version") or ""), conversation_id=conversation_id)
 
 
 class AgentConfigError(ValueError):
@@ -64,6 +140,7 @@ def build_adapter(
     expected_input_tokens: int = 0,
     expected_output_tokens: int = 0,
     headers: dict | None = None,
+    conversation_id: str = "",
 ) -> AgentAdapter:
     """Instantiate the adapter for one agent under test. ``system_prompt``
     overrides the reference agent's task instructions and ``model`` overrides
@@ -84,6 +161,9 @@ def build_adapter(
         return ManagedAgentAdapter(
             managed_agent_id=managed_agent_id, environment_id=environment_id,
             agent_id=agent_id, retry_policy=retry_policy, **kw)
+    if variant in ("acp", "cli"):
+        return build_declared_adapter(cfg, variant=variant, agent_id=agent_id,
+                                      model=model, conversation_id=conversation_id)
     if variant == "blackbox":
         if not url:
             raise AgentConfigError("Add the HTTP endpoint URL for your API agent.")

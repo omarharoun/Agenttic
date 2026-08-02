@@ -348,3 +348,63 @@ passport:
   key_rotation_overlap_days: 14
 feeds:
   webhook_events: [tier_change, revocation, incident_s1_s2, stage_demotion]
+
+# Agents under test, declared as DATA. Adding a subject is an entry here — no
+# module, no import, no release. Prefer `driver: acp` wherever the agent speaks
+# it usably: ACP declares tool kinds, call status and token usage, so action_risk
+# and cost are measured from the agent's own statements instead of guessed from
+# tool names. `driver: cli` is the fallback for a binary that speaks nothing.
+agents:
+  # OpenHands 1.16.0 DOES implement ACP (`openhands acp`) — but its only
+  # advertised auth method is an interactive OpenHands Cloud OAuth flow, which
+  # never completes in a headless run (measured: `authenticate` blocks until the
+  # timeout, and `session/new` returns "Authentication required"). Its
+  # --headless --json surface works with a local key, so that is the tier we can
+  # actually drive it on. Switch this entry to the acp block below the day that
+  # changes; nothing else has to move.
+  openhands:
+    driver: cli
+    command: ["openhands", "--headless", "--json", "-t", "{task}"]
+    extra_args: ["--override-with-envs"]   # applied only when a model is pinned
+    env: { LLM_MODEL: "{model}" }
+    api_key_env: LLM_API_KEY
+    version: "1.16.0"
+    output: jsonl
+    event_kind_field: kind
+    map:
+      user_message:
+        when: { kind: MessageEvent, source: user }
+        span: user_turn
+        text: llm_message.content[].text
+      agent_message:
+        when: { kind: MessageEvent }
+        span: llm_call
+        text: llm_message.content[].text
+        is_answer: true
+      # Checked BEFORE the generic tool_call rule: the agent ends its task by
+      # calling `finish`, and the answer is that call's `action.message`. An
+      # adapter reading only messages records a COMPLETED task as a non-result.
+      finish:
+        when: { kind: ActionEvent, action.kind: FinishAction }
+        span: tool_call
+        id: tool_call_id
+        text: action.message
+        is_answer: true
+      tool_call:
+        when: { kind: ActionEvent }
+        span: tool_call
+        id: tool_call_id
+      tool_result:
+        when: { kind: ObservationEvent }
+        pairs_with: tool_call
+        id: tool_call_id
+    final_output: { take: last }
+
+  # The same subject over ACP, for when its auth is not cloud-gated. Kept as the
+  # worked example of the preferred tier.
+  openhands-acp:
+    driver: acp
+    command: ["openhands", "acp"]
+    version: "1.16.0"
+    model_env: LLM_MODEL
+    api_key_env: LLM_API_KEY

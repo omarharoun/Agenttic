@@ -288,8 +288,14 @@ def run(agent: str = typer.Option(..., "--agent", "-a", help="agent id (label)")
     cfg, reg = _ctx(config)
     variant = "managed" if managed_agent_id else ("blackbox" if url else "reference")
     bb = {}  # black-box cost hints from the declared agent
+    # An agent declared in `agents:` config wins before anything else: it is the
+    # no-code path (ACP or a CLI spec), and its whole purpose is that pointing
+    # the harness at a new agent never requires a source change.
+    if not (url or managed_agent_id) and agent in ops.declared_agents(cfg):
+        variant = str(ops.declared_agents(cfg)[agent].get("driver") or "cli")
+        console.print(f"[dim]using config-declared agent {agent} ({variant})[/]")
     # resolve a declared catalog agent when no connection flags were given
-    if not (url or managed_agent_id):
+    elif not (url or managed_agent_id):
         try:
             d = reg.get_declared_agent(agent)
             variant = d.variant
@@ -1028,6 +1034,105 @@ def agents_add(
     saved = reg.register_agent(agent)
     console.print(f"[green]Registered[/] {saved.agent_id} v{saved.version} "
                   f"({saved.variant}).")
+
+
+@agents_app.command("correlate")
+def agents_correlate(
+        agent: str = typer.Option(..., "--agent", "-a", help="agent id"),
+        limit: int = typer.Option(200, help="how many ingested traces to search"),
+        config: str = "config.yaml"):
+    """Join stored runs to the spans the agent exported about itself.
+
+    The zero-adapter-code path to glass-box evidence: the harness stamps
+    ``gen_ai.conversation.id`` on each run, the agent stamps the same id on the
+    OpenTelemetry spans it exports, and this joins them. An agent that exports
+    nothing is reported as exactly that — nothing is upgraded on faith.
+    """
+    from agenttic.ingest.correlate import correlate_all
+
+    _, reg = _ctx(config)
+    driven = [t for t in reg.traces(agent, mode="batch")][-limit:]
+    exported = [t for t in reg.traces(agent, mode="live")][-limit:]
+    if not driven:
+        console.print(f"[yellow]No stored runs for {agent}.[/]")
+        raise typer.Exit(code=1)
+
+    _, summary = correlate_all(driven, exported)
+    table = Table("driven runs", "exported traces", "correlated",
+                  "spans attached", "upgraded to glass box")
+    table.add_row(str(summary["of_traces"]), str(len(exported)),
+                  str(summary["correlated"]), str(summary["attached_spans"]),
+                  str(summary["upgraded_to_glass_box"]))
+    console.print(table)
+    console.print(f"[dim]{summary['note']}[/]")
+    if not summary["correlated"]:
+        console.print(
+            "\n[yellow]Nothing correlated.[/] For this to work the agent must "
+            "export OpenTelemetry spans carrying `gen_ai.conversation.id`, and "
+            "they must be ingested (`agenttic ingest otel <spans.json>`).")
+
+
+@agents_app.command("drivers")
+def agents_drivers(
+        check: str = typer.Option("", "--check", help="probe one agent"),
+        model: str = typer.Option("", "--model", help="model to pin for the probe"),
+        config: str = "config.yaml"):
+    """List the agents declared in config — the no-code way to add a subject.
+
+    An agent belongs in ``config.yaml`` under ``agents:``, not in a Python
+    module. ``--check`` starts it and reports what it actually supports, which
+    is the difference between a declaration and a working integration.
+    """
+    import shutil as _shutil
+
+    cfg, _ = _ctx(config)
+    declared = ops.declared_agents(cfg)
+    if not declared:
+        console.print(
+            "[yellow]No agents declared.[/] Add one under `agents:` in "
+            "config.yaml:\n"
+            "  agents:\n"
+            "    my-agent:\n"
+            "      driver: acp                 # acp (preferred) | cli\n"
+            "      command: [\"my-agent\", \"acp\"]\n")
+        raise typer.Exit(code=1)
+
+    table = Table("agent", "driver", "command", "version", "on PATH")
+    for name, spec in sorted(declared.items()):
+        cmd = list(spec.get("command") or [])
+        found = bool(cmd) and (_shutil.which(cmd[0]) is not None or "/" in cmd[0])
+        table.add_row(name, str(spec.get("driver") or "cli"), " ".join(cmd[:4]),
+                      str(spec.get("version") or "—"),
+                      "[green]yes[/]" if found else "[red]no[/]")
+    console.print(table)
+    console.print(
+        "[dim]acp declares tool kinds, status and usage, so action_risk and cost "
+        "are measured rather than guessed. Prefer it when the agent speaks it.[/]")
+
+    if not check:
+        return
+    adapter = ops.build_adapter(cfg, variant=str(
+        declared.get(check, {}).get("driver") or "cli"), agent_id=check,
+        model=model)
+    if not model:
+        console.print(
+            "[yellow]No --model given[/], so the agent uses whatever it has "
+            "stored. The probe cannot then say which model answered.")
+    console.print(f"\n[bold]Probing {check}[/] — one trivial task")
+    trace = adapter.run({"task": "Reply with the single word: ready. Do nothing else."},
+                        test_case_id="probe")
+    ok = not trace.final_output.startswith("HARNESS_FAILURE")
+    console.print(f"  answered: {'[green]yes[/]' if ok else '[red]no[/]'}")
+    console.print(f"  visibility: {trace.visibility}   spans: {len(trace.spans)}")
+    console.print(f"  sessions (multi-turn): {type(adapter).supports_sessions()}")
+    kinds = sorted({s.kind for s in trace.spans})
+    console.print(f"  span kinds: {', '.join(kinds)}")
+    for s in trace.spans:
+        for d in (s.attributes or {}).get("disclosures") or []:
+            console.print(f"  [yellow]disclosed:[/] {d}")
+    if not ok:
+        console.print(f"  [red]{trace.final_output[:200]}[/]")
+        raise typer.Exit(code=1)
 
 
 @agents_app.command("list")
