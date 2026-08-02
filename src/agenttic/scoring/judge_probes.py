@@ -267,8 +267,83 @@ def probe_digest_not_scored(judge: JudgeLike, criterion: Criterion,
         observations=obs, magnitude=max(0.0, got - max_acceptable))
 
 
+#: Answers that are plainly inadequate for ANY criterion. A judge that awards
+#: these a top score is not grading. Kept blunt on purpose: a subtle wrong
+#: answer tests the judge's knowledge, these test whether it discriminates at
+#: all — the difference between "sometimes wrong" and "never says fail".
+KNOWN_BAD = {
+    "empty": "",
+    "irrelevant": "The weather today is quite pleasant, thanks for asking.",
+    "refusal_without_reason": "No.",
+}
+
+
+def probe_leniency(judge: JudgeLike, criterion: Criterion, tc: TestCase,
+                   trace: Trace, *, bad_outputs: dict[str, str] | None = None,
+                   max_acceptable: float = 0.5) -> ProbeResult:
+    """Does this judge ever say FAIL?
+
+    The quiet bias, and the one our own first probe run was symptomatic of: the
+    live judge returned 1.000 for the answer, for the padded answer, and for all
+    three distractors. Every one of those was reported as the invariant holding
+    — and a judge that returns the top score for everything satisfies every
+    metamorphic invariant there is, while measuring nothing.
+
+    Zheng et al. and the follow-on literature call this leniency /
+    scale-compression: judges cluster away from the extremes and fail to
+    penalise real quality drops (GPT-4 missing >50% of degradations on
+    coherence/factuality; GPT-3.5 catching 30-60% of factual inconsistencies at
+    >95% specificity). The consequence stated plainly: *a judge that rarely says
+    "fail" has near-zero discriminative power, no matter how good its agreement
+    looks on a class-imbalanced sample.*
+
+    So this probe hands it answers that are inadequate under any criterion. If
+    none is marked down, no agreement figure from this judge means anything.
+    """
+    bad = bad_outputs or KNOWN_BAD
+    obs = []
+    try:
+        obs.append(("good_baseline", _score(judge, criterion, tc,
+                                            trace.final_output, trace)))
+        for name, text in bad.items():
+            obs.append((name, _score(judge, criterion, tc, text, trace)))
+    except Exception as exc:  # noqa: BLE001
+        return ProbeResult("leniency", criterion.criterion_id, False, "", obs,
+                           not_run=f"{type(exc).__name__}: {exc}")
+    baseline = obs[0][1]
+    bad_scores = [(n, s) for n, s in obs[1:]]
+    unpenalised = [(n, s) for n, s in bad_scores if s > max_acceptable]
+    distinct = len({round(s, 4) for _, s in obs})
+    return ProbeResult(
+        "leniency", criterion.criterion_id,
+        violated=bool(unpenalised),
+        detail=(f"answers that are inadequate under any criterion were not "
+                f"marked down: {unpenalised} (a good answer scored "
+                f"{baseline:.3f}); a judge that rarely says FAIL has near-zero "
+                "discriminative power, whatever its agreement figure looks like"
+                if unpenalised else
+                f"every inadequate answer scored at or below {max_acceptable} "
+                f"while a good one scored {baseline:.3f} — the judge "
+                f"discriminates ({distinct} distinct values observed)"),
+        observations=obs,
+        magnitude=max((s - max_acceptable for _, s in unpenalised), default=0.0))
+
+
+def _weaken(text: str) -> str:
+    """A plainly worse version of an answer, for the position-bias pair.
+
+    Truncating to the first clause keeps the topic and drops the substance, so
+    a working judge should rank it below the original — which is what makes a
+    ranking FLIP on reordering meaningful rather than a coin toss between two
+    equally good answers.
+    """
+    head = text.split(".")[0].strip()
+    return (head[:40] or "It depends.")
+
+
 def probe_position_bias(judge: JudgeLike, criterion: Criterion, tc: TestCase,
-                        trace: Trace, *, response_a: str, response_b: str,
+                        trace: Trace, *, response_a: str = "",
+                        response_b: str = "",
                         tolerance: float = 0.0) -> ProbeResult:
     """Scoring A then B must agree with scoring B then A.
 
@@ -280,6 +355,13 @@ def probe_position_bias(judge: JudgeLike, criterion: Criterion, tc: TestCase,
     of calls: the same two responses are scored in both orders and the RANKING
     must agree. A flip means the judge carries state or is order-sensitive.
     """
+    # Defaulted from the trace so this can run without a caller-supplied pair.
+    # It is the LARGEST and most reliable judge bias in the literature —
+    # Zheng et al. measured Claude-v1 at 23.8% consistency on reordering, GPT-4
+    # at 65% — and our first live run skipped it entirely because it demanded
+    # arguments. A probe that does not run by default does not run.
+    response_a = response_a or trace.final_output
+    response_b = response_b or _weaken(trace.final_output)
     obs = []
     try:
         a1 = _score(judge, criterion, tc, response_a, trace)
@@ -358,6 +440,8 @@ STANDALONE_PROBES: dict[str, Callable[..., ProbeResult]] = {
     "verbosity_bias": probe_verbosity_bias,
     "distractor": probe_distractor,
     "digest_not_scored": probe_digest_not_scored,
+    "leniency": probe_leniency,
+    "position_bias": probe_position_bias,
 }
 
 

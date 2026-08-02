@@ -19,7 +19,8 @@ from agenttic.schema.rubric import Criterion
 from agenttic.schema.scorecard import CriterionScore
 from agenttic.schema.testcase import TestCase
 from agenttic.schema.trace import Span, Trace
-from agenttic.scoring.judge_probes import (DIGEST_OUTPUT, DISTRACTORS, PADDING,
+from agenttic.scoring.judge_probes import (DIGEST_OUTPUT, DISTRACTORS, KNOWN_BAD,
+                                           PADDING, probe_leniency,
                                            mean_magnitude, probe_digest_not_scored,
                                            probe_distractor, probe_position_bias,
                                            probe_reproducibility,
@@ -83,13 +84,16 @@ def _clean(text: str) -> float:
     """A judge with none of the defects the probes look for.
 
     Deliberately NOT `lambda _t: 1.0`. A judge that returns 1.0 for everything
-    scores a SHA-256 digest 1.0 too — it is the degenerate judge
-    `digest_not_scored` exists to catch, and using it as the "clean" baseline
-    would have quietly proven the probes fire on a correct judge. The probes
-    caught it in this very file.
+    scores a SHA-256 digest 1.0 too — the degenerate judge `digest_not_scored`
+    exists to catch.
+    The leniency probe caught the FIRST version of this stub, which returned
+    1.0 for everything except a digest. That judge satisfies every metamorphic
+    invariant in this file while measuring nothing — exactly the
+    scale-compression bias the literature calls the quiet one. A clean judge
+    must actually mark inadequate answers DOWN.
     """
-    if text.startswith("content_sha256:"):
-        return 0.0                     # a hash is not an answer
+    if "paris" not in text.lower():
+        return 0.0                     # a hash, an empty string, or off-topic
     return 1.0                         # otherwise indifferent to length/flattery
 
 
@@ -344,3 +348,78 @@ class TestTheProbeJudgesItself:
         assert s["verdict"] == "INCONCLUSIVE"
         assert s["probes_inconclusive"] == 1
         assert s["inconclusive_probes"] == ["verbosity_bias"]
+
+
+class TestLeniency:
+    """The quiet bias: a judge that never says FAIL.
+
+    Named in the literature as leniency / scale-compression — judges cluster
+    away from the extremes and fail to penalise real quality drops. The
+    consequence is the part that matters: a judge that rarely says fail has
+    near-zero discriminative power NO MATTER how good its agreement looks, so
+    every other probe passing tells you nothing.
+
+    Our own first live run was symptomatic: the judge returned 1.000 for the
+    answer, the padded answer and all three distractors, and every probe
+    reported the invariant holding.
+    """
+
+    def test_it_catches_a_judge_that_scores_everything_top(self, criterion,
+                                                           case, trace):
+        r = probe_leniency(StubJudge(lambda _t: 1.0), criterion, case, trace)
+        assert r.violated
+        assert "near-zero discriminative power" in r.detail
+
+    def test_a_judge_that_marks_bad_answers_down_holds(self, criterion, case,
+                                                       trace):
+        r = probe_leniency(FAIR, criterion, case, trace)
+        assert r.status == "held", r.not_run or r.detail
+        assert "discriminates" in r.detail
+
+    def test_every_known_bad_answer_is_inadequate_under_any_criterion(self):
+        """These must be blunt. A subtle wrong answer tests the judge's
+        knowledge; these test whether it discriminates at all."""
+        assert KNOWN_BAD["empty"] == ""
+        assert all(isinstance(v, str) for v in KNOWN_BAD.values())
+
+    def test_partial_leniency_is_still_a_violation(self, criterion, case, trace):
+        """Marking two of three down is not enough — the one it passes is a
+        false pass on an answer that is inadequate under any criterion."""
+        judge = StubJudge(lambda t: 1.0 if t == "" else 0.0)
+        r = probe_leniency(judge, criterion, case, trace)
+        assert r.violated and "empty" in r.detail
+
+
+class TestPositionBiasRunsByDefault:
+    """The LARGEST documented judge bias, and our first live run skipped it.
+
+    Zheng et al. measured pairwise consistency under reordering at 65.0%
+    (GPT-4), 46.2% (GPT-3.5) and 23.8% (Claude-v1) — a judge flipping its
+    verdict on a third to three-quarters of reorderings. A probe that demands
+    caller-supplied arguments does not run, and a probe that does not run finds
+    nothing.
+    """
+
+    def test_it_is_in_the_default_set(self):
+        from agenttic.scoring.judge_probes import STANDALONE_PROBES
+        assert "position_bias" in STANDALONE_PROBES
+        assert "leniency" in STANDALONE_PROBES
+
+    def test_it_runs_with_no_arguments(self, criterion, case, trace):
+        r = probe_position_bias(FAIR, criterion, case, trace)
+        assert r.status in ("held", "VIOLATED"), r.not_run
+        assert len(r.observations) == 4
+
+    def test_the_derived_pair_is_actually_two_different_answers(self, trace):
+        from agenttic.scoring.judge_probes import _weaken
+        assert _weaken(trace.final_output) != trace.final_output
+        assert _weaken(trace.final_output)
+
+    def test_a_flip_is_still_caught_when_defaulted(self, criterion, case, trace):
+        n = {"i": 0}
+
+        def _fn(_t):
+            n["i"] += 1
+            return 1.0 if n["i"] % 2 == 1 else 0.0
+        r = probe_position_bias(StubJudge(_fn), criterion, case, trace)
+        assert r.violated
