@@ -108,3 +108,10 @@ target-version = "py312"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Keep the tmp_path of FAILING tests only. The default keeps three runs' worth,
+# and this suite writes a SQLite registry per test: /tmp/pytest-of-<user> reached
+# 1.5G and hit the tmpfs quota, at which point ~600 tests reported
+# `sqlite3.OperationalError: disk I/O error` — a full suite that looks
+# catastrophically broken and is in fact only out of disk. Debuggability is kept
+# where it is actually used: a passing test's temp dir is never opened.
+tmp_path_retention_policy = "failed"
