@@ -547,6 +547,90 @@ def calibrate_corpus():
                   "provisional.[/]")
 
 
+judge_app = typer.Typer(help="Evaluate the EVALUATOR: probe the LLM judge for "
+                             "bias, and check whether the calibration corpus "
+                             "can support a claim at all.")
+app.add_typer(judge_app, name="judge")
+
+
+@judge_app.command("corpus")
+def judge_corpus(config: str = "config.yaml"):
+    """Can the calibration corpus support a claim? Offline, no key, no spend.
+
+    Run this BEFORE spending on a calibration run: a corpus that cannot
+    discriminate makes the run worthless however it comes out.
+    """
+    from agenttic.scoring.annotators import ceiling, corpus_health
+    from agenttic.scoring.judge_calibration import load_judge_corpus
+
+    _cfg, _ = _ctx(config)
+    recs = load_judge_corpus()
+    health = corpus_health(recs)
+    table = Table("criterion", "items", "multi-annotated", "distinct labels",
+                  "discriminates", "human ceiling")
+    for cid, h in sorted(health.items()):
+        c = ceiling(recs, cid)
+        table.add_row(cid, str(h["n_items"]), str(h["n_multi_annotated"]),
+                      str(h["distinct_consensus_values"]),
+                      "[green]yes[/]" if h["discriminating"] else "[red]no[/]",
+                      f"{c['ceiling']:.2f}" if c["ceiling"] is not None
+                      else "[yellow]none[/]")
+    console.print(table)
+    blockers = {b for h in health.values() for b in h["blockers"]}
+    for b in sorted(blockers):
+        console.print(f"[yellow]BLOCKER:[/] {b}")
+    if blockers:
+        console.print(
+            "\n[dim]Without a human-human ceiling, judge-vs-human agreement "
+            "cannot separate a wrong judge from an ambiguous item. Add a second "
+            "annotator: a record may carry "
+            "`human_scores: [{annotator, score}, ...]` instead of one "
+            "`human_score`.[/]")
+
+
+@judge_app.command("probe")
+def judge_probe(config: str = "config.yaml",
+                criterion: str = typer.Option("helpfulness", "--criterion")):
+    """Metamorphic bias probes against the live judge. Needs ANTHROPIC_API_KEY.
+
+    Asserts INVARIANTS rather than gold scores — padding must not raise a score,
+    order must not flip a ranking, a content digest must not be graded as an
+    answer — so it needs no human labels. These probes refute; they never prove,
+    and nothing here promotes a criterion out of PROVISIONAL.
+    """
+    from agenttic.scoring.judge_calibration import (judge_calibration_available,
+                                                    load_judge_corpus, _build)
+    from agenttic.scoring.judge import make_judge
+    from agenttic.scoring.judge_probes import run_probes, summarize
+
+    cfg, _ = _ctx(config)
+    if not judge_calibration_available():
+        console.print("[yellow]No ANTHROPIC_API_KEY[/] — the judge is an LLM, so "
+                      "these probes cannot run. Nothing was spent.")
+        raise typer.Exit(code=1)
+
+    rec = next((r for r in load_judge_corpus()
+                if r.get("criterion_id") == criterion), None)
+    if rec is None:
+        console.print(f"[red]No corpus record for criterion {criterion!r}.[/]")
+        raise typer.Exit(code=1)
+
+    crit, trace, case = _build(rec)
+    judge = make_judge(cfg, "agent-under-test")
+    results = run_probes(judge, crit, case, trace)
+    table = Table("probe", "status", "magnitude", "detail")
+    for r in results:
+        colour = {"VIOLATED": "red", "held": "green"}.get(r.status, "yellow")
+        table.add_row(r.probe_id, f"[{colour}]{r.status}[/]",
+                      f"{r.magnitude:.3f}", r.detail[:76])
+    console.print(table)
+    s = summarize(results)
+    console.print(f"\nverdict: [bold]{s['verdict']}[/]")
+    console.print(f"[dim]{s['note']}[/]")
+    if s["violations"]:
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def calibrate_judge(config: str = "config.yaml"):
     """Measure LLM-judge-vs-human agreement on the shipped judge-calibration
