@@ -280,3 +280,122 @@ class TestTheHarnessContract:
 ])
 def test_content_block_text_extraction(content, want):
     assert _text_of(content) == want
+
+
+class TestTheHarnessCanStopIt:
+    """The orphan bug, and the reason `abort_run` exists.
+
+    `runner.run_suite` drives adapters through `asyncio.to_thread` and its
+    timeout cancels the AWAIT, not the thread. The adapter keeps going until its
+    OWN deadline, so a spawned agent outlives the run by
+    (adapter timeout - harness timeout) — 780s under the shipped config. On a
+    real run two agents were still alive ~40 minutes after the suite gave up,
+    still spending against the user's API key.
+    """
+
+    def test_a_child_survives_the_harness_timeout_without_abort_run(self):
+        """The defect itself, pinned.
+
+        Observed INSIDE the running loop on purpose. `asyncio.run()` waits for
+        its default executor on the way out, so checking after it returns hides
+        the window — and hides it in exactly the way that matters, because a real
+        suite keeps running for hours after one case times out.
+        """
+        import asyncio
+        import subprocess as sp
+
+        a = agent_in("hang", timeout_s=30)
+        started: list = []
+        real = sp.Popen
+        sp.Popen = lambda *x, **k: (lambda p: (started.append(p), p)[1])(real(*x, **k))
+        alive_after_giving_up = None
+        try:
+            async def drive():
+                nonlocal alive_after_giving_up
+                try:
+                    await asyncio.wait_for(
+                        asyncio.to_thread(a.run, {"task": "t"}), timeout=2)
+                except asyncio.TimeoutError:
+                    pass
+                await asyncio.sleep(1)          # the suite carries on
+                alive_after_giving_up = [p for p in started if p.poll() is None]
+                a.abort_run()                   # do not leak out of the test
+            asyncio.run(drive())
+            assert alive_after_giving_up, \
+                "the child died on its own; the orphan window has closed elsewhere"
+        finally:
+            sp.Popen = real
+            a.abort_run()
+            for p in started:
+                if p.poll() is None:
+                    p.kill()
+
+    def test_abort_run_kills_the_child_the_harness_gave_up_on(self):
+        import asyncio
+        import subprocess as sp
+        import time
+
+        a = agent_in("hang", timeout_s=30)
+        started: list = []
+        real = sp.Popen
+        sp.Popen = lambda *x, **k: (lambda p: (started.append(p), p)[1])(real(*x, **k))
+        try:
+            dead = None
+
+            async def drive():
+                nonlocal dead
+                try:
+                    await asyncio.wait_for(
+                        asyncio.to_thread(a.run, {"task": "t"}, test_case_id="c1"),
+                        timeout=2)
+                except asyncio.TimeoutError:
+                    a.abort_run("c1")          # what the harness now does
+                await asyncio.sleep(1)
+                dead = started[0].poll() is not None
+            asyncio.run(drive())
+            assert dead, "the agent was left running"
+        finally:
+            sp.Popen = real
+            for p in started:
+                if p.poll() is None:
+                    p.kill()
+
+    def test_the_harness_itself_calls_abort_run_on_timeout(self):
+        """The hook is only worth having if run_suite actually uses it.
+
+        Asserts the CALL, not the after-state: `asyncio.run` waits for its
+        executor on the way out, so by the time run_suite returns the adapter
+        has finished its own deadline and cleaned up regardless. An
+        after-the-fact assertion passes with the harness call deleted — checked,
+        by deleting it.
+        """
+        import asyncio
+
+        from agenttic.harness.runner import HarnessConfig, run_suite
+        from agenttic.schema.testcase import TestCase, TestSuite
+
+        class _Store:
+            def save_trace(self, t): pass
+            def traces(self, *a, **k): return []
+
+        aborted: list = []
+        a = agent_in("hang", timeout_s=8)
+        real_abort = a.abort_run
+
+        def spy(case_id=None):
+            aborted.append(case_id)
+            return real_abort(case_id)
+        a.abort_run = spy                       # type: ignore[method-assign]
+
+        suite = TestSuite(suite_id="s", version=1, approved=True, name="s",
+                          business_context="abort_run coverage")
+        cases = [TestCase(test_id="c1", suite_id="s", version=1,
+                          task_description="d", input={"task": "t"}, expected={},
+                          rubric_id="r")]
+        traces = asyncio.run(run_suite(
+            a, suite, cases, _Store(),
+            HarnessConfig(timeout_seconds=2, max_parallel=1, transport_retries=0),
+            resume=False))
+        assert aborted == ["c1"], \
+            "the harness timed out and never told the adapter to stop"
+        assert traces[0].final_output.startswith("HARNESS_FAILURE")

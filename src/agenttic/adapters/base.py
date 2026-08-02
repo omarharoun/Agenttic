@@ -88,6 +88,29 @@ class AgentAdapter(ABC):
         ``describe()``/``config_hash()`` are read concurrently too, and must stay
         pure."""
 
+    # -- cancellation, optional -------------------------------------------
+
+    def abort_run(self, test_case_id: str | None = None) -> None:
+        """Stop the work started for ``test_case_id``. Default: nothing to do.
+
+        The harness runs adapters via ``asyncio.to_thread`` and its timeout
+        cancels the *await*, not the thread — the worker keeps going until the
+        adapter's own deadline. For an in-process adapter that only wastes a
+        thread. For an adapter that SPAWNED something, the agent keeps running
+        after the harness has stopped caring: measured on a real run, two agents
+        were still alive ~40 minutes later, still spending against the user's
+        API key, on a suite that had already given up on them.
+
+        So ``runner.run_suite`` calls this on timeout. Adapters that own a
+        subprocess override it to kill the child; everyone else inherits a no-op.
+
+        **Must be safe to call from another thread**, and safe to call for a case
+        that already finished or never started — the harness cannot know which.
+        Like ``BlackBoxHTTPAgent``'s rate-limit clock, the bookkeeping this needs
+        is genuinely shared state and must be guarded by a lock rather than
+        avoided (see the ``run`` contract below).
+        """
+
     # -- multi-turn, optional ---------------------------------------------
 
     def converse(self, session: "Session") -> Trace:

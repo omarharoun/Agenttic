@@ -49,6 +49,7 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -140,10 +141,46 @@ class CLISpecAgent(AgentAdapter):
         self.version = version
         self.timeout_s = float(timeout_s)
         self.conversation_id = conversation_id
+        #: Live child processes by case id, so `abort_run` can reach one the
+        #: harness has stopped waiting for. Lock-guarded shared state — the one
+        #: kind the adapter concurrency contract permits.
+        self._live: dict[str, subprocess.Popen] = {}
+        self._live_lock = threading.Lock()
         if str(spec.get("visibility", "")).strip() == "black_box":
             # A spec with no event mapping sees only final text; saying so is
             # what keeps the trace honest about what it can support.
             self.visibility = "black_box"
+
+    # -- cancellation ------------------------------------------------------
+
+    def abort_run(self, test_case_id: str | None = None) -> None:
+        """Kill the child started for this case. Called by the harness on its
+        own timeout, which otherwise abandons this adapter's thread and leaves
+        the agent running for (adapter timeout - harness timeout)."""
+        with self._live_lock:
+            if test_case_id is not None:
+                procs = [self._live.pop(str(test_case_id))] \
+                    if str(test_case_id) in self._live else []
+            else:
+                procs = list(self._live.values())
+                self._live.clear()
+        for p in procs:
+            try:
+                p.kill()
+            except Exception:      # noqa: BLE001 — teardown never breaks a run
+                pass
+
+    def _track(self, case: str | None, proc: subprocess.Popen) -> None:
+        if case is None:
+            return
+        with self._live_lock:
+            self._live[str(case)] = proc
+
+    def _untrack(self, case: str | None) -> None:
+        if case is None:
+            return
+        with self._live_lock:
+            self._live.pop(str(case), None)
 
     # -- identity ----------------------------------------------------------
 
@@ -194,14 +231,27 @@ class CLISpecAgent(AgentAdapter):
             env[str(self.spec["api_key_env"])] = self.api_key
 
         code: int | None = 0
+        proc = None
         try:
-            proc = subprocess.run(argv, capture_output=True, text=True,
-                                  timeout=self.timeout_s, cwd=self.cwd, env=env,
-                                  stdin=subprocess.DEVNULL, check=False)
-            stdout, stderr, code = proc.stdout, proc.stderr, proc.returncode
+            # Popen rather than subprocess.run: run() gives no handle, so a
+            # harness timeout (which abandons this thread rather than cancelling
+            # it) would leave the agent running with nothing able to reach it.
+            # See `abort_run`.
+            proc = subprocess.Popen(argv, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, text=True,
+                                    cwd=self.cwd, env=env,
+                                    stdin=subprocess.DEVNULL)
+            self._track(test_case_id, proc)
+            stdout, stderr = proc.communicate(timeout=self.timeout_s)
+            code = proc.returncode
         except subprocess.TimeoutExpired as exc:
-            stdout = _s(exc.stdout)
-            stderr = _s(exc.stderr)
+            proc.kill()                        # our own deadline: kill it now
+            try:
+                rest_out, rest_err = proc.communicate(timeout=10)
+            except Exception:                  # noqa: BLE001
+                rest_out, rest_err = "", ""
+            stdout = _s(exc.stdout) or _s(rest_out)
+            stderr = _s(exc.stderr) or _s(rest_err)
             code = None
             disclosures.append(
                 f"the run hit this harness's {self.timeout_s:g}s ceiling and was "
@@ -212,6 +262,8 @@ class CLISpecAgent(AgentAdapter):
                                 f"{HARNESS_FAILURE}: could not start {binary!r}: {exc}",
                                 ["the subject was never invoked — this is not "
                                  "an agent result"])
+        finally:
+            self._untrack(test_case_id)
 
         events, lost = self._parse(stdout)
         if lost:

@@ -335,6 +335,12 @@ class ACPAgent(AgentAdapter):
         self.permission_policy = permission_policy or _allow_and_record
         #: ACP auth method id, when the agent demands one. Never guessed.
         self.auth_method = auth_method
+        #: Live connections by case id, so `abort_run` can kill a child the
+        #: harness has stopped waiting for. Genuinely shared across the suite's
+        #: threads and therefore lock-guarded — the one kind of adapter state
+        #: the concurrency contract permits.
+        self._live: dict[str, ACPConnection] = {}
+        self._live_lock = threading.Lock()
         #: Correlation key. When set, every span carries `gen_ai.conversation.id`
         #: so spans this agent exports to OTel can be joined to THIS run.
         self.conversation_id = conversation_id
@@ -375,6 +381,7 @@ class ACPAgent(AgentAdapter):
         conn = None
         try:
             conn = self._connect(mapper)
+            self._track(test_case_id, conn)
             init = self._initialize(conn)
             self._authenticate(conn, init, disclosures)
             session_id = self._new_session(conn)
@@ -399,6 +406,7 @@ class ACPAgent(AgentAdapter):
                         "JSON-RPC and could not be read")
                 mapper.record_client_calls(conn.client_calls)
                 conn.close()        # always: never leave an agent running
+                self._untrack(test_case_id)
 
         spans = mapper.finish(started, final)
         return Trace(
@@ -432,6 +440,7 @@ class ACPAgent(AgentAdapter):
         try:
             mapper = _UpdateMapper(trace_id, self.conversation_id)
             conn = self._connect(mapper)
+            self._track(getattr(session, "session_id", None), conn)
             init = self._initialize(conn)
             self._authenticate(conn, init, disclosures)
             session_id = self._new_session(conn)
@@ -450,8 +459,40 @@ class ACPAgent(AgentAdapter):
         finally:
             if conn is not None:
                 conn.close()
+                self._untrack(getattr(session, "session_id", None))
         return session.to_trace(self, trace_id=trace_id,
                                 final_output=final or None)
+
+    # -- cancellation ------------------------------------------------------
+
+    def abort_run(self, test_case_id: str | None = None) -> None:
+        """Kill the agent started for this case, if it is still running.
+
+        Called by the harness when its own timeout fires. Without it the child
+        outlives the run by (adapter timeout - harness timeout) — 780s under the
+        shipped configuration — still spending against the user's key on a case
+        nobody is waiting for.
+        """
+        with self._live_lock:
+            conns = ([self._live.pop(str(test_case_id))]
+                     if test_case_id is not None and str(test_case_id) in self._live
+                     else list(self._live.values()) if test_case_id is None else [])
+            if test_case_id is None:
+                self._live.clear()
+        for conn in conns:
+            conn.close()
+
+    def _track(self, case: str | None, conn: ACPConnection) -> None:
+        if case is None:
+            return
+        with self._live_lock:
+            self._live[str(case)] = conn
+
+    def _untrack(self, case: str | None) -> None:
+        if case is None:
+            return
+        with self._live_lock:
+            self._live.pop(str(case), None)
 
     # -- pieces ------------------------------------------------------------
 

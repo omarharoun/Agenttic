@@ -8,7 +8,9 @@ Semantics (SPEC.md Step 3):
 * Every run persists a trace to the store — success, timeout, or infra failure.
 
 Note: adapters are sync and executed via ``asyncio.to_thread``; on timeout the
-worker thread is abandoned (acceptable for MVP, documented limitation).
+worker thread is abandoned (acceptable for MVP, documented limitation) — but the
+harness now calls ``adapter.abort_run(test_id)`` first, so an adapter that
+spawned a process can kill it. The thread leaks; the AGENT does not.
 
 **Adapter concurrency contract (load-bearing, not folklore).** ``run_suite``
 holds ONE adapter object and calls ``adapter.run`` from up to ``max_parallel``
@@ -211,6 +213,21 @@ async def run_suite(
                     )
                 except asyncio.TimeoutError:
                     # an agent overrunning its budget is data, not a transport blip
+                    #
+                    # `wait_for` cancels the AWAIT, not the worker thread, so the
+                    # adapter keeps going until its own deadline. For an adapter
+                    # that spawned an agent that means the child outlives the run
+                    # by (adapter timeout - harness timeout) — 780s under the
+                    # shipped config, still spending against the user's key on a
+                    # case nobody is waiting for. Measured: two agents still
+                    # alive ~40 minutes after the suite gave up on them.
+                    #
+                    # The thread is still abandoned (that limitation stands); what
+                    # ends here is the WORK it was doing.
+                    try:
+                        adapter.abort_run(tc.test_id)
+                    except Exception:  # noqa: BLE001 — cleanup never breaks a run
+                        pass
                     trace = _failure_trace(
                         adapter, tc, "timeout",
                         f"run exceeded {config.timeout_seconds}s",

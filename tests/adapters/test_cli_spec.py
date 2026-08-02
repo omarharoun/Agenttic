@@ -61,6 +61,41 @@ def _map(agent: CLISpecAgent, raw: str):
     return spans, final, lost
 
 
+class _FakePopen:
+    """Stands in for the child process.
+
+    The adapter uses Popen (not subprocess.run) precisely so a harness timeout
+    can still reach the child — see `abort_run`. These doubles follow that.
+    """
+
+    def __init__(self, stdout="", stderr="", returncode=0, hang=False):
+        self._out, self._err = stdout, stderr
+        self.returncode = returncode
+        self._hang = hang
+        self.killed = False
+
+    def communicate(self, timeout=None):
+        if self._hang:
+            self._hang = False          # a kill() then drains what there is
+            raise subprocess.TimeoutExpired(cmd="x", timeout=timeout,
+                                            output=self._out)
+        return self._out, self._err
+
+    def kill(self):
+        self.killed = True
+
+    def poll(self):
+        return self.returncode
+
+
+def _popen_returning(monkeypatch, **kw):
+    """Patch Popen to yield one fake child; returns it for inspection."""
+    fake = _FakePopen(**kw)
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: fake)
+    monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/openhands")
+    return fake
+
+
 class TestTheShippedSpecDrivesTheRealAgent:
     def test_the_config_spec_maps_a_real_run(self, agent):
         """No Python was written for this agent. The spec did all of it."""
@@ -188,24 +223,20 @@ class TestAFailureThatIsNotTheAgents:
         said = " ".join((trace.spans[0].attributes or {}).get("disclosures") or [])
         assert "not an agent result" in said
 
-    def test_a_timeout_keeps_the_partial_evidence(self, agent, monkeypatch):
-        def _boom(*a, **k):
-            raise subprocess.TimeoutExpired(
-                cmd="x", timeout=1, output=REAL_RUN.read_text(encoding="utf-8"))
-        monkeypatch.setattr(subprocess, "run", _boom)
-        monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/openhands")
+    def test_a_timeout_keeps_the_partial_evidence_and_kills_the_child(
+            self, agent, monkeypatch):
+        fake = _popen_returning(
+            monkeypatch, stdout=REAL_RUN.read_text(encoding="utf-8"), hang=True)
         trace = agent.run({"task": "x"})
+        assert fake.killed, "the agent was left running after our own deadline"
         assert [s for s in trace.spans if s.kind == "tool_call"], \
             "the partial events were discarded"
         assert any("NOT necessarily finished" in d
                    for d in _disclosures(trace))
 
     def test_a_nonzero_exit_is_disclosed(self, agent, monkeypatch):
-        class _P:
-            stdout = REAL_RUN.read_text(encoding="utf-8")
-            stderr, returncode = "boom", 3
-        monkeypatch.setattr(subprocess, "run", lambda *a, **k: _P())
-        monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/openhands")
+        _popen_returning(monkeypatch, stdout=REAL_RUN.read_text(encoding="utf-8"),
+                         stderr="boom", returncode=3)
         trace = agent.run({"task": "x"})
         assert any(s.name == "process_exit" for s in trace.spans)
         assert any("exited non-zero" in d for d in _disclosures(trace))
@@ -214,11 +245,9 @@ class TestAFailureThatIsNotTheAgents:
         """`Trace` has no `attributes` field and pydantic drops unknown kwargs,
         so `Trace(..., attributes={...})` constructs cleanly and discards every
         word of it. A previous adapter shipped exactly that."""
-        class _P:
-            stdout = "{oops\n" + REAL_RUN.read_text(encoding="utf-8")
-            stderr, returncode = "e", 9
-        monkeypatch.setattr(subprocess, "run", lambda *a, **k: _P())
-        monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/openhands")
+        _popen_returning(monkeypatch,
+                         stdout="{oops\n" + REAL_RUN.read_text(encoding="utf-8"),
+                         stderr="e", returncode=9)
         said = _disclosures(agent.run({"task": "x"}))
         assert any("lost" in d or "could not be parsed" in d for d in said)
         assert any("exited non-zero" in d for d in said)
@@ -238,11 +267,7 @@ class TestTheHarnessContract:
         assert "sk-ant-REAL-SECRET" not in json.dumps(a.describe())
 
     def test_an_unpinned_model_is_disclosed_not_assumed(self, agent, monkeypatch):
-        class _P:
-            stdout = REAL_RUN.read_text(encoding="utf-8")
-            stderr, returncode = "", 0
-        monkeypatch.setattr(subprocess, "run", lambda *a, **k: _P())
-        monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/openhands")
+        _popen_returning(monkeypatch, stdout=REAL_RUN.read_text(encoding="utf-8"))
         assert any("cannot say which model produced it" in d
                    for d in _disclosures(agent.run({"task": "x"})))
 
@@ -254,10 +279,8 @@ class TestTheHarnessContract:
 
         def _capture(argv, **kw):
             seen["argv"], seen["env"] = argv, kw.get("env") or {}
-            class _P:
-                stdout, stderr, returncode = "", "", 0
-            return _P()
-        monkeypatch.setattr(subprocess, "run", _capture)
+            return _FakePopen()
+        monkeypatch.setattr(subprocess, "Popen", _capture)
         monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/openhands")
         CLISpecAgent("x", spec, model="anthropic/claude-opus-5").run({"task": "t"})
         assert "--override-with-envs" in seen["argv"]
@@ -269,21 +292,19 @@ class TestTheHarnessContract:
 
         def _capture(argv, **kw):
             seen["argv"] = argv
-            class _P:
-                stdout, stderr, returncode = "", "", 0
-            return _P()
-        monkeypatch.setattr(subprocess, "run", _capture)
+            return _FakePopen()
+        monkeypatch.setattr(subprocess, "Popen", _capture)
         monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/openhands")
         CLISpecAgent("x", spec).run({"task": "fix the bug"})
         assert "fix the bug" in seen["argv"]
 
     def test_run_writes_no_state_to_self(self, agent, monkeypatch):
-        """The harness holds ONE adapter and enters it from many threads."""
-        class _P:
-            stdout = REAL_RUN.read_text(encoding="utf-8")
-            stderr, returncode = "", 0
-        monkeypatch.setattr(subprocess, "run", lambda *a, **k: _P())
-        monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/openhands")
+        """The harness holds ONE adapter and enters it from many threads.
+
+        `_live` is the exception the contract allows: lock-guarded shared state,
+        needed so `abort_run` can reach a child. It must come back EMPTY.
+        """
+        _popen_returning(monkeypatch, stdout=REAL_RUN.read_text(encoding="utf-8"))
         before = dict(vars(agent))
         agent.run({"task": "one"}, test_case_id="a")
         agent.run({"task": "two"}, test_case_id="b")
