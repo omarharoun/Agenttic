@@ -340,3 +340,90 @@ def _disclosures(trace) -> list[str]:
     for s in trace.spans:
         out += (s.attributes or {}).get("disclosures") or []
     return out
+
+
+class TestTrialIsolation:
+    """Trials of one case must not share a working directory.
+
+    pass^k is arithmetic over trials assumed INDEPENDENT. Our own pass^2 run
+    gave both trials a single astropy checkout, so trial 2 began on trial 1's
+    edits — exactly the "unnecessary shared state between runs causes correlated
+    failures" hazard. Two runs of the same case now get two directories.
+    """
+
+    def test_each_run_gets_its_own_directory(self, spec, monkeypatch, tmp_path):
+        seen = []
+
+        def _capture(argv, **kw):
+            seen.append(kw.get("cwd"))
+            return _FakePopen()
+        monkeypatch.setattr(subprocess, "Popen", _capture)
+        monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/openhands")
+
+        a = CLISpecAgent("x", spec, workspace_root=str(tmp_path))
+        a.run({"task": "one"}, test_case_id="c1")
+        a.run({"task": "two"}, test_case_id="c1")      # same case, next trial
+        assert len(set(seen)) == 2, "two trials shared one working directory"
+        assert all(p and str(tmp_path) in p for p in seen)
+
+    def test_a_template_is_copied_into_each_workspace(self, spec, monkeypatch,
+                                                      tmp_path):
+        """A pristine checkout is copied per trial, so isolation does not mean
+        re-cloning inside the timed run."""
+        template = tmp_path / "pristine"
+        template.mkdir()
+        (template / "calc.py").write_text("def add(a, b): return a - b\n")
+        seen = []
+
+        def _capture(argv, **kw):
+            seen.append(kw.get("cwd"))
+            return _FakePopen()
+        monkeypatch.setattr(subprocess, "Popen", _capture)
+        monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/openhands")
+
+        a = CLISpecAgent("x", spec, workspace_root=str(tmp_path / "runs"),
+                         workspace_template=str(template))
+        a.run({"task": "fix it"}, test_case_id="c1")
+        work = Path(seen[0])
+        assert (work / "calc.py").read_text().startswith("def add")
+
+    def test_one_trials_edits_cannot_reach_the_next(self, spec, monkeypatch,
+                                                    tmp_path):
+        """The property that actually matters, demonstrated end to end."""
+        template = tmp_path / "pristine"
+        template.mkdir()
+        (template / "calc.py").write_text("original\n")
+        seen = []
+
+        def _capture(argv, **kw):
+            cwd = Path(kw.get("cwd"))
+            seen.append(cwd)
+            (cwd / "calc.py").write_text("edited by this trial\n")   # the agent works
+            return _FakePopen()
+        monkeypatch.setattr(subprocess, "Popen", _capture)
+        monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/openhands")
+
+        a = CLISpecAgent("x", spec, workspace_root=str(tmp_path / "runs"),
+                         workspace_template=str(template))
+        a.run({"task": "t"}, test_case_id="c1")
+        a.run({"task": "t"}, test_case_id="c1")
+        assert seen[0] != seen[1]
+        assert (seen[1] / "calc.py").read_text() == "edited by this trial\n"
+        # trial 2 started from the template, not from trial 1's edit
+        assert (template / "calc.py").read_text() == "original\n"
+
+    def test_sharing_a_directory_is_DISCLOSED_when_isolation_is_off(
+            self, spec, monkeypatch, tmp_path):
+        """Isolation is opt-in, so the un-isolated case must say so on the
+        trace: a pass^k figure over runs that shared a directory is not the
+        figure it appears to be."""
+        _popen_returning(monkeypatch, stdout=REAL_RUN.read_text(encoding="utf-8"))
+        a = CLISpecAgent("x", spec, cwd=str(tmp_path))
+        said = _disclosures(a.run({"task": "t"}, test_case_id="c1"))
+        assert any("not independent" in d for d in said)
+
+    def test_no_cwd_and_no_isolation_needs_no_disclosure(self, spec, monkeypatch):
+        """An agent that touches no filesystem has nothing to share."""
+        _popen_returning(monkeypatch, stdout=REAL_RUN.read_text(encoding="utf-8"))
+        said = _disclosures(CLISpecAgent("x", spec).run({"task": "t"}))
+        assert not any("not independent" in d for d in said)

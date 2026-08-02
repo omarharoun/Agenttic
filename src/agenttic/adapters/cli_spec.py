@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import json
 import os
+import pathlib
 import re
 import shutil
 import subprocess
@@ -128,7 +129,8 @@ class CLISpecAgent(AgentAdapter):
 
     def __init__(self, agent_id: str, spec: dict, *, model: str = "",
                  api_key: str = "", cwd: str | None = None, version: str = "",
-                 timeout_s: float = 900.0, conversation_id: str = "") -> None:
+                 timeout_s: float = 900.0, conversation_id: str = "",
+                 workspace_root: str = "", workspace_template: str = "") -> None:
         if not spec.get("command"):
             raise ValueError(
                 f"agent spec {agent_id!r} has no `command`: a CLI adapter needs "
@@ -141,6 +143,16 @@ class CLISpecAgent(AgentAdapter):
         self.version = version
         self.timeout_s = float(timeout_s)
         self.conversation_id = conversation_id
+        #: A FRESH working directory per run when set. Trials of one case are
+        #: only independent if they do not share state: our own pass^2 run gave
+        #: both trials one astropy checkout, so trial 2 started on trial 1's
+        #: edits — and pass^k is arithmetic over trials assumed independent.
+        #: Anthropic's guidance names the failure directly: unnecessary shared
+        #: state between runs causes correlated failures.
+        self.workspace_root = workspace_root
+        #: Copied into each fresh workspace — a pristine repo checkout, say — so
+        #: isolation does not mean re-cloning inside the timed run.
+        self.workspace_template = workspace_template
         #: Live child processes by case id, so `abort_run` can reach one the
         #: harness has stopped waiting for. Lock-guarded shared state — the one
         #: kind the adapter concurrency contract permits.
@@ -208,6 +220,7 @@ class CLISpecAgent(AgentAdapter):
         task = task_text(test_input)
         disclosures: list[str] = []
 
+        cwd, workspace_note = self._workspace()
         argv = [self._render(a, task) for a in self.spec["command"]]
         binary = argv[0]
         if shutil.which(binary) is None and "/" not in binary:
@@ -239,7 +252,7 @@ class CLISpecAgent(AgentAdapter):
             # See `abort_run`.
             proc = subprocess.Popen(argv, stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE, text=True,
-                                    cwd=self.cwd, env=env,
+                                    cwd=cwd, env=env,
                                     stdin=subprocess.DEVNULL)
             self._track(test_case_id, proc)
             stdout, stderr = proc.communicate(timeout=self.timeout_s)
@@ -288,7 +301,11 @@ class CLISpecAgent(AgentAdapter):
                                         "recorded_by": "cli_spec",
                                         "n_events": len(events),
                                         "lost_events": lost, "exit_code": code,
+                                        "workspace": cwd or "",
+                                        "workspace_isolated": bool(self.workspace_root),
                                         "subject_version": self.version})
+        if workspace_note:
+            disclosures.append(workspace_note)
         return Trace(trace_id=trace_id, agent_id=self.agent_id,
                      agent_config_hash=self.config_hash(),
                      test_case_id=test_case_id, visibility=self.visibility,
@@ -296,6 +313,29 @@ class CLISpecAgent(AgentAdapter):
                      total_steps=sum(1 for s in spans if s.kind == "tool_call"))
 
     # -- pieces ------------------------------------------------------------
+
+    def _workspace(self) -> tuple[str | None, str]:
+        """A fresh directory for this run, or the shared cwd with a disclosure.
+
+        Isolation is opt-in via ``workspace_root`` because most agents do not
+        touch a filesystem. When it is OFF and a cwd IS set, the trace SAYS so —
+        a pass^k figure computed over runs that shared a directory is not the
+        figure it appears to be, and the reader has to be able to see that.
+        """
+        if not self.workspace_root:
+            note = ("" if not self.cwd else
+                    "trials of this case shared one working directory, so they "
+                    "were not independent; treat any pass^k figure over them "
+                    "with that caveat")
+            return self.cwd, note
+        import tempfile
+        root = pathlib.Path(self.workspace_root)
+        root.mkdir(parents=True, exist_ok=True)
+        ws = pathlib.Path(tempfile.mkdtemp(prefix="run-", dir=str(root)))
+        if self.workspace_template:
+            shutil.copytree(self.workspace_template, ws / "work", symlinks=True)
+            return str(ws / "work"), ""
+        return str(ws), ""
 
     def _render(self, value: Any, task: str) -> str:
         if not isinstance(value, str):
