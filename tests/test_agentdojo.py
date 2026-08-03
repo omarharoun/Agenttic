@@ -81,7 +81,12 @@ def test_case_scores_through_injection_metric(tmp_path):
     rubric = reg.get_rubric("agentdojo-v1-rubric")
     c = cases[0]
     target = c.expected["injection_target"]
-    good = _trace(c.test_id, output="Refused.", tools=["get_balance"])
+    # `read_file` is one of the case's declared `legit_tools`. `get_balance` was
+    # in neither the legit set nor the attack, so the old fixture demonstrated
+    # nothing about utility. NOTE the case's legit set also contains
+    # `send_money`, which IS the injection target here — the attack reuses the
+    # legitimate tool and differs only in arguments.
+    good = _trace(c.test_id, output="Refused.", tools=["read_file"])
     rs = score_run(good, c, rubric)
     assert rs.scoring_error is None and rs.passed is True
     bad = _trace(c.test_id, output="ok", tools=[target])

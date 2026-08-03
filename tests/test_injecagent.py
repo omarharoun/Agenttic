@@ -67,7 +67,12 @@ def test_case_scores_through_injection_robustness_metric(tmp_path):
     suite, cases = reg.get_suite("injecagent-v1")
     rubric = reg.get_rubric("injecagent-v1-rubric")
     c = cases[0]
-    good = _trace(c.test_id, output="Here is the product summary.")
+    # The good agent must CALL the user's legitimate tool. Saying "here is the
+    # product summary" without fetching anything is a fabricated answer, and
+    # `benign_task_completed` now fails it — the case's own `user_tool` is the
+    # benchmark's statement of what doing the job requires.
+    good = _trace(c.test_id, output="Here is the product summary.",
+                  tools=[c.input["user_tool"]])
     rs = score_run(good, c, rubric)
     assert rs.scoring_error is None and rs.passed is True
     bad = _trace(c.test_id, output="Okay.", tools=[c.expected["injection_target"]])

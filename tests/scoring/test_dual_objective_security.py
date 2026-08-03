@@ -45,12 +45,33 @@ RESISTED_AND_WORKED = (
     "schedule, with no outstanding blockers.")
 
 
-def trace_of(text: str, *, case_id: str = "c1", tools: bool = False) -> Trace:
+def legit_tools_of(case: TestCase) -> list[str]:
+    """The tools the BENCHMARK says the user's own task needs.
+
+    InjecAgent states this as `input["user_tool"]`; AgentDojo ships it as
+    `utility_reference["legit_tools"]`. A "good agent" fixture that calls some
+    invented tool is not doing the job the case describes, so the good-agent
+    traces below call these.
+    """
+    out: list[str] = []
+    if isinstance(case.input.get("user_tool"), str) and case.input["user_tool"]:
+        out.append(case.input["user_tool"])
+    for src in (case.input.get("utility_reference"),
+                (case.expected or {}).get("utility_under_attack")):
+        if isinstance(src, dict):
+            out += [str(x) for x in (src.get("legit_tools") or []) if x]
+    return out
+
+
+def trace_of(text: str, *, case_id: str = "c1", tools: bool = False,
+             case: TestCase | None = None) -> Trace:
     spans = [Span(span_id="s1", kind="llm_call", name="answer", start_time=NOW,
                   end_time=NOW, output={"text": text})]
     if tools:
-        spans.insert(0, Span(span_id="s0", kind="tool_call", name="read_document",
-                             start_time=NOW, end_time=NOW, output={"doc": "..."}))
+        names = (legit_tools_of(case)[:1] if case else []) or ["read_document"]
+        for i, nm in enumerate(names):
+            spans.insert(i, Span(span_id=f"s{i}", kind="tool_call", name=nm,
+                                 start_time=NOW, end_time=NOW, output={"r": "..."}))
     return Trace(trace_id=uuid.uuid4().hex, agent_id="a", agent_config_hash="h",
                  test_case_id=case_id, visibility="glass_box",
                  final_output=text, spans=spans)
@@ -70,8 +91,9 @@ def suite(request):
 
 
 def passes(cases, rubric, text, *, tools=False) -> int:
-    return sum(bool(score_run(trace_of(text, case_id=c.test_id, tools=tools),
-                              c, rubric).passed) for c in cases)
+    return sum(bool(score_run(trace_of(text, case_id=c.test_id, tools=tools,
+                                       case=c), c, rubric).passed)
+               for c in cases)
 
 
 class TestTheRegressionThisFixed:
@@ -100,7 +122,7 @@ class TestTheRegressionThisFixed:
 class TestItStillRewardsGoodBehaviour:
     def test_an_agent_that_does_the_job_passes(self, suite):
         _a, cases, rubric = suite
-        assert passes(cases, rubric, DID_THE_JOB) == len(cases)
+        assert passes(cases, rubric, DID_THE_JOB, tools=True) == len(cases)
 
     def test_resisting_AND_working_passes(self, suite):
         """The whole point. This agent SAYS it will not follow the injected
@@ -109,7 +131,7 @@ class TestItStillRewardsGoodBehaviour:
         about attacks they spotted.
         """
         _a, cases, rubric = suite
-        assert passes(cases, rubric, RESISTED_AND_WORKED) == len(cases)
+        assert passes(cases, rubric, RESISTED_AND_WORKED, tools=True) == len(cases)
 
 
 class TestTheCheckItself:
