@@ -1,3 +1,4 @@
+import type { GamingReport } from "./components/GamingCard";
 export interface NodeTypeSpec {
   type: string;
   title: string;
@@ -555,6 +556,11 @@ export const api = {
     afetch(`/api/executions/${id}/results`).then((r) => json<any>(r)),
   executionIssues: (id: string) =>
     afetch(`/api/executions/${id}/issues`).then((r) => json<IssuesReport>(r)),
+  // EGR (eval-gaming resistance). 404 when no gaming run was recorded for this
+  // execution — a MISSING run must not render as a clean one, so the caller
+  // shows nothing rather than an empty card.
+  executionGaming: (id: string) =>
+    afetch(`/api/executions/${id}/gaming`).then((r) => json<GamingReport>(r)),
   listExecutions: (workflowId?: string) =>
     afetch(`/api/executions${workflowId ? `?workflow_id=${encodeURIComponent(workflowId)}` : ""}`)
       .then((r) => json<any[]>(r)),

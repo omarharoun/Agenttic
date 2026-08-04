@@ -3,6 +3,7 @@ import { api } from "../api";
 import { ReplayCanvas } from "../canvas/ReplayCanvas";
 import { DataView, EmptyState, PageHeader, RawToggle, Skeleton } from "../components/ui";
 import { IssuesReport } from "../components/IssuesReport";
+import { GamingCardFor } from "../components/GamingCard";
 import { ResultsPanel } from "../panels/ResultsPanel";
 import { useFlowStore } from "../store";
 import { VerificationStrip } from "../verification";
@@ -100,6 +101,10 @@ export function ExecutionsPage() {
                   <VerificationStrip key={sc.scorecard_id} sc={sc} />
                 ))}
                 <IssuesReport executionId={detail.execution_id} />
+                {/* EGR: renders only when this execution HAS a recorded gaming
+                    run. Sits below the issues because it is provisional and
+                    weight-0 — diagnostic, deliberately outside the Index. */}
+                <GamingCardFor executionId={detail.execution_id} />
                 <details className="results-raw" style={{ marginTop: 16 }}>
                   <summary>Full scoreboard — every case, pass or fail</summary>
                   <ResultsPanel results={results} />

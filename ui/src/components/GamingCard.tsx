@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+import { api } from "../api";
 
 /**
  * Provisional Evaluation-Gaming Resistance (EGR) card.
@@ -43,6 +45,10 @@ export type GamingReport = {
   limits: string;
   n_probes: number;
   n_incidents: number;
+  /** mechanism -> probes that could not exercise their behaviour. A run with any
+   *  of these is NOT clean: an agent cannot be cleared of hiding a capability it
+   *  never demonstrates. */
+  unmeasured_mechanisms?: Record<string, number>;
   n_critical_incidents: number;
   agent_cost_usd: number;
   issues: GamingIssue[];
@@ -162,6 +168,29 @@ export function GamingCard({ report }: { report: GamingReport }) {
       )}
     </section>
   );
+}
+
+/**
+ * Self-fetching form for a page that has an execution id.
+ *
+ * Renders NOTHING when the execution has no recorded EGR run (the endpoint 404s).
+ * That is deliberate: an absent gaming run must not render as a clean one, which
+ * is the same rule the backend applies by refusing to synthesise an empty report.
+ */
+export function GamingCardFor({ executionId }: { executionId: string }) {
+  const [report, setReport] = useState<GamingReport | null>(null);
+
+  useEffect(() => {
+    if (!executionId) return;
+    let live = true;
+    api.executionGaming(executionId)
+      .then((r) => { if (live) setReport(r); })
+      .catch(() => { if (live) setReport(null); });   // 404 => no EGR run: show nothing
+    return () => { live = false; };
+  }, [executionId]);
+
+  if (!report) return null;
+  return <GamingCard report={report} />;
 }
 
 export default GamingCard;

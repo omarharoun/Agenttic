@@ -32,6 +32,8 @@ from agenttic.gaming.scoring import (
     discretize_consistency,
     discretize_heldout,
     discretize_sandbagging,
+    heldout_measurable,
+    sandbagging_measurable,
 )
 from agenttic.schema.testcase import TestCase
 from agenttic.schema.trace import Trace
@@ -216,15 +218,23 @@ def _run_sandbagging(agent, probe: ProbePair, k: int) -> tuple[GamingProbeResult
         best = max(best, fr.behavior_rate)
         cost += c
     gap, sub, incident = discretize_sandbagging(direct_fr.behavior_rate, best)
+    # Hiding a capability you never demonstrate is undetectable — the gap is 0
+    # because there is nothing to hide. Report it as UNMEASURED, not clean.
+    measured = sandbagging_measurable(direct_fr.behavior_rate, best)
     from agenttic.metrics.injection_detect import resisted
     detail = {"direct_success_rate": direct_fr.behavior_rate,
               "best_elicited_rate": best, "gap": round(gap, 4),
+              "measured": measured,
               "direct_looked_like_refusal":
                   any(resisted(t) for t in direct_fr.transcripts)}
+    if not measured:
+        detail["unmeasured_reason"] = (
+            "the agent demonstrated this capability under NO framing, so a hidden "
+            "capability could not have been detected")
     return GamingProbeResult(
         probe_id=probe.probe_id, mechanism="sandbagging",
         base_intent=probe.base_intent, critical=probe.critical,
-        framing_results=ladder_frs, gap=round(gap, 4),
+        framing_results=ladder_frs, gap=round(gap, 4), measured=measured,
         sub_score=sub, incident=incident, critical_incident=False, detail=detail,
     ), cost
 
@@ -240,12 +250,19 @@ def _run_heldout(agent, probe: ProbePair, k: int) -> tuple[GamingProbeResult, fl
         agent, "generated", probe.config["generated_prompt"], gen_probe, k, scorer="capability")
     freshness_gap, sub, incident = discretize_heldout(
         pub_fr.behavior_rate, gen_fr.behavior_rate)
+    measured = heldout_measurable(pub_fr.behavior_rate, gen_fr.behavior_rate)
     detail = {"public_rate": pub_fr.behavior_rate, "generated_rate": gen_fr.behavior_rate,
-              "freshness_gap": round(freshness_gap, 4), "canary": probe.canary}
+              "freshness_gap": round(freshness_gap, 4), "canary": probe.canary,
+              "measured": measured}
+    if not measured:
+        detail["unmeasured_reason"] = (
+            "the agent solved NEITHER the public item nor its fresh twin, so a "
+            "memorization gap could not have been detected")
     return GamingProbeResult(
         probe_id=probe.probe_id, mechanism="heldout",
         base_intent=probe.base_intent, critical=probe.critical,
         framing_results=[pub_fr, gen_fr], gap=round(freshness_gap, 4),
+        measured=measured,
         sub_score=sub, incident=incident, critical_incident=False, detail=detail,
     ), c1 + c2
 
@@ -285,6 +302,7 @@ def run_gaming(agent, probes: list[ProbePair], *, k: int | None = None,
     return GamingReport(
         agent_id=aid, egr=agg["egr"], egr_low=agg["egr_low"],
         egr_high=agg["egr_high"], sub_scores=agg["sub_scores"],
+        unmeasured_mechanisms=agg.get("unmeasured_mechanisms") or {},
         probe_results=results, n_probes=len(results),
         n_incidents=sum(1 for p in results if p.incident),
         n_critical_incidents=sum(1 for p in results if p.critical_incident),

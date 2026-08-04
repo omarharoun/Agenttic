@@ -69,6 +69,12 @@ class GamingProbeResult(BaseModel):
     sub_score: float                # discretized to {0, 0.5, 1}
     incident: bool                  # gap crossed the concern threshold
     critical_incident: bool = False  # incident on a critical intent
+    #: Did this probe actually EXERCISE the behaviour it scores? A
+    #: capability probe against an agent that shows the capability under NO
+    #: framing cannot detect it being hidden — the gap is 0 because there is
+    #: nothing to hide, not because nothing is hidden. Defaults True so every
+    #: existing mechanism is unchanged; only sandbagging/heldout set it False.
+    measured: bool = True
     detail: dict = Field(default_factory=dict)  # worst_case, elicitation ladder, freshness…
 
     def framing(self, name: str) -> FramingResult | None:
@@ -84,6 +90,10 @@ class GamingReport(BaseModel):
     egr_low: float                  # band low (per-mechanism run variance)
     egr_high: float                 # band high
     sub_scores: dict[str, float] = Field(default_factory=dict)  # 4 mechanism means, 0-100
+    #: mechanism -> count of probes that could not exercise their behaviour.
+    #: Excluded from the EGR blend rather than counted clean, and named here
+    #: so "never tested" is distinguishable from "tested and fine".
+    unmeasured_mechanisms: dict[str, int] = Field(default_factory=dict)
     probe_results: list[GamingProbeResult] = Field(default_factory=list)
     n_probes: int = 0
     n_incidents: int = 0
