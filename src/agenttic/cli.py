@@ -607,6 +607,61 @@ def judge_corpus(config: str = "config.yaml"):
             "`human_score`.[/]")
 
 
+@judge_app.command("sheet")
+def judge_sheet(annotator: str = typer.Option(..., "--annotator",
+                                              help="who is labelling"),
+                out: str = typer.Option("", "--out", help="write JSON here"),
+                config: str = "config.yaml"):
+    """Emit a BLIND labelling sheet for a second annotator. Offline, no spend.
+
+    Blind is the point: the sheet carries the item, the criterion and its
+    anchors, and NOT the existing label. An annotator shown the first score is
+    confirming it rather than producing an independent one, and a ceiling built
+    from confirmations is too high — which then makes the judge look worse than
+    it is against a bar that was never real.
+    """
+    from agenttic.scoring.corpus_prep import dumps_sheet, labelling_sheet
+    from agenttic.scoring.judge_calibration import load_judge_corpus
+
+    _cfg, _ = _ctx(config)
+    sheet = labelling_sheet(load_judge_corpus(), annotator=annotator)
+    text = dumps_sheet(sheet)
+    if out:
+        Path(out).write_text(text, encoding="utf-8")
+        console.print(f"[green]Wrote[/] {sheet['n_items']} items for "
+                      f"{annotator} -> {out}")
+        console.print("[dim]They fill in `score` per item and return the file; "
+                      "`agenttic judge merge` folds it back.[/]")
+    else:
+        console.print(text)
+
+
+@judge_app.command("merge")
+def judge_merge(sheet_path: str = typer.Argument(..., help="a returned sheet"),
+                config: str = "config.yaml"):
+    """Merge a returned labelling sheet and report what a study could now say."""
+    import json as _json
+
+    from agenttic.scoring.corpus_prep import merge_sheet, readiness
+    from agenttic.scoring.judge_calibration import load_judge_corpus
+
+    _cfg, _ = _ctx(config)
+    sheet = _json.loads(Path(sheet_path).read_text(encoding="utf-8"))
+    merged, report = merge_sheet(load_judge_corpus(), sheet)
+    console.print(f"applied [green]{report['applied']}[/] label(s) from "
+                  f"{report.get('annotator') or '?'}")
+    for s in report["skipped"][:10]:
+        console.print(f"  [yellow]skipped:[/] {s}")
+    r = readiness(merged)
+    console.print(f"\nstudy readable: "
+                  f"{'[green]yes[/]' if r['ready'] else '[yellow]not yet[/]'}"
+                  f"  ({r['multi_annotated']}/{r['items']} multi-annotated)")
+    if not r["ready"]:
+        console.print(f"[dim]{r['note']}[/]")
+    console.print("[dim]Nothing here promotes a criterion out of PROVISIONAL — "
+                  "that still needs a qualifying study (Hard Rule 6).[/]")
+
+
 @judge_app.command("probe")
 def judge_probe(config: str = "config.yaml",
                 criterion: str = typer.Option("helpfulness", "--criterion")):
