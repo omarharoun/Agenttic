@@ -212,3 +212,137 @@ def corpus_health(records: list[dict]) -> dict:
             ],
         }
     return out
+
+
+# --------------------------------------------------------------------------- #
+# Classifier metrics — what both eval sources prescribe for validating a judge.
+# --------------------------------------------------------------------------- #
+#
+# "Validate the judge against a human-labeled gold set the same way you would
+# validate any classifier (true positive rate, true negative rate, Cohen's
+# kappa)", with the gate stated as kappa >= ~0.6 AND a TNR high enough that it
+# actually catches failures.
+#
+# We report Krippendorff's alpha (three-point) and exact-match (binary). Those
+# are not wrong, but they share a blind spot the sources name explicitly: on a
+# CLASS-IMBALANCED sample, raw agreement looks excellent for a judge that simply
+# says PASS to everything. Kappa corrects for agreement expected by chance, and
+# per-class recall shows WHICH class the judge is failing — the one thing a
+# single agreement number cannot show.
+#
+# Reported ALONGSIDE the existing figures, never replacing them: changing the
+# calibration metric would move a published number, and that is a decision to
+# take deliberately rather than as a side effect of adding one.
+
+
+def _binarise(score: float, *, threshold: float = 0.5) -> bool:
+    """PASS iff at or above the threshold. Three-point 0.5 counts as PASS."""
+    return score >= threshold
+
+
+def confusion(pairs: list[tuple[float, float]], *,
+              threshold: float = 0.5) -> dict:
+    """Judge vs human as a 2x2, the shape every classifier metric needs.
+
+    ``pairs`` is (judge_score, human_score), matching `calibration.py`.
+    """
+    tp = fp = tn = fn = 0
+    for judge, human in pairs:
+        j, h = _binarise(judge, threshold=threshold), _binarise(human, threshold=threshold)
+        if h and j:
+            tp += 1
+        elif h and not j:
+            fn += 1
+        elif not h and j:
+            fp += 1
+        else:
+            tn += 1
+    return {"tp": tp, "fp": fp, "tn": tn, "fn": fn, "n": len(pairs)}
+
+
+def cohens_kappa(pairs: list[tuple[float, float]], *,
+                 threshold: float = 0.5) -> float | None:
+    """Agreement corrected for agreement expected by chance.
+
+    ``None`` when it is undefined — fewer than two items, or one rater used a
+    single class throughout, where chance agreement is 1.0 and kappa is 0/0.
+    That case is NOT reported as 0.0: "undefined" and "no better than chance"
+    are different findings, and a judge that says PASS to everything on an
+    all-PASS sample produces exactly it.
+    """
+    n = len(pairs)
+    if n < 2:
+        return None
+    c = confusion(pairs, threshold=threshold)
+    observed = (c["tp"] + c["tn"]) / n
+    judge_pass = (c["tp"] + c["fp"]) / n
+    human_pass = (c["tp"] + c["fn"]) / n
+    expected = judge_pass * human_pass + (1 - judge_pass) * (1 - human_pass)
+    if abs(1.0 - expected) < 1e-12:
+        return None
+    return (observed - expected) / (1 - expected)
+
+
+def per_class_recall(pairs: list[tuple[float, float]], *,
+                     threshold: float = 0.5) -> dict:
+    """TPR and TNR — recall on each class separately.
+
+    TNR is the one that matters most here and the one a single agreement figure
+    hides: it is the fraction of genuinely FAILING items the judge caught. A
+    lenient judge scores a high TPR and a near-zero TNR while its overall
+    agreement still looks respectable, because most items pass.
+
+    ``None`` rather than 0.0 when a class is absent — you cannot measure recall
+    on failures you never sampled, and calling that 0.0 would report a corpus
+    gap as a judge defect.
+    """
+    c = confusion(pairs, threshold=threshold)
+    pos, neg = c["tp"] + c["fn"], c["tn"] + c["fp"]
+    return {
+        "tpr": (c["tp"] / pos) if pos else None,
+        "tnr": (c["tn"] / neg) if neg else None,
+        "n_pass_items": pos,
+        "n_fail_items": neg,
+        "note": ("no FAILING item in the sample, so TNR is unmeasurable — the "
+                 "judge has never been shown a failure to catch"
+                 if not neg else
+                 "no PASSING item in the sample, so TPR is unmeasurable"
+                 if not pos else ""),
+    }
+
+
+def classifier_report(pairs: list[tuple[float, float]], *,
+                      threshold: float = 0.5, kappa_gate: float = 0.6) -> dict:
+    """The judge validated as a classifier: kappa + per-class recall + verdict.
+
+    The verdict deliberately refuses to be a single number. A judge can clear the
+    kappa gate and still be useless on the class you care about, so a missing
+    TNR is reported as *unmeasurable* rather than folded away.
+    """
+    k = cohens_kappa(pairs, threshold=threshold)
+    recall = per_class_recall(pairs, threshold=threshold)
+    blockers = []
+    if k is None:
+        blockers.append(
+            "kappa is undefined — one rater used a single class throughout, "
+            "which is what a judge that never says FAIL produces")
+    elif k < kappa_gate:
+        blockers.append(f"kappa {k:.2f} is below the {kappa_gate} gate")
+    if recall["tnr"] is None:
+        blockers.append(
+            "TNR is unmeasurable: the sample contains no failing item, so "
+            "nothing shows whether this judge can catch one")
+    return {
+        "n": len(pairs),
+        "kappa": None if k is None else round(k, 4),
+        "kappa_gate": kappa_gate,
+        "tpr": None if recall["tpr"] is None else round(recall["tpr"], 4),
+        "tnr": None if recall["tnr"] is None else round(recall["tnr"], 4),
+        "confusion": confusion(pairs, threshold=threshold),
+        "meets_gate": not blockers,
+        "blockers": blockers,
+        "note": (
+            "Reported ALONGSIDE Krippendorff alpha / exact-match, not instead of "
+            "them: raw agreement shares a blind spot on a class-imbalanced "
+            "sample, where a judge that always says PASS looks excellent."),
+    }

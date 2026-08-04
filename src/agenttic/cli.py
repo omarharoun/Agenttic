@@ -560,8 +560,12 @@ def judge_corpus(config: str = "config.yaml"):
     Run this BEFORE spending on a calibration run: a corpus that cannot
     discriminate makes the run worthless however it comes out.
     """
-    from agenttic.scoring.annotators import ceiling, corpus_health
+    from agenttic.scoring.annotators import (ceiling, consensus, corpus_health,
+                                             labels_of)
     from agenttic.scoring.judge_calibration import load_judge_corpus
+
+    def consensus_of(record):
+        return consensus(labels_of(record))
 
     _cfg, _ = _ctx(config)
     recs = load_judge_corpus()
@@ -576,6 +580,21 @@ def judge_corpus(config: str = "config.yaml"):
                       f"{c['ceiling']:.2f}" if c["ceiling"] is not None
                       else "[yellow]none[/]")
     console.print(table)
+    # What a real study would be able to conclude, before anyone pays for it.
+    from agenttic.scoring.annotators import per_class_recall
+    fail_free = []
+    for cid in sorted(health):
+        pairs = [(0.0, float(consensus_of(r)))
+                 for r in recs if r.get("criterion_id") == cid
+                 and consensus_of(r) is not None]
+        if pairs and per_class_recall(pairs)["n_fail_items"] == 0:
+            fail_free.append(cid)
+    if fail_free:
+        console.print(
+            f"[yellow]No FAILING item[/] for {', '.join(fail_free)} — TNR is "
+            "unmeasurable there, so nothing would show whether the judge can "
+            "catch a failure. Cohen's kappa needs both classes present.")
+
     blockers = {b for h in health.values() for b in h["blockers"]}
     for b in sorted(blockers):
         console.print(f"[yellow]BLOCKER:[/] {b}")

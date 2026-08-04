@@ -163,3 +163,84 @@ class TestTheShippedCorpus:
         from agenttic.scoring.judge_calibration import demonstrated_calibrated_judge
 
         assert demonstrated_calibrated_judge() == set()
+
+
+class TestTheJudgeAsAClassifier:
+    """Kappa + per-class recall, which raw agreement cannot substitute for.
+
+    Both eval sources prescribe validating a judge "the same way you would
+    validate any classifier (true positive rate, true negative rate, Cohen's
+    kappa)", gated at kappa >= ~0.6 with a TNR high enough to actually catch
+    failures. Their stated reason is our exact situation: on a class-imbalanced
+    sample, raw agreement looks excellent for a judge that says PASS to
+    everything.
+    """
+
+    def test_a_lenient_judge_scores_90_percent_agreement_and_fails_the_gate(self):
+        """The headline case. Nine passes and one failure it missed: raw
+        agreement 90%, and it has never once said FAIL."""
+        from agenttic.scoring.annotators import classifier_report
+
+        pairs = [(1.0, 1.0)] * 9 + [(1.0, 0.0)]
+        r = classifier_report(pairs)
+        assert r["kappa"] == 0.0
+        assert r["tnr"] == 0.0          # caught none of the failures
+        assert r["tpr"] == 1.0          # perfect on the class that dominates
+        assert r["meets_gate"] is False
+
+    def test_a_discriminating_judge_clears_it(self):
+        from agenttic.scoring.annotators import classifier_report
+
+        r = classifier_report([(1.0, 1.0)] * 5 + [(0.0, 0.0)] * 5)
+        assert r["kappa"] == 1.0 and r["tnr"] == 1.0 and r["meets_gate"] is True
+
+    def test_kappa_is_UNDEFINED_not_zero_when_a_rater_never_varies(self):
+        """"Undefined" and "no better than chance" are different findings, and
+        an all-PASS sample judged by an all-PASS judge produces the first."""
+        from agenttic.scoring.annotators import cohens_kappa, classifier_report
+
+        assert cohens_kappa([(1.0, 1.0)] * 5) is None
+        r = classifier_report([(1.0, 1.0)] * 5)
+        assert r["kappa"] is None
+        assert any("undefined" in b for b in r["blockers"])
+
+    def test_an_absent_class_is_unmeasurable_not_zero(self):
+        """Calling a missing class 0.0 reports a CORPUS gap as a judge defect."""
+        from agenttic.scoring.annotators import per_class_recall
+
+        r = per_class_recall([(1.0, 1.0)] * 4)
+        assert r["tnr"] is None and r["n_fail_items"] == 0
+        assert "never been shown a failure" in r["note"]
+
+    def test_a_sample_with_no_failure_blocks_the_gate(self):
+        """Exactly the shipped corpus's shape for some criteria: you cannot
+        certify a judge that has never been shown something to reject."""
+        from agenttic.scoring.annotators import classifier_report
+
+        r = classifier_report([(1.0, 1.0), (0.5, 1.0), (1.0, 1.0)])
+        assert r["meets_gate"] is False
+        assert any("no failing item" in b for b in r["blockers"])
+
+    def test_three_point_half_counts_as_pass(self):
+        from agenttic.scoring.annotators import confusion
+
+        c = confusion([(0.5, 0.5)])
+        assert c["tp"] == 1
+
+    def test_it_is_reported_alongside_not_instead_of_agreement(self):
+        """Replacing the calibration metric would move a published number.
+        Adding one does not, and that distinction is the point."""
+        from agenttic.scoring.annotators import classifier_report
+        from agenttic.scoring import calibration
+
+        assert hasattr(calibration, "krippendorff_alpha_interval")
+        assert hasattr(calibration, "exact_match_rate")
+        assert "alongside" in classifier_report([(1.0, 1.0)])["note"].lower()
+
+    def test_the_confusion_matrix_totals_the_sample(self):
+        from agenttic.scoring.annotators import confusion
+
+        pairs = [(1.0, 1.0), (1.0, 0.0), (0.0, 1.0), (0.0, 0.0)]
+        c = confusion(pairs)
+        assert (c["tp"], c["fp"], c["fn"], c["tn"]) == (1, 1, 1, 1)
+        assert c["tp"] + c["fp"] + c["fn"] + c["tn"] == c["n"] == 4
