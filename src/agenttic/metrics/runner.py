@@ -23,7 +23,8 @@ from agenttic.metrics.faithfulness import (
     aggregate_faithfulness, make_llm_claim_checker, score_faithfulness,
 )
 from agenttic.metrics.index import compute_index, rollup_metrics_from_means
-from agenttic.metrics.reliability import pass_at_1, pass_hat_k
+from agenttic.metrics.reliability import (flakiness, pass_at_1,
+                                          pass_at_k, pass_hat_k)
 from agenttic.metrics.standard_suites import canonical_suite_ids
 
 MAX_K = 5
@@ -226,6 +227,16 @@ async def run_standard(cfg, reg, adapter, *, k: int = 3, suite_ids=None,
             if faith and faith.hallucination_rate is not None else None),
         "faithfulness_no_reference_cases": (faith.no_reference_cases if faith else 0),
         "pass_at_1": round(pass_at_1(case_runs), 4),
+        # pass@k and pass^k answer DIFFERENT questions and both sources define
+        # both: "one success is enough" (a candidate a human reviews) versus
+        # "reliable every time" (an agent acting unattended). Reported as
+        # top-level keys, never as `components` — `compute_index` intersects
+        # with `index_weights()`, so an unweighted key provably cannot move the
+        # Index. `flaky_rate` is the gap between them, per case: a case that
+        # passed sometimes is NON-DETERMINISTIC, which needs a cause rather than
+        # a better agent.
+        "pass_at_k": round(pass_at_k(case_runs), 4),
+        "flaky_rate": round(flakiness(case_runs), 4),
         "k_runs_cost_usd": round(total_cost, 4),
         **({"per_case": {tid: list(v) for tid, v in per_case.items()}}
            if include_per_case else {}),
