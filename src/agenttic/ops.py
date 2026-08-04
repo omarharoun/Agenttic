@@ -434,7 +434,8 @@ def _round4(x: float | None) -> float | None:
 
 def verify_op(traces: list, *, cfg: dict | None = None,
               samples: list | None = None, cdv_result=None,
-              unresolved_evidence: list | None = None) -> tuple[list, dict]:
+              unresolved_evidence: list | None = None,
+              scoreboard=None) -> tuple[list, dict]:
     """Run the SPEC-13 verification layer over a batch of traces.
 
     Deterministic and free: assertions (Step 62) and the baseline coverage model
@@ -634,7 +635,13 @@ def verify_op(traces: list, *, cfg: dict | None = None,
             agent_id=agent_id, agent_config_hash=cfg_hash,
             coverage_report=report,
             assertion_results=results or None,
-            cdv_result=cdv_result)
+            cdv_result=cdv_result,
+            # The reference model's verdict. Built by the caller that holds the
+            # expectations (`scenario.runner.scoreboard_from_runs`); absent here
+            # it stays `not_run`, which is the honest reading for a stored suite
+            # that runs no environment. Report-only under gate_version 1, so
+            # populating it cannot move a signing decision.
+            scoreboard=scoreboard)
         summary["signoff"] = signoff.model_dump(mode="json")
     except Exception:  # noqa: BLE001 — verification must never break a run
         pass
@@ -673,6 +680,7 @@ def aggregate_op(
     cfg: dict | None = None,
     samples: list | None = None,
     cdv_result=None,
+    scoreboard=None,
 ) -> Scorecard:
     """Aggregate RunScores into an immutable, persisted Scorecard.
 
@@ -685,9 +693,11 @@ def aggregate_op(
     that holds a config should pass it, or the run is scored against the built-in
     default while ``config.yaml`` says something else.
 
-    ``samples`` and ``cdv_result`` are pass-throughs to :func:`verify_op` for the
-    one caller that holds a stimulus side (:func:`cdv_op`). Both default to
-    ``None``, so every existing caller is bit-identical.
+    ``samples``, ``cdv_result`` and ``scoreboard`` are pass-throughs to
+    :func:`verify_op` for the one caller that holds a stimulus side
+    (:func:`cdv_op`). All default to ``None``, so every existing caller is
+    bit-identical — a stored-suite run has no environment and therefore no state
+    to compare, and its scoreboard leg stays ``not_run``.
 
     When ``traces`` are resolved from the registry, any run whose trace cannot be
     loaded is reported to :func:`verify_op` as unresolved evidence rather than
@@ -724,7 +734,8 @@ def aggregate_op(
     if traces or unresolved:
         assertions, coverage = verify_op(traces, cfg=cfg, samples=samples,
                                          cdv_result=cdv_result,
-                                         unresolved_evidence=unresolved)
+                                         unresolved_evidence=unresolved,
+                                         scoreboard=scoreboard)
         sc = sc.model_copy(update={
             "assertions": assertions,
             "assertion_set_ref": "assertions:builtin-default@v1",
@@ -970,7 +981,7 @@ def cdv_op(cfg: dict, reg: Registry, adapter: AgentAdapter, *, space,
 
     from agenttic.coverage.models.baseline import baseline_model
     from agenttic.registry.sqlite_store import DuplicateVersionError
-    from agenttic.scenario.runner import harness_executor
+    from agenttic.scenario.runner import harness_executor, scoreboard_from_runs
     from agenttic.scenario.tools import RETAIL_POLICY
     from agenttic.verification.cdv import Budget, run_until_closure
 
@@ -1037,7 +1048,11 @@ def cdv_op(cfg: dict, reg: Registry, adapter: AgentAdapter, *, space,
         reg, agent_id=adapter.agent_id, suite=suite, rubric=rubric,
         runs=[r.score for r in runs if r.score is not None],
         visibility=adapter.visibility, traces=[r.trace for r in runs],
-        samples=[r.sample() for r in runs], cdv_result=cdv_result, cfg=cfg)
+        samples=[r.sample() for r in runs], cdv_result=cdv_result, cfg=cfg,
+        # The comparison already ran — `harness_executor` gates each run's
+        # `passed` on its oracle findings — and was then dropped on the floor.
+        # This is the only place holding both the expectations and the runs.
+        scoreboard=scoreboard_from_runs(runs))
     return CDVOutcome(cdv=res, runs=runs, scorecard=sc,
                       regressions_path=regressions_path)
 

@@ -489,7 +489,13 @@ def scoreboard_leg(findings_per_run, *, compared: int, not_measured: int = 0,
     violated: list[str] = []
     for run in findings_per_run or []:
         for f in run or []:
-            violated.append(getattr(f, "signature", None) or str(f))
+            # `key()` first: FailureSignature is the real producer here and has
+            # no `.signature`, so the fallback was rendering its dataclass repr
+            # into the signed sign-off — 90 characters of Python syntax per
+            # obligation, in the field a reader scans to see what was violated.
+            key = getattr(f, "key", None)
+            violated.append(key() if callable(key)
+                            else (getattr(f, "signature", None) or str(f)))
     return ScoreboardLeg(
         status="populated" if (compared or not_measured) else "not_run",
         compared=compared, not_measured=not_measured,

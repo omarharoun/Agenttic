@@ -1513,6 +1513,68 @@ def oracle_failures(trace: Trace, expectation: Expectation | None,
     return out
 
 
+#: Obligations `oracle_failures` + `state_failures` can actually decide. An
+#: expectation carrying none of them produces `[]` for every run, which is
+#: byte-identical to "compared and clean" — the vacuity rule (M40) applied to
+#: the reference model. `must_convey` is deliberately absent: nothing checks it
+#: (see the module docstring), so counting it here would let an expectation look
+#: decidable because of a field no comparison reads.
+CHECKED_OBLIGATIONS = ("forbidden_tools", "must_escalate", "goal_state_delta")
+
+
+def expectation_is_decidable(expectation: Expectation | None) -> bool:
+    """Could this expectation have produced a finding at all?"""
+    if expectation is None:
+        return False
+    return any(bool(getattr(expectation, f, None)) for f in CHECKED_OBLIGATIONS)
+
+
+def scoreboard_from_runs(runs: list["ScenarioRun"]):
+    """Roll scenario runs up into the sign-off's :class:`ScoreboardLeg`.
+
+    The comparison already happened — `harness_executor` gates every run's
+    `passed` on `oracle_findings`. It simply never reached the scoreboard, so the
+    reference model's verdict was absent from every scorecard and certificate we
+    issue. This carries the verdict that existed; it derives nothing new.
+
+    Three buckets, and keeping them apart is the whole job. `oracle_failures`
+    returns `[]` for a missing expectation, for an expectation that declares no
+    decidable obligation, AND for a clean run — three very different facts
+    collapsed into one empty list:
+
+    * **compared** — a decidable expectation and a run that happened.
+    * **not_measured** — no expectation, or one that could not have failed.
+      Reported, never folded into a pass.
+    * **comparison_failures** — the agent never ran (an execution-failure
+      marker), so the oracle inspected a transport error and found no violation
+      in it. Counting that as clean is the vacuity failure the leg exists to
+      prevent, and it is the one bucket that blocks the gate under v2.
+    """
+    from agenttic.coverage.collect import nonresult_marker
+    from agenttic.schema.signoff import scoreboard_leg
+
+    findings, compared, not_measured, failures = [], 0, 0, 0
+    for r in runs or []:
+        if nonresult_marker(r.trace):
+            failures += 1
+            continue
+        if not expectation_is_decidable(getattr(r.scenario, "expectation", None)):
+            not_measured += 1
+            continue
+        compared += 1
+        findings.append(r.oracle_findings)
+    parts = [f"{compared} run(s) compared against the derived expectation"]
+    if not_measured:
+        parts.append(f"{not_measured} had no decidable obligation and are NOT "
+                     "counted as passing")
+    if failures:
+        parts.append(f"{failures} never reached the agent, so nothing was "
+                     "compared for them")
+    return scoreboard_leg(findings, compared=compared, not_measured=not_measured,
+                          comparison_failures=failures,
+                          scope_note="; ".join(parts))
+
+
 def state_failures(state_diff: dict, expectation: Expectation | None,
                    *, trajectory: str = "") -> list[FailureSignature]:
     """Did the world end in the state the oracle required?
