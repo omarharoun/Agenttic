@@ -315,3 +315,114 @@ def run_selfcheck(suites=None) -> SelfCheckResult:
             "no suites were checked — this is the absence of evidence, not a "
             "clean result")
     return res
+
+
+# --------------------------------------------------------------------------- #
+# Vacuity: criteria that CANNOT fail because nobody supplied what they read.
+# --------------------------------------------------------------------------- #
+#
+# `scoring/checks.py::_CHECK_EXPECTED_DEFAULTS` fills a missing `expected` key
+# with a safe default so old and resumed suites stay runnable. That is worth
+# keeping — but the defaults are chosen to be PASSING, so a case that forgets a
+# key gets a free 1.0 that is indistinguishable from a real pass in the weighted
+# mean, in `per_criterion_means`, and in `passed`.
+#
+# Assertions already solved this: `Scorecard.assertions_unexercised` records
+# "properties that never had their antecedent occur. NOT passes (Hard Rule 60)".
+# Criteria have no equivalent, and cannot cheaply gain one: `Scorecard` embeds
+# `RunScore` embeds `CriterionScore`, and `certification/attest.py:324`
+# recomputes `content_hash(scorecard)` at verify time — so ANY new field there
+# invalidates every certificate ever issued.
+#
+# So this is caught where it is actually created: in the SUITE, at authoring
+# time, offline. Measured 2026-08-02: zero exposure across all 18 shipped
+# suites. This keeps it that way.
+
+
+@dataclass
+class VacuityFinding:
+    """A criterion that would score against an invented `expected` value."""
+
+    suite_id: str
+    test_id: str
+    criterion_id: str
+    check_ref: str
+    missing_key: str
+    defaulted_to: str
+    #: True when the default can produce the WRONG verdict rather than a
+    #: vacuous pass — strictly worse, and worth ranking first in any report.
+    inverts: bool = False
+
+
+#: Defaults that INVERT rather than merely pass. `required_tools` -> [] scores a
+#: CORRECT tool call 0.0; `abstain` -> False rewards calling any tool. They stay
+#: in `_CHECK_EXPECTED_DEFAULTS` because removing them breaks the resumed-case
+#: contract (`TestScoringTimeExpectedRepair`), so the honest handling is to make
+#: a finding on them louder than the rest.
+INVERTING_DEFAULTS = {"tool_selection_accuracy", "abstention_correct"}
+
+
+def find_vacuous_criteria(cases, rubric, *, suite_id: str) -> list[VacuityFinding]:
+    """Criteria whose `expected` key is absent and would be defaulted in."""
+    from agenttic.scoring.checks import _CHECK_EXPECTED_DEFAULTS
+    from agenttic.scoring.engine import applicable_to_case
+
+    out: list[VacuityFinding] = []
+    for case in cases:
+        expected = case.expected or {}
+        for crit in applicable_to_case(list(rubric.criteria), case):
+            if crit.scorer != "code" or not crit.check_ref:
+                continue
+            entry = _CHECK_EXPECTED_DEFAULTS.get(crit.check_ref)
+            if not entry:
+                continue                      # no default: a missing key errors
+            key, factory = entry
+            if key not in expected:
+                out.append(VacuityFinding(
+                    suite_id=suite_id, test_id=case.test_id,
+                    criterion_id=crit.criterion_id, check_ref=crit.check_ref,
+                    missing_key=key, defaulted_to=repr(factory()),
+                    inverts=crit.check_ref in INVERTING_DEFAULTS))
+    return out
+
+
+def find_unfailable_cases(cases, rubric, *, suite_id: str) -> list[str]:
+    """Cases with NO applicable criterion.
+
+    `engine.score_run` scores those `passed=True` with an empty
+    `criterion_scores` — an unfailable case counted as success, and invisible in
+    every aggregate. It happens when `applicable_to_case` filters everything
+    away, e.g. a refusal-only rubric meeting a non-adversarial case.
+    """
+    from agenttic.scoring.engine import applicable_to_case
+
+    return [c.test_id for c in cases
+            if not applicable_to_case(list(rubric.criteria), c)]
+
+
+def audit_vacuity(suites=None) -> dict:
+    """Suite-authoring audit: nothing may score on an invented default."""
+    suites = suites if suites is not None else shipped_suites()
+    vacuous, unfailable = [], []
+    for suite_id, cases, rubric in suites:
+        vacuous += find_vacuous_criteria(cases, rubric, suite_id=suite_id)
+        unfailable += [(suite_id, t) for t in
+                       find_unfailable_cases(cases, rubric, suite_id=suite_id)]
+    return {
+        "suites_checked": len(suites),
+        "vacuous_criteria": [
+            {"suite_id": f.suite_id, "test_id": f.test_id,
+             "criterion_id": f.criterion_id, "missing_key": f.missing_key,
+             "defaulted_to": f.defaulted_to, "inverts": f.inverts}
+            for f in sorted(vacuous, key=lambda x: not x.inverts)],
+        "inverting_criteria": sum(1 for f in vacuous if f.inverts),
+        "unfailable_cases": [{"suite_id": s, "test_id": t}
+                             for s, t in unfailable],
+        "ok": not vacuous and not unfailable,
+        "note": (
+            "A criterion scoring against a default nobody supplied is not a "
+            "pass, and a case with no applicable criterion cannot fail. Both "
+            "read as success in every aggregate. Findings marked `inverts` are "
+            "worse: the default can produce the WRONG verdict, not merely a "
+            "free one."),
+    }

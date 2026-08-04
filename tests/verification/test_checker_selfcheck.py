@@ -202,3 +202,87 @@ class TestExemptions:
 
     def test_exemptions_are_reported_not_hidden(self, result):
         assert result.as_dict()["exemptions"]
+
+
+class TestVacuity:
+    """A criterion that cannot fail because nobody supplied what it reads.
+
+    `_CHECK_EXPECTED_DEFAULTS` fills a missing `expected` key with a default so
+    old and resumed suites stay runnable — but the defaults are chosen to PASS,
+    so a case that forgets a key gets a free 1.0 indistinguishable from a real
+    one. Measured 2026-08-02: zero exposure across all 18 shipped suites. This
+    keeps it that way, and catches it at authoring time rather than at scoring.
+    """
+
+    def test_no_shipped_criterion_scores_on_an_invented_default(self):
+        from agenttic.verification.selfcheck import audit_vacuity
+
+        a = audit_vacuity()
+        assert a["vacuous_criteria"] == [], (
+            "a case omits an `expected` key its rubric's check reads, so that "
+            f"criterion cannot fail: {a['vacuous_criteria'][:5]}")
+
+    def test_no_shipped_case_is_unfailable(self):
+        """`score_run` scores a case with NO applicable criteria as
+        `passed=True` with an empty criterion list — success that cannot be
+        earned and is invisible in every aggregate (engine.py:172-181)."""
+        from agenttic.verification.selfcheck import audit_vacuity
+
+        a = audit_vacuity()
+        assert a["unfailable_cases"] == [], a["unfailable_cases"][:5]
+
+    def test_the_audit_catches_a_missing_key(self):
+        """Fault-inject: a rubric reading a key the case does not supply."""
+        from agenttic.schema.rubric import Criterion, Rubric
+        from agenttic.schema.testcase import TestCase
+        from agenttic.verification.selfcheck import find_vacuous_criteria
+
+        rubric = Rubric(rubric_id="r", version=1, criteria=[
+            Criterion(criterion_id="required_tool_called", scorer="code",
+                      scale="binary", description="d",
+                      check_ref="required_tool_called")])
+        case = TestCase(test_id="c1", suite_id="s", version=1, rubric_id="r",
+                        task_description="d", input={}, expected={})
+        found = find_vacuous_criteria([case], rubric, suite_id="s")
+        assert len(found) == 1
+        assert found[0].missing_key == "required_tools"
+
+    def test_the_audit_catches_an_unfailable_case(self):
+        from agenttic.verification.selfcheck import find_unfailable_cases
+        from agenttic.metrics.standard_suites import standard_specs
+
+        harmful = next(s for s in standard_specs()
+                       if s.suite.suite_id == "std-safety-refusal-v1")
+        benign = next(s for s in standard_specs()
+                      if s.suite.suite_id == "std-safety-benign-v1")
+        # a benign case under the refusal rubric has every criterion filtered out
+        assert find_unfailable_cases(benign.cases, harmful.rubric, suite_id="x")
+
+    def test_the_inverting_defaults_are_kept_but_FLAGGED(self):
+        """They stay, and the audit says why they are worse than the rest.
+
+        Removing them was tried and broke the contract
+        `TestScoringTimeExpectedRepair` pins: a RESUMED case that predates a
+        field must still score rather than throw — the whole reason
+        `repair_expected` exists. Resumability outranks the inversion, so the
+        inversion is made VISIBLE instead of fixed by breaking something else.
+        """
+        from agenttic.schema.rubric import Criterion, Rubric
+        from agenttic.schema.testcase import TestCase
+        from agenttic.scoring.checks import _CHECK_EXPECTED_DEFAULTS
+        from agenttic.verification.selfcheck import (INVERTING_DEFAULTS,
+                                                     find_vacuous_criteria)
+
+        assert "tool_selection_accuracy" in _CHECK_EXPECTED_DEFAULTS
+        assert "abstention_correct" in _CHECK_EXPECTED_DEFAULTS
+
+        rubric = Rubric(rubric_id="r", version=1, criteria=[
+            Criterion(criterion_id="tool_selection_accuracy", scorer="code",
+                      scale="binary", description="d",
+                      check_ref="tool_selection_accuracy")])
+        case = TestCase(test_id="c1", suite_id="s", version=1, rubric_id="r",
+                        task_description="d", input={}, expected={})
+        found = find_vacuous_criteria([case], rubric, suite_id="s")
+        assert len(found) == 1 and found[0].inverts is True
+        assert INVERTING_DEFAULTS == {"tool_selection_accuracy",
+                                      "abstention_correct"}
