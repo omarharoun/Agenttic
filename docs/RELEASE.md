@@ -164,17 +164,45 @@ right, push it up.
 
 ---
 
-## Known drift (unresolved)
+## Config: resolved 2026-08-04
 
-`/opt/agenttic/config.yaml` is the repo's **dev** `config.yaml`, so in production
-`budgets.max_run_cost_usd`, `max_daily_cost_usd`, `security.rate_limit_per_minute`
-and every scan/certify abuse ceiling are **0**, with `security.required: false`.
-Env vars do not override them.
+For months `/opt/agenttic/config.yaml` was the repo's **dev** config, so every
+ceiling in production was `0` — meaning off, not low: no cap on a single run, no
+daily cap, no per-tenant quota, no request rate limiting, and no ceiling on the
+cost-bearing `/api/scan` and `/api/certify` endpoints. `0` is falsy at every call
+site, which is exactly why it stayed invisible: it reads as a configured value.
 
-`config.prod.yaml` is **not** the fix: it is stale and lacks `billing` (with real
-Stripe price IDs), `enforcement`, `incidents`, `cards`, `release`, `canaries`,
-`oversight`, `passport`, `feeds`, and the `agents:` block. Copying it over
-production would delete billing. `deploy.sh` refuses on this diff and is right to.
+`config.prod.yaml` could not be the fix — it had drifted so far it was missing
+`billing` (with live Stripe price IDs), `enforcement`, `incidents`, `cards`,
+`release`, `canaries`, `oversight`, `passport`, `feeds` and `agents:`. The
+standard advice, "refresh the host from config.prod.yaml", would have deleted
+billing from production. `deploy.sh` refusing on that diff was the only thing
+preventing it.
 
-The real fix is to make one file a superset of the other. Until then, deploys use
-the flow above, which never touches config.
+It is now **generated from `config.yaml` plus the ceilings** and verified a
+superset: no section missing, exactly 18 keys differ, all of them limits.
+
+**Changing it needs a RESTART.** `docker compose up -d` will report `Running` and
+do nothing — a bind-mounted file changing on disk gives compose no reason to
+recreate the container, so the process keeps the config it started with:
+
+```bash
+ssh root@node1 'cd /opt/agenttic && cp -a config.yaml config.yaml.bak-<name>'
+scp config.prod.yaml root@node1:/opt/agenttic/config.yaml
+ssh root@node1 'docker restart agenttic-app-1'
+```
+
+Verify it took effect by reading what the RUNNING process loaded, not the file:
+
+```bash
+ssh root@node1 'docker exec agenttic-app-1 python -c "
+import yaml; c=yaml.safe_load(open(\"/app/config.yaml\"))
+print(c[\"security\"][\"rate_limit_per_minute\"], c[\"billing\"][\"enabled\"])"'
+```
+
+Rate limiting applies to **`/api` paths only** (`ratelimit.py` returns early for
+anything else), so a burst against `/` or `/status` proves nothing. 135 requests
+to `/api/scenario-runs` against the 120/min cap yields exactly 120 through and
+15 × 429.
+
+Roll back by copying the `.bak-` file over `config.yaml` and restarting again.
