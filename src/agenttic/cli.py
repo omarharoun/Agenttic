@@ -2461,6 +2461,34 @@ def standard_ingest(dataset: str = typer.Argument("bfcl", help="dataset id (e.g.
                       f"{res['suite_id']} ({res['license']}).")
 
 
+@standard_app.command("health")
+def standard_health(config: str = "config.yaml",
+                    json_out: bool = typer.Option(False, "--json")):
+    """Diagnose the SUITE from its run history: cases no agent ever passes, and
+    cases every agent always passes. Offline, free, changes no score."""
+    from agenttic.metrics.suite_health import blocked_reason, suite_health
+    _, reg = _ctx(config)
+    health = suite_health(reg.latest_canonical_runs())
+    if json_out:
+        console.print_json(data=health)
+        return
+    console.print(f"[bold]Suite health[/] — {health['runs_read']} run(s), "
+                  f"{len(health['agents'])} agent(s), {health['cases']} case(s)")
+    if health["runs_without_per_case"]:
+        console.print(f"[yellow]{health['runs_without_per_case']} run(s) carry no "
+                      "per-case results[/][dim] and were not read[/]")
+    blocked = blocked_reason(health)
+    if blocked:
+        console.print(f"[yellow]Cannot conclude:[/] {escape(blocked)}")
+        return
+    for f in health["findings"]:
+        colour = "red" if f["verdict"] == "unpassed" else "yellow"
+        console.print(f"  [{colour}]{f['verdict']}[/] {escape(f['test_id'])}")
+        console.print(f"    [dim]{escape(f['note'])}[/]")
+    console.print(f"  [green]{health['discriminating']} case(s) discriminating[/]")
+    console.print(f"[dim]{escape(health['note'])}[/]")
+
+
 @standard_app.command("metrics")
 def standard_metrics():
     """List the canonical metrics, the methodology each implements, and weights."""

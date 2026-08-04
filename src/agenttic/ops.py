@@ -1201,9 +1201,16 @@ async def run_standard_op(cfg: dict, reg: Registry, *, agent_id: str, k: int = 3
     seed_safety_content_suite(reg)
     adapter = build_adapter(cfg, variant=variant, agent_id=agent_id, url=url,
                             system_prompt=system_prompt, model=model, client=client)
+    # include_per_case: the per-case vectors are the ONLY evidence that can
+    # diagnose the suite rather than the agent (metrics.suite_health) — a case
+    # no agent ever passes is invisible in every aggregate. They were computed
+    # on every run and thrown away at the return, so the history carries none.
+    # Additive: `per_case` is a new top-level key, and nothing recomputes a
+    # content hash over a canonical run.
     result = await run_standard(cfg, reg, adapter, k=k,
                                 judge_client=judge_client or client,
-                                fi_evaluate_fn=fi_evaluate_fn, on_progress=on_progress)
+                                fi_evaluate_fn=fi_evaluate_fn, on_progress=on_progress,
+                                include_per_case=True)
     if persist:
         reg.save_canonical_run(result["run_id"], agent_id, json.dumps(result))
         if cache_key:
