@@ -662,6 +662,52 @@ def judge_merge(sheet_path: str = typer.Argument(..., help="a returned sheet"),
                   "that still needs a qualifying study (Hard Rule 6).[/]")
 
 
+@judge_app.command("panel")
+def judge_panel(agent_model: str = typer.Option("", "--agent-model",
+                    help="model under test (defaults to models.agent_default)"),
+                config: str = "config.yaml"):
+    """Show the judge panel and whether it has the property a panel is FOR:
+    families that fail differently. Offline — builds nothing, calls no model."""
+    from agenttic.scoring.panel import panel_independence
+
+    cfg, _ = _ctx(config)
+    models_cfg = cfg.get("models", {})
+    agent = agent_model or models_cfg.get("agent_default", "")
+    configured = cfg.get("scoring", {}).get("judge_panel")
+    if configured:
+        judges = [m for m in configured if m != agent]
+        source = "scoring.judge_panel"
+    else:
+        seen, judges = set(), []
+        for key in ("judge_light", "judge_executor", "judge_strong"):
+            mid = models_cfg.get(key)
+            if mid and mid != agent and mid not in seen:
+                seen.add(mid)
+                judges.append(mid)
+        source = "models.judge_* (no scoring.judge_panel set)"
+    r = panel_independence(judges, agent)
+    console.print(f"[bold]Judge panel[/] — {len(judges)} judge(s) from {source}")
+    for m in judges:
+        console.print(f"  {escape(m)}  [dim]{escape(_family_of(m))}[/]")
+    console.print(f"agent under test: {escape(agent or '(none)')} "
+                  f"[dim]{escape(r['agent_family'])}[/]")
+    if r["decorrelated"]:
+        console.print(f"[green]decorrelated[/] — {escape(r['note'])}")
+    else:
+        console.print("[yellow]NOT decorrelated[/] — this panel cuts sampling "
+                      "variance but not shared bias:")
+        for b in r["blockers"]:
+            console.print(f"  [yellow]·[/] {escape(b)}")
+    console.print("[dim]A panel that agrees with itself has demonstrated "
+                  "agreement with itself — calibration is against humans "
+                  "(Hard Rule 6) and is unchanged by this.[/]")
+
+
+def _family_of(model: str) -> str:
+    from agenttic.scoring.panel import model_family
+    return model_family(model)
+
+
 @judge_app.command("probe")
 def judge_probe(config: str = "config.yaml",
                 criterion: str = typer.Option("helpfulness", "--criterion")):
