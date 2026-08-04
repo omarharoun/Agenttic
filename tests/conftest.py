@@ -106,3 +106,44 @@ def attesting_signoff(*, agent_id: str = "pilot", config_hash: str = "cfg-abc123
 def signoff():
     """Fixture form of :func:`attesting_signoff`."""
     return attesting_signoff()
+
+
+# --------------------------------------------------------------------------- #
+# Temp-file hygiene.
+# --------------------------------------------------------------------------- #
+# 21 call sites across 15 test modules build their Registry as
+# `Registry(db_path=tempfile.mktemp(suffix=".db"))`. `mktemp` returns a PATH —
+# it creates nothing and registers nothing for cleanup — so sqlite then writes a
+# real database that outlives the run. At roughly a megabyte each, a few hundred
+# full-suite runs had left 3,789 abandoned `/tmp/tmp*.db` files holding 3.5 GB,
+# which is enough to exhaust the tmpfs quota and fail unrelated tests with
+# `sqlite3.OperationalError: disk I/O error`. That failure names neither the
+# cause nor the culprit test, and it cost this session three misdiagnoses.
+#
+# Fixed here rather than at the 21 sites: one place, no test logic touched, and
+# it covers call sites added later. Only paths THIS session handed out are
+# removed — concurrent runs share /tmp, and a glob over `/tmp/tmp*.db` would
+# delete a database another session is still using.
+@pytest.fixture(scope="session", autouse=True)
+def _clean_leaked_temp_dbs():
+    import tempfile as _tempfile
+
+    handed_out: list[str] = []
+    real_mktemp = _tempfile.mktemp
+
+    def tracking_mktemp(*args, **kwargs):
+        path = real_mktemp(*args, **kwargs)
+        handed_out.append(path)
+        return path
+
+    _tempfile.mktemp = tracking_mktemp
+    try:
+        yield
+    finally:
+        _tempfile.mktemp = real_mktemp
+        for path in handed_out:
+            for p in (path, f"{path}-wal", f"{path}-shm"):   # sqlite sidecars
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass        # never created, already gone, or not ours
