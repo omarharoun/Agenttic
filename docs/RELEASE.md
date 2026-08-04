@@ -37,14 +37,17 @@ cd ui && npm run verify         # only if ui/ changed
 Then check the host — both of these, every time:
 
 ```bash
-ssh root@node1 'ls -la /opt/agenttic/docker-compose.override.yml; df -h / | tail -1'
+./scripts/check-host-override.sh root@node1        # 0 ok · 1 drift · 2 missing
+ssh root@node1 'df -h / | tail -1'
 ```
 
-* **The override must exist.** It is host-only, not in git, and pins
+* **The override must exist and match the repo.** It pins
   `image: agenttic:deployed`, `build: !reset null`, `pull_policy: never`,
   `ports: !override ["127.0.0.1:8700:8700"]`, and the postgres/redis
-  dependencies. Every one of those lines is load-bearing. If it is missing,
-  **stop** — restore it (§Recovering the override) before going further.
+  dependencies — every line load-bearing. The canonical copy is
+  `deploy/hosts/node1/docker-compose.override.yml`; the installed copy is
+  `/opt/agenttic/docker-compose.override.yml`. On **missing** or **drift**,
+  stop and resolve it (§Recovering the override) before going further.
 * **Disk needs ≳1.5 GB free.** If not: `ssh root@node1 'docker builder prune -f'`.
 
 A local `pytest` that fails with `sqlite3.OperationalError: disk I/O error` is
@@ -137,27 +140,27 @@ the override is checked in pre-flight, not after.
 
 ## Recovering the override
 
-It is not in git and cannot be restored from it. Rebuild it from the running
-container's own truth:
+It **is** in git now — `deploy/hosts/node1/docker-compose.override.yml`. That was
+the fix for having lost it three times; before 2026-08-04 it existed only on the
+host and had to be reconstructed from a running container each time.
 
 ```bash
-ssh root@node1 'docker inspect agenttic-app-1 \
-  --format "{{json .HostConfig.PortBindings}} {{.Config.Image}}"'
+scp deploy/hosts/node1/docker-compose.override.yml \
+    root@node1:/opt/agenttic/docker-compose.override.yml
+./scripts/check-host-override.sh root@node1
 ```
 
-Then write `/opt/agenttic/docker-compose.override.yml`:
+`deploy.sh` also rsyncs the canonical copy onto the host, so a pristine one sits
+beside the installed one and recovery works without a working laptop checkout:
 
-```yaml
-services:
-  app:
-    image: agenttic:deployed
-    build: !reset null
-    pull_policy: never
-    ports: !override ["127.0.0.1:8700:8700"]
-    depends_on:
-      postgres: {condition: service_healthy}
-      redis: {condition: service_healthy}
+```bash
+ssh root@node1 'cd /opt/agenttic \
+  && cp deploy/hosts/node1/docker-compose.override.yml docker-compose.override.yml'
 ```
+
+If the check reports **drift**, do not guess which side is right — read the diff.
+If the host is right, copy it back into the repo and commit; if the repo is
+right, push it up.
 
 ---
 
