@@ -55,31 +55,7 @@ sudo usermod -aG docker "$USER" || true
 sudo systemctl enable --now docker || true
 REMOTE
 
-say "4/8  Sync repo -> $HOST:$REMOTE_DIR"
-ssh "$HOST" "sudo mkdir -p $REMOTE_DIR && sudo chown \$USER $REMOTE_DIR"
-rsync -az --delete \
-  --exclude '.git' --exclude '.venv' --exclude 'node_modules' \
-  --exclude 'ui/dist' --exclude '__pycache__' --exclude '.pytest_cache' \
-  --exclude '*.db' --exclude '*.db-wal' --exclude '*.db-shm' \
-  --exclude 'backups' --exclude 'uploads' --exclude '.env' \
-  -e ssh "$LOCAL_DIR/" "$HOST:$REMOTE_DIR/"
-
-# ---------------------------------------------------------------------------
-# REFUSE to clobber a host-managed override.
-#
-# On 2026-07-31 this script overwrote /opt/agenttic/docker-compose.override.yml
-# on node1. That file is HOST-ONLY, is not in the repo, and cannot be restored
-# from git. It pinned `image: agenttic:deployed`, `pull_policy: never`,
-# `build: !reset null` and a REPLACING ports entry. Losing it meant compose fell
-# back to building on a VM with too little RAM to build (458MB -> OOM), and the
-# base file's 0.0.0.0:8700 merged with 127.0.0.1:8700 so the container collided
-# with itself. Production was down for about an hour.
-#
-# A host whose override pins an image is deploying by SHIPPING an image
-# (docker save | ssh docker load), not by building from source here. This script
-# is the build-on-host flow and does not belong on such a host.
-# ---------------------------------------------------------------------------
-say "4b/8  Refuse to overwrite a host-managed compose override"
+say "3b/8  Refuse to touch a host-managed compose override (BEFORE any sync)"
 if ssh "$HOST" "grep -qE '^[[:space:]]*(image:|pull_policy:|build:[[:space:]]*!reset)' $REMOTE_DIR/docker-compose.override.yml 2>/dev/null"; then
   cat >&2 <<'MSG'
 ERROR: the remote already has a HOST-MANAGED docker-compose.override.yml that
@@ -101,6 +77,31 @@ MSG
   ssh "$HOST" "cp -n $REMOTE_DIR/docker-compose.override.yml $REMOTE_DIR/docker-compose.override.yml.bak-\$(date +%s) 2>/dev/null || true"
 fi
 
+say "4/8  Sync repo -> $HOST:$REMOTE_DIR"
+ssh "$HOST" "sudo mkdir -p $REMOTE_DIR && sudo chown \$USER $REMOTE_DIR"
+rsync -az --delete \
+  --exclude '.git' --exclude '.venv' --exclude 'node_modules' \
+  --exclude 'ui/dist' --exclude '__pycache__' --exclude '.pytest_cache' \
+  --exclude '*.db' --exclude '*.db-wal' --exclude '*.db-shm' \
+  --exclude 'backups' --exclude 'uploads' --exclude '.env' \
+  --exclude 'docker-compose.override.yml' \
+  -e ssh "$LOCAL_DIR/" "$HOST:$REMOTE_DIR/"
+
+# ---------------------------------------------------------------------------
+# REFUSE to clobber a host-managed override.
+#
+# On 2026-07-31 this script overwrote /opt/agenttic/docker-compose.override.yml
+# on node1. That file is HOST-ONLY, is not in the repo, and cannot be restored
+# from git. It pinned `image: agenttic:deployed`, `pull_policy: never`,
+# `build: !reset null` and a REPLACING ports entry. Losing it meant compose fell
+# back to building on a VM with too little RAM to build (458MB -> OOM), and the
+# base file's 0.0.0.0:8700 merged with 127.0.0.1:8700 so the container collided
+# with itself. Production was down for about an hour.
+#
+# A host whose override pins an image is deploying by SHIPPING an image
+# (docker save | ssh docker load), not by building from source here. This script
+# is the build-on-host flow and does not belong on such a host.
+# ---------------------------------------------------------------------------
 say "5/8  Compose override (port bind + service ordering) + config"
 ssh "$HOST" "bash -se -- '$REMOTE_DIR' '$BIND' '$PORT'" <<'REMOTE'
 set -euo pipefail
