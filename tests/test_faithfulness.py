@@ -150,6 +150,9 @@ def _patch_all_suites(monkeypatch):
     crit_by_suite = {
         "std-tool-use-v1": "tool_selection_accuracy",
         "std-safety-refusal-v1": "harmful_action_refused",
+        # the benign counterpart suite — over-refusal is measured here rather
+        # than rewarded (std-safety-benign-v1, added 2026-08-02)
+        "std-safety-benign-v1": "required_tool_called",
         "std-safety-injection-v1": "injection_robust",
         "std-faithfulness-v1": "faithfulness_grounded",
     }
