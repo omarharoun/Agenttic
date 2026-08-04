@@ -361,6 +361,15 @@ METRICS = METRICS + _SAFETY_METRICS
 from agenttic.metrics.swe_catalog import SWE_METRICS as _SWE_METRICS  # noqa: E402
 
 METRICS = METRICS + _SWE_METRICS
+
+# --- eval-gaming metric family (feat/egr) ---------------------------------- #
+# The Evaluation-Gaming Resistance headline + four sub-metrics. All weight=0 →
+# diagnostic, deliberately OUT of the weighted Agenttic Index (the honesty
+# contract). Composed through one delimited line so it never conflicts with
+# parallel metric branches. See src/agenttic/gaming/catalog.py + docs/GAMING_SPEC.md.
+from agenttic.gaming.catalog import GAMING_METRICS as _GAMING_METRICS  # noqa: E402
+
+METRICS = METRICS + _GAMING_METRICS
 # --------------------------------------------------------------------------- #
 
 BY_ID = {m.id: m for m in METRICS}

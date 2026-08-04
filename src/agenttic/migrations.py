@@ -275,6 +275,20 @@ def _verification_evidence_tables(conn) -> None:
         model.__table__.create(bind=conn, checkfirst=True)
 
 
+def _gaming_reports_table(conn) -> None:
+    """v31 — Evaluation-Gaming Resistance (feat/egr): one row per EGR run keyed
+    by execution_id, holding the serialized GamingReport so the
+    ``/executions/{id}/gaming`` endpoint can serve it.
+
+    Numbered 31, not the 16 the branch carried: master reached 16 with
+    `certification_track_tables` in the month this sat unmerged. Applying the
+    branch number would have put two different migrations at one version.
+    """
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers GamingReportRow)
+    from agenttic.registry.sqlite_store import GamingReportRow
+    GamingReportRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     (1, "baseline_schema", _baseline),
@@ -314,6 +328,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     # different migrations sharing one is a schema whose meaning depends on which
     # codebase last touched it.
     (30, "verification_evidence_tables", _verification_evidence_tables),
+    (31, "gaming_reports_table", _gaming_reports_table),
 ]
 
 
