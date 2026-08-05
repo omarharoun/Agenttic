@@ -51,9 +51,12 @@ export interface SSEEvent {
  *  generator tasks run concurrently, so events arrive out of order: case 9 can
  *  land before case 2, and an index-derived bar would jump to 90% and then back
  *  down. Counting is order-independent and can only go forwards. */
+// Events that mean "one unit of work finished", for the progress bar. Anything
+// else (a warning, a projection, a proposal) is a log line, not a tick.
 const UNIT_DONE = new Set([
   "case_finished", "case_scored", "case_error", "case_resumed",
   "budget_exceeded", "cases_generated", "cases_skipped",
+  "scenario_executed",
 ]);
 
 /** Pure reducer: one SSE event -> next execution state (unit-tested). */
@@ -128,6 +131,52 @@ function summarize(evt: SSEEvent): string {
         return `scored ${d.index + 1}/${d.total} ${d.passed ? "pass" : "fail"} (${d.test_id})`;
       if (d.event === "case_error")
         return `case ${d.index + 1}/${d.total} NOT SCORED (${d.test_id}): ${d.error ?? ""}`;
+      // Money and refusals — the events a watcher most needs and the ones that
+      // were silently dropped, because a payload with no `message` rendered "".
+      if (d.event === "budget_stop")
+        return `BUDGET STOP round ${d.round}: ${d.reason ?? ""} (${d.n_runs} run(s))`;
+      if (d.event === "budget_warning")
+        return `budget warning — projected $${Number(d.projected_usd ?? 0).toFixed(2)}`
+          + (Array.isArray(d.warnings) && d.warnings.length ? `: ${d.warnings[0]}` : "");
+      if (d.event === "cost_projection")
+        return `projected ${d.projected_agent_runs}/${d.max_agent_runs} agent runs `
+          + `(${d.n_train} train, ${d.n_heldout} held-out)`;
+      // Generation pipeline
+      if (d.event === "tasks_extracted") return `extracted ${d.n ?? d.count ?? "?"} task(s)`;
+      if (d.event === "criteria_defined") return `defined ${d.n ?? d.count ?? "?"} criteria`;
+      // CDV / rubric search
+      if (d.event === "scenario_executed")
+        return `scenario ${d.index} ${d.passed ? "passed" : "FAILED"} `
+          + `(${d.trajectory}${(d.failures ?? []).length ? `, ${d.failures.length} failure(s)` : ""})`;
+      if (d.event === "scenario_run_not_stored")
+        return `scenario ${d.scenario_id} NOT STORED: ${d.error ?? ""}`;
+      if (d.event === "propose")
+        return `round ${d.round}: proposing against ${d.n_failing} failing criterion/a`;
+      if (d.event === "candidate")
+        return `round ${d.round} candidate ${d.index}: `
+          + `${d.accepted ? "accepted" : "rejected"} — ${d.reason ?? ""}`;
+      if (d.event === "round_done")
+        return `round ${d.round} done: chose ${d.chosen ?? "nothing"}`
+          + (d.reason ? ` — ${d.reason}` : "");
+      // Per-case lifecycle
+      if (d.event === "case_started")
+        return `case ${d.index + 1}/${d.total} started (${d.test_id})`;
+      if (d.event === "case_resumed")
+        return `case ${d.index + 1}/${d.total} resumed from a stored trace (${d.test_id})`;
+      if (d.event === "budget_exceeded")
+        return `case ${d.index + 1}/${d.total} STOPPED on budget `
+          + `($${Number(d.spent_usd ?? 0).toFixed(2)} spent) — ${d.test_id}`;
+      // Generation
+      if (d.event === "cases_generated")
+        return `generated ${d.n_cases} case(s) for task ${d.index + 1}/${d.total}`;
+      if (d.event === "cases_skipped")
+        return `task ${d.index + 1}/${d.total} produced NO cases: ${d.reason ?? ""}`;
+      // EGR probes
+      if (d.event === "probe_started")
+        return `probe ${d.probe_id} (${d.mechanism}) started`;
+      if (d.event === "probe_finished")
+        return `probe ${d.probe_id}: ${d.sub_score}`
+          + (d.incident ? " — INCIDENT" : "");
       if (d.message) return d.message;
       return "";
     case "node_waiting":
