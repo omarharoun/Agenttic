@@ -23,8 +23,8 @@
 
   /* gold ramp — true metallic gold, hue-fixed, shared by both themes
      (legacy clay names kept so the component layer retunes for free) */
-  --clay-50: #FAF3DC; --clay-100: #F1E3B1; --clay-200: #E5CF7F; --clay-300: #DBBE55;
-  --clay-400: #D4AF37; --clay: #C9A227; --clay-600: #A98618; --clay-700: #8A6D14; --clay-800: #6B5510;
+  --clay-50: #FBF3EE; --clay-100: #F4E1D6; --clay-200: #E8C2AE; --clay-300: #DBA288;
+  --clay-400: #CF8164; --clay: #C96442; --clay-600: #B5512F; --clay-700: #97421F; --clay-800: #74331A;
 
   /* radii — machined edges (the 2px family) */
   --r-xs: 2px; --r-sm: 3px; --r-md: 5px; --r: 5px; --r-lg: 8px; --r-xl: 10px;
@@ -137,22 +137,26 @@
 
 /* ===== silvered-opaline light variant (the landing's default) ===== */
 html[data-theme="light"] {
-  --bg: #ECEDEA;
-  --panel: #F8F8F5;
-  --panel-2: #FFFFFF;
+  --bg: #FAF9F5;               /* cream — app background */
+  --panel: #FFFFFF;            /* cards, panels, menus */
+  --panel-2: #FCFBF8;          /* subtle raised inside cards */
   --field: #FFFFFF;
-  --border: #D8DAD4;
-  --border-soft: #E4E6E1;
-  --border-strong: #B8BBB4;
-  --text: #16181B;
-  --muted: #565B60;
-  --faint: #82878C;
+  --border: #E9E5DA;           /* hairlines, card edges */
+  --border-soft: #F1EEE5;
+  --border-strong: #DBD6C8;
+  --text: #211F1A;             /* warm ink */
+  --muted: #57534A;
+  --faint: #8B857A;
 
-  --accent: #8A6D14;
-  --accent-hover: #6B5510;
-  --accent-soft: #F6EFD6;
-  --accent-line: #E5CF7F;
+  --accent: var(--clay);       /* terracotta */
+  --accent-hover: var(--clay-600);
+  --accent-soft: #FBF3EE;
+  --accent-line: #E8C2AE;
   --accent-ink: #FFFFFF;
+
+  /* alt sections / sunken wells — the cream-deep + manilla steps */
+  --cream-deep: #F4F2EA;
+  --manilla: #EFEADC;
 
   --metal: #7E858D;
   --metal-soft: rgba(126, 133, 141, 0.14);
@@ -160,10 +164,10 @@ html[data-theme="light"] {
   --live-soft: rgba(178, 58, 43, 0.14);
   --hairline: rgba(22, 24, 27, 0.10);
 
-  --ok: #45704F;   --ok-soft: #E7EFE6;   --ok-border: #C8DCC6;
-  --wait: #93701F; --wait-soft: #F4ECD8; --wait-border: #E4D3A3;
-  --fail: #A63E2E; --fail-soft: #F5E3DE; --fail-border: #E5C0B6;
-  --info: #3C5B82; --info-soft: #E5EBF2; --info-border: #C5D4E5;
+  --ok: #3F6B34;   --ok-soft: #EAF1E1;   --ok-border: #CFE0BD;
+  --wait: #98671B; --wait-soft: #F7ECD6; --wait-border: #ECD8AE;
+  --fail: #A8412A; --fail-soft: #F6E1D9; --fail-border: #E8C4B5;
+  --info: #3E6486; --info-soft: #E5EDF3; --info-border: #C6D9E7;
   --neutral: #565B60; --neutral-soft: #E9EBE6;
 
   /* score vocabulary re-points to the light-tuned status ramp automatically

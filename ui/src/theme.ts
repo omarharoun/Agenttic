@@ -3,13 +3,13 @@ import { useEffect, useState } from "react";
 export type ThemePref = "dark" | "light" | "system";
 const KEY = "agenttic_theme";
 
-/** Persisted appearance preference; dark is the default (Chronometer obsidian). */
+/** Persisted appearance preference; LIGHT is the default (Noor cream). */
 export function getThemePref(): ThemePref {
   try {
     const v = localStorage.getItem(KEY);
-    return v === "light" || v === "system" ? v : "dark";
+    return v === "dark" || v === "system" ? v : "light";
   } catch {
-    return "dark";
+    return "light";
   }
 }
 

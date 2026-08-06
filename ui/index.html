@@ -55,10 +55,10 @@
               ? matchMedia("(prefers-color-scheme: light)").matches
                 ? "light"
                 : "dark"
-              : "dark";
+              : "light";
           document.documentElement.setAttribute("data-theme", resolved);
           var m = document.querySelector('meta[name="theme-color"]');
-          if (m) m.setAttribute("content", resolved === "light" ? "#ECEDEA" : "#08090B");
+          if (m) m.setAttribute("content", resolved === "light" ? "#FAF9F5" : "#08090B");
         } catch (e) {}
       })();
     </script>
