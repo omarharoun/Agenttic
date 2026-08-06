@@ -23,8 +23,8 @@
 
   /* gold ramp — true metallic gold, hue-fixed, shared by both themes
      (legacy clay names kept so the component layer retunes for free) */
-  --clay-50: #FBF3EE; --clay-100: #F4E1D6; --clay-200: #E8C2AE; --clay-300: #DBA288;
-  --clay-400: #CF8164; --clay: #C96442; --clay-600: #B5512F; --clay-700: #97421F; --clay-800: #74331A;
+  --clay-50: #FAF3DC; --clay-100: #F1E3B1; --clay-200: #E5CF7F; --clay-300: #DBBE55;
+  --clay-400: #D4AF37; --clay: #C9A227; --clay-600: #B98D17; --clay-700: #8A6D14; --clay-800: #6B5510;
 
   /* radii — machined edges (the 2px family) */
   --r-xs: 2px; --r-sm: 3px; --r-md: 5px; --r: 5px; --r-lg: 8px; --r-xl: 10px;
@@ -148,10 +148,10 @@ html[data-theme="light"] {
   --muted: #57534A;
   --faint: #8B857A;
 
-  --accent: var(--clay);       /* terracotta */
-  --accent-hover: var(--clay-600);
-  --accent-soft: #FBF3EE;
-  --accent-line: #E8C2AE;
+  --accent: #B98D17;           /* gold — measured off the design's primary button */
+  --accent-hover: #8A6D14;
+  --accent-soft: #FAF3DC;
+  --accent-line: #E5CF7F;
   --accent-ink: #FFFFFF;
 
   /* alt sections / sunken wells — the cream-deep + manilla steps */
