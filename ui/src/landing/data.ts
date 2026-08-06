@@ -279,3 +279,62 @@ export const VERIFY_STATES = [
   { k: "revoked", v: "Withdrawn deliberately, resolved against a signed list." },
   { k: "invalid", v: "The evidence does not match the signature. Tampered is never reported as lapsed." },
 ];
+
+/* ==========================================================================
+   The "trust layer" narrative (stage 2). Record -> Evaluate -> Assert ->
+   Certify, per the approved mockup.
+
+   Every figure below is either SAMPLE DATA from one recorded run (labelled as
+   such wherever it renders) or a count read off this source tree. Neither is a
+   customer metric, and nothing here is a claim about anyone's production fleet
+   — Hard Rule: never fabricate social proof, metrics, or figures.
+   ========================================================================== */
+
+/** The four-step spine. `n` is the step label, not a promise of ordering. */
+export const SPINE = [
+  { n: "01", k: "RECORD",
+    h: "Production runs become fixtures",
+    p: "Live traffic is captured with tool I/O intact and redacted at the edge." },
+  { n: "02", k: "EVALUATE",
+    h: "Deterministic sandbox",
+    p: "Tools are served from the recording, so side effects never leave the run." },
+  { n: "03", k: "ASSERT",
+    h: "Behavioural assertions",
+    p: "Claims about steps, order, grounding and refusals — not string matches." },
+  { n: "04", k: "CERTIFY",
+    h: "A signed artifact per release",
+    p: "Attached to the commit, exportable for audit and procurement." },
+];
+
+/** Why the old approach stops working. The argument the hero rests on. */
+export const GAP = {
+  eyebrow: "The gap",
+  title: "Software was verified because it was deterministic. Agents are not.",
+  body: [
+    "A prompt change, a model version, a reordered tool list — any of them "
+      + "silently rewrites the path an agent takes. There is no diff to read.",
+    "So the question stops being “does this input give that output?” and becomes "
+      + "“did it still refuse, still check before writing, still escalate?”. "
+      + "Those are claims about behaviour, and they need a run to test them.",
+  ],
+};
+
+/** Sample figures from one recorded run — never a customer number. */
+export const PRODUCT_STATS = [
+  { fig: "18", lab: "Suites", sub: "across 4 agents" },
+  { fig: "512", lab: "Recorded runs", sub: "evaluation fixtures" },
+  { fig: "1,406", lab: "Assertions", sub: "behavioural, not textual" },
+  { fig: "7", lab: "Blocked releases", sub: "this quarter", accent: true },
+];
+
+export const WHY_NOW = [
+  { k: "Time",
+    p: "Weeks of hand-testing prompts collapse into one evaluation run against "
+       + "recorded traffic." },
+  { k: "Cost",
+    p: "Regressions are caught before release, not after the refunds and the "
+       + "incident review." },
+  { k: "Trust",
+    p: "Each release ships with a signed record of behaviour that risk and "
+       + "procurement can read." },
+];

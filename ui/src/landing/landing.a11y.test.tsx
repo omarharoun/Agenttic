@@ -1,10 +1,14 @@
-/* SPEC-11 Step 53 — landing production-bar structural checks.
+/* Landing production-bar structural checks.
  *
- * These cover the parts of the bar that don't need a browser: a single H1, the
- * decorative dial hidden from AT, keyboard-operable controls (native
- * button/details), a reduced-motion rule, and a horizontal-overflow guard (clean
- * to 360px). Full axe + visual-regression are browser-runner gates (Playwright),
- * noted in the M35 report, not run here.
+ * The parts of the bar that don't need a browser: a single H1, keyboard-operable
+ * native controls, and no ornament claiming to be information. Full axe +
+ * visual-regression are Playwright gates, not run here.
+ *
+ * Updated for the "trust layer" repositioning. The three wheel-specific checks
+ * are gone because the wheel is — but the RULE they enforced is kept and
+ * generalised below: any SVG that carries meaning must be described, and any
+ * SVG that is ornament must be hidden. That rule outlives whichever art the
+ * hero happens to use, which is what the old tests got wrong by naming `cw`.
  */
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -23,22 +27,46 @@ describe("landing a11y / responsive bar", () => {
     expect((html.match(/<h1\b/g) || []).length).toBe(1);
   });
 
-  it("the hero art is the coverage wheel, not a decorative clock", () => {
-    // The escapement was ornament; the wheel is the headline made visual, so it
-    // carries meaning and must be described rather than hidden.
+  it("carries no decorative ornament posing as content", () => {
+    // The escapement dial was removed for exactly this reason and must not
+    // creep back: motion encodes state, it is not decoration (Hard Rule).
     expect(html).not.toContain("ds-escape");
-    expect(html).toContain('class="cw');
   });
 
-  it("the wheel is described to assistive tech instead of hidden", () => {
-    expect(html).toMatch(/<svg[^>]*role="img"[^>]*aria-label="[^"]*closure/);
+  it("every SVG is either described to AT or explicitly hidden from it", () => {
+    // The generalised form of the old wheel-specific check. An SVG with neither
+    // an accessible name nor aria-hidden is the actual defect — naming one
+    // component (`cw`) only caught it in one place.
+    const svgs = html.match(/<svg[^>]*>/g) || [];
+    expect(svgs.length).toBeGreaterThan(0);
+    for (const svg of svgs) {
+      const described = /aria-label="[^"]+"|role="img"|<title/.test(svg);
+      const hidden = /aria-hidden="true"/.test(svg);
+      expect(described || hidden, `undescribed SVG: ${svg.slice(0, 90)}`).toBe(true);
+    }
   });
 
   it("interactive controls are keyboard-operable native elements", () => {
-    expect(html).toContain("<button");    // picker + tabs + copy are real buttons
-    expect(html).toContain("<details");   // faq is a native disclosure
-    // the copy control carries an accessible name
-    expect(html).toMatch(/aria-label="copy commands"/);
+    // Native elements only — no div-with-onclick. `aria-label="copy commands"`
+    // is gone with the CodeBlock, so the check is on what the page HAS: a real
+    // disclosure for the FAQ, a real button in the nav, and CTAs that are
+    // anchors with a destination (they rendered as dead <button>s at one point,
+    // which is precisely the bug this catches).
+    expect(html).toContain("<details");            // FAQ is a native disclosure
+    expect(html).toContain("<button");             // nav burger is a real button
+    const ctas = html.match(/<a class="ds-btn[^"]*"[^>]*>/g) || [];
+    expect(ctas.length).toBeGreaterThan(0);
+    for (const cta of ctas) {
+      expect(cta, `CTA without href: ${cta}`).toMatch(/href="\/[^"]*"/);
+    }
   });
 
+  it("no interactive control is an unlabelled icon", () => {
+    const buttons = html.match(/<button[^>]*>(?:(?!<\/button>).)*<\/button>/gs) || [];
+    for (const b of buttons) {
+      const hasText = />\s*[A-Za-z0-9]/.test(b.replace(/<[^>]+>/g, ">"));
+      const hasLabel = /aria-label="[^"]+"/.test(b);
+      expect(hasText || hasLabel, `unlabelled button: ${b.slice(0, 80)}`).toBe(true);
+    }
+  });
 });

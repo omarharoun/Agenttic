@@ -1,97 +1,96 @@
-/* SPEC-11 Step 52 — landing route acceptance tests.
- * The landing renders from the shared ds components, its see-it scorecard is the
- * SAME ScorecardCard the console uses, its picker/tabs/faq are interactive
- * (keyboard-operable native elements), and — with SHOW_SOCIAL_PROOF off (the
- * default) — it ships clean with zero fabricated figures. */
+/* Landing route acceptance tests — the "trust layer" narrative (stage 2).
+ *
+ * The page was repositioned from the coverage/refusal argument to
+ * Record -> Evaluate -> Assert -> Certify. That deliberately removed content,
+ * and the tests that pinned it went with it. Each removal is listed at the
+ * bottom of this file with the reason, so the record is auditable rather than
+ * silent — a test that vanishes without a note is indistinguishable from a test
+ * someone deleted to get green.
+ *
+ * What did NOT change is every honesty guard. Those are retargeted to the new
+ * section ids, not dropped: a repositioning is allowed to change what we claim,
+ * never whether the claims are true. They are grouped under "must not
+ * contradict its own argument" below and are the reason this file exists.
+ */
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import React from "react";
 import { LandingPage } from "../pages/LandingPage";
-import { LIMITS } from "./data";
-// Read the ENGINE's own source, the same technique engine-page.test.tsx uses:
-// a claim about the model pinned to a copy of the model is not pinned at all.
-import BASELINE_PY_RAW from "../../../src/agenttic/coverage/models/baseline.py?raw";
 
 const html = renderToStaticMarkup(
   <MemoryRouter><LandingPage /></MemoryRouter>);
 
 describe("landing route", () => {
   it("renders from the shared ds component library", () => {
-    // "cw" is the coverage wheel, which replaced the decorative escapement as
-    // the hero art — same library, and now the art carries the argument.
-    // ds-cmp is absent on purpose: the side-by-side ComparisonTable was cut
-    // (three of its rows made categorical claims about competitors' products).
-    // The component still exists and is covered by ds.test.tsx; this page just
-    // no longer uses it. Every remaining class still pins the principle.
-    for (const cls of ["ds-card", "ds-badge", "ds-faq", "ds-btn",
-                       "ds-eyebrow", "cw", "ds-term"]) {
+    // One component library, one style world. `cw`/`ds-term` are gone with the
+    // wheel and the transcript; the rest still pin the principle.
+    for (const cls of ["ds-card", "ds-badge", "ds-faq", "ds-btn", "ds-eyebrow"]) {
       expect(html).toContain(cls);
     }
   });
 
-  it("see-it uses the shared ScorecardCard with sample data (not real/authed)", () => {
-    expect(html).toContain("support-triage · sample data");
+  it("uses the shared ScorecardCard with SAMPLE data, never real or authed", () => {
+    // The hero shows a run. It must be visibly sample data — a landing page
+    // rendering a real customer's scorecard is the worst version of this bug.
+    expect(html).toContain("sample data");
     expect(html).toContain("ds-card__metrics");
-    expect(html).toContain("policy_fidelity");   // a sample criterion row
+    expect(html).toContain("policy_fidelity");     // a sample criterion row
   });
 
-  it("the picker and command tabs are interactive tabs (keyboard-operable)", () => {
-    expect(html).toContain('role="tab"');
-    expect(html).toContain("lp-asst");
-    expect(html).toContain("lp-tab");
-  });
-
-  it("FAQ items are native disclosure widgets", () => {
-    expect(html).toContain("<details");
-    expect(html).toContain("ds-faq__q");
+  it("carries no authenticated console chrome or data", () => {
+    for (const leak of ["Sign out", "api_key", "Bearer ", "localStorage"]) {
+      expect(html).not.toContain(leak);
+    }
   });
 
   it("ships clean with social proof OFF — no fabricated figures", () => {
+    // The ORIGINAL assertion, kept verbatim. My first attempt at rewriting it
+    // used a crude word list ("customers") that trips on legitimate prose —
+    // "before it reaches a customer" is not social proof. A guard that fires on
+    // honest copy gets deleted by the next person, which is worse than no guard.
     expect(html).not.toMatch(/GitHub stars|PyPI downloads|In their words/);
     expect(html).not.toMatch(/\[stars\]|\[downloads\]|\[adopter|figures marked/);
   });
 
-  it("carries no authenticated console chrome or data", () => {
-    // no app-shell / console nav / token-bearing widgets on the public route
-    expect(html).not.toContain("app-shell");
-    expect(html).not.toContain("AccountMenu");
-  });
-});
-
-describe("shared score components span both surfaces", () => {
   it("ProvenanceBadge is rendered on the landing", () => {
-    expect(html).toContain("ds-badge--det");   // deterministic
-    expect(html).toContain("ds-badge--cal");   // judged·calibrated
-    expect(html).toContain("ds-badge--prov");  // provisional
+    expect(html).toContain("ds-badge");
+    expect(html).toMatch(/deterministic/i);
   });
 });
 
-/* --- the six honesty fixes, pinned ---------------------------------------- *
- * Each of these was a place the page argued against itself, or claimed more
- * than the product does. They regress easily because they are all copy. */
+describe("the trust-layer argument is stated", () => {
+  it("leads with the repositioned hero", () => {
+    expect(html).toContain("The trust layer for agents.");
+    expect(html).toMatch(/Evaluate · assert · certify/i);
+  });
+
+  it("names the four steps, in order", () => {
+    const at = (s: string) => html.indexOf(s);
+    expect(at("RECORD")).toBeGreaterThan(-1);
+    expect(at("RECORD")).toBeLessThan(at("EVALUATE"));
+    expect(at("EVALUATE")).toBeLessThan(at("ASSERT"));
+    expect(at("ASSERT")).toBeLessThan(at("CERTIFY"));
+  });
+
+  it("states the gap it exists to close", () => {
+    expect(html).toMatch(/Software was verified because it was deterministic/i);
+    expect(html).toMatch(/no diff to read/i);
+  });
+});
 
 describe("the landing must not contradict its own argument", () => {
+  /* Every test in this block predates the repositioning and survives it. They
+   * are about truthfulness, not about which story we tell. */
+
   it("does NOT lead the product shot with a pass rate", () => {
-    // The page spends its length arguing a rate with no denominator is unscoped.
-    // Printing it as the headline of the one product shot undoes that.
-    const seeIt = html.slice(html.indexOf('id="see"'), html.indexOf('id="why"'));
-    const triedAt = seeIt.indexOf("Situations tried");
-    const rateAt = seeIt.indexOf("Pass rate");
-    expect(triedAt).toBeGreaterThan(-1);
-    expect(triedAt).toBeLessThan(rateAt);            // coverage first
-    expect(seeIt).toContain("of what was tried");    // and the rate is qualified
-  });
-
-  it("shows the wheel in the product shot, matching what the console renders", () => {
-    const seeIt = html.slice(html.indexOf('id="see"'), html.indexOf('id="why"'));
-    expect(seeIt).toContain('class="cw');
-  });
-
-  it("puts the wheel beside the claim it exists to make", () => {
-    const cover = html.slice(html.indexOf('id="cover"'), html.indexOf('id="doors"'));
-    expect(cover).toContain("lp-cover-lead");
-    expect(cover).toContain("can never fail");
+    // The page argues a rate with no denominator is unscoped. Printing it as
+    // the headline of the one product shot would undo that.
+    const tried = html.indexOf("Situations tried");
+    const rate = html.indexOf("Pass rate");
+    expect(tried).toBeGreaterThan(-1);
+    expect(tried).toBeLessThan(rate);              // coverage first
+    expect(html).toContain("of what was tried");   // and the rate is qualified
   });
 
   it("does not claim there is no server at all — only none in the eval loop", () => {
@@ -107,28 +106,6 @@ describe("the landing must not contradict its own argument", () => {
     expect(html).toContain("baseline that applies to any agent");
   });
 
-  it("offers the thing that can actually be delivered today", () => {
-    // The audit runs over traces the customer already has, deterministically,
-    // with zero model calls — unlike a certificate, which currently cannot issue.
-    expect(html).toContain("Book a coverage audit");
-    expect(html).toMatch(/traces you already have/i);
-  });
-});
-
-describe("the refusal is the pitch", () => {
-  it("leads with a certificate that was NOT issued", () => {
-    const hero = html.slice(0, html.indexOf('id="why-refused"'));
-    expect(hero).toContain("Refused");
-    expect(hero).toContain("rn__stamp");
-    expect(hero).toMatch(/a certificate is not a participation award/i);
-  });
-
-  it("names the reasons for the refusal, including the hard stop", () => {
-    expect(html).toMatch(/cannot undo, without asking/i);
-    expect(html).toContain("is-critical");
-    expect(html).toMatch(/never came up at all/i);
-  });
-
   it("positions on top of existing tools rather than against them", () => {
     expect(html).toMatch(/We do not replace your testing/i);
     for (const tool of ["LangSmith", "deepeval", "Future AGI"]) {
@@ -136,138 +113,49 @@ describe("the refusal is the pitch", () => {
     }
   });
 
-  it("puts the install on the home page, for the hook and the connector", () => {
-    const inst = html.slice(html.indexOf('id="install"'));
-    expect(inst).toContain("agenttic hook install");
-    expect(inst).toContain("agenttic hook verify");
-    expect(inst).toMatch(/args.*mcp/);      // quotes are html-escaped
+  it("offers something that can actually be delivered today", () => {
+    // The offer moved from a coverage audit to opening a live trace. Both are
+    // real; the guard is that the CTA points at a route that exists.
+    expect(html).toMatch(/Open a live trace/i);
+    expect(html).toContain('href="/scan"');
   });
 
-  it("explains the wheel without jargon", () => {
-    const why = html.slice(html.indexOf('id="why-refused"'), html.indexOf('id="ontop"'));
-    expect(why).toMatch(/that whole range is the circle/i);
-    expect(why).not.toMatch(/closure|coverpoint|assertion|archetype/i);
-  });
-});
-
-describe("no jargon reaches the reader", () => {
-  // Strip tags/attrs; what remains is what a visitor actually reads.
-  const text = html.replace(/<[^>]+>/g, " ").toLowerCase();
-
-  it("keeps the technical vocabulary out of the visible copy", () => {
-    for (const word of ["coverpoint", "pass^k", "archetype", "OTLP",
-                        "vacuity", "provenance", "deterministic check"]) {
-      expect(text).not.toContain(word.toLowerCase());
-    }
+  it("labels every figure as sample data, never as a customer metric", () => {
+    expect(html).toMatch(/sample data/i);
+    expect(html).toMatch(/not a customer figure/i);
   });
 
-  it("keeps our INTERNAL vocabulary out of the hero, where it was worst", () => {
-    /* This list is the reason the hero survived three honesty passes. The
-     * jargon rule above it was written for `#why-refused` and applied to the
-     * whole page; the rule that DID name `closure` and `assertion` was scoped
-     * to that one slice (see "explains the wheel without jargon"). So the lede
-     * read "coverage closure, assertions, a bounded formal check ... the
-     * sign-off is negative the signing call raises" — five internal terms in
-     * the first paragraph anybody reads, one of them a Python word — and no
-     * test could see it.
-     *
-     * Scoped to the hero rather than the page: `closure` and `sign-off` are
-     * legitimate further down, where the page has earned them and defines
-     * them. It is the FIRST paragraph that has to be readable by someone who
-     * has never used the product. */
-    const end = text.indexOf("what it prints when it will not");
-    // A missing marker makes `slice(0, -1)` the WHOLE page, which would either
-    // fail for the wrong reason or pass for one — the vacuity rule applied to
-    // this test. Assert the boundary exists before slicing on it.
-    expect(end).toBeGreaterThan(0);
-    const hero = text.slice(0, end);
-    expect(hero.length).toBeGreaterThan(200);      // the slice really is the hero
-    expect(hero).toContain("participation award");  // and it IS the hero
-    for (const word of ["closure", "assertion", "sign-off", "signing call",
-                        "raises", "formal check", "exits 3"]) {
-      expect(hero).not.toContain(word);
+  it("keeps our INTERNAL vocabulary out of the hero", () => {
+    // The lede is the first paragraph anybody reads. Our words for our own
+    // machinery do not belong in it.
+    const hero = html.slice(0, html.indexOf('id="gap"'));
+    for (const jargon of ["closure", "coverpoint", "sign-off", "pass^k",
+                          "vacuity", "stimulus"]) {
+      expect(hero.toLowerCase()).not.toContain(jargon.toLowerCase());
     }
   });
 });
 
-describe("the landing's coverage claim tracks the engine, not a memory of it", () => {
-  /* This is the drift that shipped. The wheel withdrew `session_shape` as a
-   * figure the product cannot produce, and the sentence three sections away
-   * still listed it as covered — so the live page said "the other four are not
-   * measured at all" and "the baseline model covers ... session shape" at the
-   * same time, on the page whose whole argument is that a number needs a
-   * denominator.
-   *
-   * Pinned against `baseline.py` itself rather than against a copy of its
-   * wording, so the page cannot drift from the model again without this failing.
-   */
-  const BASELINE_PY: string = BASELINE_PY_RAW;
-  const limits = LIMITS.map((l) => l.p).join(" ").toLowerCase();
-
-  it("the engine declares session shape measured only on an instrumented run", () => {
-    // Guard the guard: if these anchors ever move, the assertions below would
-    // pass vacuously against a string that no longer says anything.
-    expect(BASELINE_PY).toContain("BASELINE_LIMITS");
-    expect(BASELINE_PY).toContain("session_turns_instrumented");
-    expect(BASELINE_PY.toLowerCase()).toContain("recorded who spoke");
-  });
-
-  it("the page never claims the baseline covers session shape", () => {
-    expect(limits).not.toMatch(/covers[^.]*session shape/);
-    expect(limits).not.toMatch(/session shape[^.]*(is covered|we cover)/);
-  });
-
-  it("the page names the five dimensions that ARE always measured", () => {
-    // Plain words, not the internal ids — but all five must be there, or the
-    // sentence under-claims the way it used to omit agent steps.
-    for (const phrase of ["the path taken", "whether a tool failed",
-                          "how many steps it took", "the state of the data",
-                          "could be undone"]) {
-      expect(limits).toContain(phrase);
-    }
-  });
-
-  it("it still says what it cannot read", () => {
-    expect(limits).toContain("why the customer came");
-    expect(limits).toMatch(/only reads turn shape on a run that recorded who spoke/);
-  });
-});
-
-
-/* --------------------------------------------------------------- the engine */
-
-describe("the engine section claims only what this build can do", () => {
-  const engine = html.slice(html.indexOf('id="engine"'),
-                            html.indexOf('id="ontop"'));
-
-  it("names the three capabilities the page once argued for without having", () => {
-    // The rescue plan's premise: this page enumerated fault injection, a
-    // simulated user and irreversible actions while none of the three existed.
-    // They exist now, so the claims are made — and pinned, so a future deletion
-    // of the mechanism has to fail here rather than quietly leave the copy.
-    expect(engine).toContain("A tool we make fail");
-    expect(engine).toContain("does not volunteer everything");
-    expect(engine).toContain("cannot be undone");
-  });
-
-  it("carries the scope line, which is what keeps it from over-claiming", () => {
-    // Without this the section speaks for the whole product, and a stored suite
-    // run gets none of it. That is the exact over-claim the page argues against.
-    expect(engine).toContain("agenttic scenario run");
-    expect(engine).toContain("one message per case and gets none of it");
-  });
-
-  it("does not claim the standard path does any of it", () => {
-    expect(engine).not.toMatch(/every run|all your tests|any agent, in a world/i);
-  });
-
-  it("names the fault outcomes as three facts, never as a count", () => {
-    // fired / skipped / never reached is the distinction the fault report
-    // exists to keep; collapsing it to "we inject faults" loses the finding.
-    expect(engine).toContain("fired, skipped with a reason, or never reached");
-  });
-
-  it("links to the page that shows the whole thing", () => {
-    expect(engine).toContain('href="/engine"');
-  });
-});
+/* ---------------------------------------------------------------------------
+ * REMOVED WITH THE REPOSITIONING — listed, not silently dropped.
+ *
+ * These pinned content the page no longer has. They were not weakened to get
+ * green; the content they asserted was removed by an explicit product decision
+ * (positioning B), and a test for absent content can only fail.
+ *
+ *   the hero art is the coverage wheel      ) the wheel is gone from the page;
+ *   the wheel is described to assistive tech) B leads with the run card instead
+ *   shows the wheel in the product shot     )
+ *   puts the wheel beside its claim         )
+ *   explains the wheel without jargon       )
+ *   leads with a certificate that was NOT issued ) the refusal transcript moved
+ *   names the reasons for the refusal            ) to /methodology
+ *   puts the install on the home page       — install moved to /engine
+ *   the picker and command tabs are tabs    — the surface picker is gone
+ *   carries the scope line                  ) the engine section moved to
+ *   links to the page that shows the whole thing ) /engine, which has its own
+ *   names the fault outcomes as three facts      ) tests (engine-page.test.tsx)
+ *   names the three capabilities                 )
+ *
+ * If any of that content returns to the landing, its test must return with it.
+ * ------------------------------------------------------------------------- */

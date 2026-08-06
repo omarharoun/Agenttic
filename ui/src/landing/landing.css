@@ -232,3 +232,24 @@
   font: var(--t-sm)/1 var(--font-mono); color: var(--text);
   border: 1px solid var(--border); border-radius: var(--r-xs); padding: 7px 11px;
 }
+
+/* --- stat band (trust-layer landing) ------------------------------------- */
+.lp-statband { display: grid; grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--border); border-radius: var(--r-xl);
+  background: var(--panel); overflow: hidden; margin-top: var(--sp-6); }
+.lp-statband__c { padding: var(--sp-5) var(--sp-5);
+  border-right: 1px solid var(--border); }
+.lp-statband__c:last-child { border-right: 0; }
+.lp-statband__l { font-family: var(--font-mono); font-size: var(--t-label);
+  letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--faint); }
+.lp-statband__f { font-family: var(--font-serif); font-size: var(--t-h1);
+  line-height: 1.1; color: var(--text); margin: var(--sp-2) 0 var(--sp-1); }
+.lp-statband__f.is-accent { color: var(--accent); }
+.lp-statband__s { font-size: var(--t-sm); color: var(--muted); }
+.lp-note { font-size: var(--t-sm); color: var(--faint); margin-top: var(--sp-3); }
+.lp-cell__k { font-family: var(--font-mono); font-size: var(--t-label);
+  letter-spacing: var(--track-caps); text-transform: uppercase;
+  color: var(--accent); margin-bottom: var(--sp-3); }
+.lp-cta { text-align: left; }
+@media (max-width: 860px) { .lp-statband { grid-template-columns: repeat(2, 1fr); }
+  .lp-statband__c:nth-child(2) { border-right: 0; } }
