@@ -154,9 +154,6 @@ html[data-theme="light"] {
   --accent-line: #E5CF7F;
   --accent-ink: #FFFFFF;
 
-  /* alt sections / sunken wells — the cream-deep + manilla steps */
-  --cream-deep: #F4F2EA;
-  --manilla: #EFEADC;
 
   --metal: #7E858D;
   --metal-soft: rgba(126, 133, 141, 0.14);

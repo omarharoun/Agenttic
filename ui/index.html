@@ -48,8 +48,15 @@
       (function () {
         try {
           var t = localStorage.getItem("agenttic_theme");
+          // Every stored value is handled EXPLICITLY. The old form tested only
+          // "light" and "system" and let everything else fall through to dark,
+          // which was correct while dark was the default — but flipping the
+          // fallback to light silently sent an explicit "dark" preference to
+          // light. A user who chose dark got light.
           var resolved =
-            t === "light"
+            t === "dark"
+              ? "dark"
+              : t === "light"
               ? "light"
               : t === "system"
               ? matchMedia("(prefers-color-scheme: light)").matches
