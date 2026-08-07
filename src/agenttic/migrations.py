@@ -345,21 +345,82 @@ def applied_versions(conn) -> set[int]:
 
 
 def run_migrations(engine, migrations=None) -> list[int]:
-    """Apply pending migrations in order; return the versions applied."""
+    """Apply pending migrations in order; return the versions applied.
+
+    SAFE UNDER CONCURRENT COLD START. Every command migrates the registry when it
+    builds one, so N processes against a FRESH database all read an empty
+    `schema_migrations`, all run the same migration, and all try to insert the
+    same version. Measured before this: 8 parallel `certify --mock` into a new
+    db produced 4 clean exits and 4 raw
+    `IntegrityError: UNIQUE constraint failed: schema_migrations.version`.
+
+    Two changes make that safe, and both are needed:
+
+    * **One transaction per migration**, not one for the whole run. Previously a
+      single `engine.begin()` wrapped every migration, so one collision aborted
+      the entire batch — including migrations that had already succeeded in that
+      transaction.
+    * **A losing insert is not an error.** If another process registered the
+      version first, that process also ran the same `up()`; the work is done.
+      We re-read the applied set and carry on rather than crashing.
+
+    A racing process can lose in TWO ways, and tolerating only one is why a
+    first attempt at this still failed under threads: it can lose the INSERT
+    (IntegrityError on the unique version) or it can lose the DDL itself
+    (OperationalError "table ... already exists", because the baseline migration
+    is not written with IF NOT EXISTS). Both mean the same thing — someone else
+    got there first — so both are tolerated, and only those two.
+
+    Deliberately NOT a lock: losing is harmless once both cases are handled, and
+    a lock would serialise every process's startup to buy nothing.
+    """
+    from sqlalchemy.exc import IntegrityError, OperationalError
+
     migrations = MIGRATIONS if migrations is None else migrations
     done: list[int] = []
-    with engine.begin() as conn:
-        have = applied_versions(conn)
-        for version, name, up in sorted(migrations):
-            if version in have:
-                continue
-            up(conn)
-            conn.execute(
-                text("INSERT INTO schema_migrations(version, name, applied_at) "
-                     "VALUES (:v, :n, :t)"),
-                {"v": version, "n": name,
-                 "t": datetime.now(timezone.utc).isoformat()})
+    with engine.connect() as conn:
+        have = set(applied_versions(conn))
+
+    for version, name, up in sorted(migrations):
+        if version in have:
+            continue
+        try:
+            with engine.begin() as conn:
+                up(conn)
+                conn.execute(
+                    text("INSERT INTO schema_migrations(version, name, applied_at) "
+                         "VALUES (:v, :n, :t)"),
+                    {"v": version, "n": name,
+                     "t": datetime.now(timezone.utc).isoformat()})
             done.append(version)
+        except (IntegrityError, OperationalError) as exc:
+            # Lost the race — either on the version insert (IntegrityError) or
+            # on the DDL (OperationalError "already exists"). Any OTHER
+            # OperationalError is a real fault (locked, disk I/O, corrupt) and
+            # must NOT be swallowed: that would turn a broken database into a
+            # silent success, which is the class of bug this whole change is
+            # about.
+            if isinstance(exc, OperationalError) and \
+                    "already exists" not in str(exc).lower():
+                raise
+            # Losing the DDL rolled back OUR transaction, including the version
+            # row. If the winner's row is not there either — every worker can
+            # lose to a sibling — the ledger would be silently short and a later
+            # run would re-apply an already-applied migration. Record it, and
+            # tolerate losing that race too.
+            with engine.connect() as conn:
+                have = set(applied_versions(conn))
+            if version not in have:
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(
+                            text("INSERT INTO schema_migrations"
+                                 "(version, name, applied_at) VALUES (:v, :n, :t)"),
+                            {"v": version, "n": name,
+                             "t": datetime.now(timezone.utc).isoformat()})
+                    have.add(version)
+                except IntegrityError:
+                    have.add(version)   # someone else recorded it first
     return done
 
 

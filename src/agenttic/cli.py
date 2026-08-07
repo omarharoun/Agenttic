@@ -59,6 +59,46 @@ def _ctx(config_path: str = "config.yaml"):
     return cfg, Registry(str(path))
 
 
+def _require_agent(cfg, reg, agent_id: str) -> str:
+    """Refuse a subject that does not exist. Returns the id if it does.
+
+    Several commands took an agent id, never checked it, and emitted a
+    confident artifact anyway — `abom ghost-agent` produced a hashed, VALID
+    0-component CycloneDX supply-chain attestation at exit 0, with a sha256
+    meant to be referenced from a certification manifest. In a product whose
+    whole claim is that a green result means something, a signed document about
+    a subject that does not exist is the worst thing it can emit: it fails
+    silently and the output looks legitimate.
+
+    An agent is real if it is DECLARED in config (`agents:`) or KNOWN to the
+    registry (it has run). Either is enough — a config-declared agent that has
+    never run is still a legitimate BOM subject.
+    """
+    from agenttic.registry.sqlite_store import NotFoundError
+
+    if agent_id in ops.declared_agents(cfg):
+        return agent_id
+    try:
+        reg.get_declared_agent(agent_id)
+        return agent_id
+    except NotFoundError:
+        pass
+    try:
+        known = {a.agent_id for a in reg.list_declared_agents(include_retired=True)}
+        known |= {r.get("agent_id") for r in reg.latest_canonical_runs() if r.get("agent_id")}
+    except Exception:  # noqa: BLE001 — an unreadable registry must not mask the
+        known = set()   # real error, which is that the subject was not found
+    if agent_id in known:
+        return agent_id
+    declared = sorted(set(ops.declared_agents(cfg)) | known)
+    raise typer.BadParameter(
+        f"unknown agent {agent_id!r} — it is neither declared in config under "
+        f"`agents:` nor known to the registry. "
+        + (f"Known: {', '.join(declared[:8])}." if declared
+           else "No agents are declared or recorded yet.")
+        + " Declare it with `agenttic agents add`, or run it once.")
+
+
 @app.command()
 def generate(
     business_doc: Path = typer.Argument(
@@ -1205,6 +1245,8 @@ app.add_typer(agents_app, name="agents")
 @agents_app.command("add")
 def agents_add(
     agent_id: str,
+    force: bool = typer.Option(False, "--force",
+                               help="replace an existing declaration"),
     variant: str = typer.Option("reference", "--variant", "-v",
                                 help="reference | blackbox | managed"),
     model: str = typer.Option("", help="reference: model override"),
@@ -1235,6 +1277,21 @@ def agents_add(
             validate_blackbox_url(agent.url, cfg=cfg, allow_unresolved=True)
         except UnsafeURLError as exc:
             raise typer.BadParameter(f"unsafe agent url: {exc}")
+    # Re-adding an id REPLACED the whole declaration silently, so a typo could
+    # clobber config-like state with no warning. `init` guards with --force and
+    # `users create` rejects duplicates outright; this now matches them.
+    if not force:
+        from agenttic.registry.sqlite_store import NotFoundError
+        try:
+            existing = reg.get_declared_agent(agent_id)
+        except NotFoundError:
+            existing = None
+        if existing is not None:
+            raise typer.BadParameter(
+                f"agent {agent_id!r} is already declared (v{existing.version}, "
+                f"{existing.variant}). Adding it again REPLACES the whole "
+                "declaration. Re-run with --force if that is what you want, or "
+                "pick another id.")
     saved = reg.register_agent(agent)
     console.print(f"[green]Registered[/] {saved.agent_id} v{saved.version} "
                   f"({saved.variant}).")
@@ -2685,6 +2742,7 @@ def cards_autofill(
     from agenttic.cards.autofill import autofill_card
     from agenttic.cards.autonomy import classify_autonomy
     cfg, reg = _ctx(config)
+    _require_agent(cfg, reg, agent)
     card = autofill_card(cfg, reg, agent)
     aut = classify_autonomy(reg, agent, cfg)
     fv = aut.to_field_value()
@@ -3495,7 +3553,21 @@ def evaluate(
     from agenttic.rubric_engine.evaluate import AWAITING_APPROVAL
     from agenttic.rubric_engine.evaluate import evaluate as _eval
 
+    # A path that does not exist silently became PROSE, so `evaluate
+    # ./reqs.txt` with a typo classified the filename itself and reported a
+    # confident `custom — 0.00 / needs_generation`. Reading an existing file is
+    # correct and unchanged; only the miss is now refused.
     p = _P(inputs)
+    # "Path-shaped" must not match prose. A first attempt keyed on `.suffix`,
+    # which made any sentence ending in a full stop a path — requirement text
+    # is exactly that. Whitespace is the discriminator: paths do not contain it,
+    # requirement text almost always does.
+    looks_like_path = (not any(c.isspace() for c in inputs)
+                       and ("/" in inputs or "\\" in inputs or _P(inputs).suffix))
+    if not p.exists() and looks_like_path:
+        raise typer.BadParameter(
+            f"{inputs!r} looks like a file path but does not exist. Pass an "
+            "existing file, or inline the requirement text as the argument.")
     doc = p.read_text(encoding="utf-8") if p.exists() else inputs
     ci = ClassifyInputs(business_doc=doc, agent_description=description)
     result = _eval(ci, business_context=doc, threshold=threshold, suite_id=suite_id)
@@ -3675,6 +3747,9 @@ def abom(
             out_.append({"name": name, "version": ver})
         return out_
 
+    cfg, reg = _ctx(config)
+    _require_agent(cfg, reg, agent)
+
     doc = build_abom(
         subject_name=agent, model_ids=list(model),
         tools=_split(tool), mcp_servers=_split(mcp),
@@ -3684,6 +3759,15 @@ def abom(
     console.print(f"[green]ABOM written to {out}[/] "
                   f"({len(doc['components'])} components)")
     console.print(f"sha256 {abom_sha256(doc)}")
+    # An EMPTY bill of materials is structurally valid and semantically useless:
+    # `validate_abom` only asks whether the document matches CycloneDX, never
+    # whether it says anything. Referencing this hash from a manifest would
+    # attest to a supply chain nobody described.
+    if not doc["components"]:
+        console.print(
+            "[yellow]WARNING: 0 components.[/] Nothing was declared, so this "
+            "attests to an EMPTY supply chain. Pass --model/--tool/--mcp before "
+            "referencing this hash from a manifest.")
     console.print("[dim]reference this hash from the manifest (--abom-sha256)[/]")
 
 

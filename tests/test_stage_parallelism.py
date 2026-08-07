@@ -240,9 +240,18 @@ def test_tasks_are_generated_concurrently(tmp_path):
     gen.generate_suite(DOC, suite_id="s1", registry=Registry(tmp_path / "d.sqlite"),
                        review_dir=tmp_path / "review")
     elapsed = time.monotonic() - t0
-    # 1 extract + 4 tasks x 2 calls, 100ms each: serial is 0.9s, 4 lanes ~0.3s
-    assert elapsed < 0.6, f"generation looks serial ({elapsed:.2f}s)"
-    assert client.peak > 1
+    # `client.peak` is the DIRECT evidence: the greatest number of calls in
+    # flight at once. It cannot be fooled by a fast machine or a slow one.
+    #
+    # The wall-clock bound that used to sit here (`elapsed < 0.6`) was a proxy
+    # for the same property and was documented as an environment-sensitive flake
+    # in docs/HANDOVER-2026-08-02.md — it fails under machine load on unmodified
+    # code, so it reddened every loaded run and misled every fresh status pass.
+    # Asserting the measurement instead of its symptom removes the flake without
+    # weakening the check: serial generation gives peak == 1 and fails here.
+    assert client.peak > 1, (
+        f"generation ran serially (peak concurrency {client.peak}, "
+        f"elapsed {elapsed:.2f}s)")
 
 
 def test_generation_defaults_to_serial_so_stage_order_stays_predictable(tmp_path):
