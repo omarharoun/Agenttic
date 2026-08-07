@@ -1392,7 +1392,11 @@ def agents_drivers(
             "    my-agent:\n"
             "      driver: acp                 # acp (preferred) | cli\n"
             "      command: [\"my-agent\", \"acp\"]\n")
-        raise typer.Exit(code=1)
+        # Exit 0: a LISTING that finds nothing is not a failure, and the output
+        # above is guidance rather than an error. Its sibling `agents list`
+        # already exits 0 on the same emptiness — same noun, same state, and it
+        # returned a different code, which is the kind of thing a script gates on.
+        return
 
     table = Table("agent", "driver", "command", "version", "on PATH")
     for name, spec in sorted(declared.items()):
