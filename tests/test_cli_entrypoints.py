@@ -19,9 +19,19 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 def test_pyproject_declares_exactly_one_console_script():
     data = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())
     scripts = data["project"]["scripts"]
-    assert scripts == {"agenttic": "agenttic.cli:app"}, (
+    # The invariant is ONE script, named `agenttic`, and no resurrected `ascore`
+    # alias. The target moved from `:app` to `:main` when the CLI gained a
+    # boundary handler that maps known domain faults to a clean line — pinning
+    # the exact target made an intended change look like a regression, so this
+    # asserts the invariant and then checks the target actually resolves, which
+    # the old form never did.
+    assert list(scripts) == ["agenttic"], (
         "agenttic is the only console script; the deprecated `ascore` alias was "
         "removed and must not return")
+    module, _, attr = scripts["agenttic"].partition(":")
+    import importlib
+    assert callable(getattr(importlib.import_module(module), attr)), (
+        f"console script target {scripts['agenttic']} does not resolve")
 
 
 def test_agenttic_module_help_resolves():

@@ -34,10 +34,22 @@ console = Console()
 _STATE: dict[str, str | None] = {"tenant": None}
 
 
+def _version_cb(value: bool):
+    if value:
+        from agenttic import __version__
+        console.print(f"agenttic {__version__}")
+        raise typer.Exit()
+
+
 @app.callback()
-def _main(tenant: str = typer.Option(
+def _main(
+    tenant: str = typer.Option(
         None, "--tenant", envvar=["AGENTTIC_TENANT", "AGENTTIC_TENANT"],
-        help="workspace/tenant to operate on (default: 'default')")):
+        help="workspace/tenant to operate on (default: 'default')"),
+    version: bool = typer.Option(
+        False, "--version", callback=_version_cb, is_eager=True,
+        help="show the installed version and exit"),
+):
     """Agenttic CLI. The CLI operates directly on the registry DB (admin-level);
     --tenant selects the workspace, matching the server's tenancy model."""
     _STATE["tenant"] = tenant
@@ -131,11 +143,28 @@ def generate(
             "provide BUSINESS_DOC and SUITE_ID for suite-draft mode, or use "
             "--target <agent> for the adversarial attack generator")
     cfg, reg = _ctx(config)
-    suite = ops.generate_op(cfg, reg, business_doc.read_text(), suite_id)
+    # Validate the INPUT before authenticating. Auth was checked first inside the
+    # Anthropic client, so a missing key produced a raw
+    # `TypeError: Could not resolve authentication method` and an empty or
+    # unreadable document never reached its own validation. The order matters:
+    # a user with a broken file and no key should be told about the file.
+    if not business_doc.exists():
+        raise typer.BadParameter(f"{business_doc} does not exist")
+    doc_text = business_doc.read_text()
+    if not doc_text.strip():
+        raise typer.BadParameter(f"{business_doc} is empty — nothing to draft from")
+    from agenttic.secrets import get_secret
+    if not get_secret("ANTHROPIC_API_KEY"):
+        console.print(
+            "[yellow]No ANTHROPIC_API_KEY[/] — generation drafts a suite with an "
+            "LLM, so it cannot run. Nothing was spent. Set the key, or use "
+            "[bold]agenttic evaluate[/] to classify the requirement offline.")
+        raise typer.Exit(code=1)
+    suite = ops.generate_op(cfg, reg, doc_text, suite_id)
     console.print(f"[yellow]DRAFT[/] suite {suite.suite_id} v{suite.version} "
                   f"({len(suite.test_ids)} cases). Review "
                   f"{cfg['paths']['review_dir']}/{suite_id}.md then run "
-                  f"`uv run agenttic approve {suite_id}`.")
+                  f"`agenttic approve {suite_id}`.")
 
 
 def _generate_attacks(target: str, *, n: int, mutate: bool, promote: bool,
@@ -392,7 +421,7 @@ def deploy(workflow: Path, env_name: str = "agenttic-workflows",
                   f"[bold]{result['agent_id']}[/] v{result['version']} "
                   f"({result['name']}) in env {result['environment_id']}")
     console.print(
-        f"Run a suite against it:\n  uv run agenttic run --agent {result['name']} "
+        f"Run a suite against it:\n  agenttic run --agent {result['name']} "
         f"--suite <suite_id> --managed-agent-id {result['agent_id']} "
         f"--environment-id {result['environment_id']}")
 
@@ -645,6 +674,13 @@ def judge_corpus(config: str = "config.yaml"):
             "annotator: a record may carry "
             "`human_scores: [{annotator, score}, ...]` instead of one "
             "`human_score`.[/]")
+        # Exit non-zero so a CI gate on this command sees the blocker. It
+        # printed BLOCKER and exited 0, so any script gating on the exit code
+        # read a blocked calibration as success — which is the one reading that
+        # matters, since the whole point is to stop a PROVISIONAL judge being
+        # treated as calibrated. The blocker itself is intended and expected;
+        # only the code was wrong.
+        raise typer.Exit(code=1)
 
 
 @judge_app.command("sheet")
@@ -1136,7 +1172,7 @@ def pilot(config: str = "config.yaml",
         console.print("[green]Approved[/] — runnable immediately.")
     else:
         console.print("Still DRAFT: approve in the UI (Resources → suites) or "
-                      f"`uv run agenttic approve {suite.suite_id}`.")
+                      f"`agenttic approve {suite.suite_id}`.")
 
 
 @app.command()
@@ -1404,7 +1440,7 @@ def agents_list(all_: bool = typer.Option(False, "--all",
     _, reg = _ctx(config)
     rows = reg.list_declared_agents(include_retired=all_)
     if not rows:
-        console.print("No declared agents. Add one with `uv run agenttic agents add`.")
+        console.print("No declared agents. Add one with `agenttic agents add`.")
         return
     table = Table("agent", "type", "version", "connection", "active")
     for a in rows:
@@ -1503,7 +1539,7 @@ def users_list(config: str = "config.yaml"):
     with Session(reg.engine) as s:
         rows = s.exec(select(UserRow).order_by(UserRow.email)).all()
     if not rows:
-        console.print("No users. Create one with `uv run agenttic users create`.")
+        console.print("No users. Create one with `agenttic users create`.")
         return
     table = Table("email", "role", "tenant", "created")
     for u in rows:
@@ -4012,5 +4048,70 @@ def catalog_check_cmd(
         raise typer.Exit(1)
 
 
+# --------------------------------------------------------------------------- #
+# The CLI boundary.
+# --------------------------------------------------------------------------- #
+
+def main() -> None:
+    """Run the CLI, turning known domain faults into one clean line.
+
+    The underlying exceptions were already correct and meaningful — they just
+    reached the terminal uncaught, so ordinary bad input printed a full Rich
+    stack trace. The same class of mistake got opposite treatment depending on
+    whether a command happened to wrap its lookup in `typer.BadParameter`:
+    `attest <bad-id>` said "Invalid value: unknown scorecard", while
+    `report <bad-id>` dumped a traceback. Worst of all, the four commands that
+    need a config printed `FileNotFoundError: config.yaml` at a new user instead
+    of naming `agenttic init`.
+
+    Only KNOWN faults are mapped. An unexpected exception still prints its
+    traceback, because a crash we did not anticipate is a bug report and hiding
+    it behind a tidy message would cost more than it saves. `AGENTTIC_TRACEBACK=1`
+    forces the full trace for any of them.
+    """
+    import json
+
+    from agenttic.ops import AgentConfigError
+    from agenttic.registry.sqlite_store import DuplicateVersionError, NotFoundError
+    from agenttic.scoring.checks import CheckConfigError
+
+    try:
+        app()
+    except (typer.Exit, typer.Abort, SystemExit, KeyboardInterrupt):
+        raise
+    except FileNotFoundError as exc:
+        if os.environ.get("AGENTTIC_TRACEBACK"):
+            raise
+        missing = str(getattr(exc, "filename", "") or exc)
+        if "config.yaml" in missing:
+            console.print(
+                f"[red]No config found[/] ({missing}).\n"
+                "Run [bold]agenttic init[/] here first, or point at one with "
+                "[bold]--config <path>[/].")
+        else:
+            console.print(f"[red]File not found:[/] {missing}")
+        raise SystemExit(2)
+    except NotFoundError as exc:
+        if os.environ.get("AGENTTIC_TRACEBACK"):
+            raise
+        console.print(f"[red]Not found:[/] {str(exc).strip(chr(39))}")
+        raise SystemExit(2)
+    except DuplicateVersionError as exc:
+        if os.environ.get("AGENTTIC_TRACEBACK"):
+            raise
+        console.print(f"[red]Already exists:[/] {exc}")
+        raise SystemExit(2)
+    except json.JSONDecodeError as exc:
+        if os.environ.get("AGENTTIC_TRACEBACK"):
+            raise
+        console.print(f"[red]Not valid JSON[/] (line {exc.lineno}): {exc.msg}")
+        raise SystemExit(2)
+    except (AgentConfigError, CheckConfigError) as exc:
+        if os.environ.get("AGENTTIC_TRACEBACK"):
+            raise
+        console.print(f"[red]Invalid configuration:[/] {exc}")
+        raise SystemExit(2)
+
+
 if __name__ == "__main__":
-    app()
+    main()

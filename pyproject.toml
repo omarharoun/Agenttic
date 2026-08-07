@@ -84,7 +84,7 @@ inspect = "agenttic.evaluators.inspect_adapter:InspectAdapter"
 # Exactly one console script, deliberately (see tests/test_cli_entrypoints.py):
 # the deprecated `ascore` alias was removed and no second name may creep back.
 # The MCP stdio server is a SUBCOMMAND — `agenttic mcp` — not a second script.
-agenttic = "agenttic.cli:app"
+agenttic = "agenttic.cli:main"
 
 [project.urls]
 Homepage = "https://agenttic.io"
