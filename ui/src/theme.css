@@ -3365,3 +3365,37 @@ a.btn-primary, button.btn-primary,
 .ffb__table th, .ffb__table td { border: 1px solid var(--border);
   padding: var(--sp-1) var(--sp-3); text-align: left; color: var(--muted); }
 .ffb__table th { color: var(--text); }
+
+/* --- TraceTimeline ------------------------------------------------------- */
+.ttl { list-style: none; margin: var(--sp-4) 0; padding: 0;
+  border-left: 1px solid var(--border); }
+.ttl__row { display: grid; grid-template-columns: 64px 1fr; gap: var(--sp-3);
+  padding: var(--sp-3) 0 var(--sp-3) var(--sp-4); position: relative; }
+.ttl__row::before { content: ""; position: absolute; left: -4px; top: 20px;
+  width: 7px; height: 7px; border-radius: var(--r-pill);
+  background: var(--panel); border: 1px solid var(--border-strong); }
+.ttl__row--tool_call::before { border-color: var(--accent); }
+.ttl__row--error::before { border-color: var(--fail); background: var(--fail); }
+.ttl__t { font-family: var(--font-mono); font-size: var(--t-label);
+  color: var(--faint); padding-top: 2px; }
+.ttl__k { font-family: var(--font-mono); font-size: var(--t-label);
+  letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--muted); }
+.ttl__name { color: var(--text); text-transform: none; letter-spacing: 0; }
+.ttl__tag { margin-left: var(--sp-2); font-size: var(--t-label);
+  border-radius: var(--r-sm); padding: 1px var(--sp-2); text-transform: none;
+  letter-spacing: 0; }
+.ttl__tag--blocked { background: var(--wait-soft); color: var(--wait);
+  border: 1px solid var(--wait-border); }
+.ttl__tag--error { background: var(--fail-soft); color: var(--fail);
+  border: 1px solid var(--fail-border); }
+.ttl__io { margin: var(--sp-2) 0 0; padding: var(--sp-2) var(--sp-3);
+  background: var(--panel-2); border: 1px solid var(--border-soft);
+  border-radius: var(--r-md); font-family: var(--font-mono);
+  font-size: var(--t-xs); color: var(--text); white-space: pre-wrap;
+  overflow-x: auto; }
+.ttl__io--out { color: var(--muted); }
+.ttl__none { margin-top: var(--sp-2); font-size: var(--t-xs); color: var(--faint);
+  font-style: italic; }
+.ttl__err { margin-top: var(--sp-2); font-size: var(--t-xs); color: var(--fail); }
+.ttl__meta { margin-top: var(--sp-2); font-size: var(--t-label); color: var(--faint); }
+.ttl__load { font-size: var(--t-xs); color: var(--faint); padding: var(--sp-3) 0; }
