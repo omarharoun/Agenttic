@@ -84,15 +84,20 @@ function TokenControl() {
  *  → Fix. Certify is demoted to a secondary group (still reachable, no longer the
  *  pitch). A benchmark authority opens on the Dashboard.
  *
- *  PLAYGROUND is the last group on purpose. The four pages in it — the workflow
- *  builder, Training Camp, Optimize, Resources — are things you go and do, not
- *  readings of a run that already happened. Scattered through the arc they read
- *  as steps you owe; collected under one honest heading they read as somewhere
- *  to go and try something. The routes are unchanged, so every existing link
- *  into them (the dashboard's primary CTA and onboarding both point at
- *  /app/build) still lands. */
+ *  PLAYGROUND is the last group on purpose. The pages in it — Training Camp,
+ *  Optimize, Resources — are things you go and do, not readings of a run that
+ *  already happened. Scattered through the arc they read as steps you owe;
+ *  collected under one honest heading they read as somewhere to go and try
+ *  something.
+ *
+ *  "New evaluation" is NOT among them, though it was for one commit. It is the
+ *  console's front door: the dashboard's primary CTA and onboarding step one
+ *  both point at /app/build, and a front door filed under Playground is one
+ *  the reader has to scroll to. It stays at the head of Score, where the arc
+ *  starts. */
 const NAV_GROUPS: { title: string; items: { to: string; icon: string; label: string }[] }[] = [
   { title: "Score", items: [
+    { to: "/app/build", icon: "＋", label: "New evaluation" },
     { to: "/app/executions", icon: "▶", label: "Runs" },
     { to: "/app/results", icon: "📊", label: "Results" },
     { to: "/app/leaderboard", icon: "🏆", label: "Leaderboard" },
@@ -118,7 +123,6 @@ const NAV_GROUPS: { title: string; items: { to: string; icon: string; label: str
     { to: "/app/settings", icon: "⚙", label: "Settings" },
   ]},
   { title: "Playground", items: [
-    { to: "/app/build", icon: "＋", label: "New evaluation" },
     { to: "/app/training-camp", icon: "🎯", label: "Training Camp" },
     { to: "/app/optimize", icon: "✨", label: "Optimize" },
     { to: "/app/resources", icon: "▤", label: "Resources" },
