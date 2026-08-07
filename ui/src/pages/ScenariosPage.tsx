@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FaultFateBar } from "../components/FaultFateBar";
 import {
   api, type CoverageDivergence, type ScenarioFault, type ScenarioFaults,
   type ScenarioRunDetail, type ScenarioRunRow, type TranscriptEntry,
@@ -1427,6 +1428,23 @@ export function ScenariosPage() {
           )
         ) : (
           <div className="table-wrap">
+            {/* The graph goes ABOVE the table, because the shape of the fault
+                fates across runs is the thing you scan for; the table is the
+                lookup once something stands out. Runs with no fault staged are
+                drawn as "no fault staged" rather than a zero bar — an empty bar
+                and an unstaged fault look identical, and they are not. */}
+            <FaultFateBar rows={rows.filter((r) => r.faults.recorded).map((r) => ({
+              runId: r.run_id,
+              label: `${r.run_id.slice(0, 8)} · ${r.scenario_id.slice(0, 15)}`,
+              counts: {
+                fired: r.faults.counts?.fired ?? 0,
+                skipped: r.faults.counts?.skipped ?? 0,
+                never_reached: r.faults.counts?.never_reached ?? 0,
+                planned: r.faults.counts?.planned ?? undefined,
+              },
+              worldChanged: r.world_changed,
+              nBlocked: r.n_blocked,
+            }))} />
             <table className="data scn-runs">
               <thead>
                 <tr><th>run</th><th>agent</th><th>scenario</th><th>stored</th>

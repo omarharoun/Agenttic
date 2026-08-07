@@ -3341,3 +3341,27 @@ a.btn-primary, button.btn-primary,
   padding-left: var(--sp-3);
   font-weight: 500;
 }
+
+/* --- FaultFateBar (scenario runs, stacked) ------------------------------- */
+.ffb { margin: var(--sp-5) 0; }
+.ffb__cap { font-size: var(--t-sm); color: var(--text); margin-bottom: var(--sp-2); }
+.ffb__sub { color: var(--muted); }
+.ffb__legend { display: flex; gap: var(--sp-4); margin-bottom: var(--sp-3);
+  font-size: var(--t-xs); color: var(--muted); }
+.ffb__key { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.ffb__swatch { width: 10px; height: 10px; border-radius: var(--r-xs); display: inline-block; }
+.ffb__plot { position: relative; overflow-x: auto; }
+.ffb__rowlab { font-family: var(--font-mono); font-size: var(--t-xs); fill: var(--muted); }
+.ffb__val { font-family: var(--font-mono); font-size: var(--t-label); fill: var(--accent-ink); }
+.ffb__none { font-size: var(--t-xs); fill: var(--faint); font-style: italic; }
+.ffb__mark { font-size: var(--t-label); fill: var(--faint); }
+.ffb__tip { position: fixed; z-index: 20; pointer-events: none;
+  background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3);
+  font-size: var(--t-xs); box-shadow: var(--shadow-xs); }
+.ffb__toggle { margin-top: var(--sp-3); font-size: var(--t-xs); color: var(--muted);
+  background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+.ffb__table { margin-top: var(--sp-3); font-size: var(--t-xs); border-collapse: collapse; }
+.ffb__table th, .ffb__table td { border: 1px solid var(--border);
+  padding: var(--sp-1) var(--sp-3); text-align: left; color: var(--muted); }
+.ffb__table th { color: var(--text); }

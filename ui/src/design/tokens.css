@@ -96,6 +96,14 @@
 
   /* dataviz — gilt, steel, rhodium, verdigris */
   --viz-1: #C9A227; --viz-2: #7D96B8; --viz-3: #C7CBD1; --viz-4: #6FA07A; --viz-grid: #262B31;
+  /* CATEGORICAL series — validated, not chosen by eye. The --viz-* ramp above is
+     the dial-tuned instrument palette and reads beautifully, but it FAILS a
+     colour-blindness check as a categorical set: --viz-3 has chroma 0.009 (it is
+     grey) and --viz-2/--viz-4 sit 10.8 ΔE apart for normal vision, below the 15
+     floor. These three clear all five checks — lightness band, chroma floor, CVD
+     separation, normal-vision floor, contrast — against BOTH surfaces, so one set
+     serves both themes. Re-run scripts/validate_palette.js before changing them. */
+  --cat-1: #B8891F; --cat-2: #4A7CBF; --cat-3: #3E9463;
 
   /* landing instrument (ruled readout field) — fine engraved lines */
   --lp-grid: rgba(232, 233, 228, 0.055);
