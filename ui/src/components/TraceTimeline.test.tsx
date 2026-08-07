@@ -76,6 +76,27 @@ describe("TraceTimeline", () => {
     expect(html).toMatch(/<ol[^>]*aria-label="Trace timeline"/);
   });
 
+  it("does not sort an UNTIMED span to the front as epoch zero", () => {
+    // A trace is not obliged to stamp every span. Parsing a missing time as 0
+    // would place it before the first real step and read as the thing that
+    // happened first — a claim about ordering the trace never made.
+    const out = renderToStaticMarkup(<TraceTimeline spans={[
+      spans[1],
+      { span_id: "sx", kind: "agent_decision", name: "retry" },   // no times
+    ]} />);
+    expect(out.indexOf("plan")).toBeLessThan(out.indexOf("retry"));
+    // and it claims no offset it cannot compute
+    expect((out.match(/\+0\.00s/g) || []).length).toBe(1);
+  });
+
+  it("renders a span carrying only a kind", () => {
+    // The black-box case: an adapter that records what happened and nothing
+    // else. It must not render `ttl__row--undefined` or a blank label.
+    const out = renderToStaticMarkup(<TraceTimeline spans={[{ kind: "tool_call" }]} />);
+    expect(out).toContain("Tool call");
+    expect(out).not.toContain("undefined");
+  });
+
   it("marks a tool call and an error span differently in the gutter", () => {
     expect(html).toContain("ttl__row--tool_call");
     expect(html).toContain("ttl__row--user_turn");

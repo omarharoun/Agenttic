@@ -1119,6 +1119,23 @@ describe("divergence never closes over corners nothing compared", () => {
     expect(whole).not.toBe(reduced);
   });
 
+  it("shows the steps in order, and shows nothing when the trace has none", () => {
+    // The ledger groups tool calls by the gateway's verdict; it cannot show
+    // what happened BETWEEN two calls. A run with a trace gets both. A run
+    // without one must not grow an empty timeline that reads as "did nothing".
+    const withTrace = html(<ScenarioRunDetailView run={CONV} spans={[
+      { span_id: "a", kind: "llm_call", name: "plan",
+        start_time: "2026-01-01T00:00:00Z", end_time: "2026-01-01T00:00:01Z" },
+      { span_id: "b", kind: "tool_call", name: "lookup_order",
+        start_time: "2026-01-01T00:00:02Z", end_time: "2026-01-01T00:00:02Z" },
+    ]} />);
+    expect(withTrace).toContain('aria-label="Trace timeline"');
+    expect(withTrace.indexOf("plan")).toBeLessThan(withTrace.indexOf("lookup_order"));
+
+    expect(html(<ScenarioRunDetailView run={CONV} spans={[]} />))
+      .not.toContain('aria-label="Trace timeline"');
+  });
+
   it("reaches the run's screen from the stored row, not from a prop nobody passes",
      () => {
        // `point` and `coverage.bins` are on the row already; the defect was that

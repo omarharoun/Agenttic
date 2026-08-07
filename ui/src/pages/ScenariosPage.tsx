@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { FaultFateBar } from "../components/FaultFateBar";
+import { TraceTimeline, type TimelineSpan } from "../components/TraceTimeline";
 import {
   api, type CoverageDivergence, type ScenarioFault, type ScenarioFaults,
   type ScenarioRunDetail, type ScenarioRunRow, type TranscriptEntry,
@@ -375,13 +376,10 @@ export function Interactions({ run }: { run: ScenarioRunDetail }) {
 const ENFORCEMENT = ["executed", "blocked", "faulted"] as const;
 type Enforcement = (typeof ENFORCEMENT)[number] | "unrecorded";
 
-export interface TraceSpan {
-  span_id?: string;
-  kind?: string;
-  name?: string;
-  error?: string | null;
-  attributes?: Record<string, unknown>;
-}
+/** The trace payload has one shape, so it gets one type. This used to be a
+ *  second, narrower interface over the same `/api/traces/:id` spans, which let
+ *  the two readers of that payload disagree about what a span carries. */
+export type TraceSpan = TimelineSpan;
 
 export function enforcementOf(span: TraceSpan): Enforcement {
   const v = span?.attributes?.enforcement;
@@ -1282,6 +1280,23 @@ export function ScenarioRunDetailView({ run, spans, traceProblem, tracePending }
       <Section eyebrow="2 · What happened" title="The exchange"
         sub="What the agent was told, what it said back, and — for a conversation — which turns handed over a fact it had to ask for.">
         <Transcript run={run} />
+        {/* The transcript is what was SAID; this is what was DONE, in order —
+            reasoning, tool calls and turns interleaved. The tool ledger below
+            is the same calls grouped by the gateway's verdict; neither is the
+            other, because a ledger cannot show what came between two calls. */}
+        {spans && spans.length > 0 && (
+          // A fragment, not a wrapper: `.scn-sec > h4` is a direct-child rule,
+          // so a div here would silently unstyle the heading.
+          <>
+            <h4>Step by step</h4>
+            <p className="scn-sub">
+              Every step the trace recorded, offset from the first. A scripted
+              session stamps a deterministic tick, so these are ordering, not
+              latency.
+            </p>
+            <TraceTimeline spans={spans} />
+          </>
+        )}
         <Elicitation run={run} />
         <Interactions run={run} />
         <UserProvenance p={run.user_provenance ?? {}} />

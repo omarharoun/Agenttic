@@ -82,11 +82,17 @@ function TokenControl() {
 
 /** The console navigation, organized around the one product arc: Score → Issues
  *  → Fix. Certify is demoted to a secondary group (still reachable, no longer the
- *  pitch). A benchmark authority opens on the Dashboard; the workflow builder is
- *  one demoted "New evaluation" entry, not the front door. */
+ *  pitch). A benchmark authority opens on the Dashboard.
+ *
+ *  PLAYGROUND is the last group on purpose. The four pages in it — the workflow
+ *  builder, Training Camp, Optimize, Resources — are things you go and do, not
+ *  readings of a run that already happened. Scattered through the arc they read
+ *  as steps you owe; collected under one honest heading they read as somewhere
+ *  to go and try something. The routes are unchanged, so every existing link
+ *  into them (the dashboard's primary CTA and onboarding both point at
+ *  /app/build) still lands. */
 const NAV_GROUPS: { title: string; items: { to: string; icon: string; label: string }[] }[] = [
   { title: "Score", items: [
-    { to: "/app/build", icon: "＋", label: "New evaluation" },
     { to: "/app/executions", icon: "▶", label: "Runs" },
     { to: "/app/results", icon: "📊", label: "Results" },
     { to: "/app/leaderboard", icon: "🏆", label: "Leaderboard" },
@@ -101,18 +107,21 @@ const NAV_GROUPS: { title: string; items: { to: string; icon: string; label: str
     { to: "/app/scenarios", icon: "◍", label: "Scenario runs" },
   ]},
   { title: "Fix", items: [
-    { to: "/app/training-camp", icon: "🎯", label: "Training Camp" },
     { to: "/app/hardening", icon: "🛡", label: "Hardening" },
-    { to: "/app/optimize", icon: "✨", label: "Optimize" },
   ]},
   { title: "Certify", items: [
     { to: "/app/certifications", icon: "🏅", label: "Certification" },
   ]},
   { title: "Manage", items: [
     { to: "/app/agents", icon: "🤖", label: "Agents" },
-    { to: "/app/resources", icon: "▤", label: "Resources" },
     { to: "/app/billing", icon: "💳", label: "Billing" },
     { to: "/app/settings", icon: "⚙", label: "Settings" },
+  ]},
+  { title: "Playground", items: [
+    { to: "/app/build", icon: "＋", label: "New evaluation" },
+    { to: "/app/training-camp", icon: "🎯", label: "Training Camp" },
+    { to: "/app/optimize", icon: "✨", label: "Optimize" },
+    { to: "/app/resources", icon: "▤", label: "Resources" },
   ]},
 ];
 

@@ -20,13 +20,20 @@ import { api } from "../api";
  *     session (scenario/env.py EPOCH + n) and would read as a real clock.
  */
 
+/** One span of a stored trace, exactly as `/api/traces/:id` returns it.
+ *
+ *  Every field is optional because a real trace is not obliged to carry them:
+ *  a black-box adapter records a `kind` and nothing else, and a span that the
+ *  harness synthesised has no timing at all. A required field here would be a
+ *  claim about the wire format that the wire format does not make, and the type
+ *  would be enforcing it in the one place that cannot check — the browser. */
 export interface TimelineSpan {
-  span_id: string;
+  span_id?: string;
   parent_id?: string | null;
-  kind: string;
-  name: string;
-  start_time: string;
-  end_time: string;
+  kind?: string;
+  name?: string;
+  start_time?: string;
+  end_time?: string;
   input?: Record<string, unknown>;
   output?: Record<string, unknown>;
   error?: string | null;
@@ -47,8 +54,14 @@ const KIND_LABEL: Record<string, string> = {
   final_output: "Final answer",
 };
 
-function offset(t: string, base: number): string {
-  const ms = new Date(t).getTime() - base;
+/** Milliseconds, or NaN when the span carries no usable start. Kept in one
+ *  place so the sort and the label agree about what "untimed" means. */
+function startedAt(s: TimelineSpan): number {
+  return s.start_time ? new Date(s.start_time).getTime() : NaN;
+}
+
+function offset(t: number, base: number): string {
+  const ms = t - base;
   if (!Number.isFinite(ms)) return "";
   return `+${(ms / 1000).toFixed(2)}s`;
 }
@@ -64,23 +77,30 @@ function preview(v: unknown, max = 400): string {
 
 export function TraceTimeline({ spans }: { spans: TimelineSpan[] }) {
   if (!spans.length) return null;
-  const ordered = [...spans].sort(
-    (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-  const base = new Date(ordered[0].start_time).getTime();
+  // Untimed spans keep the order the trace stored them in rather than sorting
+  // to the front as epoch zero, which would put them BEFORE the first real
+  // step and read as the thing that happened first.
+  const ordered = [...spans]
+    .map((s, i) => ({ s, i, t: startedAt(s) }))
+    .sort((a, b) => (Number.isFinite(a.t) && Number.isFinite(b.t)
+      ? a.t - b.t : a.i - b.i))
+    .map((e) => e.s);
+  const base = ordered.map(startedAt).find(Number.isFinite) ?? NaN;
 
   return (
     <ol className="ttl" aria-label="Trace timeline">
-      {ordered.map((s) => {
+      {ordered.map((s, i) => {
         const enforcement = String(s.attributes?.enforcement ?? "");
         const blocked = enforcement === "blocked";
         const inp = preview(s.input);
         const out = preview(s.output);
         return (
-          <li className={`ttl__row ttl__row--${s.kind}`} key={s.span_id}>
-            <div className="ttl__t">{offset(s.start_time, base)}</div>
+          <li className={`ttl__row ttl__row--${s.kind ?? "unknown"}`}
+              key={s.span_id ?? i}>
+            <div className="ttl__t">{offset(startedAt(s), base)}</div>
             <div className="ttl__body">
               <div className="ttl__k">
-                {KIND_LABEL[s.kind] ?? s.kind}
+                {(s.kind && KIND_LABEL[s.kind]) ?? s.kind ?? "step"}
                 {s.name ? <span className="ttl__name"> · {s.name}</span> : null}
                 {/* Three distinct outcomes, never collapsed into "failed". */}
                 {blocked && <span className="ttl__tag ttl__tag--blocked">blocked by the gateway</span>}
