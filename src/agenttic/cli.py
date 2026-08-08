@@ -10,6 +10,7 @@ Requires ANTHROPIC_API_KEY in the environment for commands that call models
 from __future__ import annotations
 
 import os
+import sys
 import re
 
 import asyncio
@@ -26,7 +27,27 @@ from agenttic.registry.sqlite_store import Registry
 from agenttic.schema.scorecard import Scorecard
 from agenttic.scoring.calibration import calibration_report, load_labels
 
-app = typer.Typer(help="Agentic scoring & benchmarking platform")
+class _GuardedTyper(typer.Typer):
+    """A Typer whose ``__call__`` routes through the CLI's error boundary.
+
+    The boundary used to live only inside :func:`main`, which ``pyproject.toml``
+    names as the console script. That left it one shim away from being skipped
+    entirely — and it WAS skipped: an install predating the entry-point change
+    had a generated wrapper calling ``app()`` directly, so `report <bad-id>`,
+    `verify <bad-path>`, `dossier show <nope>` and a missing `config.yaml` went
+    back to printing raw Rich tracebacks. The tests never saw it because they
+    invoke ``main()``, which is the one path that still worked.
+
+    Hanging the guard on the object means no entry point can miss it: the
+    console script, ``python -m agenttic``, a stale wrapper, and anything that
+    imports ``app`` and calls it all land in the same handler.
+    """
+
+    def __call__(self, *args, **kwargs):
+        return _dispatch(lambda: typer.Typer.__call__(self, *args, **kwargs))
+
+
+app = _GuardedTyper(help="Agentic scoring & benchmarking platform")
 console = Console()
 
 
@@ -37,7 +58,11 @@ _STATE: dict[str, str | None] = {"tenant": None}
 def _version_cb(value: bool):
     if value:
         from agenttic import __version__
-        console.print(f"agenttic {__version__}")
+        # `print`, not `console.print`: Rich's highlighter treats "2.0.0" as a
+        # number and wraps it in colour, so `agenttic --version` piped into a
+        # script yielded `agenttic \x1b[1;36m2.0\x1b[0m.\x1b[1;36m0\x1b[0m`
+        # wherever colour was forced. A version string is data, not a report.
+        print(f"agenttic {__version__}")
         raise typer.Exit()
 
 
@@ -3094,6 +3119,8 @@ def dossier_verify(
 def dossier_revoke(
     dossier_id: str = typer.Argument(...),
     reason: str = typer.Option(..., "--reason", help="why this dossier is revoked"),
+    yes: bool = typer.Option(False, "--yes", "-y",
+                             help="skip the confirmation prompt"),
     config: str = "config.yaml",
 ):
     """Revoke a dossier (append-only). The dossier stays readable; its status
@@ -3101,6 +3128,16 @@ def dossier_revoke(
     from agenttic.certification.dossier import revoke
     from agenttic.registry.sqlite_store import NotFoundError
     _cfg, reg = _ctx(config)
+
+    # The command's own docstring says there is no way back, and it took a
+    # typo'd id without a word. Prompting only when someone is actually there
+    # to answer: a pipe or a CI job has no one at the keyboard, and making it
+    # fail closed would break every existing scripted revocation for a class of
+    # mistake (mistyping into a script) that the prompt cannot catch anyway.
+    if not yes and sys.stdin.isatty():
+        typer.confirm(
+            f"Revoke dossier {dossier_id}? This cannot be undone.", abort=True)
+
     try:
         revoke(reg, dossier_id, reason=reason)
     except NotFoundError:
@@ -4056,7 +4093,7 @@ def catalog_check_cmd(
 # The CLI boundary.
 # --------------------------------------------------------------------------- #
 
-def main() -> None:
+def _dispatch(run):
     """Run the CLI, turning known domain faults into one clean line.
 
     The underlying exceptions were already correct and meaningful — they just
@@ -4078,12 +4115,9 @@ def main() -> None:
     from agenttic.ops import AgentConfigError
     from agenttic.registry.sqlite_store import DuplicateVersionError, NotFoundError
     from agenttic.scoring.checks import CheckConfigError
-    from agenttic.server.tracing import setup_langwatch
-
-    setup_langwatch()  # no-op unless LANGWATCH_API_KEY is set
 
     try:
-        app()
+        return run()
     except (typer.Exit, typer.Abort, SystemExit, KeyboardInterrupt):
         raise
     except FileNotFoundError as exc:
@@ -4118,6 +4152,19 @@ def main() -> None:
             raise
         console.print(f"[red]Invalid configuration:[/] {exc}")
         raise SystemExit(2)
+
+
+def main() -> None:
+    """The console-script entry point, and ``python -m agenttic``.
+
+    The error boundary is NOT here — it lives on `app` itself (see
+    :class:`_GuardedTyper`), so a wrapper that calls `app()` directly cannot
+    skip it. This function only does the work that belongs to starting up.
+    """
+    from agenttic.server.tracing import setup_langwatch
+
+    setup_langwatch()  # no-op unless LANGWATCH_API_KEY is set
+    app()
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@ any of them.
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -32,6 +33,15 @@ def cli(*args, cwd, env_extra=None):
     env = {**os.environ, **(env_extra or {})}
     return subprocess.run([*RUN, *args], cwd=cwd, env=env,
                           capture_output=True, text=True, timeout=180)
+
+
+def cli_via(program: str, *args, cwd, env_extra=None):
+    """Drive the CLI through an arbitrary entry snippet, so the tests can reach
+    the paths a generated console-script wrapper takes."""
+    import os
+    env = {**os.environ, **(env_extra or {})}
+    return subprocess.run([sys.executable, "-c", program, *args], cwd=cwd,
+                          env=env, capture_output=True, text=True, timeout=180)
 
 
 @pytest.fixture
@@ -74,7 +84,7 @@ class TestSurprisesStillSurface:
 
         from agenttic import cli
 
-        src = inspect.getsource(cli.main)
+        src = inspect.getsource(cli._dispatch)
         assert "except Exception" not in src
         for known in ("FileNotFoundError", "NotFoundError",
                       "DuplicateVersionError", "JSONDecodeError"):
@@ -85,8 +95,60 @@ class TestSurprisesStillSurface:
 
         from agenttic import cli
 
-        src = inspect.getsource(cli.main)
+        src = inspect.getsource(cli._dispatch)
         assert "typer.Exit, typer.Abort, SystemExit, KeyboardInterrupt" in src
+
+
+class TestTheGuardCannotBeBypassed:
+    """The boundary lived only inside `main()`, and `main()` is not the only
+    way in.
+
+    An install predating the entry-point change had a generated wrapper calling
+    `app()` directly. Every test above kept passing — they call `main()` — while
+    the actual `agenttic` command printed raw tracebacks for all four faults.
+    A guard reachable by one path is not a guard.
+    """
+
+    def test_calling_app_directly_still_gets_the_clean_message(self, ws):
+        r = cli_via("from agenttic.cli import app; app()",
+                    "report", "nonexistent-id", cwd=ws)
+        assert r.returncode == 2
+        assert "Traceback" not in r.stderr
+        assert "Not found" in r.stdout
+
+    def test_python_dash_m_still_gets_the_clean_message(self, ws):
+        import os
+        r = subprocess.run([sys.executable, "-m", "agenttic",
+                            "report", "nonexistent-id"],
+                           cwd=ws, env=os.environ, capture_output=True,
+                           text=True, timeout=180)
+        assert r.returncode == 2
+        assert "Traceback" not in r.stderr
+
+    def test_the_declared_entry_point_is_the_one_that_is_tested(self):
+        """pyproject names the console script. If it ever points somewhere the
+        suite does not drive, this file is testing a path users do not take."""
+        import tomllib
+
+        data = tomllib.loads(
+            Path("pyproject.toml").read_text(encoding="utf-8"))
+        assert data["project"]["scripts"]["agenttic"] == "agenttic.cli:main"
+
+    @pytest.mark.skipif(shutil.which("agenttic") is None,
+                        reason="console script not installed in this env")
+    def test_the_REAL_installed_executable_does_not_traceback(self, ws):
+        """The others reconstruct the wrapper's behaviour; this drives the
+        actual file on PATH. It is the only check that would have failed while
+        the reported bug was live, because the bug was in the generated shim
+        rather than in anything this repo tracks."""
+        import os
+        r = subprocess.run(["agenttic", "report", "nonexistent-id"], cwd=ws,
+                           env=os.environ.copy(), capture_output=True,
+                           text=True, timeout=180)
+        assert "Traceback" not in r.stderr + r.stdout, (
+            "the installed `agenttic` bypasses the boundary — its shim is "
+            "stale. Reinstall to regenerate it: `pip install -e .`")
+        assert r.returncode == 2
 
 
 class TestVersion:
