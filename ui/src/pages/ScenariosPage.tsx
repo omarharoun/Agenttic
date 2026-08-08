@@ -1269,12 +1269,86 @@ export function RunRow({ r, selected, onSelect }: {
   );
 }
 
+/** What this run established, as a standing rail beside the evidence.
+ *
+ *  Every line is a STORED field re-stated, never a computation: the page's own
+ *  closing section promises "nothing on this screen is computed from anything
+ *  else", and a rail that quietly derived a verdict would break that promise on
+ *  the most prominent part of the screen.
+ *
+ *  It is deliberately NOT a pass/fail. A scenario run has no verdict — the
+ *  verdict lives on a scorecard, against assertions, and inventing one here
+ *  would be exactly the fabrication this product exists to catch. What a run
+ *  has is facts, and facts that a reader would want ranked: the world moving is
+ *  the one you look for first, a fault nobody reached is a finding about the
+ *  run rather than a silence, and a corner the point asked for and never got is
+ *  the gap in what this run can speak for.
+ */
+function RunFindings({ run }: { run: ScenarioRunDetail }) {
+  const d = run.derived ?? ({} as ScenarioRunDetail["derived"]);
+  const c = run.faults?.counts ?? ({} as NonNullable<ScenarioFaults["counts"]>);
+  const div = run.coverage?.divergence;
+
+  const facts: { k: string; v: string; tone: "moved" | "held" | "gap" | "flat" }[] = [];
+
+  facts.push(d.world_changed
+    ? { k: "The world", v: `changed · ${d.n_changed_fields} field${d.n_changed_fields === 1 ? "" : "s"}`, tone: "moved" }
+    : { k: "The world", v: "unchanged", tone: "flat" });
+
+  if (d.n_blocked > 0) {
+    facts.push({ k: "The gateway", v: `refused ${d.n_blocked} call${d.n_blocked === 1 ? "" : "s"}`, tone: "held" });
+  }
+
+  if (run.faults?.recorded) {
+    const bits = [
+      c.fired ? `${c.fired} fired` : "",
+      c.skipped ? `${c.skipped} skipped` : "",
+      c.never_reached ? `${c.never_reached} never reached` : "",
+    ].filter(Boolean);
+    facts.push({ k: "Staged faults",
+                 v: bits.length ? bits.join(" · ") : "none of the staged faults fired",
+                 tone: c.never_reached ? "gap" : "flat" });
+  }
+
+  // `null`/absent is not zero: nobody computed divergence for this run, and a
+  // "0 gaps" line would read as a measurement that was never taken.
+  if (div === null || div === undefined) {
+    facts.push({ k: "Coverage gaps", v: "not recorded for this run", tone: "gap" });
+  } else if (div.length) {
+    facts.push({ k: "Coverage gaps", v: `${div.length} corner${div.length === 1 ? "" : "s"} the point asked for and did not get`, tone: "gap" });
+  }
+
+  if (d.conversational && d.elicitation_complete === false) {
+    facts.push({ k: "Elicitation", v: "the agent did not obtain everything it needed", tone: "gap" });
+  }
+
+  return (
+    <aside className="scn-findings" aria-label="What this run established">
+      <div className="scn-findings__cap">What this run established</div>
+      <dl className="scn-findings__list">
+        {facts.map((f) => (
+          <div className={`scn-fact scn-fact--${f.tone}`} key={f.k}>
+            <dt>{f.k}</dt>
+            <dd>{f.v}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="scn-findings__note">
+        Facts from the stored record, not a verdict. A scenario run does not
+        pass or fail — assertions on a scorecard do.
+      </p>
+    </aside>
+  );
+}
+
 export function ScenarioRunDetailView({ run, spans, traceProblem, tracePending }: {
   run: ScenarioRunDetail; spans: TraceSpan[] | null; traceProblem?: string;
   tracePending?: boolean;
 }) {
   return (
-    <>
+    <div className="scn-detail">
+      <RunFindings run={run} />
+      <div className="scn-detail__main">
       <Stimulus run={run} />
 
       <Section eyebrow="2 · What happened" title="The exchange"
@@ -1338,7 +1412,8 @@ export function ScenarioRunDetailView({ run, spans, traceProblem, tracePending }
         </div>
         <RawToggle value={run} label="the stored run, verbatim" />
       </Section>
-    </>
+      </div>
+    </div>
   );
 }
 

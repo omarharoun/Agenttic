@@ -1119,6 +1119,43 @@ describe("divergence never closes over corners nothing compared", () => {
     expect(whole).not.toBe(reduced);
   });
 
+  it("stands the run's facts beside the evidence without inventing a verdict", () => {
+    // The rail is the most prominent thing on the screen, so it is the most
+    // expensive place to overstate. A scenario run has no pass/fail — the
+    // verdict lives on a scorecard, against assertions — and the page's own
+    // closing section promises nothing here is computed from anything else.
+    const markup = html(<ScenarioRunDetailView run={CONV} spans={[]} />);
+    const t = text(markup);
+    expect(t).toContain("What this run established");
+    expect(t).toContain("does not pass or fail");
+    expect(t.toLowerCase()).not.toContain("release blocked");
+    for (const verdict of ["PASSED", "FAILED", "PASS RATE"]) {
+      expect(t).not.toContain(verdict);
+    }
+  });
+
+  it("says coverage gaps were NOT RECORDED rather than reporting zero", () => {
+    // `null` and `[]` are different findings: nobody computed divergence, vs
+    // it was computed and every corner appeared. "0 gaps" would claim the
+    // second while meaning the first.
+    const unrecorded = text(html(<ScenarioRunDetailView
+      run={{ ...CONV, coverage: { measured: true, bins: [], divergence: null } }}
+      spans={[]} />));
+    expect(unrecorded).toContain("not recorded for this run");
+
+    const measured = text(html(<ScenarioRunDetailView
+      run={{ ...CONV, coverage: { measured: true, bins: [], divergence: [] } }}
+      spans={[]} />));
+    expect(measured).not.toContain("not recorded for this run");
+  });
+
+  it("reports an unchanged world as a result, not as an absence", () => {
+    const still = text(html(<ScenarioRunDetailView
+      run={{ ...CONV, derived: { ...CONV.derived, world_changed: false,
+                                 n_changed_fields: 0 } }} spans={[]} />));
+    expect(still).toContain("unchanged");
+  });
+
   it("shows the steps in order, and shows nothing when the trace has none", () => {
     // The ledger groups tool calls by the gateway's verdict; it cannot show
     // what happened BETWEEN two calls. A run with a trace gets both. A run

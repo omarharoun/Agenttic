@@ -346,3 +346,53 @@
   .scn-meta { gap: var(--sp-3); }
   .scn-bins__k { min-width: 0; }
 }
+
+/* ---- the run detail as two columns -------------------------------------
+   The evidence reads as a column; the findings stand beside it and stay put
+   while you scroll through the sections they summarise. One column below
+   1080px, because a 240px rail beside a 60ch measure leaves neither readable.
+
+   The rail is `position: sticky`, not fixed: it belongs to the detail, so it
+   must scroll away with it rather than hang over the run list above. */
+.scn-detail {
+  display: grid; grid-template-columns: 260px minmax(0, 1fr);
+  gap: var(--sp-7); align-items: start; margin-top: var(--sp-6);
+}
+.scn-detail__main { min-width: 0; }
+
+.scn-findings {
+  position: sticky; top: var(--sp-5);
+  border: var(--card-border); border-radius: var(--card-radius);
+  background: var(--card-bg); padding: var(--sp-4) var(--sp-4) var(--sp-3);
+}
+.scn-findings__cap {
+  font: 600 var(--t-label) / 1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: var(--track-caps); color: var(--faint);
+  margin-bottom: var(--sp-3);
+}
+.scn-findings__list { margin: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+
+/* Four treatments, and never hue alone: each tone carries its own border
+   style as well as its own colour, so the rail survives a monochrome print
+   and a colourblind reader (same rule as the fault states above). */
+.scn-fact { padding-left: var(--sp-3); border-left: 2px solid var(--border-strong); }
+.scn-fact dt {
+  font: 600 var(--t-xs) / 1.3 var(--font-ui); text-transform: uppercase;
+  letter-spacing: var(--track-caps); color: var(--muted); margin: 0;
+}
+.scn-fact dd { margin: 2px 0 0; font-size: var(--t-sm); color: var(--text); line-height: 1.45; }
+.scn-fact--moved { border-left: 2px solid var(--accent-line); }
+.scn-fact--held  { border-left: 2px dashed var(--border-strong); }
+.scn-fact--gap   { border-left: 2px dotted var(--score-provisional); }
+.scn-fact--gap dd { color: var(--muted); }
+
+.scn-findings__note {
+  margin: var(--sp-4) 0 0; padding-top: var(--sp-3);
+  border-top: 1px solid var(--border);
+  font-size: var(--t-xs); color: var(--faint); line-height: 1.5;
+}
+
+@media (max-width: 1080px) {
+  .scn-detail { grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); }
+  .scn-findings { position: static; }
+}
