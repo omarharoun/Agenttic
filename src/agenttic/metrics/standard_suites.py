@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.registry.sqlite_store import already_seeded, NotFoundError
 from agenttic.schema.rubric import Criterion, Rubric
 from agenttic.schema.testcase import TestCase, TestSuite
 
@@ -329,7 +329,8 @@ def seed_standard_suites(reg) -> list[str]:
             continue  # already present
         except NotFoundError:
             pass
-        reg.save_rubric(spec.rubric)
-        reg.save_suite(spec.suite, spec.cases)
-        added.append(spec.suite.suite_id)
+        with already_seeded():          # a peer may be seeding the same spec
+            reg.save_rubric(spec.rubric)
+            reg.save_suite(spec.suite, spec.cases)
+            added.append(spec.suite.suite_id)
     return added

@@ -59,15 +59,18 @@ def test_incidents_cli(tmp_path, monkeypatch):
 
     from agenttic.cli import app
     monkeypatch.setenv("AGENTTIC_TENANT", "inccli")
-    monkeypatch.chdir(Path(__file__).resolve().parents[1])
+    # Run in a throwaway copy of the project rather than in the repo itself.
+    # This used to chdir to the repo root (the CLI needs a config.yaml beside
+    # it) and delete the .db afterwards — but SQLite in WAL mode writes three
+    # files, so `agenttic.inccli.db-wal` and `-shm` were left behind on every
+    # run. That is where the repo root's litter of stray databases came from.
+    repo = Path(__file__).resolve().parents[1]
+    (tmp_path / "config.yaml").write_text(
+        (repo / "config.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
     runner = CliRunner()
-    try:
-        out = runner.invoke(app, ["incidents", "open", "ref-agent",
-                                  "--severity", "S1", "--title", "t"])
-        assert out.exit_code == 0, out.stdout
-        lst = runner.invoke(app, ["incidents", "list"])
-        assert "ref-agent" in lst.stdout
-    finally:
-        import os
-        if os.path.exists("agenttic.inccli.db"):
-            os.remove("agenttic.inccli.db")
+    out = runner.invoke(app, ["incidents", "open", "ref-agent",
+                              "--severity", "S1", "--title", "t"])
+    assert out.exit_code == 0, out.stdout
+    lst = runner.invoke(app, ["incidents", "list"])
+    assert "ref-agent" in lst.stdout

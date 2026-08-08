@@ -22,7 +22,7 @@ from agenttic.certification.domains import (
     suites_for_domain,
 )
 from agenttic.metrics.catalog import METRICS
-from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.registry.sqlite_store import already_seeded, NotFoundError
 from agenttic.schema.certification import (
     CAPABILITY_DOMAINS,
     CertificationProfile,
@@ -188,5 +188,7 @@ def seed_profile(cfg: dict, reg, profile_id: str = SEED_PROFILE_ID
     except NotFoundError:
         pass
     profile = build_profile(cfg, reg, profile_id)
-    reg.save_profile(profile)
-    return profile
+    with already_seeded():              # a peer may be seeding this profile
+        reg.save_profile(profile)
+        return profile
+    return reg.get_profile(profile_id)  # the peer's, which is the same profile

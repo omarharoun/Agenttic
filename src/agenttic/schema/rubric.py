@@ -79,7 +79,15 @@ class Rubric(BaseModel):
                 f"rubric {self.rubric_id}: weights reference unknown criteria "
                 f"{sorted(unknown)}"
             )
-        # default: unweighted criteria get weight 1.0
-        for cid in ids:
-            self.weights.setdefault(cid, 1.0)
+        # Default: unweighted criteria get weight 1.0 — filled in CRITERION
+        # ORDER, not set order. `ids` is a set, so iterating it inserts the
+        # keys in string-hash order, and PYTHONHASHSEED is randomised per
+        # process: the same built-in rubric serialised to different bytes in
+        # different processes. That is a reproducibility defect on its own (a
+        # scorecard names `rubric v1`, and v1's bytes depended on which process
+        # happened to write it), and it is what made concurrent cold starts
+        # fail even once the insert race was closed. The weights are identical
+        # either way — only their order moved.
+        for c in self.criteria:
+            self.weights.setdefault(c.criterion_id, 1.0)
         return self

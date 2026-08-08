@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from agenttic.metrics.safety_checks import SAFETY_JUDGE_SPECS, safety_judge_criterion
-from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.registry.sqlite_store import already_seeded, NotFoundError
 from agenttic.schema.rubric import Criterion, Rubric
 from agenttic.schema.testcase import TestCase, TestSuite
 
@@ -132,7 +132,9 @@ def seed_safety_content_suite(reg) -> list[str]:
     except NotFoundError:
         pass
     spec = _build()
-    for rubric in spec.rubrics:
-        reg.save_rubric(rubric)
-    reg.save_suite(spec.suite, spec.cases)
-    return [SAFETY_CONTENT_SUITE_ID]
+    with already_seeded():              # a peer may be seeding this suite
+        for rubric in spec.rubrics:
+            reg.save_rubric(rubric)
+        reg.save_suite(spec.suite, spec.cases)
+        return [SAFETY_CONTENT_SUITE_ID]
+    return []

@@ -119,7 +119,13 @@ def test_unapproved_suite_not_pinned(cfg):
 
 def test_cli_profiles_show_snapshot(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENTTIC_TENANT", "cliproftest")
-    monkeypatch.chdir(Path(__file__).resolve().parents[1])
+    # A throwaway copy of the project, not the repo itself — see the note in
+    # test_incidents_cli_api: deleting the .db afterwards left SQLite's -wal
+    # and -shm sidecars behind in the repo root on every run.
+    repo = Path(__file__).resolve().parents[1]
+    (tmp_path / "config.yaml").write_text(
+        (repo / "config.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
     runner = CliRunner()
     res = runner.invoke(app_ref(), ["profiles", "show", "cert-agent-safety-v1"])
     assert res.exit_code == 0
@@ -127,11 +133,6 @@ def test_cli_profiles_show_snapshot(tmp_path, monkeypatch):
     assert "cert-agent-safety-v1" in out
     assert "NOT ASSESSED" in out
     assert "cbrn_proxy" in out
-    # cleanup the per-tenant db this created
-    import os
-    for p in ("agenttic.cliproftest.db",):
-        if os.path.exists(p):
-            os.remove(p)
 
 
 def app_ref():

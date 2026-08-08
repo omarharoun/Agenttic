@@ -21,10 +21,12 @@ isolation (see ``server.app.Workspaces``).
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import UniqueConstraint, event, func
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from agenttic.schema.agent import DeclaredAgent
@@ -40,8 +42,42 @@ class DuplicateVersionError(RuntimeError):
     """Attempted to overwrite an existing (id, version) pair."""
 
 
+
+
 class NotFoundError(KeyError):
     pass
+
+
+@contextmanager
+def already_seeded():
+    """Let a seeding write lose the race without taking the process with it.
+
+    Every `seed_*` helper is documented idempotent and written check-then-act:
+
+        try:
+            reg.get_suite(suite_id)
+            return []              # already present
+        except NotFoundError:
+            pass
+        reg.save_rubric(...)       # <- two processes both arrive here
+        reg.save_suite(...)
+
+    Against one fresh database, several processes all pass that check and all
+    write. Exactly one wins; the rest were told so by
+    :class:`DuplicateVersionError` and died. That is why 2 of 8 concurrent
+    `certify --mock` runs failed on a clean directory — anyone parallelising in
+    CI, and anyone's first run in a new checkout.
+
+    "Already there" is the outcome a seeder ASKED for, so it is not an error
+    here. It stays one in `save_*`: re-saving an existing (id, version)
+    anywhere else is a programmer error, and append-only versioning is what
+    lets a scorecard naming `rubric v1` still mean v1 years later. This
+    tolerance belongs to the callers documented idempotent and to no others.
+    """
+    try:
+        yield
+    except DuplicateVersionError:
+        pass
 
 
 class SuiteRow(SQLModel, table=True):
@@ -1176,22 +1212,48 @@ class Registry:
         from agenttic.migrations import run_migrations
         run_migrations(self.engine)  # idempotent; versioned schema
 
+    def _append_only(self, find, add, what: str) -> None:
+        """Insert a versioned row, refusing to overwrite an existing one.
+
+        Append-only is the product's contract, not an implementation detail: a
+        scorecard names `rubric v1`, and v1 must still mean what it meant when
+        re-read years later. Re-saving any (id, version) that is already there
+        stays a `DuplicateVersionError`, whatever it contains.
+
+        What this fixes is HOW the refusal arrives when two processes race.
+        Every `save_*` was check-then-act — SELECT, then INSERT — so two workers
+        against one fresh database both passed the SELECT and both inserted. The
+        loser got a raw `sqlalchemy` `IntegrityError` and a Rich traceback,
+        because nothing above maps that. Now the unique constraint is caught
+        where it fires and reported as the same clean domain error the
+        SELECT-first path already produced.
+
+        Making the refusal reliable is only half of it: callers documented as
+        idempotent — the `seed_*` helpers — must expect it and carry on. See
+        `already_seeded`.
+        """
+        with Session(self.engine) as s:
+            if find(s) is not None:
+                raise DuplicateVersionError(f"{what} already stored")
+            add(s)
+            try:
+                s.commit()
+            except IntegrityError as exc:
+                # Lost the race to a peer. Rolling back also drops any child
+                # rows `add` staged (a suite's cases), so the winner's row is
+                # never left with our children grafted onto it.
+                s.rollback()
+                if find(s) is None:
+                    raise
+                raise DuplicateVersionError(f"{what} already stored") from exc
+
     # -- suites / cases ----------------------------------------------------
 
     def save_suite(self, suite: TestSuite, cases: list[TestCase]) -> None:
         bad = [c.test_id for c in cases if c.suite_id != suite.suite_id]
         if bad:
             raise ValueError(f"cases not belonging to suite {suite.suite_id}: {bad}")
-        with Session(self.engine) as s:
-            exists = s.exec(select(SuiteRow).where(
-                SuiteRow.tenant_id == self.tenant,
-                SuiteRow.suite_id == suite.suite_id,
-                SuiteRow.version == suite.version)).first()
-            if exists:
-                raise DuplicateVersionError(
-                    f"suite {suite.suite_id} v{suite.version} already stored; "
-                    "save the next version instead"
-                )
+        def add(s):
             s.add(SuiteRow(tenant_id=self.tenant, suite_id=suite.suite_id,
                            version=suite.version, approved=suite.approved,
                            payload=suite.model_dump_json()))
@@ -1199,7 +1261,17 @@ class Registry:
                 s.add(CaseRow(tenant_id=self.tenant, suite_id=suite.suite_id,
                               suite_version=suite.version, test_id=c.test_id,
                               payload=c.model_dump_json()))
-            s.commit()
+
+        # `approved` is deliberately outside the payload comparison: it is gate
+        # state a later `approve` sets in place, not content. A stored suite
+        # that has since been approved is still the same suite.
+        self._append_only(
+            lambda s: s.exec(select(SuiteRow).where(
+                SuiteRow.tenant_id == self.tenant,
+                SuiteRow.suite_id == suite.suite_id,
+                SuiteRow.version == suite.version)).first(),
+            add,
+            f"suite {suite.suite_id} v{suite.version}")
 
     def get_suite(self, suite_id: str, version: int | None = None
                   ) -> tuple[TestSuite, list[TestCase]]:
@@ -1300,17 +1372,16 @@ class Registry:
     # -- rubrics -------------------------------------------------------------
 
     def save_rubric(self, rubric: Rubric) -> None:
-        with Session(self.engine) as s:
-            if s.exec(select(RubricRow).where(
-                    RubricRow.tenant_id == self.tenant,
-                    RubricRow.rubric_id == rubric.rubric_id,
-                    RubricRow.version == rubric.version)).first():
-                raise DuplicateVersionError(
-                    f"rubric {rubric.rubric_id} v{rubric.version} already stored"
-                )
-            s.add(RubricRow(tenant_id=self.tenant, rubric_id=rubric.rubric_id,
-                            version=rubric.version, payload=rubric.model_dump_json()))
-            s.commit()
+        payload = rubric.model_dump_json()
+        self._append_only(
+            lambda s: s.exec(select(RubricRow).where(
+                RubricRow.tenant_id == self.tenant,
+                RubricRow.rubric_id == rubric.rubric_id,
+                RubricRow.version == rubric.version)).first(),
+            lambda s: s.add(RubricRow(
+                tenant_id=self.tenant, rubric_id=rubric.rubric_id,
+                version=rubric.version, payload=payload)),
+            f"rubric {rubric.rubric_id} v{rubric.version}")
 
     def get_rubric(self, rubric_id: str, version: int | None = None) -> Rubric:
         with Session(self.engine) as s:
@@ -1829,20 +1900,17 @@ class Registry:
 
     def save_profile(self, profile) -> None:
         """Persist a certification profile version. Append-only: re-saving an
-        existing (profile_id, version) raises."""
-        with Session(self.engine) as s:
-            exists = s.exec(select(CertProfileRow).where(
+        existing (profile_id, version) with DIFFERENT content raises."""
+        payload = profile.model_dump_json()
+        self._append_only(
+            lambda s: s.exec(select(CertProfileRow).where(
                 CertProfileRow.tenant_id == self.tenant,
                 CertProfileRow.profile_id == profile.profile_id,
-                CertProfileRow.version == profile.version)).first()
-            if exists:
-                raise DuplicateVersionError(
-                    f"profile {profile.profile_id} v{profile.version} already stored")
-            s.add(CertProfileRow(
+                CertProfileRow.version == profile.version)).first(),
+            lambda s: s.add(CertProfileRow(
                 tenant_id=self.tenant, profile_id=profile.profile_id,
-                version=profile.version, created_at=_now(),
-                payload=profile.model_dump_json()))
-            s.commit()
+                version=profile.version, created_at=_now(), payload=payload)),
+            f"profile {profile.profile_id} v{profile.version}")
 
     def get_profile(self, profile_id: str, version: int | None = None):
         from agenttic.schema.certification import CertificationProfile
@@ -1868,19 +1936,17 @@ class Registry:
 
     def save_scenario_space(self, space) -> None:
         import json as _json
-        with Session(self.engine) as s:
-            exists = s.exec(select(ScenarioSpaceRow).where(
+        payload = _json.dumps(space.to_dict())
+        self._append_only(
+            lambda s: s.exec(select(ScenarioSpaceRow).where(
                 ScenarioSpaceRow.tenant_id == self.tenant,
                 ScenarioSpaceRow.space_id == space.space_id,
-                ScenarioSpaceRow.version == space.version)).first()
-            if exists:
-                raise DuplicateVersionError(
-                    f"scenario space {space.space_id} v{space.version} already stored")
-            s.add(ScenarioSpaceRow(
+                ScenarioSpaceRow.version == space.version)).first(),
+            lambda s: s.add(ScenarioSpaceRow(
                 tenant_id=self.tenant, space_id=space.space_id,
                 version=space.version, fingerprint=space.fingerprint(),
-                created_at=_now(), payload=_json.dumps(space.to_dict())))
-            s.commit()
+                created_at=_now(), payload=payload)),
+            f"scenario space {space.space_id} v{space.version}")
 
     def get_scenario_space(self, space_id: str, version: int | None = None):
         import json as _json
@@ -1909,20 +1975,19 @@ class Registry:
 
     def save_coverage_model(self, model) -> None:
         """Persist a coverage-model version. Append-only: re-saving an existing
-        (model_id, version) raises, so bins cannot be silently widened."""
-        with Session(self.engine) as s:
-            exists = s.exec(select(CoverageModelRow).where(
+        (model_id, version) with DIFFERENT bins raises, so bins cannot be
+        silently widened."""
+        payload = model.model_dump_json()
+        self._append_only(
+            lambda s: s.exec(select(CoverageModelRow).where(
                 CoverageModelRow.tenant_id == self.tenant,
                 CoverageModelRow.model_id == model.model_id,
-                CoverageModelRow.version == model.version)).first()
-            if exists:
-                raise DuplicateVersionError(
-                    f"coverage model {model.model_id} v{model.version} already stored")
-            s.add(CoverageModelRow(
+                CoverageModelRow.version == model.version)).first(),
+            lambda s: s.add(CoverageModelRow(
                 tenant_id=self.tenant, model_id=model.model_id,
                 version=model.version, bins_fingerprint=model.bins_fingerprint(),
-                created_at=_now(), payload=model.model_dump_json()))
-            s.commit()
+                created_at=_now(), payload=payload)),
+            f"coverage model {model.model_id} v{model.version}")
 
     def get_coverage_model(self, model_id: str, version: int | None = None):
         from agenttic.coverage.model import CoverageModel
@@ -1949,20 +2014,18 @@ class Registry:
 
     def save_assertion_set(self, aset) -> None:
         """Persist an assertion-set version. Append-only: re-saving an existing
-        (set_id, version) raises, so a set can never be silently edited."""
-        with Session(self.engine) as s:
-            exists = s.exec(select(AssertionSetRow).where(
+        (set_id, version) with DIFFERENT content raises, so a set can never be
+        silently edited."""
+        payload = aset.model_dump_json()
+        self._append_only(
+            lambda s: s.exec(select(AssertionSetRow).where(
                 AssertionSetRow.tenant_id == self.tenant,
                 AssertionSetRow.set_id == aset.set_id,
-                AssertionSetRow.version == aset.version)).first()
-            if exists:
-                raise DuplicateVersionError(
-                    f"assertion set {aset.set_id} v{aset.version} already stored")
-            s.add(AssertionSetRow(
+                AssertionSetRow.version == aset.version)).first(),
+            lambda s: s.add(AssertionSetRow(
                 tenant_id=self.tenant, set_id=aset.set_id,
-                version=aset.version, created_at=_now(),
-                payload=aset.model_dump_json()))
-            s.commit()
+                version=aset.version, created_at=_now(), payload=payload)),
+            f"assertion set {aset.set_id} v{aset.version}")
 
     def get_assertion_set(self, set_id: str, version: int | None = None):
         from agenttic.schema.assertion_set import AssertionSet

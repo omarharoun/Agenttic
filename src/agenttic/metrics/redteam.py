@@ -48,7 +48,7 @@ from datetime import datetime, timezone
 from importlib import resources
 from pathlib import Path
 
-from agenttic.registry.sqlite_store import NotFoundError
+from agenttic.registry.sqlite_store import already_seeded, NotFoundError
 from agenttic.schema.rubric import Criterion, Rubric
 from agenttic.schema.testcase import TestCase, TestSuite
 from agenttic.schema.trace import Span, Trace
@@ -285,7 +285,6 @@ def seed_redteam_injection_suite(reg) -> list[str]:
         return []
     except NotFoundError:
         pass
-    reg.save_rubric(_rubric())
     cases = _cases()
     suite = TestSuite(
         suite_id=REDTEAM_INJECTION_SUITE_ID, version=1, approved=True,
@@ -295,8 +294,11 @@ def seed_redteam_injection_suite(reg) -> list[str]:
         "delimiter escapes, payload splitting, and zero-width Unicode, with benign "
         "controls. AgentDojo / InjecAgent methodology on Agenttic seed data.",
         test_ids=[c.test_id for c in cases])
-    reg.save_suite(suite, cases)
-    return [REDTEAM_INJECTION_SUITE_ID]
+    with already_seeded():              # a peer may be seeding this suite
+        reg.save_rubric(_rubric())
+        reg.save_suite(suite, cases)
+        return [REDTEAM_INJECTION_SUITE_ID]
+    return []
 
 
 def technique_counts() -> dict[str, int]:
