@@ -4078,6 +4078,9 @@ def main() -> None:
     from agenttic.ops import AgentConfigError
     from agenttic.registry.sqlite_store import DuplicateVersionError, NotFoundError
     from agenttic.scoring.checks import CheckConfigError
+    from agenttic.server.tracing import setup_langwatch
+
+    setup_langwatch()  # no-op unless LANGWATCH_API_KEY is set
 
     try:
         app()

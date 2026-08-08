@@ -243,13 +243,14 @@ def create_app(config_path: str = "config.yaml", *, clients: dict | None = None,
         import asyncio
         cfg = load_config(config_path)
         configure_logging(cfg)
-        from agenttic.server.tracing import setup_tracing
+        from agenttic.server.tracing import setup_langwatch, setup_tracing
         # Air-gap self-check FIRST: if air-gap mode is on and any enabled
         # capability would require egress, refuse to boot naming the offender
         # (Hard Rule 34) — before we wire tracing/exporters that might egress.
         from agenttic.airgap import assert_airgap_safe
         assert_airgap_safe(cfg)
         setup_tracing(cfg)  # OTel exporter when observability.otel_enabled
+        setup_langwatch()   # after setup_tracing: attaches, never replaces
         check_startup(cfg)  # fail closed if auth.required without a token
         workspaces = Workspaces(cfg, default_registry=registry, clients=clients,
                                 loop=asyncio.get_running_loop())

@@ -60,13 +60,18 @@ otel = [                              # OpenTelemetry tracing (optional)
     "opentelemetry-sdk>=1.20",
     "opentelemetry-exporter-otlp>=1.20",
 ]
+langwatch = [                         # LLM-call tracing to LangWatch (optional)
+    "langwatch>=1.2",              # 1.2 dropped setup()'s override-warning kwarg
+    "openinference-instrumentation-anthropic>=0.1",
+]
 # --- Framework support (SPEC-8 Step 40, Hard Rule 37) ----------------------
 # Optional and lazy: the base install pulls NO framework SDK. Each extra pulls
 # the matching adapter distribution, which in turn pins the framework SDK. The
 # auto-detecting trace() imports these only when it meets a matching object.
 langgraph = ["agenttic-langgraph"]        # → LangGraph / LangChain support
 openai = ["agenttic-openai-agents"]       # → OpenAI Agents SDK support
-all = ["agenttic[langgraph]", "agenttic[openai]", "agenttic[otel]"]
+all = ["agenttic[langgraph]", "agenttic[openai]", "agenttic[otel]",
+       "agenttic[langwatch]"]
 
 # --------------------------------------------------------------------------- #
 # Evaluator plugin registration (Evaluator Plugin Interface).

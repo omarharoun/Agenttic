@@ -81,6 +81,14 @@ def _otel_remote(cfg: dict, env: dict) -> bool:
     return _url_is_external(endpoint) if endpoint else True
 
 
+def _langwatch_export(cfg: dict, env: dict) -> bool:
+    # Tracing is opt-in by key. A self-hosted LANGWATCH_ENDPOINT inside the VPC
+    # clears this; the default is the public app.langwatch.ai.
+    if not env.get("LANGWATCH_API_KEY"):
+        return False
+    return _url_is_external(env.get("LANGWATCH_ENDPOINT") or "https://app.langwatch.ai")
+
+
 def _external_webhooks(cfg: dict, env: dict) -> bool:
     urls = (cfg.get("feeds", {}) or {}).get("webhook_urls", []) or []
     return any(_url_is_external(u) for u in urls)
@@ -118,6 +126,11 @@ CAPABILITIES: list[Capability] = [
                "observability.otel_enabled exports spans to an external OTLP "
                "endpoint. Point it at an in-cluster collector or disable it.",
                _otel_remote),
+    Capability("langwatch_export", "blocking",
+               "LANGWATCH_API_KEY is set, so prompts and completions would be "
+               "exported to app.langwatch.ai. Point LANGWATCH_ENDPOINT at a "
+               "self-hosted instance inside the VPC, or unset the key.",
+               _langwatch_export),
     Capability("risk_webhooks", "blocking",
                "feeds.webhook_urls contains a public URL; delivery would egress. "
                "Use intra-VPC webhook targets only.",

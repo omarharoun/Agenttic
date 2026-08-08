@@ -1,7 +1,10 @@
 """OTel tracing wrapper (no-op when disabled/uninstalled) + token metrics."""
 
+import pytest
+
+from agenttic.airgap import AirgapEgressError, assert_airgap_safe, egress_self_check
 from agenttic.server import metrics
-from agenttic.server.tracing import setup_tracing, span
+from agenttic.server.tracing import setup_langwatch, setup_tracing, span
 
 
 def test_tracing_disabled_is_noop():
@@ -16,6 +19,28 @@ def test_setup_safe_when_otel_missing_but_enabled():
     assert result in (True, False)
     with span("y"):
         pass
+
+
+# --- LangWatch export: opt-in by key, and air-gap sees it -------------------
+
+def test_langwatch_noop_without_key(monkeypatch):
+    monkeypatch.delenv("LANGWATCH_API_KEY", raising=False)
+    assert setup_langwatch() is False
+
+
+def test_airgap_blocks_langwatch_export():
+    cfg = {"airgap": {"enabled": True, "mock_llm": True}}
+    with pytest.raises(AirgapEgressError) as ei:
+        assert_airgap_safe(cfg, {"LANGWATCH_API_KEY": "sk-lw-x"})
+    assert "langwatch_export" in str(ei.value)
+
+
+def test_airgap_allows_self_hosted_langwatch():
+    cfg = {"airgap": {"enabled": True, "mock_llm": True}}
+    env = {"LANGWATCH_API_KEY": "sk-lw-x",
+           "LANGWATCH_ENDPOINT": "http://langwatch.internal"}
+    names = [o["name"] for o in egress_self_check(cfg, env)["offenders"]]
+    assert "langwatch_export" not in names
 
 
 def test_record_tokens_metric():
