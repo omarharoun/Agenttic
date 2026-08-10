@@ -54,6 +54,10 @@ def _assemble_results(state, ex) -> tuple[list, list, set]:
     """Join an execution's persisted node outputs into render-ready scorecards +
     per-case rows, and collect the (rubric_id, version) pairs the run scored
     against. Shared by the results and issues endpoints."""
+    from agenttic.scoring.judge_calibration import demonstrated_calibrated_judge
+    # Fail-closed calibration (F1): a criterion is calibrated only if a stored,
+    # promoted record says so — never a payload bool that defaults True. Empty here.
+    _calibrated_ids = demonstrated_calibrated_judge()
     scorecards, cases_out, rubric_refs = [], [], set()
     for node_id, ports in (ex.get("node_outputs") or {}).items():
         for payload in ports.values():
@@ -110,7 +114,7 @@ def _assemble_results(state, ex) -> tuple[list, list, set]:
                         "criteria": [{
                             "criterion_id": cs["criterion_id"],
                             "score": cs["score"], "scorer": cs["scorer"],
-                            "calibrated": cs.get("calibrated", True),
+                            "calibrated": cs["criterion_id"] in _calibrated_ids,
                             "rationale": cs.get("judge_rationale"),
                         } for cs in rs["criterion_scores"]],
                     })

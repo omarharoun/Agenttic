@@ -249,3 +249,94 @@ class TestNonResultExclusion:
         tc = _tc({"final_answer": "42"})
         rs = score_run(_bb_trace("UPSTREAM_ERROR:RateLimit"), tc, rubric)
         assert rs.scoring_error is not None and rs.criterion_scores == []
+
+
+class TestAppliesWhen:
+    """F2a: a criterion whose ``applies_when`` predicate is false for a case is
+    N/A for that case — EXCLUDED from the mean, never scored 0 — and N/A counts
+    are recorded per criterion. This generalises the existing refusal-drop so any
+    conditional criterion (scope-boundary, refusal, secret-guard) is not scored
+    against a case where its situation never arose."""
+
+    def test_applies_when_false_is_na_excluded_not_zero(self):
+        c = Criterion(criterion_id="scope_boundary", description="d", scorer="code",
+                      scale="binary", check_ref="forbidden_tool_not_called",
+                      applies_when={"case_tags_any": ["adversarial"]})
+        rubric = Rubric(rubric_id="r", version=1, criteria=[c])
+        benign = _tc({"forbidden_tools": []}, tags=[])  # no adversarial tag
+        rs = score_run(_trace(final="summary"), benign, rubric)
+        assert "scope_boundary" in rs.na_criteria
+        assert rs.criterion_scores == []      # N/A: not scored (never a phantom 0)
+        assert rs.scoring_error is None
+        assert rs.passed is True               # vacuous pass, not a 0% fail
+
+    def test_applies_when_true_is_scored(self):
+        c = Criterion(criterion_id="scope_boundary", description="d", scorer="code",
+                      scale="binary", check_ref="forbidden_tool_not_called",
+                      applies_when={"case_tags_any": ["adversarial"]})
+        rubric = Rubric(rubric_id="r", version=1, criteria=[c])
+        adv = _tc({"forbidden_tools": []}, tags=["adversarial"])
+        rs = score_run(_trace(final="ok"), adv, rubric)
+        assert rs.na_criteria == []
+        assert [s.criterion_id for s in rs.criterion_scores] == ["scope_boundary"]
+
+    def test_applies_when_expected_present(self):
+        c = Criterion(criterion_id="secret_guard", description="d", scorer="code",
+                      scale="binary", check_ref="no_secret_leak",
+                      applies_when={"expected_present": ["secret"]})
+        rubric = Rubric(rubric_id="r", version=1, criteria=[c])
+        rs = score_run(_trace(final="hello"), _tc({}, tags=[]), rubric)
+        assert "secret_guard" in rs.na_criteria and rs.criterion_scores == []
+
+    def test_no_applies_when_backward_compatible(self):
+        rubric = _code_rubric("forbidden_tool_not_called", tags=())
+        rs = score_run(_trace(final="ok"), _tc({"forbidden_tools": []}), rubric)
+        assert rs.na_criteria == []
+        assert len(rs.criterion_scores) == 1
+
+    def test_invalid_applies_when_key_rejected(self):
+        with pytest.raises(Exception):
+            Criterion(criterion_id="x", description="d", scorer="code",
+                      scale="binary", check_ref="forbidden_tool_not_called",
+                      applies_when={"bogus_key": ["z"]})
+
+    def test_applicable_criteria_behaviour_unchanged(self):
+        # F2a must be ADDITIVE: for a case where NOTHING is N/A, scoring is
+        # identical to before the change — same per-criterion scores, same mean,
+        # same passed, and na is empty. Golden values computed independently
+        # (substring 'hello' present -> 1.0; regex 'zzz+' absent -> 0.0; equal
+        # weights -> mean 0.5 -> passed False at threshold 0.7).
+        from agenttic.schema.scorecard import Scorecard
+        rubric = Rubric(rubric_id="r", version=1, criteria=[
+            Criterion(criterion_id="sub", description="d", scorer="code",
+                      scale="binary", check_ref="substring_containment"),
+            Criterion(criterion_id="rex", description="d", scorer="code",
+                      scale="binary", check_ref="regex_match"),
+        ])
+        tc = _tc({"substring": "hello", "pattern": "zzz+"})
+        rs = score_run(_trace(final="hello world"), tc, rubric)
+        assert rs.na_criteria == []                     # nothing excluded
+        assert [(s.criterion_id, s.score) for s in rs.criterion_scores] == [
+            ("sub", 1.0), ("rex", 0.0)]                 # exact scores preserved
+        assert rs.passed is False                       # 0.5 < 0.7, unchanged
+        sc = Scorecard.aggregate(scorecard_id="sc", agent_id="a", suite_id="s",
+                                 suite_version=1, rubric_id="r", rubric_version=1,
+                                 run_scores=[rs], visibility_tier="glass_box")
+        assert sc.per_criterion_means == {"sub": 1.0, "rex": 0.0}
+        assert sc.task_success_rate == 0.0              # 0 of 1 passed
+        assert sc.per_criterion_na_counts == {}         # denominator not shrunk
+
+    def test_na_counts_aggregated(self):
+        from agenttic.schema.scorecard import Scorecard
+        c = Criterion(criterion_id="scope_boundary", description="d", scorer="code",
+                      scale="binary", check_ref="forbidden_tool_not_called",
+                      applies_when={"case_tags_any": ["adversarial"]})
+        rubric = Rubric(rubric_id="r", version=1, criteria=[c])
+        runs = [score_run(_trace(final="s"),
+                          _tc({"forbidden_tools": []}, test_id=f"tc{i}"), rubric)
+                for i in range(3)]
+        sc = Scorecard.aggregate(scorecard_id="sc", agent_id="a", suite_id="s",
+                                 suite_version=1, rubric_id="r", rubric_version=1,
+                                 run_scores=runs, visibility_tier="glass_box")
+        assert sc.per_criterion_na_counts.get("scope_boundary") == 3
+        assert "scope_boundary" not in sc.per_criterion_means  # never scored, never 0

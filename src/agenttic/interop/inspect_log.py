@@ -454,7 +454,7 @@ def _runscore_from_sample(sample: dict[str, Any], default_trace_id: str
             score=_coerce_score(sc.get("value")),
             scorer=sc_meta.get("scorer", "code")
             if sc_meta.get("scorer") in ("code", "judge", "fi") else "code",
-            calibrated=bool(sc_meta.get("calibrated", True)),
+            calibrated=bool(sc_meta.get("calibrated", False)),  # fail-closed: absent ⇒ not calibrated
             judge_rationale=sc.get("explanation"),
             cost_usd=float(sc_meta.get("cost_usd", 0.0)),
         ))

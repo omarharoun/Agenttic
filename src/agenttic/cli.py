@@ -352,12 +352,53 @@ def honeypot(
             _render(Registry(str(Path(tmp) / "honeypot.db")))
 
 
+def _suite_validation_problems(reg, suite_id: str, version: int) -> list[str]:
+    """Run the SPEC-6 oracle/suite-validation gate for a stored suite: group its
+    cases by rubric and validate each. Deterministic, offline (no model)."""
+    from agenttic.verification.suite_validation import validate_suite
+    cases = reg.peek_cases(suite_id, version)
+    by_rubric: dict[str, list] = {}
+    for tc in cases:
+        by_rubric.setdefault(tc.rubric_id, []).append(tc)
+    problems: list[str] = []
+    for rubric_id, rcases in by_rubric.items():
+        problems += validate_suite(reg.get_rubric(rubric_id), rcases)
+    return problems
+
+
 @app.command()
 def approve(suite_id: str, version: int = 1, config: str = "config.yaml"):
-    """Human gate: mark a reviewed suite as runnable."""
+    """Human gate: mark a reviewed suite as runnable.
+
+    Runs the suite-validation (SPEC-6 oracle) gate first and REFUSES to approve a
+    suite that would misapply a criterion — a mismatched suite is made impossible
+    to run, not merely reported."""
     _, reg = _ctx(config)
+    problems = _suite_validation_problems(reg, suite_id, version)
+    if problems:
+        console.print(f"[red]Refused[/] to approve {suite_id} v{version} — "
+                      "suite-validation gate failed:")
+        for p in problems:
+            console.print(f"  - {p}")
+        raise typer.Exit(1)
     reg.approve_suite(suite_id, version)
     console.print(f"[green]Approved[/] suite {suite_id} v{version}.")
+
+
+@app.command(name="validate-suite")
+def validate_suite_cmd(suite_id: str, version: int = 1, config: str = "config.yaml"):
+    """Run the suite-validation (SPEC-6 oracle) gate against a suite and report
+    problems. Exit code 0 when clean, 1 when the suite would misapply a criterion.
+    This is step 1 of the re-run protocol."""
+    _, reg = _ctx(config)
+    problems = _suite_validation_problems(reg, suite_id, version)
+    if not problems:
+        console.print(f"[green]OK[/] suite {suite_id} v{version} passed validation.")
+        return
+    console.print(f"[red]{len(problems)} problem(s)[/] in {suite_id} v{version}:")
+    for p in problems:
+        console.print(f"  - {p}")
+    raise typer.Exit(1)
 
 
 @app.command()

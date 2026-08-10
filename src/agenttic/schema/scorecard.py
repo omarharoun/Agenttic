@@ -47,6 +47,11 @@ class RunScore(BaseModel):
     latency_ms: float = 0.0
     steps: int = 0
     scoring_error: str | None = None
+    #: F2a — criteria that did NOT apply to this case (their ``applies_when``
+    #: situation was absent, or a refusal criterion on a benign case). Recorded as
+    #: N/A and EXCLUDED from the mean — never scored 0 — so an agent is not
+    #: penalised for a situation that never arose. Empty on old scorecards.
+    na_criteria: list[str] = Field(default_factory=list)
 
 
 class Scorecard(BaseModel):
@@ -65,6 +70,10 @@ class Scorecard(BaseModel):
     total_scoring_cost_usd: float = 0.0  # total judge/scoring cost over all runs
     p95_latency_ms: float
     per_criterion_means: dict[str, float] = Field(default_factory=dict)
+    #: F2a — how many cases each criterion was N/A on (situation never arose).
+    #: A high count is a finding about SUITE design, not the agent. Derived in
+    #: ``aggregate``; empty on old scorecards.
+    per_criterion_na_counts: dict[str, int] = Field(default_factory=dict)
     errored_test_ids: list[str] = Field(default_factory=list)
     visibility_tier: Literal["glass_box", "black_box"]
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -202,6 +211,13 @@ class Scorecard(BaseModel):
             for c in r.criterion_scores:
                 per_crit.setdefault(c.criterion_id, []).append(c.score)
         means = {cid: sum(v) / len(v) for cid, v in per_crit.items()}
+        # N/A counts (F2a): counted over ALL runs — a criterion inapplicable to a
+        # case is a fact about that case regardless of whether scoring later
+        # errored. Never folded into means; a rubric/case mismatch stays visible.
+        na_counts: dict[str, int] = {}
+        for r in run_scores:
+            for cid in (r.na_criteria or []):
+                na_counts[cid] = na_counts.get(cid, 0) + 1
         return cls(
             scorecard_id=scorecard_id,
             agent_id=agent_id,
@@ -216,6 +232,7 @@ class Scorecard(BaseModel):
             total_scoring_cost_usd=total_scoring_cost,
             p95_latency_ms=p95,
             per_criterion_means=means,
+            per_criterion_na_counts=na_counts,
             errored_test_ids=errored_ids,
             visibility_tier=visibility_tier,
         )

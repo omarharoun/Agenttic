@@ -125,8 +125,22 @@ class _Report(FPDF):
 
 def render_pdf(sc: Scorecard, rubric: Rubric, previous: Scorecard | None = None) -> bytes:
     crit_by_id = {c.criterion_id: c for c in rubric.criteria}
-    calibrated_ids = {s.criterion_id for r in sc.run_scores for s in r.criterion_scores if s.calibrated}
-    provisional_ids = {s.criterion_id for r in sc.run_scores for s in r.criterion_scores if not s.calibrated}
+    # F1 parity with the Markdown report: scorer from the SCORES (never `?`), and
+    # calibration status FAIL-CLOSED from a stored record (never a defaulted bool).
+    from agenttic.reporting.scorecard_report import (
+        _default_calibration_records,
+        criterion_status,
+    )
+    records = _default_calibration_records()
+    scorer_by_cid = {s.criterion_id: s.scorer
+                     for r in sc.run_scores for s in r.criterion_scores}
+
+    def _scorer(cid: str) -> str:
+        crit = crit_by_id.get(cid)
+        return scorer_by_cid.get(cid) or (crit.scorer if crit else "judge")
+
+    provisional_ids = {cid for cid in sc.per_criterion_means
+                       if _scorer(cid) != "code" and cid not in records}
     errored = [r for r in sc.run_scores if r.scoring_error]
     scored = [r for r in sc.run_scores if not r.scoring_error]
     n, n_err, n_scored = len(sc.run_scores), len(errored), len(scored)
@@ -257,11 +271,8 @@ def render_pdf(sc: Scorecard, rubric: Rubric, previous: Scorecard | None = None)
                        text_align=("LEFT", "CENTER", "RIGHT", "LEFT"), line_height=5.5) as table:
             table.row(["Criterion", "Scorer", "Mean", "Status"])
             for cid, mean in sorted(sc.per_criterion_means.items()):
-                crit = crit_by_id.get(cid)
-                scorer = crit.scorer if crit else "?"
-                status = ("deterministic" if scorer == "code"
-                          else ("calibrated" if cid in calibrated_ids and cid not in provisional_ids
-                                else "PROVISIONAL (uncalibrated)"))
+                scorer = _scorer(cid)
+                status = criterion_status(scorer, cid, records)
                 row = table.row()
                 row.cell(_san(cid), style=FontFace(family="Courier"))
                 row.cell(_san(scorer)); row.cell(_pct(mean)); row.cell(_san(status))
@@ -288,17 +299,37 @@ def render_pdf(sc: Scorecard, rubric: Rubric, previous: Scorecard | None = None)
             if prev is not None and abs(mean - prev) > 1e-9:
                 body(f"- {cid}: {_pct(prev)} -> {_pct(mean)}", size=9, color=MUTED)
 
-    # recommendations
+    # recommendations — classified before emission (F4), same as the Markdown twin
+    from agenttic.reporting.scorecard_report import (
+        FINDING_LABELS, classify_finding)
+    na_counts = getattr(sc, "per_criterion_na_counts", {}) or {}
     section("Recommendations")
     worst = sorted(sc.per_criterion_means.items(), key=lambda kv: kv[1])[:3]
     if not worst:
         body("No scored criteria to draw recommendations from - fix the scoring "
              "configuration (see Errored cases) and re-run.", color=MUTED)
     for cid, mean in worst:
+        per_case = [s.score for r in sc.run_scores for s in r.criterion_scores
+                    if s.criterion_id == cid]
+        rationales = [s.judge_rationale for r in sc.run_scores
+                      for s in r.criterion_scores
+                      if s.criterion_id == cid and s.judge_rationale]
         desc = crit_by_id[cid].description if cid in crit_by_id else cid
-        body(f"- Improve {cid} ({_pct(mean)}): {desc}")
+        kind = classify_finding(scorer=_scorer(cid), per_case_scores=per_case,
+                                na_count=na_counts.get(cid, 0), rationales=rationales,
+                                has_record=cid in records)
+        tag = f"[{FINDING_LABELS[kind]}]"
+        if kind == "suite_finding":
+            body(f"- Fix the suite - {cid} {tag} ({_pct(mean)}): a suite/config "
+                 f"problem, NOT an agent failure - fix the suite. {desc}")
+        elif kind == "evidence_finding":
+            body(f"- Gather evidence - {cid} {tag} ({_pct(mean)}): scored by an "
+                 f"uncalibrated judge; calibrate before acting on this. {desc}")
+        else:
+            body(f"- Improve {cid} {tag} ({_pct(mean)}): {desc}")
     if provisional_ids:
-        body("- Calibrate the judge for: " + ", ".join(sorted(provisional_ids))
+        body("- Calibrate the judge [evidence finding] for: "
+             + ", ".join(sorted(provisional_ids))
              + " - scores are provisional until judge-human agreement is measured (>= 0.8).")
 
     return bytes(pdf.output())

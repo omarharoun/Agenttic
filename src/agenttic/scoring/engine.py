@@ -89,14 +89,37 @@ def case_warrants_refusal(tc: TestCase) -> bool:
     return bool((tc.expected or {}).get("harmful"))
 
 
+def criterion_applies_to_case(c: Criterion, tc: TestCase) -> bool:
+    """Honour a criterion's declarative ``applies_when`` predicate (F2a).
+
+    A criterion with no predicate always applies (backward compatible). Otherwise
+    it applies only when the situation it checks is present in the case — ANY
+    declared marker matching: a case tag (``case_tags_any``) or a truthy
+    ``expected`` key (``expected_present``). Deterministic: reads only the case,
+    never the agent's output, so applicability is decidable before the run."""
+    aw = getattr(c, "applies_when", None)
+    if not aw:
+        return True
+    tags = {t.lower() for t in (tc.tags or [])}
+    if any(t.lower() in tags for t in aw.get("case_tags_any", [])):
+        return True
+    exp = tc.expected or {}
+    return any(exp.get(k) for k in aw.get("expected_present", []))
+
+
 def applicable_to_case(criteria, tc: TestCase):
-    """Filter criteria to those that apply to THIS case. A refusal/safety
-    criterion is excluded from a case that doesn't warrant a refusal, so the
-    criterion is left out of that case's aggregate entirely rather than scoring
-    the agent 0 for correctly complying with a benign request."""
-    if case_warrants_refusal(tc):
-        return list(criteria)
-    return [c for c in criteria if not _is_refusal_criterion(c)]
+    """Filter criteria to those that apply to THIS case, so an inapplicable
+    criterion is left out of the case's aggregate entirely rather than scoring the
+    agent 0 for a situation that never arose. Two exclusions, both recorded N/A by
+    the caller (never a 0):
+
+    * a refusal/safety criterion on a case that does not warrant a refusal;
+    * any criterion whose declarative ``applies_when`` situation is absent (F2a).
+    """
+    warrants = case_warrants_refusal(tc)
+    return [c for c in criteria
+            if (warrants or not _is_refusal_criterion(c))
+            and criterion_applies_to_case(c, tc)]
 
 
 def nonresult_reason(trace: Trace, criteria) -> str | None:
@@ -154,8 +177,13 @@ def score_run(
     # an old/resumed case missing a field a code check needs is filled with a safe
     # default here, so it scores cleanly instead of raising CheckConfigError.
     tc = tc.model_copy(update={"expected": repair_expected(tc.expected, rubric)})
-    criteria = applicable_criteria(rubric, trace.visibility)
-    criteria = applicable_to_case(criteria, tc)
+    visible = applicable_criteria(rubric, trace.visibility)
+    criteria = applicable_to_case(visible, tc)
+    # Criteria excluded by case-applicability (refusal-on-benign, or applies_when
+    # absent) are recorded N/A — excluded from the mean, never scored 0 (F2a).
+    # Visibility drops (black-box trajectory criteria) are a different exclusion
+    # and are NOT counted as N/A here.
+    na_criteria = [c.criterion_id for c in visible if c not in criteria]
     # A non-result (failed/empty run) carries no agent answer to grade. Surface
     # it as an ERRORED run (scoring_error set) so it is excluded from quality
     # aggregates and listed in ``errored_test_ids`` — never scored as if the
@@ -178,6 +206,7 @@ def score_run(
             trace_id=trace.trace_id, test_id=tc.test_id, criterion_scores=[],
             passed=True, cost_usd=trace.total_cost_usd,
             latency_ms=trace.total_latency_ms, steps=trace.total_steps,
+            na_criteria=na_criteria,
         )
     has_judge_criteria = any(c.scorer == "judge" for c in criteria)
     if has_judge_criteria and judge is None:
@@ -218,4 +247,5 @@ def score_run(
         scoring_cost_usd=sum(s.cost_usd for s in scores),
         latency_ms=trace.total_latency_ms,
         steps=trace.total_steps,
+        na_criteria=na_criteria,
     )

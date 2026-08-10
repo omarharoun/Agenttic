@@ -96,6 +96,41 @@ class TestBuildIssues:
         assert err["affected_n"] == 1
         assert "timed out" in err["why"].lower()
 
+    def test_deterministic_zero_is_suite_finding_not_agent(self):
+        # F4: a code criterion at 0% across all cases is a suite finding — never
+        # "the agent failed". (The missing-expectation signature.)
+        cases = [_case("t1", [_crit("final_output_correct", 0.0)]),
+                 _case("t2", [_crit("final_output_correct", 0.0)])]
+        rep = build_issues(scorecards=[], cases=cases,
+                           criteria_meta={"final_output_correct": {"scorer": "code"}})
+        issue = next(i for i in rep["issues"]
+                     if i["criterion_id"] == "final_output_correct")
+        assert issue["finding_kind"] == "suite_finding"
+        assert issue["finding_label"] == "suite finding"
+
+    def test_every_criterion_issue_carries_finding_kind(self):
+        cases = [_case("t1", [_crit("tone", 0.0, scorer="judge",
+                                    rationale="curt")])]
+        rep = build_issues(scorecards=[], cases=cases,
+                           criteria_meta={"tone": {"scorer": "judge"}})
+        crit_issues = [i for i in rep["issues"] if i["criterion_id"]]
+        assert crit_issues
+        for i in crit_issues:
+            assert i["finding_kind"] in (
+                "agent_finding", "suite_finding", "evidence_finding")
+
+    def test_uncalibrated_judge_evidence_is_fail_closed(self):
+        # Even with the payload asserting calibrated=True, with no stored record
+        # the criterion is provisional and its evidence renders calibrated=False.
+        cases = [_case("t1", [_crit("tone", 0.0, scorer="judge", calibrated=True,
+                                    rationale="curt")])]
+        rep = build_issues(scorecards=[], cases=cases,
+                           criteria_meta={"tone": {"scorer": "judge"}})
+        assert any(i["id"] == "uncalibrated-judge" for i in rep["issues"])
+        tone = next(i for i in rep["issues"] if i["criterion_id"] == "tone")
+        assert tone["evidence"]["cases"][0]["calibrated"] is False
+        assert tone["finding_kind"] == "evidence_finding"
+
     def test_provisional_judge_issue(self):
         cases = [_case("t1", [_crit("tone", 1.0, scorer="judge", calibrated=False)])]
         rep = build_issues(scorecards=[], cases=cases,

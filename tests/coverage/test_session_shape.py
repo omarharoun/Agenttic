@@ -137,3 +137,24 @@ class TestResumedWithMemory:
             span("final_output", "answer", i=2),
         )
         assert run_predicate("session_resumed_with_memory", t) is True
+
+
+class TestSessionShapeReasoningPinned:
+    """F5 (do-not-regress): the session_shape coverpoint must keep REFUSING to
+    credit single_turn on an uninstrumented trace — crediting it 'would turn
+    missing instrumentation into a result' — and resumed_with_memory must stay
+    waived with its reason recorded inline. This is the platform's clearest
+    demonstration of its own thesis; it must survive refactors."""
+
+    def test_single_turn_not_credited_at_zero_reasoning(self):
+        from agenttic.coverage.models.conversational_transactional import SESSION_SHAPE
+        assert SESSION_SHAPE.measurable is False
+        reason = SESSION_SHAPE.not_measurable_reason.lower()
+        assert "missing instrumentation into a result" in reason
+        assert "true at zero" in reason  # session_single_turn is <= 1, True at 0
+
+    def test_resumed_with_memory_waiver_reason_inline(self):
+        from agenttic.coverage.models.conversational_transactional import SESSION_SHAPE
+        bin_ = next(b for b in SESSION_SHAPE.bins if b.bin_id == "resumed_with_memory")
+        assert bin_.waived is True
+        assert (bin_.reason or "").strip()  # the waiver reason travels inline

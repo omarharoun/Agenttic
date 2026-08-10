@@ -22,6 +22,14 @@ class Criterion(BaseModel):
     fi_metric: str | None = None  # required when scorer == "fi" (a Future AGI metric)
     anchors: dict = Field(default_factory=dict)  # required keys for judge: "pass", "fail"
     tags: list[str] = Field(default_factory=list)  # e.g. "trajectory", "live"
+    #: F2a — declarative applicability predicate. None => the criterion always
+    #: applies (backward compatible). Otherwise the criterion applies to a case
+    #: only when the situation it checks is present, so it is not scored 0 on a
+    #: case where nothing to check ever arose (recorded N/A instead). Allowed
+    #: predicates (ANY match ⇒ applies): ``case_tags_any`` (the case carries one
+    #: of these tags) and ``expected_present`` (the case's ``expected`` has one of
+    #: these keys, truthy). Deterministic: read only from the case.
+    applies_when: dict | None = None
 
     # LLM output and older records often carry an explicit ``null`` for these
     # optional containers; default_factory only fills a MISSING key, so coerce
@@ -37,6 +45,26 @@ class Criterion(BaseModel):
     @classmethod
     def _tags_none_to_empty(cls, v: object) -> object:
         return [] if v is None else v
+
+    @field_validator("applies_when", mode="before")
+    @classmethod
+    def _validate_applies_when(cls, v: object) -> object:
+        # Reject typos at load time: an unknown predicate key would otherwise be
+        # silently ignored and the criterion would always apply (fail open).
+        if v is None:
+            return None
+        if not isinstance(v, dict):
+            raise ValueError("applies_when must be a dict of {predicate: [values]}")
+        allowed = {"case_tags_any", "expected_present"}
+        unknown = set(v) - allowed
+        if unknown:
+            raise ValueError(
+                f"applies_when has unknown predicate(s) {sorted(unknown)}; "
+                f"allowed: {sorted(allowed)}")
+        for k, vals in v.items():
+            if not isinstance(vals, list) or not all(isinstance(x, str) for x in vals):
+                raise ValueError(f"applies_when[{k!r}] must be a list of strings")
+        return v
 
     @model_validator(mode="after")
     def _scorer_requirements(self) -> "Criterion":

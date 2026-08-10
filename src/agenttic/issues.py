@@ -192,15 +192,26 @@ def build_issues(*, scorecards: list[dict], cases: list[dict],
     # -- per-criterion aggregation over the scored cases --------------------
     # {criterion_id: {"measured": [case...], "failing": [(case, crit)...],
     #                 "provisional": int, "scorer": str}}
+    # Fail-closed calibration (F1/F4): the ONLY thing that makes a judge criterion
+    # non-provisional is a stored, promoted calibration record — never a payload
+    # bool that defaults to calibrated. Empty here ⇒ every judge criterion is
+    # provisional, exactly as the report renders it.
+    from agenttic.scoring.judge_calibration import demonstrated_calibrated_judge
+    calibrated_ids = demonstrated_calibrated_judge()
+
     agg: dict[str, dict] = {}
     for c in scored:
         for cr in c.get("criteria", []):
             cid = cr["criterion_id"]
-            slot = agg.setdefault(cid, {"measured": 0, "failing": [],
+            slot = agg.setdefault(cid, {"measured": 0, "failing": [], "scores": [],
                                         "provisional": 0, "scorer": cr.get("scorer")})
             slot["measured"] += 1
-            if not cr.get("calibrated", True):
+            # Provisional = a judge/fi criterion with no stored calibration record.
+            # Code criteria are deterministic — never provisional.
+            if cr.get("scorer") in ("judge", "fi") and cid not in calibrated_ids:
                 slot["provisional"] += 1
+            if cr.get("score") is not None:
+                slot["scores"].append(float(cr["score"]))
             if (cr.get("score") or 0) < 1.0:
                 slot["failing"].append((c, cr))
 
@@ -230,13 +241,25 @@ def build_issues(*, scorecards: list[dict], cases: list[dict],
         if rationale:
             why += f" The judge's reason on one case: “{_clip(rationale, 180)}”"
 
+        # F4 — classify the finding before recommending: don't blame the agent
+        # for a suite/config defect or an uncalibrated judge. (na_count is 0 here:
+        # the /executions results payload does not yet carry per-criterion N/A
+        # counts; the deterministic-0% and rationale heuristics still apply.)
+        from agenttic.reporting.scorecard_report import (
+            FINDING_LABELS, classify_finding)
+        finding_kind = classify_finding(
+            scorer=slot.get("scorer") or "", per_case_scores=slot["scores"],
+            na_count=0,
+            rationales=[cr.get("rationale") for _, cr in failing if cr.get("rationale")],
+            has_record=cid in calibrated_ids)
+
         evidence_cases = []
         for case, cr in failing[:max_evidence]:
             evidence_cases.append({
                 "test_id": case.get("test_id"),
                 "score": cr.get("score"),
                 "scorer": cr.get("scorer"),
-                "calibrated": cr.get("calibrated", True),
+                "calibrated": cid in calibrated_ids,  # fail-closed: only a record ⇒ calibrated
                 "rationale": _clip(cr.get("rationale"), 300) if cr.get("rationale") else None,
                 "prediction": _clip(case.get("prediction"), 200),
                 "expected": _clip(_expected_str(case.get("expected")), 160),
@@ -248,6 +271,8 @@ def build_issues(*, scorecards: list[dict], cases: list[dict],
             "criterion_id": cid,
             "category": category,
             "category_label": _CATEGORY_LABEL[category],
+            "finding_kind": finding_kind,
+            "finding_label": FINDING_LABELS[finding_kind],
             "severity": severity,
             "impact_rank": impact,
             "why": why,
