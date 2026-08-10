@@ -33,6 +33,43 @@
 .ds-score--neutral { color: var(--text); }
 .ds-score__unit, .ds-score__ci { font-size: var(--t-xs); color: var(--muted); }
 
+/* ---- VerdictWithScope ---------------------------------------------------- */
+/* The verdict pill and its scope fence render as one row. The colour of the
+ * pill lives ONLY on these `.vws-verdict--*` classes, emitted only by the
+ * VerdictWithScope component (grep-pinned by enforcement.test.tsx), and the pill
+ * never appears without `.vws-fence` beside it. Token-only, both themes. */
+.vws {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+}
+.vws-verdict {
+  font-family: var(--font-mono); font-size: var(--t-sm); font-weight: 600;
+  letter-spacing: 0.12em; padding: 3px 10px; border-radius: var(--r-xs);
+  border: 1px solid transparent; white-space: nowrap;
+}
+.vws-verdict--pass {
+  background: var(--score-pass-soft); color: var(--score-pass);
+  border-color: var(--score-pass-border);
+}
+.vws-verdict--fail {
+  background: var(--score-fail-soft); color: var(--score-fail);
+  border-color: var(--score-fail-border);
+}
+.vws-verdict--incomplete {
+  background: var(--score-provisional-soft); color: var(--score-provisional);
+  border-color: var(--score-provisional-border);
+}
+.vws-verdict--none {
+  background: var(--neutral-soft); color: var(--muted);
+  border-color: var(--border);
+}
+.vws-scope {
+  display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2);
+  font-family: var(--font-mono); font-size: var(--t-sm); color: var(--muted);
+}
+.vws-closure { color: var(--text); }
+.vws-fence { color: var(--muted); }
+
 /* ---- ScorecardCard ------------------------------------------------------- */
 .ds-card {
   border: var(--card-border); border-radius: var(--card-radius);

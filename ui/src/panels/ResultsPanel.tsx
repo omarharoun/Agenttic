@@ -4,10 +4,31 @@ import { Uncertainty } from "../components/ui";
 import { money, ms } from "../stats";
 import { PASS_MEANING, PASS_THRESHOLD } from "../workflow/templates";
 import { Markdown } from "../components/Markdown";
-import { ProvenanceBadge } from "../components/ds";
+import { ProvenanceBadge, VerdictWithScope, criterionStatus } from "../components/ds";
+import type { VerdictScope } from "../components/ds";
 import {
   CoverageWheelFor, VerificationStrip, cov, scopeNote, scopeTag,
 } from "../verification";
+
+/** Build the lead verdict+scope from a scorecard summary. The verdict
+ *  (verification_status) and per-coverpoint holes are NOT in the /results
+ *  payload today, so they read fail-closed ("NOT RECORDED" / "unscoped") until
+ *  the endpoint carries them — never a false all-clear. See CONSOLE-DESIGN §7. */
+function verdictScope(sc: any, provisionalCriteria: number): VerdictScope {
+  const c = cov(sc);
+  const scoped = Boolean(c.model_ref);
+  const a = c.assertions;
+  return {
+    status: sc.verification_status ?? null,
+    scoped,
+    coverageHoles: 0,   // per-coverpoint holes live on the full scorecard, not this summary
+    notMeasured: 0,
+    assertionsUnexercised: a?.unexercised ?? 0,
+    provisionalCriteria,
+    closurePct: scoped && c.trace_closure != null ? Math.round(c.trace_closure * 100) : null,
+    closureTarget: c.closure_target != null ? Math.round(c.closure_target * 100) : null,
+  };
+}
 
 /** Post-run scoreboard: scorecard summary + one row per test case showing
  * the agent's prediction vs expected, expandable to per-criterion scores
@@ -25,6 +46,15 @@ export function ResultsPanel({ results }: { results: any }) {
   const failed = scored.length - passed;
   const total = scored.length + errored.length;
   const wpct = (n: number) => total ? `${(n / total) * 100}%` : "0%";
+  // Distinct provisional criteria exercised in this run — judge/fi criteria with
+  // no stored calibration record (fail-closed via criterionStatus, no alpha in
+  // the payload ⇒ provisional). Real today; the rest of the fence needs §7's
+  // /results enrichment.
+  const provCount = new Set(
+    scored.flatMap((c: any) => (c.criteria || [])
+      .filter((cr: any) => criterionStatus({ scorer: cr.scorer, alpha: cr.alpha }) === "provisional")
+      .map((cr: any) => cr.criterion_id)),
+  ).size;
 
   return (
     <div className="results">
@@ -39,6 +69,10 @@ export function ResultsPanel({ results }: { results: any }) {
               judge calls were made (<b>$0</b>). Re-run with refresh to recompute.
             </div>
           )}
+          {/* Lead with the verdict AND its scope fence, inseparable: the reader
+              cannot see a PASS colour without the narrowing that qualifies it
+              (CONSOLE-DESIGN §5.3). */}
+          <VerdictWithScope scope={verdictScope(sc, provCount)} />
           {/* The wheel leads: the shape of what was exercised comes before any
               rate, because a rate with no denominator is the unscoped claim. */}
           <div className="run-verif">

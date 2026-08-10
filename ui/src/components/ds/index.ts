@@ -1,7 +1,11 @@
 /* The shared design-system component library (SPEC-11 Step 51).
  * One import surface for both the console and the landing route. */
-export { ProvenanceBadge, ScoreValue, ScorecardCard } from "./Scorecard";
-export type { Scorer, ScoreTone, ScoreMetric, CriterionRow } from "./Scorecard";
+export {
+  ProvenanceBadge, ScoreValue, ScorecardCard, criterionStatus, VerdictWithScope,
+} from "./Scorecard";
+export type {
+  Scorer, ScoreTone, ScoreMetric, CriterionRow, CalStatus, VerdictScope,
+} from "./Scorecard";
 export {
   Button, Eyebrow, SectionHeading, CodeBlock, StatTile, ComparisonTable, FaqItem,
 } from "./primitives";
