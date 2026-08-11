@@ -14,12 +14,12 @@ import { HexMark } from "./Icons";
    behind an accessible hamburger toggle. */
 
 const NAV_ITEMS: { label: string; to: string }[] = [
+  { label: "Playground", to: "/engine" },
   { label: "Certified", to: "/certified" },
   // Beside Methodology on purpose: Methodology is how we SCORE, Engine is what
   // we run the agent THROUGH — the world, the counterparty, the injected faults.
   // The page shipped a release with nothing linking to it, which made it a page
   // findable only by someone who already knew it was there.
-  { label: "Engine", to: "/engine" },
   { label: "Methodology", to: "/methodology" },
   { label: "Pricing", to: "/pricing" },
   { label: "API docs", to: "/api-docs" },
@@ -58,7 +58,7 @@ export function SiteNav() {
             Log in
           </Link>
           <Link className="site-nav-cta" to="/scan" onClick={close}>
-            Scan an agent
+            Enter playground
           </Link>
         </nav>
       </div>

@@ -80,52 +80,36 @@ function TokenControl() {
   );
 }
 
-/** The console navigation, organized around the one product arc: Score → Issues
- *  → Fix. Certify is demoted to a secondary group (still reachable, no longer the
- *  pitch). A benchmark authority opens on the Dashboard.
- *
- *  PLAYGROUND is the last group on purpose. The pages in it — Training Camp,
- *  Optimize, Resources — are things you go and do, not readings of a run that
- *  already happened. Scattered through the arc they read as steps you owe;
- *  collected under one honest heading they read as somewhere to go and try
- *  something.
- *
- *  "New evaluation" is NOT among them, though it was for one commit. It is the
- *  console's front door: the dashboard's primary CTA and onboarding step one
- *  both point at /app/build, and a front door filed under Playground is one
- *  the reader has to scroll to. It stays at the head of Score, where the arc
- *  starts. */
+/** The console is an academy, not a database of opaque scores. Navigation
+ * follows the real work: build a drill, train through repetitions, examine the
+ * evidence, and qualify only when it holds. Existing routes stay intact so an
+ * unfinished workspace never loses its place. */
 const NAV_GROUPS: { title: string; items: { to: string; icon: string; label: string }[] }[] = [
-  { title: "Score", items: [
-    { to: "/app/build", icon: "＋", label: "New evaluation" },
-    { to: "/app/executions", icon: "▶", label: "Runs" },
-    { to: "/app/results", icon: "📊", label: "Results" },
-    { to: "/app/leaderboard", icon: "🏆", label: "Leaderboard" },
-    { to: "/app/compare", icon: "⚖", label: "Compare" },
+  { title: "Create", items: [
+    { to: "/app/build", icon: "＋", label: "Build a drill" },
+    { to: "/app/agents", icon: "◇", label: "My agents" },
   ]},
-  { title: "Issues", items: [
-    { to: "/app/issues", icon: "🔎", label: "Issues report" },
-    { to: "/app/capabilities", icon: "◎", label: "What we test" },
-    // Beside "What we test" on purpose: that page enumerates what the engine
-    // CAN exercise, this one shows what a single run actually did — the ticket,
-    // the faults, what moved in the world, and which bins the trace exhibited.
-    { to: "/app/scenarios", icon: "◍", label: "Scenario runs" },
+  { title: "Train", items: [
+    { to: "/app/training-camp", icon: "◉", label: "Training camp" },
+    { to: "/app/optimize", icon: "↗", label: "Optimize" },
+    { to: "/app/resources", icon: "▤", label: "Drill library" },
   ]},
-  { title: "Fix", items: [
-    { to: "/app/hardening", icon: "🛡", label: "Hardening" },
+  { title: "Evaluate", items: [
+    { to: "/app/scenarios", icon: "◌", label: "Scenario lab" },
+    { to: "/app/executions", icon: "▶", label: "Live runs" },
+    { to: "/app/results", icon: "▦", label: "Evidence" },
+    { to: "/app/issues", icon: "!", label: "Gaps to fix" },
+    { to: "/app/hardening", icon: "◇", label: "Guardrails" },
   ]},
-  { title: "Certify", items: [
-    { to: "/app/certifications", icon: "🏅", label: "Certification" },
+  { title: "Qualify", items: [
+    { to: "/app/certifications", icon: "✦", label: "Certification" },
+    { to: "/app/leaderboard", icon: "⌁", label: "Readiness board" },
+    { to: "/app/compare", icon: "↔", label: "Compare" },
+    { to: "/app/capabilities", icon: "◎", label: "Coverage" },
   ]},
   { title: "Manage", items: [
-    { to: "/app/agents", icon: "🤖", label: "Agents" },
     { to: "/app/billing", icon: "💳", label: "Billing" },
     { to: "/app/settings", icon: "⚙", label: "Settings" },
-  ]},
-  { title: "Playground", items: [
-    { to: "/app/training-camp", icon: "🎯", label: "Training Camp" },
-    { to: "/app/optimize", icon: "✨", label: "Optimize" },
-    { to: "/app/resources", icon: "▤", label: "Resources" },
   ]},
 ];
 
@@ -207,9 +191,10 @@ export function AppShell() {
       <nav className="app-nav">
         <a className="logo" href="/" title="Agenttic home">
           <span className="ic"><HexMark size={15} /></span> Agenttic
+          <small>ACADEMY</small>
         </a>
         <NavLink to="/app" end className="nav-home">
-          <span className="ic">▦</span> Dashboard
+          <span className="ic">▦</span> Command center
         </NavLink>
         {NAV_GROUPS.map((g) => (
           <div className="nav-group" key={g.title}>
@@ -233,7 +218,7 @@ export function AppShell() {
       <div className="app-body">
         <header className="app-topbar">
           <div className="topbar-ws">
-            <span className="topbar-ws-cap">Workspace</span>
+            <span className="topbar-ws-cap">Academy workspace</span>
             <span className="topbar-ws-name mono">{me?.tenant ?? "default"}</span>
           </div>
           <span style={{ flex: 1 }} />

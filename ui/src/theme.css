@@ -277,33 +277,34 @@ table.data th,
 
 /* =============================== app nav ================================== */
 .app-nav {
-  width: 196px; background: var(--panel); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; padding: var(--sp-3) var(--sp-2); gap: 2px;
+  width: 224px; background: var(--panel); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; padding: var(--sp-4) var(--sp-2); gap: 2px;
   flex-shrink: 0;
 }
 .app-nav .logo {
-  display: flex; align-items: center; gap: 10px; padding: 6px var(--sp-2);
-  margin-bottom: var(--sp-3); color: var(--text); text-decoration: none;
+  display: flex; align-items: center; gap: 9px; padding: 7px var(--sp-2) 12px;
+  margin-bottom: var(--sp-4); color: var(--text); text-decoration: none;
   font: 500 18px/1 var(--font-serif);
+  border-bottom: 1px solid var(--border);
 }
 .app-nav .logo .ic { color: var(--accent); font-size: 18px; }
+.app-nav .logo small { margin-left: auto; font: 600 8px/1 var(--font-mono); letter-spacing: .11em; color: var(--accent); }
 .app-nav a {
-  display: flex; align-items: center; gap: 11px; padding: 9px 10px;
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
   border-radius: var(--r-sm); color: var(--muted); text-decoration: none;
-  font: 500 var(--t-base) / 1 var(--font-ui); transition: background 0.12s, color 0.12s;
+  font: 500 var(--t-sm) / 1 var(--font-ui); transition: background 0.12s, color 0.12s;
 }
 .app-nav a .ic {
-  width: 20px; text-align: center; font-size: var(--t-lg);
-  color: var(--faint);                 /* grey icons by default */
-  filter: grayscale(1); opacity: 0.85;
+  width: 18px; text-align: center; font-size: var(--t-base);
+  color: var(--faint); opacity: 0.85;
 }
 .app-nav a.active, .app-nav a:hover { background: var(--accent-soft); color: var(--accent); }
-.app-nav a.active .ic, .app-nav a:hover .ic { color: var(--accent); filter: none; opacity: 1; }
+.app-nav a.active .ic, .app-nav a:hover .ic { color: var(--accent); opacity: 1; }
 .app-nav .nav-foot { display: flex; align-items: center; gap: 8px; padding: 6px 8px 2px; }
 .app-nav .nav-home { margin-bottom: var(--sp-2); }
-.nav-group { display: flex; flex-direction: column; gap: 2px; margin-top: var(--sp-3); }
+.nav-group { display: flex; flex-direction: column; gap: 2px; margin-top: var(--sp-4); }
 .nav-group-title {
-  font: 600 10px/1 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;
+  font: 600 9px/1 var(--font-mono); letter-spacing: 0.13em; text-transform: uppercase;
   color: var(--faint); padding: 0 10px var(--sp-1);
 }
 
@@ -892,6 +893,19 @@ pre.doc {
 
 /* ============================== dashboard ================================= */
 .dash-cta { display: flex; gap: var(--sp-2); align-items: center; }
+.academy-hero { display: flex; justify-content: space-between; gap: var(--sp-8); align-items: end;
+  padding: var(--sp-6); margin: 0 0 var(--sp-6); border: 1px solid var(--border-strong);
+  border-radius: var(--r-xl); background: linear-gradient(120deg, var(--panel), var(--accent-soft));
+  position: relative; overflow: hidden; }
+.academy-hero::after { content: ""; position: absolute; right: -58px; bottom: -80px; width: 260px; height: 260px;
+  border: 1px solid var(--accent-line); border-radius: 50%; box-shadow: 0 0 0 28px var(--accent-soft), 0 0 0 57px var(--accent-soft); opacity: .72; pointer-events: none; }
+.academy-hero > * { position: relative; z-index: 1; }
+.academy-hero__eyebrow { display: block; color: var(--accent); font: 600 var(--t-label)/1 var(--font-mono); letter-spacing: .12em; }
+.academy-hero h1 { max-width: 17ch; margin: var(--sp-3) 0 var(--sp-3); font: 400 clamp(29px, 3vw, 42px)/1.04 var(--font-serif); letter-spacing: -.02em; }
+.academy-hero p { margin: 0; max-width: 56ch; color: var(--muted); }
+.academy-hero__actions { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-3); }
+.academy-hero__link { color: var(--text); text-decoration: none; font: 600 var(--t-sm)/1 var(--font-mono); }
+.academy-hero__link:hover { color: var(--accent); }
 .dash-stats {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-3);
   margin-bottom: var(--sp-5);
@@ -932,6 +946,8 @@ pre.doc {
 @media (max-width: 880px) {
   .dash-stats { grid-template-columns: repeat(2, 1fr); }
   .dash-grid { grid-template-columns: 1fr; }
+  .academy-hero { align-items: flex-start; flex-direction: column; }
+  .academy-hero__actions { flex-direction: row; align-items: center; }
 }
 .tabs { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-4); }
 .tabs button.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }

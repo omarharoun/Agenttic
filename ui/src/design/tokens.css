@@ -160,7 +160,13 @@ html[data-theme="light"] {
   --accent-hover: #8A6D14;
   --accent-soft: #FAF3DC;
   --accent-line: #E5CF7F;
-  --accent-ink: #FFFFFF;
+  /* Restored to the `:root` value. This block had overridden the gold ink to
+     #FFFFFF, which contradicts that definition ("near-black ink ON gold — dial
+     lettering") and measures 3.05:1 on `--accent` — under the 4.5 AA floor for
+     body text, so every gold surface in LIGHT theme carried failing ink.
+     #201A08 measures 5.40:1. Dark theme keeps #FFFFFF, which is correct there
+     (7.16:1 on the darker gold). */
+  --accent-ink: #201A08;
 
 
   --metal: #7E858D;

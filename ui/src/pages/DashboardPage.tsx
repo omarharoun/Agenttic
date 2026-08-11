@@ -82,16 +82,28 @@ export function DashboardPage() {
     <div className="page">
       <div className="list-page">
         <Onboarding />
+        <section className="academy-hero" aria-labelledby="academy-title">
+          <div>
+            <span className="academy-hero__eyebrow">AGENT ACADEMY · COMMAND CENTER</span>
+            <h1 id="academy-title">Build reliable agents through practice.</h1>
+            <p>Start with a drill, follow the evidence, and submit only the work
+              that is ready to qualify. Your activity below is the record.</p>
+          </div>
+          <div className="academy-hero__actions">
+            <Link className="btn-primary" to="/app/training-camp">Start training camp</Link>
+            <Link className="academy-hero__link" to="/app/build">Build a drill →</Link>
+          </div>
+        </section>
         <PageHeader
-          title="Dashboard"
+          title="Readiness overview"
           subtitle={<>What held, what broke, and what nothing has looked at yet.
             Results lead with coverage closure and property outcomes; the pass rate
             sits beside them carrying the scope it was measured in. Every rate
             carries its sample size and a Wilson 95% interval.</>}
           actions={
             <div className="dash-cta">
-              <Link className="btn-primary" to="/app/build">＋ New evaluation</Link>
-              <Link className="btn-ghost" to="/app/issues">🔎 Find issues</Link>
+              <Link className="btn-primary" to="/app/build">＋ Build a drill</Link>
+              <Link className="btn-ghost" to="/app/issues">Review gaps</Link>
             </div>
           }
         />

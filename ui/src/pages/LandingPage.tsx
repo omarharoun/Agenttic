@@ -40,38 +40,88 @@ export function LandingPage() {
       {/* ---- HERO ------------------------------------------------------- */}
       <header className="lp-hero">
         <div className="wrap lp-hero__grid">
-          <div>
-            <Eyebrow>Evaluate · assert · certify</Eyebrow>
+          <div className="lp-hero__copy">
+            <Eyebrow>Agent academy · evaluate · assert · certify</Eyebrow>
+            <div className="lp-hero__tag">Training playground for serious agents</div>
             <h1>The trust layer for agents.</h1>
             <p className="lp-hero__lede">
-              Agents are shipping into production faster than anyone can verify
-              them. Agenttic records every run an agent takes, evaluates it
-              against the tools it touched, and proves the behaviour still holds
-              before it reaches a customer.
+              A playground where teams put agents through realistic drills, see
+              where their behaviour breaks, and earn evidence before the work
+              reaches a customer.
             </p>
             <p className="lp-hero__lede">
-              Unit tests assert on values. We assert on <em>behaviour</em> — the
-              sequence of decisions, tool calls, and side effects a model chose
-              to make.
+              Agenttic records every run an agent takes, evaluates it against the
+              tools it touched, and proves the behaviour still holds. Unit tests
+              assert on values. We assert on <em>behaviour</em>.
             </p>
             <div className="lp-hero__cta">
-              <Button href="/scan" variant="solid">Open a live trace</Button>
-              <Button href="/methodology" variant="ghost">Read the thesis</Button>
+              <Button href="/scan" variant="solid">Start a training drill</Button>
+              <Button href="/engine" variant="ghost">Explore the playground</Button>
             </div>
             <p className="lp-hero__foot">
-              Sits on the traces you already produce · runs on your machines
+              Your traces, your environment, your evidence
             </p>
           </div>
 
-          {/* The run card. `sample data` is on its face, not in a footnote:
-              the numbers are one recorded run, never a fleet statistic. */}
-          <ScorecardCard
-            bar="support-agent v4.2 · sample data"
-            metrics={SAMPLE_METRICS}
-            rows={SAMPLE_ROWS}
-          />
+          <div className="lp-hero__lab" aria-label="Sample agent training program">
+            <div className="lp-lab__top">
+              <span className="lp-lab__live"><i /> LIVE PLAYGROUND</span>
+              <span>SUPPORT-01</span>
+            </div>
+            <div className="lp-lab__body">
+              <div className="lp-lab__title">
+                <span className="lp-orb" aria-hidden="true">✦</span>
+                <div><b>Customer support agent</b><small>Release candidate · v4.2</small></div>
+                <span className="lp-lab__ready">READY TO TRAIN</span>
+              </div>
+              <div className="lp-lab__route" aria-label="Three-stage training route">
+                <div className="is-done"><span>01</span><b>Practice</b><small>24 drills</small></div>
+                <div className="is-now"><span>02</span><b>Pressure test</b><small>8 scenarios</small></div>
+                <div><span>03</span><b>Qualify</b><small>when evidence holds</small></div>
+              </div>
+              <div className="lp-lab__challenge">
+                <span className="lp-challenge__number">07</span>
+                <div><small>ACTIVE DRILL</small><b>Refund policy under pressure</b><p>Customer insists on an out-of-policy refund.</p></div>
+                <span className="lp-pulse" aria-label="Drill in progress" />
+              </div>
+            </div>
+            <div className="lp-lab__foot">Sample workspace · no customer data</div>
+          </div>
         </div>
       </header>
+
+      <section className="lp-program" aria-labelledby="program-title">
+        <div className="wrap">
+          <div className="lp-program__head">
+            <Eyebrow>One place to improve and prove</Eyebrow>
+            <h2 id="program-title">Train it. Test it. Certify it.</h2>
+            <p>Turn agent reliability into a visible practice, not a launch-day hope.</p>
+          </div>
+          <div className="lp-program__grid">
+            <article className="lp-program__card lp-program__card--train">
+              <span className="lp-program__number">01</span>
+              <span className="lp-program__icon">↗</span>
+              <h3>Training camp</h3>
+              <p>Repeat real tasks, grade every attempt, and keep the episodes that teach the agent what good looks like.</p>
+              <Link to="/app/training-camp">Open training camp <span>→</span></Link>
+            </article>
+            <article className="lp-program__card">
+              <span className="lp-program__number">02</span>
+              <span className="lp-program__icon">⌁</span>
+              <h3>Scenario lab</h3>
+              <p>Put tools, policies, and customers under pressure in a controlled world that can actually change.</p>
+              <Link to="/engine">Explore scenarios <span>→</span></Link>
+            </article>
+            <article className="lp-program__card lp-program__card--certify">
+              <span className="lp-program__number">03</span>
+              <span className="lp-program__icon">✦</span>
+              <h3>Certification</h3>
+              <p>Issue a credential only when the evidence is sufficient — or get the exact work still standing in the way.</p>
+              <Link to="/certified">See certified agents <span>→</span></Link>
+            </article>
+          </div>
+        </div>
+      </section>
 
       {/* ---- THE GAP ------------------------------------------------------
           Why the old approach stops working. Everything after this is the
@@ -88,8 +138,8 @@ export function LandingPage() {
       {/* ---- WHAT WE BUILT: the four-step spine -------------------------- */}
       <section id="built">
         <div className="wrap">
-          <SectionHeading eyebrow="What we built"
-            title="Record. Evaluate. Assert. Certify."
+          <SectionHeading eyebrow="The evidence loop"
+            title="Practice is how an agent earns a credential."
             sub={"One SDK call wraps an agent's runtime. Every turn, tool call "
               + "and result is captured as a signed trace. Agenttic then "
               + "evaluates that trace against sandboxed tools, so a regression "
@@ -110,7 +160,7 @@ export function LandingPage() {
       {/* ---- THE PRODUCT ------------------------------------------------- */}
       <section id="product">
         <div className="wrap">
-          <SectionHeading eyebrow="The product"
+          <SectionHeading eyebrow="Your coaching tape"
             title="A trace timeline an engineer can argue with."
             sub={"Every run opens as a step-by-step timeline: what the model "
               + "decided, which tool it reached for, what came back, and which "
@@ -130,6 +180,16 @@ export function LandingPage() {
           <p className="lp-note">
             Sample data from one recorded run — not a customer figure.
           </p>
+          {/* The supporting scorecard stays on the public route: the sample is
+              visibly labelled and demonstrates the same criteria view used in
+              the console. */}
+          <div className="lp-product-scorecard">
+            <ScorecardCard
+              bar="support-agent v4.2 · sample data"
+              metrics={SAMPLE_METRICS}
+              rows={SAMPLE_ROWS}
+            />
+          </div>
           <div className="lp-verdict">
             <ProvenanceBadge scorer="code" />
             <ProvenanceBadge scorer="judge" calibrated alpha={0.87} />
@@ -162,7 +222,10 @@ export function LandingPage() {
       </section>
 
       {/* ---- WHY NOW ----------------------------------------------------- */}
-      <section id="why">
+      {/* Inverted deliberately: this is the second dark beat in the scroll, so
+          the six light sections after the program cards stop reading as one
+          wall. Same inversion as `.lp-program`, not a new treatment. */}
+      <section id="why" className="lp-invert">
         <div className="wrap">
           <SectionHeading eyebrow="Why now"
             title={"We cut the time and cost of shipping an agent, and hand you "
@@ -212,13 +275,13 @@ export function LandingPage() {
 
       <section id="setup">
         <div className="wrap lp-cta">
-          <SectionHeading eyebrow="Start"
-            title="See what your agent actually did."
-            sub={"Bring one agent you already believe is ready. We will show you "
-              + "the behaviour nothing has looked at yet."} />
+          <SectionHeading eyebrow="Start your first program"
+            title="Give your agent a place to get better."
+            sub={"Bring one agent you already believe is ready. Start with a drill, "
+              + "then carry only earned evidence forward to certification."} />
           <div className="lp-hero__cta">
             <Button href="/scan" variant="solid">Open a live trace</Button>
-            <Button href="/methodology" variant="ghost">Read the methodology</Button>
+            <Button href="/app/training-camp" variant="ghost">Enter training camp</Button>
           </div>
         </div>
       </section>

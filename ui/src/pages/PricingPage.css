@@ -1,0 +1,61 @@
+/* /pricing — the few things the landing furniture does not already cover.
+ * TOKEN-ONLY (npm run lint:tokens fails the build on a raw hex).
+ *
+ * Everything structural here is borrowed from landing.css on purpose: the hero
+ * grid, the inverted `.lp-program` band, `.lp-grid`/`.lp-cell`, `.lp-price`.
+ * What is left is (a) the scoping-brief card that sits in the hero and (b) the
+ * "you leave with" list inside a program card. Nothing else needed a rule. */
+
+/* ---- the scoping brief: the six things settled on the first call ---------- */
+.pr-brief__rows {
+  display: grid; gap: 1px; margin: 0;
+  background: var(--border); border: 1px solid var(--border);
+  border-radius: var(--r-lg); overflow: hidden;
+}
+.pr-brief__r {
+  display: grid; grid-template-columns: 108px minmax(0, 1fr);
+  gap: var(--sp-4); align-items: baseline;
+  background: var(--panel); padding: var(--sp-3) var(--sp-4);
+}
+.pr-brief__r dt {
+  font: 600 var(--t-label)/1.4 var(--font-mono);
+  letter-spacing: var(--track-caps); text-transform: uppercase;
+  color: var(--faint);
+}
+.pr-brief__r dd {
+  margin: 0; font: var(--t-xs)/1.5 var(--font-mono); color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* ---- program card: what you leave the stage holding ----------------------
+ * `.lp-program` sets `color: var(--bg)` for the inverted band, and the pale
+ * cards sitting inside it never restate it — so an un-coloured <h3> inherits
+ * the band's near-white ink onto a near-white card. Restated here, scoped to
+ * this page (landing.css is another agent's file). */
+.pr-program .lp-program__card h3 { color: var(--text); }
+.pr-program .lp-program__card--train h3 { color: var(--accent-ink); }
+
+.pr-stage__leave {
+  list-style: none; margin: auto 0 0; padding: var(--sp-5) 0 0;
+  border-top: 1px solid var(--border-strong);
+}
+.pr-stage__leave li {
+  position: relative; padding-left: 15px; margin-top: var(--sp-2);
+  font: var(--t-xs)/1.5 var(--font-mono); color: var(--muted);
+}
+.pr-stage__leave li::before {
+  content: "\25C6"; position: absolute; left: 0; top: 2px;
+  font-size: 8px; color: var(--accent);
+}
+.lp-program__card--train .pr-stage__leave { border-top-color: var(--accent-ink); }
+.lp-program__card--train .pr-stage__leave li,
+.lp-program__card--train .pr-stage__leave li::before { color: var(--accent-ink); }
+/* the stage cards carry a list instead of a link, so they run taller */
+.pr-stage { min-height: 340px; }
+.pr-stage h3 { margin-top: var(--sp-5); }
+.pr-stage__note { max-width: 62ch; margin: var(--sp-6) 0 0; color: var(--faint); }
+
+@media (max-width: 560px) {
+  .pr-brief__r { grid-template-columns: 1fr; gap: var(--sp-1); }
+  .pr-brief__r dd { text-align: left; }
+}

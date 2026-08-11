@@ -18,6 +18,123 @@
  * too.
  */
 
+/* ---- the drill ground: hero, chapter marks, rhythm ---------------------- */
+
+/* The hero keeps ONE column: this headline is 47 characters and the landing's
+   two-column hero would break it over five lines of 66px serif. The equipment
+   rail below it does the work the landing's lab card does — the parts of the
+   lab, named — without illustrating a run. */
+.eng-hero { padding-bottom: clamp(40px, 5vw, 72px); }
+.eng-hero__copy,
+.eng-hero__rig { position: relative; z-index: 1; }
+.eng-hero .lp-hero__tag { margin-bottom: var(--sp-1); }
+.eng-hero__meta {
+  font: var(--t-xs)/1.7 var(--font-mono);
+  letter-spacing: 0.03em;
+  color: var(--faint);
+  max-width: 78ch;
+  margin: var(--sp-5) 0 0;
+}
+
+.eng-rig {
+  list-style: none;
+  margin: var(--sp-10) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.eng-rig li {
+  background: var(--panel);
+  padding: var(--sp-5) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 126px;
+}
+.eng-rig__n {
+  font: 500 var(--t-label)/1 var(--font-mono);
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+.eng-rig b { font-size: var(--t-sm); line-height: 1.3; }
+.eng-rig small {
+  margin-top: auto;
+  color: var(--muted);
+  font: var(--t-xs)/1.45 var(--font-mono);
+}
+.eng-rig__foot {
+  margin: var(--sp-3) 0 0;
+  font: var(--t-label)/1.6 var(--font-mono);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--faint);
+}
+@media (max-width: 900px) {
+  .eng-rig { grid-template-columns: repeat(2, 1fr); }
+  .eng-rig li { min-height: 108px; }
+}
+@media (max-width: 520px) {
+  .eng-rig { grid-template-columns: 1fr; }
+  .eng-rig li { min-height: 0; }
+}
+
+/* The chapter mark: the numeral is the page's own progression through its
+   argument, so it is decorative and the eyebrow beside it carries the meaning
+   (see Mark in EnginePage.tsx). */
+.eng-mark {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+.eng-mark span {
+  font: 400 clamp(26px, 3.4vw, 38px)/1 var(--font-serif);
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.eng-mark i { flex: 1; height: 1px; background: var(--border); }
+
+/* Rhythm. One inverted band mid-page, the same device the landing's program
+   section uses — every colour flips through a token, so both themes follow. */
+.eng-sec--dark {
+  background: var(--text);
+  color: var(--bg);
+  border-top: 0;
+}
+.eng-sec--dark .ds-sechead__h,
+.eng-sec--dark .ds-sechead__sub,
+.eng-sec--dark .eng-prose p,
+.eng-sec--dark .lp-proof span { color: var(--bg); }
+.eng-sec--dark .eng-prose p b,
+.eng-sec--dark .eng-caveat { color: var(--bg) !important; }
+.eng-sec--dark code { color: var(--accent); }
+.eng-sec--dark .eng-mark i,
+.eng-sec--dark .eng-caveat,
+.eng-sec--dark .lp-proof { border-color: var(--border-strong); }
+.eng-sec--dark .eng-mark i { background: var(--border-strong); }
+.eng-sec--dark + section { border-top: 0; }
+
+/* A quiet accent wash where the page turns from argument to evidence. Static:
+   it marks a place, it does not animate. */
+.eng-sec--glow { position: relative; overflow: hidden; }
+.eng-sec--glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 82% 8%, var(--accent-soft), transparent 42%);
+}
+.eng-sec--glow > .wrap { position: relative; z-index: 1; }
+/* the closing is centred, so its wash is too */
+.eng-close::before {
+  background: radial-gradient(circle at 50% 26%, var(--accent-soft), transparent 58%);
+}
+
 /* ---- absences, and the state that is not one --------------------------- */
 
 .eng-none,
@@ -104,6 +221,11 @@
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   overflow: hidden;
+}
+/* Two to a row where there is room: the descriptions are short and a single
+   column of them reads as a list of defects rather than a model. */
+@media (min-width: 900px) {
+  .eng-dims { grid-template-columns: repeat(2, 1fr); }
 }
 .eng-dim {
   background: var(--panel);
@@ -321,18 +443,43 @@
   max-width: 70ch;
 }
 
+/* The drill bench: one framed surface with a mono rail, so the command that
+   makes a run of your own reads as equipment rather than a footnote. */
 .eng-make {
-  margin-top: var(--sp-6);
+  margin-top: var(--sp-8);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xl);
+  background: var(--panel);
+  overflow: hidden;
+}
+.eng-make__rail {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-6);
-  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+  font: 600 var(--t-label)/1.4 var(--font-mono);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--faint);
 }
-.eng-make .ds-term { flex: 1 1 380px; min-width: 300px; margin: 0; }
+.eng-make__rail span:first-child { color: var(--text); }
+/* The command runs the full width of the bench rather than sharing a row with
+   the prose: `agenttic scenario run --intent refund --tool-condition timeout`
+   is 62 characters, and in a half-width column it ran under the terminal's own
+   copy button — which scrolls with the content, so no amount of padding on the
+   body would have cleared it. */
+.eng-make__body {
+  display: grid;
+  gap: var(--sp-5);
+  padding: var(--sp-5);
+}
+.eng-make .ds-term { margin: 0; }
 .eng-make p {
-  flex: 1 1 340px;
-  min-width: 280px;
   margin: 0;
+  max-width: 78ch;
   color: var(--muted);
   font-size: var(--t-sm);
   line-height: 1.7;
@@ -374,7 +521,13 @@
 }
 .eng-caveat b { color: var(--text); }
 
+/* Each limit gets its own rule: unedited prose in a two-column grid reads as
+   one paragraph broken in half without them. */
 .eng-limits { margin-top: var(--sp-6); }
+.eng-limits .lp-limits__i {
+  border-top: 1px solid var(--border);
+  padding-top: var(--sp-4);
+}
 .eng-limits .lp-limits__i p { line-height: 1.65; }
 
 .eng-close__p {

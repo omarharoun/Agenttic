@@ -1,7 +1,7 @@
 /* Landing layout (SPEC-11 Step 52). TOKEN-ONLY — no raw hex (lint-enforced).
  * Structure only; every styled surface is a shared ds-* component. */
 
-.lp { --lp-pad: clamp(36px, 4vw, 56px); overflow-x: clip; }
+.lp { --lp-pad: clamp(56px, 7vw, 104px); overflow-x: clip; }
 /* nothing on the public route may cause a horizontal scroll (clean to 360px) —
    wide content (the comparison table) scrolls inside its own overflow container. */
 .lp img, .lp svg { max-width: 100%; height: auto; }
@@ -9,8 +9,13 @@
 .lp section { padding: var(--lp-pad) 0; border-top: 1px solid var(--border); }
 
 /* hero */
-.lp-hero { padding: clamp(56px, 8vw, 96px) 0 var(--lp-pad); border-top: 0; position: relative; overflow: hidden; }
-.lp-hero__grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: var(--sp-12); align-items: center; }
+.lp-hero { padding: clamp(46px, 6vw, 84px) 0 var(--sp-12); border-top: 0; position: relative; overflow: hidden; }
+.lp-hero::before { content: ""; position: absolute; inset: 0 0 auto; height: 100%; pointer-events: none;
+  background: radial-gradient(circle at 77% 42%, var(--accent-soft), transparent 28%); opacity: .78; }
+.lp-hero::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .72;
+  background-image: linear-gradient(var(--lp-grid) 1px, transparent 1px), linear-gradient(90deg, var(--lp-grid) 1px, transparent 1px);
+  background-size: 40px 40px; mask-image: linear-gradient(to bottom, var(--text), transparent 88%); }
+.lp-hero__grid { display: grid; grid-template-columns: 1fr 0.96fr; gap: clamp(var(--sp-8), 6vw, var(--sp-16)); align-items: center; position: relative; z-index: 1; }
 @media (max-width: 900px) { .lp-hero__grid { grid-template-columns: 1fr; } }
 .lp-hero h1 {
   font-family: var(--font-serif); font-weight: 400; line-height: 1.06;
@@ -18,13 +23,97 @@
   /* 15ch against this headline broke it as "A certificate is / not a /
      participation / award." — a two-word orphan line in 66px display serif.
      `balance` evens the ragged edge; the wider cap gives it room to do so. */
-  max-width: 18ch; text-wrap: balance;
+  max-width: 12ch; text-wrap: balance;
   margin: var(--sp-5) 0 var(--sp-5);
 }
-.lp-hero__lede { font-size: var(--t-lg); max-width: 52ch; color: var(--muted); margin-bottom: var(--sp-6); }
+.lp-hero__copy { padding-bottom: var(--sp-4); }
+.lp-hero__tag { display: inline-flex; align-items: center; font: 600 var(--t-xs)/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--r-pill); padding: 7px 11px; margin-top: var(--sp-4); background: var(--panel); }
+.lp-hero__lede { font-size: var(--t-lg); max-width: 50ch; color: var(--muted); margin-bottom: var(--sp-4); line-height: 1.7; }
 .lp-cta { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center; }
-.lp-hero__meta { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--muted); letter-spacing: 0.04em; margin-top: var(--sp-5); }
+.lp-hero__foot { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--faint); letter-spacing: .03em; margin: var(--sp-5) 0 0; }
 .lp-hero__art { display: flex; justify-content: center; }
+
+/* A deliberately editorial product preview: a concrete drill, not decorative
+   dashboard noise. Every number here belongs to the plainly-labelled sample
+   workspace shown in the card. */
+.lp-hero__lab { border: 1px solid var(--border-strong); border-radius: var(--r-2xl); background: var(--panel); box-shadow: var(--shadow-lg); overflow: hidden; transform: rotate(1.25deg); }
+.lp-lab__top { display: flex; justify-content: space-between; align-items: center; padding: var(--sp-3) var(--sp-4); font: 600 var(--t-label)/1 var(--font-mono); letter-spacing: .08em; color: var(--faint); border-bottom: 1px solid var(--border); background: var(--panel-2); }
+.lp-lab__live { display: inline-flex; align-items: center; gap: 7px; color: var(--ok); }
+.lp-lab__live i { width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
+.lp-lab__body { padding: var(--sp-5); }
+.lp-lab__title { display: flex; align-items: center; gap: var(--sp-3); }
+.lp-orb { width: 42px; height: 42px; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); border-radius: var(--r-md); font-size: var(--t-title); }
+.lp-lab__title div { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.lp-lab__title b { font-size: var(--t-lg); line-height: 1.2; }
+.lp-lab__title small { color: var(--muted); font: var(--t-xs)/1.3 var(--font-mono); }
+.lp-lab__ready { margin-left: auto; border: 1px solid var(--ok-border); background: var(--ok-soft); color: var(--ok); border-radius: var(--r-pill); padding: 5px 7px; font: 600 9px/1 var(--font-mono); letter-spacing: .06em; white-space: nowrap; }
+.lp-lab__route { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; margin: var(--sp-6) 0; }
+.lp-lab__route div { position: relative; min-height: 106px; padding: var(--sp-3); background: var(--panel); display: flex; flex-direction: column; gap: 5px; }
+.lp-lab__route .is-done { background: var(--ok-soft); }
+.lp-lab__route .is-now { background: var(--accent-soft); }
+.lp-lab__route span { font: var(--t-xs)/1 var(--font-mono); color: var(--faint); }
+.lp-lab__route b { font: 600 var(--t-sm)/1.25 var(--font-ui); }
+.lp-lab__route small { margin-top: auto; color: var(--muted); font: var(--t-xs)/1.25 var(--font-mono); }
+.lp-lab__challenge { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-4); border-radius: var(--r-lg); border: 1px solid var(--accent-line); background: var(--accent-soft); }
+.lp-challenge__number { font: 400 30px/1 var(--font-serif); color: var(--accent); }
+.lp-lab__challenge div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.lp-lab__challenge small { color: var(--faint); font: 600 9px/1 var(--font-mono); letter-spacing: .08em; }
+.lp-lab__challenge b { font-size: var(--t-sm); }
+.lp-lab__challenge p { margin: 0; color: var(--muted); font-size: var(--t-xs); }
+.lp-pulse { width: 9px; height: 9px; background: var(--live); border-radius: var(--r-pill); margin-left: auto; box-shadow: 0 0 0 5px var(--live-soft); }
+.lp-lab__foot { padding: var(--sp-3) var(--sp-5); border-top: 1px solid var(--border); color: var(--faint); font: var(--t-label)/1 var(--font-mono); letter-spacing: .04em; }
+
+/* The program cards are the product architecture at a glance. */
+.lp-program { background: var(--text); color: var(--bg); border-top: 0 !important; }
+.lp-program .ds-eyebrow { color: var(--accent); }
+.lp-program__head { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(220px, .8fr); gap: var(--sp-5) var(--sp-10); align-items: end; margin-bottom: var(--sp-8); }
+.lp-program__head .ds-eyebrow { grid-column: 1 / -1; }
+.lp-program__head h2 { margin: 0; max-width: 13ch; font: 400 clamp(31px, 4vw, 48px)/1.04 var(--font-serif); letter-spacing: -.02em; }
+.lp-program__head p { margin: 0; color: var(--faint); max-width: 37ch; }
+.lp-program__grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border-strong); }
+/* `color: var(--text)` is load-bearing, not tidiness. `.lp-program` inverts the
+   BAND (`color: var(--bg)`), but these cards sit on pale surfaces, so anything
+   that does not restate its colour inherits near-white ink onto near-white.
+   `p` and the link set their own colour; `h3` did not — so "Scenario lab" and
+   "Certification" rendered at 1.05:1 and 1.02:1. Invisible, on the front page,
+   in the flagship section. The `--train` card overrides this below. */
+.lp-program__card { position: relative; min-height: 290px; padding: var(--sp-6); border-left: 1px solid var(--border-strong); display: flex; flex-direction: column; background: var(--panel); color: var(--text); }
+.lp-program__card:first-child { border-left: 0; }
+.lp-program__card--train { background: var(--accent); color: var(--accent-ink); }
+.lp-program__card--certify { background: var(--panel-2); }
+.lp-program__number { font: var(--t-label)/1 var(--font-mono); letter-spacing: .1em; color: var(--faint); }
+.lp-program__card--train .lp-program__number, .lp-program__card--train p, .lp-program__card--train a { color: var(--accent-ink); }
+.lp-program__icon { margin: auto 0 var(--sp-4); font: 400 36px/1 var(--font-serif); color: var(--accent); }
+.lp-program__card--train .lp-program__icon { color: var(--accent-ink); }
+.lp-program__card h3 { margin: 0 0 var(--sp-2); font: 400 var(--t-h2)/1 var(--font-serif); }
+.lp-program__card p { margin: 0; color: var(--muted); font-size: var(--t-sm); line-height: 1.55; max-width: 29ch; }
+/* Restated AFTER the rule above, which was winning and painting `--muted` onto
+   gold at 2.51:1 — under the 4.5 AA floor. `--accent-ink` is the token whose
+   whole job is "ink that sits on gold", and it is now per-theme correct
+   (tokens.css): near-black in light, white in dark. `--text` is NOT the answer
+   here — it reads 5.40:1 in light but 1.98:1 in dark, because it inverts with
+   the theme while the gold surface does not. */
+.lp-program__card--train p, .lp-program__card--train .lp-program__number { color: var(--accent-ink); }
+.lp-program__card a { margin-top: var(--sp-5); color: var(--text); font: 600 var(--t-sm)/1 var(--font-mono); text-decoration: none; }
+.lp-program__card a span { color: var(--accent); padding-left: 4px; }
+.lp-program__card--train a span { color: var(--accent-ink); }
+
+/* An inverted band. The page ran seven identical light sections after the
+   program cards, which reads as one undifferentiated wall however good each
+   section is. Two dark bands give the scroll a rhythm — arrival, then a second
+   beat — without inventing any new visual language: this is `.lp-program`'s
+   inversion, extracted so both use one implementation. */
+.lp-invert { background: var(--text); color: var(--bg); border-top: 0 !important; }
+.lp-invert .ds-eyebrow { color: var(--accent); }
+.lp-invert h2 { color: var(--bg); }
+.lp-invert .lp-grid { background: var(--border-strong); border-color: var(--border-strong); }
+.lp-invert .lp-cell { background: var(--text); }
+.lp-invert .lp-cell h3 { color: var(--bg); }
+/* `--faint` measures 4.50:1 on this background — it passes AA with no margin at
+   all, so any future token nudge silently breaks body copy. `--bg` measures
+   15.63:1; the opacity restores the hierarchy without giving that margin back. */
+.lp-invert .lp-cell p, .lp-invert .ds-section__sub { color: var(--bg); opacity: .8; }
+.lp-invert .lp-cell__k { color: var(--accent); }
 
 /* generic grids */
 .lp-grid { display: grid; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
@@ -49,6 +138,7 @@
 
 /* payoff verdict strip */
 .lp-verdict { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+.lp-product-scorecard { margin-top: var(--sp-6); max-width: 720px; }
 
 /* stat row */
 .lp-stats { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-5); }
@@ -253,3 +343,24 @@
 .lp-cta { text-align: left; }
 @media (max-width: 860px) { .lp-statband { grid-template-columns: repeat(2, 1fr); }
   .lp-statband__c:nth-child(2) { border-right: 0; } }
+
+@media (max-width: 820px) {
+  .lp-hero__lab { max-width: 620px; width: 100%; justify-self: center; transform: none; }
+  .lp-program__grid { grid-template-columns: 1fr; }
+  .lp-program__card { min-height: 230px; border-left: 0; border-top: 1px solid var(--border-strong); }
+  .lp-program__card:first-child { border-top: 0; }
+  .lp-program__head { grid-template-columns: 1fr; }
+  .lp-program__head h2 { max-width: 17ch; }
+}
+
+@media (max-width: 560px) {
+  .lp .wrap { padding: 0 var(--sp-4); }
+  .lp-hero { padding-top: var(--sp-8); }
+  .lp-hero h1 { font-size: clamp(40px, 13vw, 58px); }
+  .lp-lab__body { padding: var(--sp-4); }
+  .lp-lab__route div { min-height: 94px; padding: var(--sp-2); }
+  .lp-lab__route b { font-size: var(--t-xs); }
+  .lp-lab__route small { font-size: 10px; }
+  .lp-lab__ready { display: none; }
+  .lp-program__card { min-height: 205px; padding: var(--sp-5); }
+}

@@ -5,6 +5,7 @@ import { Button, Eyebrow, SectionHeading, FaqItem } from "../components/ds";
 import { money } from "../billing";
 import type { PricingCatalog } from "../api";
 import "../landing/landing.css";
+import "./PricingPage.css";
 
 /* ============================================================================
    Public access page (/pricing).
@@ -19,10 +20,20 @@ import "../landing/landing.css";
    Copilot and hosted runs, which really do bill credits) is disclosed at the
    bottom rather than hidden — it is a real cost, just not the thing being sold.
 
-   Built on the SAME `.lp` layout + ds components as the landing route, so the
-   public surface is one design world (SPEC-11). Bundle-safe & prerenderable: it
-   renders fully from static content and only hydrates the live credit figure
-   from the public /api/pricing endpoint on mount.
+   Restyled onto the academy language the landing route now speaks: a program
+   with three stages (practice → pressure-test → qualify), an inverted band for
+   rhythm, numbered progressions, serif display type. Structure is borrowed from
+   landing.css wholesale — the only new rules are in PricingPage.css.
+
+   Two rules this page is built to, both enforced elsewhere:
+   * Every colour, size and space comes from design/tokens.css. No raw hex —
+     `npm run lint:tokens` fails the build on one.
+   * The ONLY money figure on this page is the free-credit disclosure, and it is
+     read from the live catalogue. No tier, no price, no invented figure —
+     pinned by pricing.test.tsx.
+
+   Bundle-safe & prerenderable: it renders fully from static content and only
+   hydrates the live credit figure from the public /api/pricing endpoint.
    ========================================================================== */
 
 /** Mirrors config.yaml `billing` defaults so the page prerenders a real figure.
@@ -30,6 +41,26 @@ import "../landing/landing.css";
 const DEFAULT_CATALOG: Pick<
   PricingCatalog, "currency" | "free_trial_credits" | "credit_cent_value"
 > = { currency: "usd", free_trial_credits: 500, credit_cent_value: 1 };
+
+/** The three stages of a program. NOT tiers — every engagement runs all three,
+ *  which is why none of them carries a price or a "choose this one" CTA. */
+const STAGES = [
+  {
+    n: "01", k: "Practice", mod: " lp-program__card--train",
+    p: "Drills against a suite built for your agent specifically. Repeat the tasks that matter, grade every attempt, and find where the behaviour breaks while it is still cheap to find out.",
+    leave: ["A suite fitted to your agent", "The first failing traces", "Seeds to reproduce them"],
+  },
+  {
+    n: "02", k: "Pressure-test", mod: "",
+    p: "The suite has to qualify before your agent does: unless it separates a known-good agent from a known-bad one it is rejected and rebuilt. Then the agent runs against it under your keys, in your environment.",
+    leave: ["A suite that discriminates", "Coverage of the situation space, measured", "Property results across every run"],
+  },
+  {
+    n: "03", k: "Qualify", mod: " lp-program__card--certify",
+    p: "A credential is issued only when coverage closes and every safety property holds. When it does not, what you get back is the exact work still standing between the agent and the credential.",
+    leave: ["Signed, scoped evidence", "The situations nothing exercised", "A revocation path when it drifts"],
+  },
+];
 
 /** The engagement, in the order it actually happens. */
 const PHASES = [
@@ -65,12 +96,23 @@ const DELIVERABLES = [
 
 /** Honest scope factors. No numbers — the numbers depend on these. */
 const FACTORS = [
-  { h: "How many agents", p: "One agent is an engagement. A fleet sharing tools and memory is a different one, and usually cheaper per agent." },
-  { h: "How much of the space", p: "A targeted look at the behaviour that worries you costs less than driving coverage closure up across the whole situation space." },
-  { h: "How deep the proof goes", p: "Deterministic checks and property monitoring come as standard. Exhaustive decision over the parts that admit it is more work, and worth it where it applies." },
-  { h: "Where it has to run", p: "Your CI is straightforward. Your VPC is routine. Fully air-gapped takes more setup, and we support it." },
-  { h: "The supply chain", p: "Certifying the tools, MCP servers and memory an agent depends on is separately scoped, because each is a subject in its own right." },
-  { h: "How often", p: "A point-in-time verification differs from standing re-verification with drift monitoring and a live revocation list." },
+  { n: "01", h: "How many agents", p: "One agent is an engagement. A fleet sharing tools and memory is a different one, and usually cheaper per agent." },
+  { n: "02", h: "How much of the space", p: "A targeted look at the behaviour that worries you costs less than driving coverage closure up across the whole situation space." },
+  { n: "03", h: "How deep the proof goes", p: "Deterministic checks and property monitoring come as standard. Exhaustive decision over the parts that admit it is more work, and worth it where it applies." },
+  { n: "04", h: "Where it has to run", p: "Your CI is straightforward. Your VPC is routine. Fully air-gapped takes more setup, and we support it." },
+  { n: "05", h: "The supply chain", p: "Certifying the tools, MCP servers and memory an agent depends on is separately scoped, because each is a subject in its own right." },
+  { n: "06", h: "How often", p: "A point-in-time verification differs from standing re-verification with drift monitoring and a live revocation list." },
+];
+
+/** The hero brief. Each row is the CHOICE that gets made, not a figure — these
+ *  are the six factors above, stated as the options they are settled between. */
+const BRIEF: { k: string; v: string }[] = [
+  { k: "Agents", v: "one agent / a fleet" },
+  { k: "Coverage", v: "the behaviour that worries you / closure" },
+  { k: "Depth", v: "checks and properties / exhaustive decision" },
+  { k: "Environment", v: "your CI / your VPC / air-gapped" },
+  { k: "Supply chain", v: "the agent / its tools and MCP servers" },
+  { k: "Cadence", v: "point-in-time / standing re-verification" },
 ];
 
 export function PricingPage() {
@@ -102,24 +144,81 @@ export function PricingPage() {
 
       {/* ---- HERO ---- */}
       <header className="lp-hero">
-        <div className="wrap">
-          <Eyebrow>Access</Eyebrow>
-          <h1>Priced by what has to be verified.</h1>
-          <p className="lp-hero__lede">
-            Agenttic is scoped and sold as a verification engagement — not licensed
-            by the seat, not downloaded, not a subscription to a dashboard. There is
-            no price list on this page, because a price set before the scope is
-            known is a number nobody can stand behind.
-          </p>
-          <div className="lp-cta">
-            <Button href="/#access">Request a briefing</Button>
-            <Button variant="ghost" href="#factors">What sets the price</Button>
+        <div className="wrap lp-hero__grid">
+          <div className="lp-hero__copy">
+            <Eyebrow>Access · scope · verify · qualify</Eyebrow>
+            <div className="lp-hero__tag">Priced per program, never per seat</div>
+            <h1>Priced by what has to be verified.</h1>
+            <p className="lp-hero__lede">
+              Agenttic is scoped and sold as a verification engagement — not
+              licensed by the seat, not downloaded, not a subscription to a
+              dashboard. There is no price list on this page, because a price
+              set before the scope is known is a number nobody can stand behind.
+            </p>
+            <p className="lp-hero__lede">
+              What we can tell you before the call is exactly which six things
+              move the number, and what you are holding when the program ends.
+            </p>
+            <div className="lp-cta">
+              <Button href="/#access">Request a briefing</Button>
+              <Button variant="ghost" href="#factors">What sets the price</Button>
+            </div>
+            <p className="lp-hero__foot">
+              Runs in your environment · your keys · nothing leaves it
+            </p>
           </div>
-          <div className="lp-hero__meta">
-            Runs in your environment · your keys · nothing leaves it
+
+          <div className="lp-hero__lab" aria-label="What a scoping call settles">
+            <div className="lp-lab__top">
+              <span>SCOPING BRIEF</span>
+              <span>SETTLED ON CALL 01</span>
+            </div>
+            <div className="lp-lab__body">
+              <dl className="pr-brief__rows">
+                {BRIEF.map((b) => (
+                  <div className="pr-brief__r" key={b.k}>
+                    <dt>{b.k}</dt>
+                    <dd>{b.v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+            <div className="lp-lab__foot">Six answers first · then a number</div>
           </div>
         </div>
       </header>
+
+      {/* ---- THE PROGRAM: three stages, inverted band for rhythm ---- */}
+      <section className="lp-program pr-program" aria-labelledby="stages-title">
+        <div className="wrap">
+          <div className="lp-program__head">
+            <Eyebrow>One program, three stages</Eyebrow>
+            <h2 id="stages-title">Practice. Pressure-test. Qualify.</h2>
+            <p>
+              Not a menu. Every engagement runs all three, in this order, because
+              skipping one is how an agent ends up certified against a suite that
+              could never have failed it.
+            </p>
+          </div>
+          <div className="lp-program__grid">
+            {STAGES.map((s) => (
+              <article className={`lp-program__card pr-stage${s.mod}`} key={s.n}>
+                <span className="lp-program__number">{s.n}</span>
+                <h3>{s.k}</h3>
+                <p>{s.p}</p>
+                <ul className="pr-stage__leave">
+                  {s.leave.map((l) => <li key={l}>{l}</li>)}
+                </ul>
+              </article>
+            ))}
+          </div>
+          <p className="pr-stage__note">
+            No stage is a tier that withholds the honest part of the report. The
+            list of situations nothing exercised is in every handover, including
+            the ones that end without a credential.
+          </p>
+        </div>
+      </section>
 
       {/* ---- THE ENGAGEMENT ---- */}
       <section id="engagement">
@@ -131,7 +230,7 @@ export function PricingPage() {
           <div className="lp-grid lp-grid--2">
             {PHASES.map((s) => (
               <div className="lp-cell" key={s.n}>
-                <code>{s.n}</code>
+                <div className="lp-cell__k">{s.n} · Step</div>
                 <h3>{s.h}</h3>
                 <p>{s.p}</p>
               </div>
@@ -167,6 +266,7 @@ export function PricingPage() {
           <div className="lp-grid lp-grid--3">
             {FACTORS.map((f) => (
               <div className="lp-cell" key={f.h}>
+                <div className="lp-cell__k">{f.n}</div>
                 <h3>{f.h}</h3><p>{f.p}</p>
               </div>
             ))}
@@ -256,12 +356,12 @@ export function PricingPage() {
 
       {/* ---- FOOTER ---- */}
       <footer>
-        <div className="wrap" style={{ padding: "var(--sp-12) var(--sp-8)", color: "var(--muted)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "var(--sp-4)", fontFamily: "var(--font-mono)", fontSize: "var(--t-label)", letterSpacing: "0.06em" }}>
+        <div className="wrap">
+          <div className="lp-footer">
             <span>© 2026 Agenttic · runs in your environment</span>
-            <span>
-              <Link to="/methodology">Methodology</Link> · <Link to="/status">Status</Link>
-            </span>
+            <span style={{ flex: 1 }} />
+            <Link to="/methodology">Methodology</Link>
+            <Link to="/status">Status</Link>
           </div>
         </div>
       </footer>

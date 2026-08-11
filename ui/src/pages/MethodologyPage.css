@@ -1,0 +1,321 @@
+/* /methodology — the academy explainer.
+ *
+ * Structure (`.lp`, `.wrap`, `.lp-hero`, `.lp-grid`, `.lp-cell`) is borrowed
+ * from the landing so both public routes keep one rhythm; only the surfaces
+ * unique to this page live here. TOKEN-ONLY — `npm run lint:tokens` fails the
+ * build on a raw hex.
+ */
+
+.mth {
+  /* Gold TEXT reads at --accent-hover, not --accent: on the light surface the
+     brand gold is 2.8:1, under the 3:1 floor even at display size. Fills,
+     borders and glyphs keep --accent — this is the ink, not the metal. */
+  --gold-ink: var(--accent-hover);
+}
+
+.mth code {
+  font-family: var(--font-mono); font-size: 0.92em;
+  background: var(--code-bg); color: var(--code-text);
+  border-radius: var(--r-xs); padding: 1px 5px;
+}
+.mth p { line-height: 1.7; }
+
+/* ---- hero ---------------------------------------------------------------- */
+.mth-hero__grid {
+  display: grid; grid-template-columns: 1fr minmax(280px, 0.72fr);
+  gap: clamp(var(--sp-8), 5vw, var(--sp-16));
+  align-items: center; position: relative; z-index: 1;
+}
+.mth-hero h1 {
+  font-family: var(--font-serif); font-weight: 400; line-height: 1.06;
+  font-size: clamp(34px, 5vw, 56px); letter-spacing: -0.01em;
+  max-width: 16ch; text-wrap: balance; margin: var(--sp-5) 0;
+}
+@media (max-width: 900px) { .mth-hero__grid { grid-template-columns: 1fr; } }
+
+/* the outline reads as a course card, and doubles as the page's jump nav */
+.mth-outline {
+  border: 1px solid var(--border-strong); border-radius: var(--r-2xl);
+  background: var(--panel); box-shadow: var(--shadow-lg); overflow: hidden;
+}
+.mth-outline__bar {
+  display: flex; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4); background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+  font: 600 var(--t-label)/1 var(--font-mono);
+  letter-spacing: 0.08em; color: var(--muted);
+}
+.mth-outline__list { list-style: none; margin: 0; padding: 0; }
+.mth-outline__list li + li { border-top: 1px solid var(--border); }
+.mth-outline__list a {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: baseline;
+  gap: 2px var(--sp-4); padding: var(--sp-4);
+  text-decoration: none; color: var(--text);
+  transition: background var(--dur-fast) var(--ease-escape);
+}
+.mth-outline__list a:hover { background: var(--accent-soft); }
+.mth-outline__list i {
+  grid-column: 1; grid-row: 1 / 3; align-self: center;
+  font: 600 var(--t-sm)/1 var(--font-mono); font-style: normal;
+  color: var(--gold-ink); letter-spacing: 0.08em;
+}
+.mth-outline__list b { grid-column: 2; grid-row: 1; font: 500 var(--t-lg)/1.3 var(--font-ui); }
+.mth-outline__list small {
+  grid-column: 2; grid-row: 2; font: var(--t-xs)/1.4 var(--font-mono); color: var(--muted);
+}
+.mth-outline__list span {
+  grid-column: 3; grid-row: 1 / 3; align-self: center; color: var(--gold-ink);
+}
+.mth-outline__foot {
+  margin: 0; padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--border);
+  font: var(--t-label)/1.5 var(--font-mono); color: var(--muted);
+}
+
+/* ---- the programme: a numbered progression ------------------------------- */
+.mth-stages { list-style: none; margin: 0; padding: 0; }
+.mth-stage {
+  display: grid; grid-template-columns: auto 1fr; gap: var(--sp-6);
+  padding: var(--sp-6) 0; border-top: 1px solid var(--border);
+}
+.mth-stage:first-child { border-top: 0; padding-top: 0; }
+.mth-stage__n {
+  font: 400 clamp(30px, 4vw, 42px)/1 var(--font-serif);
+  color: var(--gold-ink); min-width: 2.1em; /* one column edge for every stage */
+}
+.mth-stage__k {
+  display: block; font: 600 var(--t-label)/1 var(--font-mono);
+  letter-spacing: var(--track-caps); text-transform: uppercase;
+  color: var(--muted); margin-bottom: var(--sp-2);   /* --faint fails contrast at 11px */
+}
+.mth-stage h3 {
+  margin: 0 0 var(--sp-2);
+  font: 400 var(--t-h3)/1.25 var(--font-serif); color: var(--text);
+}
+.mth-stage p { margin: 0; color: var(--muted); font-size: var(--t-base); max-width: 68ch; }
+
+.mth-take {
+  margin: var(--sp-8) 0 0; padding: var(--sp-5) var(--sp-6);
+  border: 1px solid var(--accent-line); border-radius: var(--r-lg);
+  background: var(--accent-soft); color: var(--text);
+  font-size: var(--t-base); max-width: 74ch;
+}
+.mth-take b {
+  font: 600 var(--t-label)/1 var(--font-mono);
+  letter-spacing: var(--track-caps); text-transform: uppercase;
+  /* the panel is already gold; gold ink on gold wash lands at 4.4:1 */
+  color: var(--text); margin-right: var(--sp-1);
+}
+
+/* ---- the marking rules: the inverted band -------------------------------- */
+.mth-invert { background: var(--text); color: var(--bg); border-top: 0 !important; }
+.mth-invert .ds-eyebrow { color: var(--accent); }
+.mth-invert__head {
+  display: grid; grid-template-columns: minmax(220px, 1fr) minmax(220px, .8fr);
+  gap: var(--sp-4) var(--sp-10); align-items: end; margin-bottom: var(--sp-8);
+}
+.mth-invert__head .ds-eyebrow { grid-column: 1 / -1; }
+.mth-invert__head h2 {
+  margin: 0; max-width: 15ch;
+  font: 400 clamp(30px, 4vw, 46px)/1.05 var(--font-serif); letter-spacing: -0.02em;
+}
+/* prose on the inverted band is the page background colour held back, not
+   --faint: --faint is tuned against --bg and drops under 4.5:1 on --text. */
+.mth-invert__head p { margin: 0; color: var(--bg); opacity: 0.78; max-width: 38ch; }
+.mth-invert__foot {
+  margin: var(--sp-8) 0 0; max-width: 70ch;
+  color: var(--bg); opacity: 0.78; font-size: var(--t-base);
+}
+.mth-marks {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 1px; background: var(--border-strong); border: 1px solid var(--border-strong);
+}
+.mth-mark {
+  background: var(--panel); color: var(--text);
+  padding: var(--sp-6); display: flex; flex-direction: column;
+}
+/* display-size, so the gold clears contrast as large text and the numbering
+   reads at the same weight as the stage list */
+.mth-mark__n { font: 400 26px/1 var(--font-serif); color: var(--gold-ink); }
+.mth-mark h3 {
+  margin: var(--sp-3) 0 var(--sp-2);
+  font: 400 var(--t-h3)/1.2 var(--font-serif); max-width: 20ch;
+}
+.mth-mark p { margin: 0; color: var(--muted); font-size: var(--t-sm); }
+@media (max-width: 760px) { .mth-marks { grid-template-columns: 1fr; } }
+
+/* ---- the manual: one disclosure, then the deep detail -------------------- */
+.mth-manual {
+  border: 1px solid var(--border-strong); border-radius: var(--r-xl);
+  background: var(--panel-2);
+}
+.mth-manual__sum {
+  list-style: none; cursor: pointer; padding: var(--sp-6);
+  display: grid; grid-template-columns: 1fr auto; gap: 2px var(--sp-4);
+  align-items: baseline;
+}
+.mth-manual__sum::-webkit-details-marker { display: none; }
+.mth-manual__k {
+  grid-column: 1; font: 600 var(--t-label)/1 var(--font-mono);
+  letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--gold-ink);
+}
+.mth-manual__t {
+  grid-column: 1; font: 400 var(--t-h2)/1.2 var(--font-serif); color: var(--text);
+}
+.mth-manual__s { grid-column: 1; color: var(--muted); font-size: var(--t-sm); }
+.mth-manual__sum::after {
+  content: "Open +"; grid-column: 2; grid-row: 1 / 4; align-self: center;
+  font: 600 var(--t-sm)/1 var(--font-mono); color: var(--gold-ink);
+  border: 1px solid var(--accent-line); border-radius: var(--r-pill);
+  padding: 9px 14px; white-space: nowrap;
+}
+.mth-manual[open] .mth-manual__sum::after { content: "Close \2212"; }
+.mth-manual__sum:hover .mth-manual__t { color: var(--gold-ink); }
+.mth-manual__body { padding: 0 var(--sp-6) var(--sp-6); }
+.mth-block { padding-top: var(--sp-10); border-top: 1px solid var(--border); }
+.mth-block .ds-sechead { margin-bottom: var(--sp-6); }
+.mth-block .ds-sechead__h { font-size: var(--t-h2); }
+.mth-h3 {
+  margin: var(--sp-8) 0 var(--sp-3);
+  font: 400 var(--t-h3)/1.25 var(--font-serif); color: var(--text);
+}
+.mth-p { max-width: 72ch; color: var(--muted); font-size: var(--t-base); }
+
+/* ---- weighting ----------------------------------------------------------- */
+.mth-w { display: flex; flex-direction: column; gap: var(--sp-3); }
+.mth-w__row {
+  display: grid; grid-template-columns: 130px minmax(0, 1fr) 46px;
+  gap: var(--sp-4); align-items: center;
+}
+.mth-w__name {
+  font: var(--t-sm)/1.3 var(--font-mono); color: var(--text);
+}
+.mth-w__track {
+  height: 8px; border-radius: var(--r-pill);
+  background: var(--panel); border: 1px solid var(--border); overflow: hidden;
+}
+.mth-w__fill { display: block; height: 100%; background: var(--accent); }
+.mth-w__pct {
+  font: var(--t-sm)/1 var(--font-mono); color: var(--muted);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+@media (max-width: 520px) {
+  .mth-w__row { grid-template-columns: minmax(0, 1fr) 46px; gap: var(--sp-2); }
+  .mth-w__name { grid-column: 1 / -1; }
+}
+
+.mth-source {
+  margin: var(--sp-5) 0 0;
+  font: var(--t-label)/1.5 var(--font-mono); color: var(--muted);
+}
+
+/* ---- component drills + datasets (on the shared .lp-cell grid) ----------- */
+.mth-metric__top {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: var(--sp-4); margin-bottom: var(--sp-3);
+}
+.mth-metric h3 {
+  margin: 0; font: 400 var(--t-title)/1.3 var(--font-serif); color: var(--text);
+}
+.mth-metric__w {
+  font: var(--t-lg)/1 var(--font-mono); color: var(--gold-ink);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.mth-metric__w small {
+  display: block; margin-top: 3px; font-size: 9px;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+}
+.mth-metric__def { color: var(--muted); font-size: var(--t-sm); }
+.mth-metric p { margin: 0; color: var(--muted); font-size: var(--t-sm); }
+
+.mth-tags { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.mth-tag {
+  font: var(--t-label)/1 var(--font-mono); letter-spacing: 0.04em;
+  color: var(--muted); border: 1px solid var(--border);
+  border-radius: var(--r-xs); padding: 5px 8px;
+}
+.mth-tag.is-lit { color: var(--gold-ink); border-color: var(--accent-line); }
+.mth-tag.is-gated { color: var(--wait); border-color: var(--wait-border); background: var(--wait-soft); }
+
+.mth-ds__card { display: flex; flex-direction: column; }
+.mth-ds__top {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: var(--sp-3); margin-bottom: var(--sp-3); flex-wrap: wrap;
+}
+.mth-ds__name { font: 400 var(--t-title)/1.3 var(--font-serif); color: var(--text); }
+.mth-ds__meta { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.mth-ds__cite { margin: 0; color: var(--muted); font-size: var(--t-sm); }
+.mth-ds__caveat {
+  margin: var(--sp-3) 0 0; color: var(--wait); font-size: var(--t-sm);
+}
+.mth-ds__foot {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: var(--sp-3); margin-top: auto; padding-top: var(--sp-4);
+}
+.mth-ds__foot code {
+  background: none; border: 0; padding: 0;
+  font: var(--t-xs)/1 var(--font-mono); color: var(--muted);
+}
+.mth-ds__foot a {
+  font: var(--t-xs)/1 var(--font-mono); color: var(--gold-ink);
+  text-decoration: none; white-space: nowrap;
+}
+.mth-ds__foot a:hover { text-decoration: underline; }
+
+/* ---- pipeline + signing prose ------------------------------------------- */
+.mth-pipe, .mth-sign {
+  margin: 0; padding-left: var(--sp-5);
+  display: flex; flex-direction: column; gap: var(--sp-4); max-width: 76ch;
+}
+.mth-pipe li, .mth-sign li {
+  font-size: var(--t-base); line-height: 1.65; color: var(--muted);
+}
+.mth-pipe li::marker { color: var(--gold-ink); font-family: var(--font-mono); }
+.mth-pipe b, .mth-sign b { color: var(--text); font-weight: 600; }
+
+/* ---- the credential ------------------------------------------------------ */
+.mth-cert {
+  display: flex; gap: var(--sp-6); align-items: center; flex-wrap: wrap;
+  padding: var(--sp-6); border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--panel);
+}
+.mth-cert p { flex: 1 1 320px; min-width: 260px; margin: 0; font-size: var(--t-base); }
+
+.mth-bands { display: flex; flex-direction: column; }
+.mth-band {
+  display: grid; grid-template-columns: auto 1fr; gap: var(--sp-4);
+  align-items: center; padding: var(--sp-4) 0; border-top: 1px solid var(--border);
+}
+.mth-band:first-child { border-top: 0; }
+.mth-band__g {
+  width: 44px; height: 44px; display: grid; place-items: center;
+  border: 1px solid currentColor; border-radius: var(--r-md);
+  font: 400 var(--t-h3)/1 var(--font-serif);
+}
+.mth-band__top {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: var(--sp-3); flex-wrap: wrap;
+}
+.mth-band__l { font: 500 var(--t-lg)/1.2 var(--font-ui); color: var(--text); }
+.mth-band__r {
+  font: var(--t-xs)/1 var(--font-mono); color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.mth-band p { margin: var(--sp-2) 0 0; color: var(--muted); font-size: var(--t-sm); }
+
+/* ---- close + footer ------------------------------------------------------ */
+.mth-close .ds-sechead { margin-bottom: var(--sp-6); }
+.mth-foot__brand { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.mth-foot__brand svg { color: var(--accent); }
+.mth-foot__spacer { flex: 1; }
+
+@media (max-width: 560px) {
+  .mth-hero h1 { font-size: clamp(32px, 10vw, 44px); }
+  .mth-outline__list a { grid-template-columns: auto 1fr; gap: 2px var(--sp-3); }
+  .mth-outline__list span { display: none; }   /* the row is the affordance */
+  .mth-stage { grid-template-columns: 1fr; gap: var(--sp-2); }
+  .mth-manual__sum { padding: var(--sp-5); grid-template-columns: 1fr; }
+  .mth-manual__sum::after { grid-column: 1; grid-row: auto; justify-self: start; margin-top: var(--sp-3); }
+  .mth-manual__body { padding: 0 var(--sp-5) var(--sp-5); }
+  .mth-cert { padding: var(--sp-5); }
+}

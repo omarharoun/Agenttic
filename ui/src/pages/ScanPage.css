@@ -1,0 +1,161 @@
+/* /scan — the intake funnel, restyled as STARTING YOUR FIRST DRILL.
+ *
+ * The page's job is unchanged: the guided interview (CertConversation) or the
+ * classic paste-a-URL form (ScanExperience) sits in the hero, and the four-step
+ * explainer follows it. What changed is the frame — editorial serif headline,
+ * mono rails, a numbered progression, and one inverted band for rhythm, the
+ * same vocabulary the landing route uses.
+ *
+ * Everything inside the interview panel belongs to CertConversation and is
+ * styled in theme.css; nothing here reaches into it. The shell only holds it.
+ *
+ * TOKEN-ONLY (Hard Rule 47, enforced by scripts/check-tokens.mjs).
+ */
+
+.sc { --sc-pad: clamp(56px, 7vw, 104px); overflow-x: clip; }
+.sc section { padding: var(--sc-pad) 0; border-top: 1px solid var(--border); }
+
+/* ---- the brief ---------------------------------------------------------- */
+
+.sc-hero {
+  position: relative;
+  padding: clamp(36px, 5vw, 68px) 0 var(--sc-pad);
+}
+.sc-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 460px;
+  pointer-events: none;
+  background: radial-gradient(circle at 22% 0%, var(--accent-soft), transparent 58%);
+}
+.sc-hero > * { position: relative; z-index: 1; }
+
+.sc-eyebrow {
+  margin: 0;
+  font: 500 var(--t-label)/1 var(--font-mono);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.sc-tag {
+  display: inline-flex;
+  align-items: center;
+  margin-top: var(--sp-4);
+  padding: 7px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-pill);
+  background: var(--panel);
+  font: 600 var(--t-xs)/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.sc-hero h1 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  line-height: 1.06;
+  font-size: clamp(38px, 6vw, 62px);
+  letter-spacing: -0.01em;
+  max-width: 17ch;
+  text-wrap: balance;
+  margin: var(--sp-5) 0 var(--sp-5);
+}
+.sc-hero h1 em { color: var(--accent); font-style: italic; }
+.sc-lede {
+  margin: 0;
+  max-width: 52ch;
+  font-size: var(--t-lg);
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+/* ---- the bay: where the drill is actually run --------------------------- */
+
+.sc-bay { margin-top: clamp(28px, 4vw, 48px); }
+.sc-bay__rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  font: 600 var(--t-label)/1.4 var(--font-mono);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.sc-bay__rail b { color: var(--text); font-weight: 600; }
+/* The classic form centres itself (theme.css .scanner); in a left-aligned bay
+   it reads as a stray card. Position only — the component is untouched. */
+.sc-bay .scanner { margin-left: 0; }
+.sc-toggle { margin-top: var(--sp-5); }
+
+/* ---- the drill, end to end: one inverted band for rhythm ---------------- */
+
+.sc-program {
+  background: var(--text);
+  color: var(--bg);
+  border-top: 0;
+}
+.sc-program__head { margin-bottom: var(--sp-8); }
+.sc-program__head h2 {
+  margin: var(--sp-3) 0 var(--sp-3);
+  font: 400 clamp(29px, 4vw, 46px)/1.05 var(--font-serif);
+  letter-spacing: -0.02em;
+  max-width: 17ch;
+  text-wrap: balance;
+}
+.sc-program__head p { margin: 0; max-width: 46ch; color: var(--bg); }
+
+.sc-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--border-strong);
+}
+.sc-step {
+  display: flex;
+  flex-direction: column;
+  min-height: 218px;
+  padding: var(--sp-6);
+  border-left: 1px solid var(--border-strong);
+  background: var(--panel);
+  color: var(--text);
+}
+.sc-step:first-child { border-left: 0; }
+/* the drill itself is the loud one; the credential closes the row */
+.sc-step--hot { background: var(--accent); color: var(--accent-ink); }
+.sc-step--seal { background: var(--panel-2); }
+.sc-step__n {
+  font: 500 var(--t-label)/1 var(--font-mono);
+  letter-spacing: 0.12em;
+  color: var(--faint);
+}
+.sc-step--hot .sc-step__n { color: var(--accent-ink); }
+.sc-step__b { margin-top: auto; }
+.sc-step h3 {
+  margin: var(--sp-5) 0 var(--sp-2);
+  font: 400 var(--t-h2)/1 var(--font-serif);
+}
+.sc-step p { margin: 0; color: var(--muted); font-size: var(--t-sm); line-height: 1.6; }
+.sc-step--hot h3,
+.sc-step--hot p { color: var(--accent-ink); }
+
+@media (max-width: 980px) {
+  .sc-steps { grid-template-columns: repeat(2, 1fr); }
+  .sc-step { min-height: 216px; }
+  .sc-step:nth-child(3) { border-left: 0; }
+  .sc-step:nth-child(n + 3) { border-top: 1px solid var(--border-strong); }
+}
+@media (max-width: 560px) {
+  .sc-steps { grid-template-columns: 1fr; }
+  .sc-step {
+    min-height: 0;
+    border-left: 0;
+    border-top: 1px solid var(--border-strong);
+  }
+  .sc-step:first-child { border-top: 0; }
+  .sc-step h3 { margin-top: var(--sp-4); }
+}

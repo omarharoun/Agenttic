@@ -797,3 +797,49 @@ the gilt gradient, since a file handed to a browser cannot read a CSS variable),
 `public/og-image.svg` + its PNG. The component stays `currentColor` so the token
 rule holds — the gradient exists only in the brand asset files, which are not
 components.
+
+## 2026-08-03 — the academy theme, and one invisible-heading defect
+
+All **20** baselines recaptured. Three distinct causes, recorded separately
+because "everything moved" is not a reconciliation:
+
+**1. Public pages restyled into the training-playground theme (10 images).**
+`landing`, `methodology`, `pricing`, `engine` (+`/certified`, `/scan`, which have
+no baseline). Editorial serif headlines, mono eyebrows, numbered
+practice → pressure-test → qualify progression, and an inverted dark band per
+page. `landing` also gains a SECOND inverted band at `#why`: the page ran seven
+near-identical light sections after the program cards, which reads as one wall
+however good each section is. `.lp-invert` is `.lp-program`'s inversion
+extracted, so both use one implementation rather than two that drift.
+
+**2. `dashboard` (2 images)** — the console `.academy-hero`.
+
+**3. `build`, `capabilities`, `results`, `scenarios`, `settings` (10 images) —
+NOT page work.** These moved because the shared `.app-nav` was restyled in
+`theme.css` (196px → 224px, mono uppercase group titles, a rule under the logo,
+smaller icons with the grayscale filter dropped). Ten baselines moving for one
+shared-component change is the expected blast radius, and it is worth writing
+down: if a future diff shows these five pages moving together again, look at the
+nav before looking at the pages.
+
+### A defect these baselines had been depicting
+
+`.lp-program` inverts the BAND (`color: var(--bg)`), but its cards sit on pale
+surfaces. `p` and the link restated their colour; `h3` did not — so **"Scenario
+lab" rendered at 1.05:1 and "Certification" at 1.02:1**. Two of the three
+headings in the landing page's flagship section were invisible, and the
+committed baselines had been depicting that as correct. Both are now ~16:1.
+
+Two more contrast measurements, both fixed rather than eyeballed:
+* the gold card's body copy scored **2.51:1** (`--muted` painted onto
+  `--accent`), under the 4.5 AA floor. Now `--text` at 5.40:1.
+* the new inverted band first used `--faint`, which measures **4.50:1** — AA with
+  zero margin, so any token nudge breaks it silently. Now `--bg` at 15.63:1.
+
+**Still open, product-wide:** `--accent-ink` is defined at `tokens.css:64` as
+`#201A08` ("near-black ink ON gold — dial lettering") and then **overridden to
+`#FFFFFF` inside `html[data-theme="light"]` at :163**, contradicting its own
+definition. Every gold surface in light theme therefore takes white ink at
+3.05:1 — passing only as large text, failing for anything at body size. Not
+fixed here: changing a core token flips every gold surface in the product and is
+a design decision, not a page fix.

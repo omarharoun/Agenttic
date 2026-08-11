@@ -1,0 +1,124 @@
+/* /certified — the public register, in the academy language of the landing.
+ * TOKEN-ONLY (npm run lint:tokens fails the build on a raw hex).
+ *
+ * Layout furniture (`.lp`, `.lp-hero__grid`, `.lp-program`, `.lp-grid`) comes
+ * from landing.css. What is here is the register itself: the seal plate in the
+ * hero, the roll of qualified agents, and the empty state — which is a designed
+ * surface rather than an apology, because an empty register is this product's
+ * standard working, not a bug. */
+
+/* ---- hero: the seal, stated as what it certifies -------------------------- */
+.cd-mark {
+  margin: 0; display: flex; flex-direction: column; align-items: center;
+  gap: var(--sp-5); padding: var(--sp-8) var(--sp-6);
+  border: 1px solid var(--border-strong); border-radius: var(--r-2xl);
+  background: var(--panel); box-shadow: var(--shadow-lg);
+}
+.cd-mark figcaption { text-align: center; max-width: 34ch; }
+.cd-mark b {
+  display: block; font: 600 var(--t-label)/1.4 var(--font-mono);
+  letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text);
+}
+.cd-mark span {
+  display: block; margin-top: var(--sp-3);
+  font-size: var(--t-sm); line-height: 1.6; color: var(--muted);
+}
+
+/* ---- register head: the count, told truthfully --------------------------- */
+.cd-count {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-3);
+  margin-bottom: var(--sp-6); padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--border);
+}
+.cd-count b {
+  font: 400 var(--t-h1)/1 var(--font-serif); color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.cd-count span {
+  font: var(--t-label)/1.4 var(--font-mono); letter-spacing: var(--track-caps);
+  text-transform: uppercase; color: var(--faint);
+}
+
+/* ---- the roll -----------------------------------------------------------
+ * One entry per row, not a card grid: a register reads as a roll, an odd
+ * entry count leaves no orphan cell, and an agent's full name never has to be
+ * truncated to fit a column. */
+.cd-grid {
+  display: grid; gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden;
+}
+.cd-card {
+  display: flex; align-items: center; gap: var(--sp-4);
+  padding: var(--sp-5); background: var(--panel);
+  text-decoration: none; color: inherit;
+  transition: background var(--dur-fast) var(--ease-escape);
+}
+.cd-card:hover { background: var(--panel-2); }
+.cd-card:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.cd-card .seal { flex-shrink: 0; }
+.cd-card__body { flex: 1; min-width: 0; }
+.cd-card__name {
+  font: 400 var(--t-h3)/1.25 var(--font-serif); color: var(--text);
+  overflow-wrap: anywhere;
+}
+.cd-card__meta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3);
+  margin-top: var(--sp-2);
+  font: var(--t-xs)/1.4 var(--font-mono); letter-spacing: .04em;
+}
+.cd-card__grade { font-weight: 600; }
+.cd-card__index { color: var(--muted); font-variant-numeric: tabular-nums; }
+.cd-card__status.ok { color: var(--ok); }
+.cd-card__status.wait { color: var(--wait); }
+.cd-card__status.fail { color: var(--fail); }
+.cd-card__go { color: var(--faint); font-size: var(--t-lg); flex-shrink: 0; }
+.cd-card:hover .cd-card__go { color: var(--accent); }
+
+/* ---- empty register: the standard working, not an error ------------------ */
+.cd-empty {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--border-strong); border-radius: var(--r-2xl);
+  background: var(--panel); padding: clamp(var(--sp-8), 6vw, var(--sp-16));
+}
+.cd-empty::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at 82% 8%, var(--accent-soft), transparent 46%);
+}
+.cd-empty > * { position: relative; }
+.cd-empty__tag {
+  font: 600 var(--t-label)/1.4 var(--font-mono); letter-spacing: var(--track-caps);
+  text-transform: uppercase; color: var(--accent);
+}
+.cd-empty h3 {
+  margin: var(--sp-4) 0 var(--sp-4); max-width: 22ch;
+  font: 400 clamp(26px, 3.4vw, 40px)/1.1 var(--font-serif);
+  letter-spacing: -0.01em; text-wrap: balance; color: var(--text);
+}
+.cd-empty p { max-width: 62ch; color: var(--muted); line-height: 1.7; margin: 0 0 var(--sp-4); }
+.cd-empty .lp-cta { margin-top: var(--sp-6); }
+
+.cd-skel { border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--sp-6); background: var(--panel); }
+
+/* ---- the inverted route band --------------------------------------------
+ * `.lp-program` sets `color: var(--bg)`, and the pale cards inside it never
+ * restate it — so an un-coloured <h3> inherits the band's near-white ink onto
+ * a near-white card. Restated here, scoped (landing.css is another agent's). */
+.cd-route .lp-program__card h3 { color: var(--text); }
+.cd-route .lp-program__card--train h3 { color: var(--accent-ink); }
+
+/* ---- what the credential does and does not say --------------------------- */
+.cd-says { display: grid; gap: 0; margin-top: var(--sp-6); }
+.cd-says__r {
+  display: grid; grid-template-columns: 168px 1fr; gap: var(--sp-5);
+  padding: var(--sp-5) 0; border-top: 1px solid var(--border-soft);
+}
+.cd-says__r:first-child { border-top: 0; }
+.cd-says__r dt {
+  font: 600 var(--t-sm)/1.5 var(--font-mono); color: var(--text);
+}
+.cd-says__r dd { margin: 0; font-size: var(--t-base); color: var(--muted); line-height: 1.65; }
+.cd-says__r.is-not dt { color: var(--fail); }
+
+@media (max-width: 640px) {
+  .cd-says__r { grid-template-columns: 1fr; gap: var(--sp-2); }
+}

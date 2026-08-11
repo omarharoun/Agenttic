@@ -700,6 +700,27 @@ export function StoredRuns({ state }: { state: RunsState }) {
 }
 
 /* -------------------------------------------------------------------------- */
+/* the drill ground: chrome that carries no measurement                        */
+/* -------------------------------------------------------------------------- */
+
+/** The chapter mark — a numeral and a rule, the page's own progression through
+ *  its argument. `aria-hidden` because it orders the sections and states
+ *  nothing: the eyebrow beside it carries the meaning, and a screen reader
+ *  reading "01" before every heading would be noise. */
+function Mark({ n }: { n: string }) {
+  return <div className="eng-mark" aria-hidden="true"><span>{n}</span><i /></div>;
+}
+
+/** What the lab is made of — the five parts named in the hero's own lede, each
+ *  argued in a section below. Copy, not measurement: there is no figure here to
+ *  be stale, and no specimen run, which is the point the last cell makes. */
+const RIG: readonly { n: string; h: string; p: string }[] = Object.freeze([
+  { n: "01", h: "A world that moves", p: "state the agent can really change" },
+  { n: "02", h: "An enforcement gateway", p: "every tool call passes through it" },
+  { n: "03", h: "A counterparty", p: "holds the fact back until asked properly" },
+  { n: "04", h: "An injector", p: "fails a named tool on a named call" },
+  { n: "05", h: "A coverage model", p: "credits only what the run exhibited" },
+]);
 
 export function EnginePage() {
   const [caps, setCaps] = useState<CapsState>({ kind: "loading" });
@@ -739,9 +760,10 @@ export function EnginePage() {
       <SiteNav />
 
       {/* ---- HERO ---- */}
-      <header className="lp-hero">
-        <div className="wrap">
-          <Eyebrow>The scenario engine</Eyebrow>
+      <header className="lp-hero eng-hero">
+        <div className="wrap eng-hero__copy">
+          <Eyebrow>The scenario lab · the drill ground</Eyebrow>
+          <div className="lp-hero__tag">Where a trained agent meets a world that pushes back</div>
           <h1>A pass rate cannot tell you what you never tried.</h1>
           <p className="lp-hero__lede">
             Under the certificate is an engine: a stateful world the agent acts
@@ -756,18 +778,33 @@ export function EnginePage() {
             <Button href="#runs">Read a stored run</Button>
             <Button variant="ghost" href="#limits">What it still cannot test</Button>
           </div>
-          <div className="lp-hero__meta">
+          <p className="eng-hero__meta">
             Offline by default, no API key · the figures below are read from
             this deployment on load; the quoted messages are the engine&apos;s
             own source
-          </div>
+          </p>
+        </div>
+        <div className="wrap eng-hero__rig">
+          <ol className="eng-rig" aria-label="What the scenario lab is made of">
+            {RIG.map((r) => (
+              <li key={r.n}>
+                <span className="eng-rig__n">{r.n}</span>
+                <b>{r.h}</b>
+                <small>{r.p}</small>
+              </li>
+            ))}
+          </ol>
+          <p className="eng-rig__foot">
+            Five parts, one drill · no specimen run appears on this page
+          </p>
         </div>
       </header>
 
       {/* ---- 1 · CLOSURE ---- */}
-      <section id="closure">
+      <section id="closure" className="eng-sec">
         <div className="wrap">
-          <SectionHeading eyebrow="One · Closure, not pass rate"
+          <Mark n="01" />
+          <SectionHeading eyebrow="Closure, not pass rate"
             title={<>A pass rate answers &ldquo;did it work?&rdquo;. It cannot answer
               &ldquo;what did we never try?&rdquo;</>}
             sub="Closure is the fraction of the declared space of situations a run actually put the agent through. It is the headline. The pass rate is one line underneath it." />
@@ -808,9 +845,10 @@ export function EnginePage() {
       </section>
 
       {/* ---- 2 · VACUITY ---- */}
-      <section id="vacuity">
+      <section id="vacuity" className="eng-sec">
         <div className="wrap">
-          <SectionHeading eyebrow="Two · The vacuity rule"
+          <Mark n="02" />
+          <SectionHeading eyebrow="The vacuity rule"
             title="Unexercised is not pass."
             sub="A check that could never fail is a defect, not a clean result. The same holds one level up: a dimension nothing can feed is not a low score, it is an absent instrument — so it reads not_measurable and never 0%." />
           <div className="lp-prose eng-prose">
@@ -831,9 +869,10 @@ export function EnginePage() {
       </section>
 
       {/* ---- 3 · FAULTS ---- */}
-      <section id="faults">
+      <section id="faults" className="eng-sec">
         <div className="wrap">
-          <SectionHeading eyebrow="Three · Injected failure"
+          <Mark n="03" />
+          <SectionHeading eyebrow="Injected failure · the pressure test"
             title="We inject the failure and check the recovery path."
             sub="And the fault is evidence, not a label. Every kind produces a span a reader can classify from the span alone — the attribution attribute is stamped alongside that evidence, never instead of it." />
           <FaultBins state={caps} />
@@ -873,9 +912,10 @@ export function EnginePage() {
       </section>
 
       {/* ---- 4 · COUNTERPARTY ---- */}
-      <section id="counterparty">
+      <section id="counterparty" className="eng-sec eng-sec--dark">
         <div className="wrap">
-          <SectionHeading eyebrow="Four · The other side of the conversation"
+          <Mark n="04" />
+          <SectionHeading eyebrow="The other side of the conversation"
             title="A customer who does not volunteer the thing you need."
             sub="The counterparty holds facts back and hands one over only when it is asked for properly. An agent that never asks cannot complete the scenario — not because we mark it down, but because the fact is not in the ticket and nothing else will supply it." />
           <div className="lp-prose eng-prose">
@@ -928,9 +968,10 @@ export function EnginePage() {
       </section>
 
       {/* ---- 5 · HARNESS ---- */}
-      <section id="harness">
+      <section id="harness" className="eng-sec">
         <div className="wrap">
-          <SectionHeading eyebrow="Five · The harness, not only the model"
+          <Mark n="05" />
+          <SectionHeading eyebrow="The harness, not only the model"
             title="Whether the framework enforces is a separate question."
             sub="A decoy tool is planted in the list the model sees, and what happens next has three outcomes — because two of them are facts about different things." />
           <div className="eng-outcomes">
@@ -972,13 +1013,19 @@ export function EnginePage() {
       </section>
 
       {/* ---- 6 · REAL RUNS ---- */}
-      <section id="runs">
+      <section id="runs" className="eng-sec eng-sec--glow">
         <div className="wrap">
-          <SectionHeading eyebrow="Six · Not an illustration"
+          <Mark n="06" />
+          <SectionHeading eyebrow="Not an illustration"
             title="Read one of your own runs."
             sub="Everything above is checkable against a stored run: the fault report, what the world did, what the gateway refused, the bins the trace exhibited — and the transcript, where the run held a conversation at all. This page shows yours or it shows nothing." />
           <StoredRuns state={runs} />
           <div className="eng-make">
+            <div className="eng-make__rail">
+              <span>Run your own drill</span>
+              <span>offline · no API key · no spend</span>
+            </div>
+            <div className="eng-make__body">
             <CodeBlock label="make one, offline" lines={MAKE_ONE} />
             <p>
               The first command draws a scenario from the space, realizes it,
@@ -989,12 +1036,13 @@ export function EnginePage() {
               at <Link to="/app/scenarios">/app/scenarios</Link> renders the same
               stored run in full.
             </p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ---- 7 · LIMITS ---- */}
-      <section id="limits">
+      <section id="limits" className="eng-sec">
         <div className="wrap">
           <SectionHeading eyebrow="Stated plainly"
             title="What this still cannot test."
@@ -1004,7 +1052,7 @@ export function EnginePage() {
       </section>
 
       {/* ---- CLOSING ---- */}
-      <section id="close">
+      <section id="close" className="eng-sec eng-sec--glow eng-close">
         <div className="wrap lp-closing">
           <Eyebrow>Where to go next</Eyebrow>
           <SectionHeading title="The engine is only useful if you can check it." />
