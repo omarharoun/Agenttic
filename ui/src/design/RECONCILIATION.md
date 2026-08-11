@@ -843,3 +843,33 @@ definition. Every gold surface in light theme therefore takes white ink at
 3.05:1 — passing only as large text, failing for anything at body size. Not
 fixed here: changing a core token flips every gold surface in the product and is
 a design decision, not a page fix.
+
+### Follow-up, same day — the inverted band was broken in DARK theme
+
+Reported from the running site: the "Train it. Test it. Certify it." eyebrow was
+white-on-white. It was, and the cause is a trap worth naming.
+
+`.lp-program` inverts by FLIPPING TOKENS — ground `--text`, ink `--bg`. That is
+self-correcting: in dark theme the ground becomes light and the ink becomes
+dark, and `h2`, which inherits, measured 15.63 light / 16.32 dark. But it only
+works for children that INHERIT. Any child naming a fixed colour is right in one
+theme and wrong in the other, and `--accent` was exactly that:
+
+| dark theme, before | after |
+|---|---|
+| eyebrow (gold on the flipped-light band) | **1.98** → **7.52** |
+| sub-line (`--faint`) | **4.10** → **9.93** |
+
+The same fixed-`--accent` bug was in the `.lp-invert` band added hours earlier
+(its eyebrow and `.lp-cell__k`), and the gold card's ink had it too. All now use
+`--bg`/`--text`, which flip WITH the band; hierarchy comes from size and opacity
+rather than hue.
+
+**The rule for this band: ink must be a flipping token.** A fixed hue on a
+token-flipped surface is only ever verified in the theme you happened to look at.
+Both bands now measure >= 6.8:1 on every element in BOTH themes.
+
+This also corrects a claim in the entry above: those contrast figures were
+measured in light theme only. `colorScheme` in Playwright does not switch this
+app — it keys on `html[data-theme]` — so a probe that sets `colorScheme` returns
+light-theme numbers twice and looks like it verified both.
