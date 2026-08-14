@@ -430,12 +430,12 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (25, "agent_config_table", _agent_config_table),
     (26, "seed_judge_configs", _seed_judge_configs),
     (27, "calibration_splits_table", _calibration_splits_table),
-    (30, "verification_evidence_tables", _verification_evidence_tables),
-    (31, "gaming_reports_table", _gaming_reports_table),
     (28, "judge_optimization_requests_table",
      _judge_optimization_requests_table),
     (29, "generated_suite_snapshots_table",
      _generated_suite_snapshots_table),
+    (30, "verification_evidence_tables", _verification_evidence_tables),
+    (31, "gaming_reports_table", _gaming_reports_table),
 ]
 
 
