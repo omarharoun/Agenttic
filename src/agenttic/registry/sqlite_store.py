@@ -1675,7 +1675,7 @@ class Registry:
         if report is None:
             raise NotFoundError(
                 f"no integrity report for suite {suite_id} v{version}; "
-                "run `ascore verify-suite` first")
+                "run `agenttic verify-suite` first")
         gr = report.get(gate)  # type: ignore[arg-type]
         if gr is None:
             raise NotFoundError(f"no gate {gate!r} in the report for {suite_id} v{version}")
@@ -1686,18 +1686,25 @@ class Registry:
     def assert_integrity_clear(self, suite_id: str, version: int) -> None:
         """Raise :class:`IntegrityError` unless every gate is clear (SPEC-6 Hard
         Rule 27). Enforced at the approve command boundary (CLI + API), so
-        ``approve_suite`` itself stays a pure state flip for internal callers."""
+        ``approve_suite`` itself stays a pure state flip for internal callers.
+
+        A suite that does not exist is NOT an integrity failure. Checking the
+        report first told anyone who mistyped a suite id to go and run
+        ``verify-suite`` on a suite that was never there, and exited 1 (refused)
+        where a missing subject exits 2 (not found). Resolve identity before
+        judging it."""
+        self.get_suite(suite_id, version)  # NotFoundError if there is no suite
         report = self.get_integrity_report(suite_id, version)
         if report is None:
             raise IntegrityError(
                 f"suite {suite_id} v{version} has no integrity report — run "
-                "`ascore verify-suite` before approving (SPEC-6 Hard Rule 27)")
+                "`agenttic verify-suite` before approving (SPEC-6 Hard Rule 27)")
         blocking = report.blocking()
         if blocking:
             raise IntegrityError(
                 f"suite {suite_id} v{version} cannot be approved: integrity "
                 f"gate(s) {blocking} not clear. Fix the flagged cases, or waive a "
-                f"named gate with a recorded reason (`ascore waive-gate`).")
+                f"named gate with a recorded reason (`agenttic waive-gate`).")
 
     def approve_suite(self, suite_id: str, version: int) -> None:
         with Session(self.engine) as s:

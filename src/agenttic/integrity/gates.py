@@ -227,7 +227,7 @@ def run_integrity_gates(reg, suite: TestSuite, cases: list[TestCase],
 def verify_suite(reg, cfg, suite_id: str, version: int | None = None,
                  complete: Callable[[str], str] | None = None) -> IntegrityReport:
     """Run the gates over a stored suite and persist the report. Used by
-    `ascore verify-suite` and by the generator after drafting a suite."""
+    `agenttic verify-suite` and by the generator after drafting a suite."""
     suite, cases = reg.get_suite(suite_id, version)
     report = run_integrity_gates(reg, suite, cases, complete=complete)
     reg.save_integrity_report(report)

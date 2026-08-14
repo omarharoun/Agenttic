@@ -37,7 +37,7 @@ def compute_abc_report(reg, suite_id: str, version: int | None = None,
         if g is None or not g.ran:
             items.append(ABCItem(item_id=item_id, name=name, category="I",
                                  score=None, status="n/a",
-                                 evidence="no integrity report — run `ascore verify-suite`"))
+                                 evidence="no integrity report — run `agenttic verify-suite`"))
             continue
         score = _coverage_from_gate(n, len(g.failing_case_ids))
         items.append(ABCItem(

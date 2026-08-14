@@ -380,7 +380,7 @@ def verify_suite_cmd(suite_id: str, version: int = 1, config: str = "config.yaml
     blocking = report.blocking()
     if blocking:
         console.print(f"[red]Blocked[/] — gate(s) {blocking} not clear. Fix the "
-                      f"flagged cases, or `ascore waive-gate {suite_id} <gate> \"<reason>\"`.")
+                      f"flagged cases, or `agenttic waive-gate {suite_id} <gate> \"<reason>\"`.")
         raise typer.Exit(1)
     console.print(f"[green]All gates clear[/] for {suite_id} v{version}.")
 
