@@ -292,7 +292,6 @@ async def run_suite_op(
         # silently turned every pass^k into pass@1.
         resume=True,
         trial=trial,
-        resume=True,  # resilience is mandatory — resume is always on
         trials_per_case=trials_per_case,
     )
     return suite, cases, traces

@@ -67,8 +67,16 @@ def test_replay_across_workers_deletes_once(tmp_path):
     executions: list[str] = []
     # Two stores, as two worker processes would have — the shared directory is
     # the only thing they have in common, and it is enough.
-    a = _worker(keys, FileNonceStore(str(tmp_path / "nonces")), executions)
-    b = _worker(keys, FileNonceStore(str(tmp_path / "nonces")), executions)
+    # Both stores run on the SAME fake clock the receipts are minted against.
+    # Without that they prune on wall time, so A's claim — stamped T0+60s — is
+    # already expired the moment the calendar passes T0, and B's prune deletes it
+    # before B claims. The test then reads as "replay allowed" when what actually
+    # happened is that the claim was garbage-collected. It passed on the day it
+    # was written and failed the next.
+    a = _worker(keys, FileNonceStore(str(tmp_path / "nonces"), now=lambda: T0),
+                executions)
+    b = _worker(keys, FileNonceStore(str(tmp_path / "nonces"), now=lambda: T0),
+                executions)
 
     headers = _headers(keys)
     assert a.delete("/customers/c-1", headers=headers).status_code == 200
