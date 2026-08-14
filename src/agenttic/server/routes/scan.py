@@ -2,14 +2,15 @@
 
 A normal user points us at their agent (an HTTP endpoint, with an optional auth
 header) or picks the built-in demo agent, and gets back a signed A–F safety
-grade in a scan report (not a certificate — ~14 probes cannot close coverage). This route is a THIN orchestrator over the existing engine:
+grade in a scan report (not a certificate — ~14 probes cannot close coverage).
+This route is a THIN orchestrator over the existing engine:
 
     POST /api/scan            start a scan (background); returns a scan_id
     GET  /api/scan/{scan_id}  poll live progress + the graded result + cert
     GET  /api/scan/preview    what a scan will do (dimensions, key/cost) before running
 
 The heavy lifting is ``agenttic.scan.run_safety_scan`` (build adapter → run + score
-the Safety Battery → grade) and ``server.certifications.issue_certificate`` (the
+the Safety Battery → grade) and ``server.certifications.issue_scan_report`` (the
 signed, tamper-evident **scan report** — a screen is not a certificate, so this
 route never issues one). We add no scoring here.
 
@@ -43,7 +44,7 @@ from agenttic.metrics.safety_battery import BATTERY_DIMENSIONS, DIMENSION_BY_CRI
 from agenttic.registry.sqlite_store import NotFoundError
 from agenttic.server.abuse import guard_cost_endpoint, guard_public_demo
 from agenttic.server.auth import require_operator
-from agenttic.server.certifications import issue_certificate
+from agenttic.server.certifications import issue_scan_report
 from agenttic.server.keys import NO_KEY_MSG, KeyStore
 
 router = APIRouter(tags=["scan"])
@@ -277,9 +278,19 @@ def _start_scan_job(cfg, reg, global_engine, *, tenant: str, target: str,
                         chk.update(status=d["status"], passed=d["passed"],
                                    detail=d["detail"], percent=d["percent"])
             # issue a signed certificate from the completed scorecard
+            # Issue a signed SCAN REPORT, not a certificate. ~14 probes cannot
+            # close a coverage target and were never meant to; calling the result
+            # a certificate would be the overclaim the signing gate exists to
+            # prevent. The report is still signed — integrity, not endorsement —
+            # and it states on its face that it is not a certificate.
+            #
+            # `issue_cert=False` withholds even that: the anonymous demo grades
+            # the agent and mints nothing, carrying `no_cert_note` instead. The
+            # gate and the artifact are separate decisions — what gets issued,
+            # and whether anything is issued at all.
             if issue_cert:
                 try:
-                    view = issue_certificate(
+                    view = issue_scan_report(
                         global_engine=global_engine, cfg=cfg, reg=reg,
                         tenant=tenant, scorecard_id=result["scorecard_id"],
                         expires_days=expires_days)
@@ -288,12 +299,12 @@ def _start_scan_job(cfg, reg, global_engine, *, tenant: str, target: str,
                 except cert.CertificationError as exc:
                     with _LOCK:
                         job.cert_note = (
-                            "We graded your agent but couldn't issue a "
-                            f"certificate: {exc}")
+                            "We scanned your agent but couldn't issue a scan "
+                            f"report: {exc}")
                 except Exception as exc:  # noqa: BLE001 — cert is best-effort
                     logger.error("scan %s cert issue failed: %s", scan_id, exc)
                     with _LOCK:
-                        job.cert_note = ("We graded your agent; certificate "
+                        job.cert_note = ("We graded your agent; scan-report "
                                          "issuance is temporarily unavailable.")
             elif no_cert_note:
                 with _LOCK:

@@ -253,7 +253,7 @@ def _copilot_sessions_table(conn) -> None:
 
 
 def _verification_evidence_tables(conn) -> None:
-    """v24 — the five verification-evidence tables that were declared after the
+    """v30 — the five verification-evidence tables that were declared after the
     v1 baseline ran and never given a migration of their own.
 
     A database created before each class existed is at head and does not have the
@@ -297,7 +297,7 @@ def _feedback_table(conn) -> None:
 
 
 def _agent_config_table(conn) -> None:
-    """v25 — the agent-config promotion ledger (SPEC-2 Step 14, Hard Rule 10):
+    """v33 — the agent-config promotion ledger (SPEC-2 Step 14, Hard Rule 10):
     every candidate the learning optimizer produced (promoted / rejected /
     pending human approval), chained to its parent so the config family tree is
     auditable."""
@@ -307,7 +307,7 @@ def _agent_config_table(conn) -> None:
 
 
 def _seed_judge_configs(conn) -> None:
-    """v26 — judge configs become versioned artifacts (SPEC-3 Step 15.1).
+    """v34 — judge configs become versioned artifacts (SPEC-3 Step 15.1).
 
     Create the ``judgeconfigrow`` table, then EAGERLY seed one v1
     ``status='active'`` :class:`JudgeConfig` for every judge-scored criterion
@@ -364,7 +364,7 @@ def _seed_judge_configs(conn) -> None:
 
 
 def _calibration_splits_table(conn) -> None:
-    """v27 — frozen train/held-out calibration splits (SPEC-3 Step 15.2, Hard
+    """v35 — frozen train/held-out calibration splits (SPEC-3 Step 15.2, Hard
     Rule 15). One row per (tenant, criterion_id, seed, trace_id) records whether
     a labeled trace is TRAIN or HELD-OUT, so every optimization round for a
     criterion reuses the SAME held-out benchmark (extend, never reshuffle)."""
@@ -374,7 +374,7 @@ def _calibration_splits_table(conn) -> None:
 
 
 def _judge_optimization_requests_table(conn) -> None:
-    """v28 — judge-optimization requests (SPEC-3 Step 15.4). One row per filed
+    """v36 — judge-optimization requests (SPEC-3 Step 15.4). One row per filed
     "please re-optimize this judge" request. Detection is automatic (the
     calibration flywheel notices via ``mine_labels``); the fix stays on-command
     (``learn-judge`` clears the request). At most one open row per criterion."""
@@ -384,7 +384,7 @@ def _judge_optimization_requests_table(conn) -> None:
 
 
 def _generated_suite_snapshots_table(conn) -> None:
-    """v29 — generator draft snapshots (SPEC-3 Step 16). One row per
+    """v37 — generator draft snapshots (SPEC-3 Step 16). One row per
     (tenant, suite_id, version) capturing the "as-generated" case set, plus the
     review diff computed at approval time. Only GENERATOR drafts write here, so
     generator quality (edit_rate) is measurable; other suites simply have no
@@ -396,13 +396,19 @@ def _generated_suite_snapshots_table(conn) -> None:
 
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
-    # 24-29 were BURNED while the code that created them could not be found. It
-    # has been found: they are the local line (backup/local-jul21-pre-merge,
-    # archived as archive/local-line-jul21), and they are landing here at the
-    # numbers they were always issued under. node1's production database has
-    # exactly these six, under exactly these names, stamped 2026-07-19 — so
-    # reclaiming the numbers makes that database correct rather than merely
-    # unexplained. The number is an identity; this restores the rightful holder.
+    # 24-29 are BURNED. node1's production database has them applied
+    # (feedback_table, agent_config_table, seed_judge_configs,
+    # calibration_splits_table, judge_optimization_requests_table,
+    # generated_suite_snapshots_table, stamped 2026-07-19). The code behind
+    # them was not in any branch when that was written; it is here now, as
+    # 32-37 below — but the numbers stay spent. `run_migrations` skips any
+    # version already in `schema_migrations`, so reusing 24-29 would be
+    # silently skipped THERE forever and the tables would never be created
+    # by the mechanism that is supposed to create them.
+    #
+    # Renumbering costs node1 one no-op re-run — each is `create ...
+    # checkfirst=True` against a table it already has — and buys a version
+    # that means the same thing on every database. The number is an identity.
     (1, "baseline_schema", _baseline),
     (2, "add_tenant_id", _add_tenant_id),
     (3, "users_table", _users_table),
@@ -426,16 +432,29 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
     (21, "canary_sets_table", _canary_sets_table),
     (22, "passport_tables", _passport_tables),
     (23, "copilot_sessions_table", _copilot_sessions_table),
-    (24, "feedback_table", _feedback_table),
-    (25, "agent_config_table", _agent_config_table),
-    (26, "seed_judge_configs", _seed_judge_configs),
-    (27, "calibration_splits_table", _calibration_splits_table),
-    (28, "judge_optimization_requests_table",
-     _judge_optimization_requests_table),
-    (29, "generated_suite_snapshots_table",
-     _generated_suite_snapshots_table),
+    # 24-29 are BURNED. node1's production database has them applied
+    # (feedback_table, agent_config_table, seed_judge_configs,
+    # calibration_splits_table, judge_optimization_requests_table,
+    # generated_suite_snapshots_table, stamped 2026-07-19). The code behind them
+    # was in no branch when that was written; it IS here now, as 32-37 below —
+    # but the numbers stay spent. `run_migrations` skips any version already in
+    # `schema_migrations`, so reusing 24-29 would be silently skipped THERE
+    # forever and the tables would never be created by the mechanism that is
+    # supposed to create them.
+    #
+    # Renumbering costs node1 one no-op re-run — each is `create ...
+    # checkfirst=True` against a table it already has — and buys a version that
+    # means the same thing on every database. The number is an identity.
     (30, "verification_evidence_tables", _verification_evidence_tables),
     (31, "gaming_reports_table", _gaming_reports_table),
+    (32, "feedback_table", _feedback_table),
+    (33, "agent_config_table", _agent_config_table),
+    (34, "seed_judge_configs", _seed_judge_configs),
+    (35, "calibration_splits_table", _calibration_splits_table),
+    (36, "judge_optimization_requests_table",
+     _judge_optimization_requests_table),
+    (37, "generated_suite_snapshots_table",
+     _generated_suite_snapshots_table),
 ]
 
 
