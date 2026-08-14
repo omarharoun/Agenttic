@@ -330,15 +330,23 @@ def _prepare_scoring(cfg: dict, reg: Registry, traces: list[Trace],
         fi_evaluator = FiEvaluator(
             threshold=cfg.get("scoring", {}).get("fi_threshold", 0.5),
             evaluate_fn=fi_evaluate_fn)
-    # Pair every trace to its case BY ID — never positionally. With
-    # trials_per_case > 1 the harness returns k traces per case, and `zip`
-    # silently truncated to the case count: k-1 of every case's trials were paid
-    # for and never scored (first light 2026-07-20, the k=8 run). A trace with no
-    # matching case is dropped rather than mispaired.
+    # Pair every trace to its case BY ID, falling back to position. `zip` alone
+    # truncated to the case count, so with trials_per_case > 1 — k traces per
+    # case — k-1 of every case's trials were paid for and never scored (first
+    # light 2026-07-20, the k=8 run).
+    #
+    # The positional fallback is not belt-and-braces: the scenario path mints
+    # synthetic trace ids (`scn-...`) that match no `test_id` at all, and those
+    # runs were paired positionally before. Dropping them instead returns fewer
+    # RunScores than there were traces, and a caller zipping the two back
+    # together reads `None` where a scoring outage should have been recorded —
+    # trading a silent under-count for a silent hole.
     prepared, cache = [], {}
     by_id = {c.test_id: c for c in cases}
-    for trace in traces:
+    for i, trace in enumerate(traces):
         case = by_id.get(trace.test_case_id)
+        if case is None:
+            case = cases[i] if i < len(cases) else None
         if case is None:
             continue
         rubric = rubric_override or reg.get_rubric(case.rubric_id)
@@ -1189,16 +1197,17 @@ def report_op(reg: Registry, scorecard_id: str) -> str:
     the harness enforces anything unless the section says so. Whether a battery
     *should* have been run for a given agent is a sign-off question — ``schema.
     signoff`` legs carry an explicit ``not_run`` status for exactly that — not
-    something a renderer can infer from a missing row."""
+    something a renderer can infer from a missing row.
+
+    The ABC benchmark-rigor scorecard and the contamination line render on the
+    same terms: present when one has been computed for this suite, absent when
+    none has — never synthesised."""
     sc, rubric, previous = _scorecard_with_context(reg, scorecard_id)
-    return render_markdown(sc, rubric, previous,
-                           harness=reg.find_honeypot_battery(scorecard_id))
-    """Render a scorecard to client-ready Markdown (with regression diff and the
-    ABC benchmark-rigor scorecard when one has been computed for the suite)."""
-    sc, rubric, previous = _scorecard_with_context(reg, scorecard_id)
-    abc = reg.get_abc_report(sc.suite_id, sc.suite_version)
-    contamination = reg.get_contamination_report(scorecard_id)
-    return render_markdown(sc, rubric, previous, abc=abc, contamination=contamination)
+    return render_markdown(
+        sc, rubric, previous,
+        harness=reg.find_honeypot_battery(scorecard_id),
+        abc=reg.get_abc_report(sc.suite_id, sc.suite_version),
+        contamination=reg.get_contamination_report(scorecard_id))
 
 
 def report_pdf_op(reg: Registry, scorecard_id: str) -> bytes:

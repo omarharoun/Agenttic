@@ -177,6 +177,24 @@ function summarize(evt: SSEEvent): string {
       if (d.event === "probe_finished")
         return `probe ${d.probe_id}: ${d.sub_score}`
           + (d.incident ? " — INCIDENT" : "");
+      // Halts and escalations. Each of these is a run NOT finishing normally,
+      // so silence is the one thing they must not render as: an unhandled
+      // event returns "" and reads identically to no event at all.
+      if (d.event === "case_escalated")
+        return `case ${d.index + 1}/${d.total} ESCALATED to a human (${d.test_id})`
+          + (d.question ? ` — ${d.question}` : "");
+      if (d.event === "run_halted")
+        return `run HALTED — ${d.reason ?? "no reason given"}`;
+      if (d.event === "scoring_halted")
+        return `scoring HALTED at case ${d.index + 1}/${d.total} `
+          + `(${d.test_id}) — ${d.reason ?? "terminal upstream error"}; `
+          + "the remaining cases were not sent";
+      if (d.event === "screen_reject")
+        return `screened OUT: ${d.reason ?? "rejected"}`;
+      if (d.event === "trials_notice")
+        return d.message ?? `running each case ${d.trials ?? "?"}x for pass^k`;
+      if (d.event === "dossier")
+        return `dossier: ${d.message ?? d.status ?? "updated"}`;
       if (d.message) return d.message;
       return "";
     case "node_waiting":

@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import UniqueConstraint, event, func
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError as DBIntegrityError
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from agenttic.schema.abc import ABCReport
@@ -83,7 +83,14 @@ def already_seeded():
         pass
 class IntegrityError(RuntimeError):
     """A suite cannot be approved because an integrity gate is unmet (SPEC-6
-    Hard Rule 27): a gate failed and was not waived, or was never run."""
+    Hard Rule 27): a gate failed and was not waived, or was never run.
+
+    Shares a name with ``sqlalchemy.exc.IntegrityError`` and shadows it in this
+    module, which is why that one is imported as ``DBIntegrityError`` above. The
+    two mean opposite things — one is a suite that failed its gates, the other a
+    UNIQUE constraint losing a race — and when the shadow was live, the
+    ``except`` in ``_append_only`` caught this class instead, so raw sqlite
+    errors reached callers that were promised ``DuplicateVersionError``."""
 
 
 class SuiteRow(SQLModel, table=True):
@@ -1422,7 +1429,7 @@ class Registry:
             add(s)
             try:
                 s.commit()
-            except IntegrityError as exc:
+            except DBIntegrityError as exc:
                 # Lost the race to a peer. Rolling back also drops any child
                 # rows `add` staged (a suite's cases), so the winner's row is
                 # never left with our children grafted onto it.
