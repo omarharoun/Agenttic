@@ -333,6 +333,29 @@ enforcement:
   action_classes:
     write: [shell.exec, fs.write, http.post, email.send, calendar.write, payments.execute]
     read:  [http.get, fs.read, search.query]
+  # Receipt-gated tool catalog. A tool listed here gets a Tool Access Receipt
+  # minted on an allow; an absent tool gets none (same absent-means-not-
+  # applicable contract as action_classes above). Ships empty on purpose — the
+  # production server has no gated tools of its own.
+  #
+  # `input_schema` is the tool's MCP inputSchema verbatim (the same object
+  # Anthropic tool-use calls `input_schema` and OpenAI calls
+  # `function.parameters`). It is passed to the minter as `params_schema` and
+  # hashed into `action_hash`, so it must match the tool's own
+  # `@require_receipt(...)` declaration byte-for-byte or the receipt is refused.
+  #
+  # This is also the ONLY place `irreversible` can be declared: Decision's
+  # ActionClass is read/write/unknown and cannot express it.
+  tool_access:
+    gateway_id: gw:local
+    tools: {}
+    #  delete_customer:
+    #    action_class: irreversible
+    #    bound_params: [customer_id]
+    #    input_schema:
+    #      type: object
+    #      properties: { customer_id: { type: string } }
+    #      required: [customer_id]
   compiler:
     tier_posture:
       A: { lane3_sampling: 0.05, approvals: none }

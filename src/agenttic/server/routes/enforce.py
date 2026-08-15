@@ -14,7 +14,9 @@ middleware; egress SSRF is enforced inside Lane 1.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from agenttic.enforce.gateway import PolicyIntegrityError
@@ -54,12 +56,39 @@ def start_session(body: StartSessionRequest, request: Request):
 
 
 @router.post("/enforce/tool-call", dependencies=[Depends(require_operator)])
-def enforce_tool_call(body: ToolCallRequest, request: Request):
+def enforce_tool_call(body: ToolCallRequest, request: Request, response: Response):
     gw = request.state.enforcer
     try:
         decision = gw.evaluate_tool_call(body.session_id, body.tool_name, body.args)
     except KeyError:
         raise HTTPException(404, f"unknown session {body.session_id}")
+
+    # On an allow for a receipt-gated tool, hand back the capability token the
+    # tool will check for itself. A response HEADER, not a body key: the body
+    # shape is asserted identical to the in-process Decision, and a Decision
+    # field would leak a null into every event and export.
+    #
+    # Best-effort by design — a receiptless allow is strictly better than a 500
+    # on the enforcement path, and it already fails closed (no receipt ⇒ the
+    # tool refuses). Surfaced, not swallowed.
+    try:
+        from agenttic.gate.middleware import HEADER_NAME, encode_receipt_header
+        from agenttic.passport.receipts import ReceiptIssuer
+        issuer = ReceiptIssuer(request.state.reg, request.state.cfg,
+                               request.app.state.passport_keys)
+        # Only a PAT or a session cookie carries an email; a shared/role token
+        # has no human behind it, so it gets an allow and no receipt.
+        receipt = issuer.issue_tool_access(
+            body.session_id, decision, args=body.args,
+            principal_id=getattr(request.state, "user_email", None))
+        if receipt is not None:
+            response.headers[HEADER_NAME] = encode_receipt_header(
+                receipt.model_dump(mode="json"))
+    except Exception as exc:  # noqa: BLE001 — issuance never breaks enforcement
+        logging.getLogger("agenttic.enforce").warning(
+            "tool access receipt not issued for %s: %s: %s",
+            body.tool_name, type(exc).__name__, exc)
+
     return decision.model_dump(mode="json")
 
 

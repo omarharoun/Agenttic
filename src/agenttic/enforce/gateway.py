@@ -126,6 +126,18 @@ class EnforcementGateway:
         session = self.get_session(session_id)
         t0 = time.perf_counter()
 
+        # A terminated or revoked session is over: every later call in it is
+        # denied. Until now both flags were WRITE-ONLY — set by the terminal
+        # actions below (:262-265) and by the Lane-3 judge (async_judge.py:101,
+        # 109-110), and read nowhere — which made ``revoke_access`` and
+        # ``terminate_session``, the two most severe actions in the vocabulary,
+        # silent no-ops: the agent kept calling and kept being allowed.
+        if session.revoked or not session.active:
+            return self._gated_deny(
+                session, phase, tool_name, t0,
+                ["session_revoked" if session.revoked else "session_terminated"],
+                origin="session_state")
+
         action = "allow"
         lane = "lane1"
         evidence: list[str] = []
