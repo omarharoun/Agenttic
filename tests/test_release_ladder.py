@@ -34,12 +34,18 @@ NOW = datetime(2026, 7, 7, tzinfo=timezone.utc)
 
 def _reg():
     reg = Registry(db_path=tempfile.mktemp(suffix=".db"))
+    # created_at=NOW anchors the observation window to this file's clock. Left
+    # at its wall-clock default, `_stage_since` reads the real time the dossier
+    # was written while every assertion below reasons in NOW-relative time, so
+    # `observed` shrinks as the calendar approaches NOW+1000h — green in July,
+    # red in August, for no code change at all.
     assemble(reg, agent_id="a", agent_config_hash="h",
              profile=CertificationProfile(profile_id="p", required_domains=["tool_use"]),
              tier_decision=TierDecision(tier="B", evidence_refs=["e"],
                                         caps_applied=["provisional_judge"]),
              coverage=[], attestation=Attestation(mode="self_attested",
-                                                  tenant="default"))
+                                                  tenant="default"),
+             created_at=NOW)
     return reg
 
 

@@ -135,7 +135,12 @@ def grant_promotion(reg, cfg: dict, agent_id: str, cohort_id: str, to_stage: str
         cohort_id=cohort_id, from_stage=ev.from_stage, to_stage=to_stage,
         kind="promotion", granted_by=granted_by,
         evidence_refs=list(evidence_refs or []),
-        reason=f"criteria met for {to_stage}")
+        reason=f"criteria met for {to_stage}",
+        # stamp the record with the SAME clock the eligibility was judged on:
+        # this timestamp becomes `_stage_since` for the next promotion, so a
+        # wall-clock default would measure the next observation window from a
+        # different clock than the one the caller passed.
+        **({"created_at": now} if now is not None else {}))
     reg.append_promotion_record(record)
     _recompile_at_stage(reg, cfg, agent_id, to_stage)
     return record
@@ -162,7 +167,8 @@ def auto_demote_on_incident(reg, cfg: dict, agent_id: str, *,
         cohort_id="", from_stage=current, to_stage=lowest, kind="demotion",
         granted_by="system",
         evidence_refs=[f"incident:{r['incident_id']}" for r in open_crit],
-        reason=f"open {open_crit[0]['severity']} incident → auto-demote")
+        reason=f"open {open_crit[0]['severity']} incident → auto-demote",
+        **({"created_at": now} if now is not None else {}))
     reg.append_promotion_record(record)
     _recompile_at_stage(reg, cfg, agent_id, lowest)
     try:
