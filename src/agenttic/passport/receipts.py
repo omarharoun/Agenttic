@@ -9,6 +9,7 @@ a logged allow-decision** (Hard Rule 29).
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import uuid
 from datetime import datetime
@@ -17,12 +18,25 @@ from agenttic.schema.enforcement import EnforcementEvent
 from agenttic.schema.passport import Receipt
 
 
-def _sha256(data) -> str:
+def _digest(key: bytes, data) -> str:
+    """Keyed, not bare.
+
+    ``input_sha256`` is persisted into the append-only enforcement log, which
+    any authenticated principal can read (``GET /api/enforce/events``). Tool
+    arguments come from small, guessable spaces — a customer id, an account
+    number, an email, a filename — so an unsalted digest of them is a lookup
+    table rather than a commitment: enumerate the space, hash each candidate,
+    read the exact argument of somebody else's call straight out of the log.
+
+    Under a key only the issuer holds it stays a commitment the issuer can
+    re-check and a log reader cannot invert. Same reason ``compute_bound_params``
+    salts the bound values with the nonce it never logs.
+    """
     if data is None:
         return ""
     payload = data if isinstance(data, str) else json.dumps(data, sort_keys=True,
                                                             default=str)
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return hmac.new(key, payload.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 class ReceiptError(RuntimeError):
@@ -54,6 +68,20 @@ class ReceiptIssuer:
         self.cfg = cfg or {}
         self.keys = key_manager
 
+    def _hash_key(self) -> bytes:
+        """The HMAC key for :func:`_digest`, derived from the signing key.
+
+        A domain-separated signature: deterministic (Ed25519 is), so the same
+        deployment re-derives the same key and can re-check an old receipt's
+        input hash, and secret, because producing it needs the private key. An
+        ephemeral dev key means old hashes stop re-checking after a restart —
+        exactly like the signatures already do, and already reported DEGRADED.
+        """
+        if getattr(self, "_hk", None) is None:
+            self._hk = self.keys.sign(
+                {"purpose": "agenttic.receipt.payload-digest.v1"}).encode()
+        return self._hk
+
     def _logged_allow(self, session_id: str, decision_ref: str) -> bool:
         for e in self.reg.list_enforcement_events(session_id):
             if (e.get("kind") == "decision" and e.get("decision_ref") == decision_ref
@@ -76,13 +104,22 @@ class ReceiptIssuer:
             raise ReceiptError(
                 "no logged allow-decision backs this receipt (Hard Rule 29)")
 
+        # The gate catalog's class where there is one. ``Decision.action_class``
+        # is Literal[read|write|unknown] and cannot say "irreversible", so a
+        # record of a gated delete would otherwise read "unknown" — understating
+        # the blast radius of the very action it certifies, and disagreeing with
+        # the capability token minted for the same decision.
+        entry = tool_access_entry(self.cfg, decision.tool_name)
+        key = self._hash_key()
         receipt = Receipt(
             receipt_id=f"rcpt-{uuid.uuid4().hex[:12]}",
             passport_id=passport.passport_id, agent_id=decision.agent_id,
             tool_call_ref=f"toolcall:{decision.tool_name}",
-            action_class=decision.action_class, policy_hash=decision.policy_hash,
+            action_class=(entry or {}).get("action_class") or decision.action_class,
+            policy_hash=decision.policy_hash,
             decision_id=decision.decision_id,
-            input_sha256=_sha256(input_data), output_sha256=_sha256(output_data),
+            input_sha256=_digest(key, input_data),
+            output_sha256=_digest(key, output_data),
             parent_receipt_id=parent_receipt_id, key_id=self.keys.key_id())
         receipt.signature = self.keys.sign(receipt.signing_input())
 
@@ -111,7 +148,7 @@ class ReceiptIssuer:
 
     # -- tool access receipts (capability tokens, §5) -------------------------
 
-    def _active_passport(self, agent_id: str, now: datetime | None = None):
+    def active_passport(self, agent_id: str, now: datetime | None = None):
         """The newest active, unexpired passport for ``agent_id``, or None.
 
         ``verify_tool_receipt`` step 5 checks *revocation* only — it never looks
@@ -171,7 +208,7 @@ class ReceiptIssuer:
             return None                       # no human ⇒ no capability
         if not self._logged_allow(session_id, decision.ref()):
             return None                       # Hard Rule 29
-        passport = self._active_passport(decision.agent_id, now)
+        passport = self.active_passport(decision.agent_id, now)
         if passport is None:
             return None                       # revoked, expired, or absent
 

@@ -71,6 +71,7 @@ def enforce_tool_call(body: ToolCallRequest, request: Request, response: Respons
     # Best-effort by design — a receiptless allow is strictly better than a 500
     # on the enforcement path, and it already fails closed (no receipt ⇒ the
     # tool refuses). Surfaced, not swallowed.
+    header = None
     try:
         from agenttic.gate.middleware import HEADER_NAME, encode_receipt_header
         from agenttic.passport.receipts import ReceiptIssuer
@@ -82,12 +83,45 @@ def enforce_tool_call(body: ToolCallRequest, request: Request, response: Respons
             body.session_id, decision, args=body.args,
             principal_id=getattr(request.state, "user_email", None))
         if receipt is not None:
-            response.headers[HEADER_NAME] = encode_receipt_header(
-                receipt.model_dump(mode="json"))
+            header = (HEADER_NAME,
+                      encode_receipt_header(receipt.model_dump(mode="json")))
     except Exception as exc:  # noqa: BLE001 — issuance never breaks enforcement
         logging.getLogger("agenttic.enforce").warning(
             "tool access receipt not issued for %s: %s: %s",
             body.tool_name, type(exc).__name__, exc)
+
+    # The audit Receipt for the same allow: it RECORDS the action, it does not
+    # permit it. A separate try with its own issuer, so a failure in either
+    # cannot corrupt the other's state. Allow-only and gated-only: issue_receipt
+    # RAISES on every deny/transform, and an ungated tool is not part of this
+    # feature.
+    #
+    # Independence is not symmetric, deliberately: the capability is withheld
+    # when the record fails, never the reverse. A token permitting an
+    # irreversible action that nothing in the log admits was permitted is the
+    # one outcome neither artifact can be checked against, and only a WARNING
+    # line would say so. Losing the token costs a retry; losing the record costs
+    # the evidence. Hence the header goes out AFTER the row is committed.
+    try:
+        from agenttic.passport.receipts import ReceiptIssuer, tool_access_entry
+        if (decision.action == "allow"
+                and tool_access_entry(request.state.cfg, body.tool_name)):
+            issuer = ReceiptIssuer(request.state.reg, request.state.cfg,
+                                   request.app.state.passport_keys)
+            passport = issuer.active_passport(decision.agent_id)
+            if passport is not None:
+                # output_data is absent by construction — the tool has not run
+                # yet — and hashes to "", the schema default.
+                issuer.issue_receipt(passport, body.session_id, decision,
+                                     input_data=body.args)
+    except Exception as exc:  # noqa: BLE001 — the audit row is best-effort too
+        header = None
+        logging.getLogger("agenttic.enforce").warning(
+            "audit receipt not issued for %s: %s: %s — capability withheld",
+            body.tool_name, type(exc).__name__, exc)
+
+    if header is not None:
+        response.headers[header[0]] = header[1]
 
     return decision.model_dump(mode="json")
 

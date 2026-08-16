@@ -18,11 +18,13 @@ from fastapi.testclient import TestClient
 
 from agenttic.enforce.gateway import compute_policy_hash
 from agenttic.gate.middleware import HEADER_NAME, InMemoryNonceStore
+from agenttic.passport.receipts import ReceiptIssuer, find_receipt
 from agenttic.registry.sqlite_store import Registry
 from agenttic.schema.enforcement import EnforcementPolicy, Rule
 from agenttic.schema.passport import Passport, PassportClaims
 from agenttic.server.app import create_app
 from agenttic.server.pats import PatStore
+from agenttic.verifier.header import decode_passport_header
 from examples.receipt_gated_tool import CUSTOMER_ID_SCHEMA, build_demo_app
 
 AGENT = "a"
@@ -256,3 +258,110 @@ def test_irreversible_without_its_bound_arg_mints_nothing(tmp_path):
         r = _call(client, pat, args={})
         assert r.json()["action"] == "allow"
         assert HEADER_NAME not in r.headers
+
+
+# --------------------------------------------------------------------------- #
+# 6. The audit Receipt paired with the capability.
+#
+# Two artifacts per allow, for two different jobs: the capability token PERMITS
+# the call (header, never logged, carries a nonce), the audit Receipt RECORDS it
+# (logged, signed, no nonce). They join on the decision.
+# --------------------------------------------------------------------------- #
+
+def _audit_events(reg):
+    return [e for e in reg.list_enforcement_events()
+            if e["kind"] == "receipt"]
+
+
+def test_allow_produces_both_artifacts_joined_by_decision(tmp_path):
+    """One allow → one capability header AND one logged audit receipt, and the
+    two name the same decision (bare id in the audit record, ``decision:``-
+    prefixed ref in the capability — the form each joins against)."""
+    client, pat, reg = _setup(tmp_path)
+    with client:
+        _passport(reg, client.app.state.passport_keys)
+        r = _call(client, pat)
+        body = r.json()
+        assert body["action"] == "allow"
+        capability = decode_passport_header(r.headers[HEADER_NAME])
+
+        events = _audit_events(reg)
+        assert len(events) == 1
+        audit = events[0]["detail"]
+
+    assert audit["decision_id"] == body["decision_id"]
+    assert capability["decision_id"] == f"decision:{body['decision_id']}"
+    assert events[0]["decision_ref"] == f"decision:{body['decision_id']}"
+    # a real input hash; the output cannot exist yet, so it is the empty default
+    assert audit["input_sha256"]
+    assert audit["output_sha256"] == ""
+    # Hard Rule 30: hashes, not payloads
+    assert "content" not in audit
+
+
+def test_the_audit_receipt_never_carries_the_nonce(tmp_path):
+    """The capability's nonce is a live replay for anyone who can read it. The
+    audit receipt is written to the log; it must not carry one."""
+    client, pat, reg = _setup(tmp_path)
+    with client:
+        _passport(reg, client.app.state.passport_keys)
+        r = _call(client, pat)
+        nonce = decode_passport_header(r.headers[HEADER_NAME])["nonce"]
+        assert _audit_events(reg), "guard: the audit receipt was written"
+        blob = json.dumps(reg.list_enforcement_events())
+    assert nonce not in blob
+
+
+def test_the_audit_receipt_is_findable_and_verifies(tmp_path):
+    """It is retrievable from the append-only log alone and its signature checks
+    out against the gateway's keys, with a logged allow behind it."""
+    client, pat, reg = _setup(tmp_path)
+    with client:
+        keys = client.app.state.passport_keys
+        _passport(reg, keys)
+        r = _call(client, pat)
+        event = _audit_events(reg)[0]
+
+    found = find_receipt(reg, event["detail"]["receipt_id"])
+    assert found is not None
+    receipt, session_id = found
+    assert receipt.decision_id == r.json()["decision_id"]
+    assert receipt.agent_id == AGENT
+
+    v = ReceiptIssuer(reg, {}, keys).verify_receipt(receipt, session_id)
+    assert v["signature_valid"] and v["backed_by_allow"] and v["valid"]
+
+
+def test_deny_produces_neither_artifact(tmp_path):
+    """No capability and no audit record: an audit receipt for a blocked call
+    would assert an action that never happened."""
+    client, pat, reg = _setup(tmp_path, deny_delete=True)
+    with client:
+        _passport(reg, client.app.state.passport_keys)
+        r = _call(client, pat)
+        assert r.json()["action"] == "deny"
+        assert HEADER_NAME not in r.headers
+        assert _audit_events(reg) == []
+
+
+def test_no_capability_still_records_the_audit_receipt(tmp_path):
+    """The two are independently best-effort. A shared token gets an allow and
+    no capability (no human principal) — the call still HAPPENED, so it is still
+    audited."""
+    client, _pat, reg = _setup(tmp_path)
+    with client:
+        _passport(reg, client.app.state.passport_keys)
+        r = _call(client, "t")           # the config's shared token
+        assert r.json()["action"] == "allow"
+        assert HEADER_NAME not in r.headers
+        assert len(_audit_events(reg)) == 1
+
+
+def test_an_uncatalogued_tool_is_unchanged(tmp_path):
+    """Pairing is scoped to receipt-gated tools: every other tool's allow path
+    gains no event and no extra write."""
+    client, pat, reg = _setup(tmp_path)
+    with client:
+        _passport(reg, client.app.state.passport_keys)
+        assert _call(client, pat, tool="http.get", args={}).json()["action"] == "allow"
+        assert _audit_events(reg) == []

@@ -360,7 +360,7 @@ def test_revoked_session_must_not_mint(tmp_path):
 
 
 def test_revoking_the_newest_passport_falls_back_to_the_older_one(tmp_path):
-    """``_active_passport`` walks newest-first and takes the first active,
+    """``active_passport`` walks newest-first and takes the first active,
     unexpired one. Revoke the newest and an older, superseded-but-never-revoked
     passport is used instead.
 

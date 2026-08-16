@@ -394,6 +394,16 @@ def _generated_suite_snapshots_table(conn) -> None:
     GeneratedSuiteSnapshotRow.__table__.create(bind=conn, checkfirst=True)
 
 
+def _tool_receipt_nonces_table(conn) -> None:
+    """v38 — spent Tool Access Receipt nonces (RECEIPT-SCHEMA.md §7). Single-use
+    lifted from one host to every host sharing the database, via UNIQUE(nonce).
+    A fresh DB already gets the table from the v1 baseline; this exists for
+    databases already at head."""
+    import agenttic.registry.sqlite_store  # noqa: F401 (registers the row)
+    from agenttic.registry.sqlite_store import ToolReceiptNonceRow
+    ToolReceiptNonceRow.__table__.create(bind=conn, checkfirst=True)
+
+
 # (version, name, up) — append new migrations; never mutate applied ones.
 MIGRATIONS: list[tuple[int, str, callable]] = [
     # 24-29 are BURNED. node1's production database has them applied
@@ -455,6 +465,7 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
      _judge_optimization_requests_table),
     (37, "generated_suite_snapshots_table",
      _generated_suite_snapshots_table),
+    (38, "tool_receipt_nonces_table", _tool_receipt_nonces_table),
 ]
 
 

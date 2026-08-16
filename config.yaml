@@ -348,6 +348,17 @@ enforcement:
   # ActionClass is read/write/unknown and cannot express it.
   tool_access:
     gateway_id: gw:local
+    # `upstream` and per-tool `route` are read ONLY by the sidecar reverse proxy
+    # (gate/sidecar.py), for gating a tool whose source cannot take the
+    # decorator. Both are optional: an entry with no `route` is not proxied, and
+    # the sidecar refuses any path no entry claims — an unlisted path is an
+    # ungoverned path, never a pass-through.
+    #
+    # A path-templated bound param arrives as a `str`, and bound values are
+    # hashed through canonical_json, so the gateway-side `args` for a proxied
+    # tool must carry strings: {"customer_id": 1} mints a receipt the sidecar
+    # always refuses.
+    # upstream: http://crm.internal:8080
     tools: {}
     #  delete_customer:
     #    action_class: irreversible
@@ -356,6 +367,7 @@ enforcement:
     #      type: object
     #      properties: { customer_id: { type: string } }
     #      required: [customer_id]
+    #    route: "DELETE /customers/{customer_id}"   # sidecar only
   compiler:
     tier_posture:
       A: { lane3_sampling: 0.05, approvals: none }

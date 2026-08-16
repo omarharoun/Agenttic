@@ -21,8 +21,9 @@ isolation (see ``server.app.Workspaces``).
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from sqlalchemy import UniqueConstraint, event, func
@@ -595,6 +596,97 @@ class EmailTokenRow(SQLModel, table=True):
     created_at: datetime
     expires_at: datetime
     used_at: datetime | None = None
+
+
+class ToolReceiptNonceRow(SQLModel, table=True):
+    """A spent Tool Access Receipt nonce (RECEIPT-SCHEMA.md §7). GLOBAL like
+    ``email_tokens``, deliberately: the nonce IS the claim, so a replay
+    presented against another tenant must lose too. ``UniqueConstraint`` on
+    ``nonce`` alone — keying it by ``(tenant_id, nonce)`` would let one receipt
+    be claimed once per tenant, which is the bug, not the feature. Rows are safe
+    to prune past ``expires_at`` (§2.4)."""
+    __tablename__ = "tool_receipt_nonces"
+    __table_args__ = (UniqueConstraint("nonce"),)
+    id: int | None = Field(default=None, primary_key=True)
+    nonce: str = Field(index=True)
+    expires_at: datetime = Field(index=True)
+    claimed_at: datetime
+
+
+def _as_utc(dt: datetime) -> datetime:
+    """Naive means UTC (matching ``gate.middleware._utc``); an offset-aware
+    value is *converted*.
+
+    Security-critical for this table. SQLAlchemy's SQLite ``DATETIME`` bind
+    silently drops ``tzinfo``, and ``_utc`` passes a ``+02:00`` value through
+    untouched, so storing it raw would persist local wall-clock as though it
+    were UTC — pruning a still-valid nonce hours early and reopening the replay
+    window it exists to close.
+
+    Rebuilt through this module's own ``datetime``, not merely converted, for
+    the same reason. The value arrives from a *parser* (pydantic, off the wire),
+    and SQLAlchemy's SQLite DATETIME bind picks its DATE or DATETIME format by
+    ``isinstance(value, datetime)`` against the class it captured at import. A
+    datetime that is not that exact class is written as a bare **date**, so
+    12:00:30 persists as midnight and the prune erases a live nonce hours early
+    — the identical failure, one layer down.
+    """
+    aware = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None \
+        else dt.astimezone(timezone.utc)
+    return datetime.fromtimestamp(aware.timestamp(), timezone.utc)
+
+
+# The prune inside ``claim`` runs on ONE host's clock and deletes rows EVERY
+# host depends on. ``verify_tool_receipt`` budgets ``DEFAULT_SKEW_SECONDS`` for
+# inter-host skew because the gateway host is not the tool host; the prune has
+# to budget at least as much, or a host whose clock runs ahead erases nonces the
+# other hosts still consider claimable and the replay window equals the skew.
+# An hour is far past any expiry a verifier will still accept, so nothing is
+# kept that could matter, and retention stays bounded at issuance-rate x
+# (TTL + 1h).
+# ponytail: one fixed hour, no config. Make it configurable if a deployment
+# actually measures this table growing.
+PRUNE_GRACE = timedelta(hours=1)
+
+
+class DbNonceStore:
+    """Claim-by-insert across HOSTS. Satisfies ``gate.middleware.NonceStore``.
+
+    The UNIQUE constraint is arbitrated by the database, so two workers in two
+    containers contend for one row — the same guarantee ``FileNonceStore``'s
+    ``O_CREAT|O_EXCL`` gives on one host, one host wider. Opt-in via
+    ``AGENTTIC_NONCE_DB``; the default store is unchanged.
+
+    Never SELECT-then-INSERT: that is the TOCTOU window ``NonceStore``'s
+    docstring forbids, and it is exactly the replay this class exists to stop.
+    Insert first, let the constraint answer.
+    """
+
+    def __init__(self, url: str | None = None, *, engine=None,
+                 now: Callable[[], datetime] | None = None) -> None:
+        self.engine = engine if engine is not None else make_engine(
+            url or f"sqlite:///{default_db_filename()}")
+        from agenttic.migrations import run_migrations
+        run_migrations(self.engine)  # idempotent, as in Registry.__init__
+        self._now = now
+
+    def claim(self, nonce: str, expires_at: datetime) -> bool:
+        now = _as_utc(self._now() if self._now else _now())
+        with Session(self.engine) as s:
+            # Bounded by issuance-rate × (TTL + grace) (§2.4): once every host's
+            # clock is past expiry a replay is already rejected at step 2, so
+            # forgetting the nonce costs nothing — but only THEN, see PRUNE_GRACE.
+            for row in s.exec(select(ToolReceiptNonceRow).where(
+                    ToolReceiptNonceRow.expires_at <= now - PRUNE_GRACE)).all():
+                s.delete(row)
+            s.add(ToolReceiptNonceRow(
+                nonce=nonce, expires_at=_as_utc(expires_at), claimed_at=now))
+            try:
+                s.commit()
+            except DBIntegrityError:  # the SQLAlchemy one, not the domain class
+                s.rollback()          # above — see IntegrityError's docstring.
+                return False          # replay: the winner already holds the row
+        return True  # any other error propagates -> VerifyError -> 403, closed
 
 
 # --------------------------------------------------------------------------- #
