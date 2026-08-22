@@ -47,9 +47,13 @@ def next_stage(cfg: dict, current: str) -> str | None:
     return stages[i + 1] if i + 1 < len(stages) else None
 
 
-def _stage_since(reg, agent_id: str) -> datetime:
+def _stage_since(reg, agent_id: str, now: datetime | None = None) -> datetime:
     """When the agent entered its current stage (last promotion record time, else
-    its earliest dossier's creation)."""
+    its earliest dossier's creation).
+
+    ``now`` is the caller's clock — the fallback must use it, not wall-clock, or
+    the observation window gets measured on two different clocks.
+    """
     records = reg.list_promotion_records(agent_id)
     if records:
         try:
@@ -59,7 +63,7 @@ def _stage_since(reg, agent_id: str) -> datetime:
     try:
         return reg.latest_dossier(agent_id).created_at
     except NotFoundError:
-        return _now()
+        return now or _now()
 
 
 def _promotion_cfg(cfg: dict) -> dict:
@@ -84,8 +88,17 @@ def evaluate_promotion(reg, cfg: dict, agent_id: str, to_stage: str, *,
     pcfg = _promotion_cfg(cfg)
     # observation hours for the target stage
     min_hours = float((pcfg.get("min_observation_hours", {}) or {}).get(to_stage, 0))
-    observed = (now - _stage_since(reg, agent_id)).total_seconds() / 3600.0
-    if observed < min_hours:
+    since = _stage_since(reg, agent_id, now)
+    observed = (now - since).total_seconds() / 3600.0
+    if observed < 0:
+        # A negative window is never a legitimate answer — the stage-entry stamp
+        # and the evaluation clock disagree. Name that, don't let it read as
+        # "not enough observation time yet".
+        unmet.append(
+            f"clock_inconsistency: stage entered {since.isoformat()} which is "
+            f"after evaluation time {now.isoformat()} ({observed:.1f}h) — "
+            "stage-entry stamp and evaluation clock disagree")
+    elif observed < min_hours:
         unmet.append(
             f"observation_hours: {observed:.1f}h observed < {min_hours}h required")
 
@@ -135,7 +148,8 @@ def grant_promotion(reg, cfg: dict, agent_id: str, cohort_id: str, to_stage: str
         cohort_id=cohort_id, from_stage=ev.from_stage, to_stage=to_stage,
         kind="promotion", granted_by=granted_by,
         evidence_refs=list(evidence_refs or []),
-        reason=f"criteria met for {to_stage}")
+        reason=f"criteria met for {to_stage}",
+        created_at=now or _now())  # the record IS the next stage_since — same clock
     reg.append_promotion_record(record)
     _recompile_at_stage(reg, cfg, agent_id, to_stage)
     return record
@@ -162,7 +176,8 @@ def auto_demote_on_incident(reg, cfg: dict, agent_id: str, *,
         cohort_id="", from_stage=current, to_stage=lowest, kind="demotion",
         granted_by="system",
         evidence_refs=[f"incident:{r['incident_id']}" for r in open_crit],
-        reason=f"open {open_crit[0]['severity']} incident → auto-demote")
+        reason=f"open {open_crit[0]['severity']} incident → auto-demote",
+        created_at=now or _now())
     reg.append_promotion_record(record)
     _recompile_at_stage(reg, cfg, agent_id, lowest)
     try:

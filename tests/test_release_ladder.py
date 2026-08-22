@@ -34,7 +34,10 @@ NOW = datetime(2026, 7, 7, tzinfo=timezone.utc)
 
 def _reg():
     reg = Registry(db_path=tempfile.mktemp(suffix=".db"))
-    assemble(reg, agent_id="a", agent_config_hash="h",
+    # the dossier is the agent's stage-entry stamp — it must sit on the same
+    # frozen clock the assertions use, or the observation window is measured
+    # across two clocks and goes negative once wall-clock passes NOW+1000h.
+    assemble(reg, created_at=NOW, agent_id="a", agent_config_hash="h",
              profile=CertificationProfile(profile_id="p", required_domains=["tool_use"]),
              tier_decision=TierDecision(tier="B", evidence_refs=["e"],
                                         caps_applied=["provisional_judge"]),
