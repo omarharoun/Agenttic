@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 from agenttic.certification.hashing import compute_dossier_hash
@@ -51,10 +52,17 @@ def assemble(
     inspect_log_ref: str | None = None,
     dossier_id: str | None = None,
     prev_dossier_sha256: str | None = None,
+    created_at: datetime | None = None,
     persist: bool = True,
 ) -> Dossier:
     """Build (and optionally persist) a dossier. The caveats are copied verbatim
-    from the profile; the hash chain links to the agent's previous dossier."""
+    from the profile; the hash chain links to the agent's previous dossier.
+
+    ``created_at`` overrides the wall-clock stamp — callers working on an
+    injected clock (release-ladder observation windows are measured off this
+    stamp) must pass theirs, or the dossier lands on a different clock than the
+    one it is later compared against.
+    """
     dossier = Dossier(
         dossier_id=dossier_id or f"dossier-{uuid.uuid4().hex[:12]}",
         agent_id=agent_id,
@@ -74,6 +82,7 @@ def assemble(
             prev_dossier_sha256 if prev_dossier_sha256 is not None
             else _prev_hash(reg, agent_id)
         ),
+        **({"created_at": created_at} if created_at is not None else {}),
     )
     dossier.content_sha256 = compute_dossier_hash(dossier)
     if persist and reg is not None:
