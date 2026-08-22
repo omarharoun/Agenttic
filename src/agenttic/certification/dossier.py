@@ -58,10 +58,11 @@ def assemble(
     """Build (and optionally persist) a dossier. The caveats are copied verbatim
     from the profile; the hash chain links to the agent's previous dossier.
 
-    ``created_at`` overrides the wall-clock stamp — callers working on an
-    injected clock (release-ladder observation windows are measured off this
-    stamp) must pass theirs, or the dossier lands on a different clock than the
-    one it is later compared against.
+    ``created_at`` defaults to now. Pass it to pin the timestamp: a dossier's
+    creation time is what :func:`agenttic.release.promotion._stage_since` reads
+    as the start of an agent's observation window, so a caller reasoning about
+    that window on an injected clock has to anchor this to the same clock or the
+    window is measured against wall time.
     """
     dossier = Dossier(
         dossier_id=dossier_id or f"dossier-{uuid.uuid4().hex[:12]}",
@@ -82,6 +83,7 @@ def assemble(
             prev_dossier_sha256 if prev_dossier_sha256 is not None
             else _prev_hash(reg, agent_id)
         ),
+        # set before hashing — created_at is inside hashable_content()
         **({"created_at": created_at} if created_at is not None else {}),
     )
     dossier.content_sha256 = compute_dossier_hash(dossier)

@@ -635,6 +635,8 @@ resolutions become measured card evidence.
 ```
 POST /api/enforce/sessions          # hash-verified policy load
 POST /api/enforce/tool-call         # → Decision (allow/deny/transform/require_approval)
+                                    #   + Agent-Tool-Receipt header on an allow for a
+                                    #   receipt-gated tool (enforcement.tool_access)
 POST /api/enforce/tool-result       # injection screen → quarantine
 GET  /api/enforce/dashboard         # block rate, fail-open count, approval latency
 GET  /api/enforce/export?fmt=otel   # OTel-GenAI spans (no payloads)

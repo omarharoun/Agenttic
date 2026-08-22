@@ -7,7 +7,7 @@ non-zero when the subject fails, so they can gate a pipeline.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from typer.testing import CliRunner
 
@@ -18,7 +18,13 @@ from tests.conftest import attesting_signoff, plain
 
 runner = CliRunner()
 
-NOW = datetime(2026, 7, 24, 12, 0, tzinfo=timezone.utc)
+# Recent, not fixed. Every use below is a fixture timestamp — manifest issuance,
+# catalog recorded_at/promote/export — and none is asserted as an absolute date.
+# A pinned date would be, though: `catalog-check` verifies expiry against the
+# WALL clock (the CLI injects no `now`), and DEFAULT_EXPIRY_DAYS is 90. Pinned to
+# 2026-07-24, these certificates lapse on 2026-10-22 and the suite starts failing
+# with no code change. Anchor the fixture to the same clock the CLI reads.
+NOW = datetime.now(timezone.utc) - timedelta(hours=1)
 
 
 # ---- certify-memory --------------------------------------------------------- #

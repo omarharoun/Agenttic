@@ -322,7 +322,24 @@ _REASONS: dict[type, str] = {
     ReplayError: "tool access receipt already used",
 }
 
-DEFAULT_NONCE_STORE = FileNonceStore()
+
+def _default_nonce_store() -> NonceStore:
+    """Opt-in: a SQLAlchemy URL in ``AGENTTIC_NONCE_DB`` lifts single-use from
+    this host to every host sharing that database. Unset — the default — keeps
+    ``FileNonceStore`` exactly as before.
+
+    The registry import stays inside the branch: the decorator runs inside a
+    third party's tool that has no Agenttic registry, and paying for that import
+    at gate-import time would break the constituency this store is optional for.
+    """
+    url = os.environ.get("AGENTTIC_NONCE_DB")
+    if not url:
+        return FileNonceStore()
+    from agenttic.registry.sqlite_store import DbNonceStore
+    return DbNonceStore(url)
+
+
+DEFAULT_NONCE_STORE = _default_nonce_store()
 DEFAULT_REVOCATIONS = RevocationCache()
 
 
