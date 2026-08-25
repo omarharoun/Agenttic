@@ -126,6 +126,36 @@ class FormalLeg(BaseModel):
     claims: list[str] = Field(default_factory=list)
 
 
+class ClaimLeg(BaseModel):
+    """proof(claim), Step 63d — are the agent's *words* true about the policy?
+
+    A separate leg, never fields on :class:`FormalLeg`: Hard Rule 72 keeps
+    proof(claim) and proof(authorization) off the same report row because they
+    answer different questions. Five-valued, and ``out_of_scope`` is counted
+    outside the five — "not a policy claim" is not "a claim we couldn't check".
+
+    REPORT-ONLY under gate v1, following the scoreboard precedent: it is
+    computed, rolled up and rendered, and it does not gate. Flipping it is a
+    separate, announced change.
+    """
+
+    status: LegStatus = "not_run"
+    checked: int = 0
+    valid: int = 0
+    invalid: int = 0
+    satisfiable: int = 0
+    ambiguous: int = 0
+    impossible: int = 0
+    out_of_scope: int = 0
+    #: outputs whose claims could not be extracted at all — unchecked, NOT clean
+    extraction_failures: int = 0
+    scope: str = "the deterministic tool-authorization guard layer"
+    #: rendered INVALID results, each carrying its violated rule
+    false_claims: list[str] = Field(default_factory=list)
+    #: IMPOSSIBLE results are policy defects, never scored against the agent
+    policy_defects: list[str] = Field(default_factory=list)
+
+
 class ConvergenceLeg(BaseModel):
     status: LegStatus = "not_run"
     scenarios_run: int = 0
@@ -227,6 +257,7 @@ class VerificationSignoff(BaseModel):
     regression: RegressionLeg = Field(default_factory=RegressionLeg)
     envelope: EnvelopeLeg = Field(default_factory=EnvelopeLeg)
     scoreboard: ScoreboardLeg = Field(default_factory=ScoreboardLeg)
+    claims: ClaimLeg = Field(default_factory=ClaimLeg)
 
     #: Which gate this sign-off was issued under. Bumped when `signs_off` gains
     #: a condition, so a stored sign-off keeps re-validating under the rule it
@@ -511,7 +542,7 @@ def build_signoff(
     *, signoff_id: str, agent_id: str, agent_config_hash: str = "",
     coverage_report=None, assertion_results=None, proof_results=None,
     cdv_result=None, regression=None, scorecard=None, provenance=None,
-    scoreboard=None,
+    scoreboard=None, claim_checks=None,
 ) -> VerificationSignoff:
     """Assemble a sign-off from the real artifacts. Any leg whose artifact is
     absent stays ``not_run`` — it never silently reads as a pass."""
@@ -566,6 +597,31 @@ def build_signoff(
                   for k in ("proven", "counterexample", "unbounded", "not_attempted")}
         s.formal = FormalLeg(status="populated", **counts,
                              claims=[r.claim() for r in proof_results])
+
+    if claim_checks is not None:
+        # Step 63d. Roll up across every case's ClaimCheck. IMPOSSIBLE is kept
+        # out of `false_claims` on purpose: it is a defect in the policy
+        # document, and folding it in would score a suite bug against the agent.
+        total = {k: 0 for k in ("valid", "invalid", "satisfiable", "ambiguous",
+                                "impossible")}
+        false_claims: list[str] = []
+        defects: list[str] = []
+        checked = oos = failures = 0
+        for check in claim_checks:
+            for k, v in check.counts().items():
+                total[k] += v
+            checked += len(check.results)
+            oos += len(check.out_of_scope)
+            failures += len(getattr(check, "extraction_failures", ()) or ())
+            for r in check.results:
+                if r.status == "invalid":
+                    false_claims.append(r.render())
+                elif r.status == "impossible":
+                    defects.append(r.detail)
+        s.claims = ClaimLeg(status="populated", checked=checked,
+                            out_of_scope=oos, extraction_failures=failures,
+                            false_claims=false_claims,
+                            policy_defects=defects, **total)
 
     if cdv_result is not None:
         s.convergence = ConvergenceLeg(

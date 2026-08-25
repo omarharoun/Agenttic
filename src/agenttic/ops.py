@@ -484,12 +484,18 @@ def _round4(x: float | None) -> float | None:
 def verify_op(traces: list, *, cfg: dict | None = None,
               samples: list | None = None, cdv_result=None,
               unresolved_evidence: list | None = None,
-              scoreboard=None) -> tuple[list, dict]:
+              scoreboard=None, claim_extractor=None,
+              enforcement_policy=None) -> tuple[list, dict]:
     """Run the SPEC-13 verification layer over a batch of traces.
 
     Deterministic and free: assertions (Step 62) and the baseline coverage model
     (Step 59) make **zero model calls**, so this runs on the normal path for every
-    run. It is what lets a report lead with *what was never exercised* instead of
+    run. ``claim_extractor`` is the one exception and is therefore OPT-IN: claim
+    checking (Step 63b) needs a model to read the agent's prose, so with no
+    extractor supplied the claims leg stays ``not_run`` and this function makes
+    no model calls at all. Both it and ``enforcement_policy`` are required —
+    a claim is checked against a policy, so an extractor with no policy has
+    nothing to check against and is ignored rather than half-run. It is what lets a report lead with *what was never exercised* instead of
     a pass rate that is silent about everything the suite never tried.
 
     ``cfg`` is the loaded config, threaded through to the coverage model so the
@@ -671,6 +677,33 @@ def verify_op(traces: list, *, cfg: dict | None = None,
     if results:
         summary["assertions"] = rollup_assertions(results)
 
+    # Step 63b/d — proof(claim) over the agent's WORDS, as distinct from the
+    # assertions above, which watch its ACTIONS. Opt-in: this is the only part
+    # of `verify_op` that costs a model call, so it runs when a caller supplies
+    # both an extractor and the policy to check against, and not otherwise.
+    claim_checks = None
+    if claim_extractor is not None and enforcement_policy is not None:
+        from agenttic.verification.claim_extract import ClaimExtractionError
+        from agenttic.verification.formal.claims import ClaimCheck, check_output
+        from agenttic.verification.formal.graph import from_enforcement_policy
+        try:
+            graph = from_enforcement_policy(enforcement_policy)
+        except Exception:  # noqa: BLE001 — an uncompilable policy checks nothing
+            graph = None
+        if graph is not None:
+            claim_checks = []
+            for t in ran:
+                try:
+                    claim_checks.append(check_output(
+                        getattr(t, "final_output", "") or "", graph,
+                        claim_extractor, policy=enforcement_policy))
+                except ClaimExtractionError as exc:
+                    # Recorded, not skipped. A trace whose claims could not be
+                    # extracted is a trace nobody checked, and dropping it would
+                    # shrink the denominator until "0 invalid" meant nothing —
+                    # the same hole `assertions.evaluation_failures` closes.
+                    claim_checks.append(ClaimCheck(extraction_failures=[str(exc)]))
+
     # Build the sign-off here: this is the only place that holds the raw coverage
     # report AND the raw assertion results, which is exactly what build_signoff
     # consumes. Building it anywhere else would mean recomputing, and a sign-off
@@ -690,7 +723,10 @@ def verify_op(traces: list, *, cfg: dict | None = None,
             # it stays `not_run`, which is the honest reading for a stored suite
             # that runs no environment. Report-only under gate_version 1, so
             # populating it cannot move a signing decision.
-            scoreboard=scoreboard)
+            scoreboard=scoreboard,
+            # Step 63d. `None` (the default) keeps the leg `not_run` — which is
+            # the honest reading, and NOT the same as "no false claims found".
+            claim_checks=claim_checks)
         summary["signoff"] = signoff.model_dump(mode="json")
     except Exception:  # noqa: BLE001 — verification must never break a run
         pass

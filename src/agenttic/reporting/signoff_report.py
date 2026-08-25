@@ -95,6 +95,34 @@ def render(signoff: VerificationSignoff,
         lines.append(_bar("3 · FORMAL", "not attempted"))
     lines.append("")
 
+    # --- 3b. output claims --------------------------------------------------
+    # A row of its own, never folded into FORMAL: proof(claim) and
+    # proof(authorization) answer different questions (Hard Rule 72).
+    cl = s.claims
+    if cl.status == "populated":
+        lines.append(_bar("3b · OUTPUT CLAIMS",
+                          f"{cl.valid} valid · {cl.invalid} invalid · "
+                          f"{cl.satisfiable} satisfiable · {cl.ambiguous} ambiguous "
+                          f"· {cl.impossible} impossible"))
+        lines.append(_bar("    scope", f"{cl.scope} — a claim the policy defines "
+                                       "no variable for is out of scope, not true"))
+        if cl.extraction_failures:
+            # Loud, and above the counts it would otherwise silently shrink.
+            lines.append(_bar("    NOT CHECKED",
+                              f"{cl.extraction_failures} output(s) — extraction "
+                              f"failed, so these are unchecked, not clean"))
+        if cl.out_of_scope:
+            lines.append(_bar("    out of scope",
+                              f"{cl.out_of_scope} not policy claims (not counted)"))
+        for c in cl.false_claims[:4]:
+            lines.append(f"      ! {c}")
+        for d in cl.policy_defects[:2]:
+            lines.append(f"      · policy defect (suite finding): {d}")
+        lines.append(_bar("    gating", "report-only under this gate version"))
+    else:
+        lines.append(_bar("3b · OUTPUT CLAIMS", "not checked"))
+    lines.append("")
+
     # --- 4. convergence + regression ---------------------------------------
     cv = s.convergence
     if cv.status == "populated":

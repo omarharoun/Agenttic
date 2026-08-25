@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Literal, Sequence
 
 from agenttic.verification.formal.graph import GuardState, PolicyGraph
+from agenttic.verification.formal.prove import DEFAULT_MAX_STATES
 
 #: The five-valued result (SPEC-13 Step 63c). ``ambiguous`` and ``impossible``
 #: are REQUIRED outcomes, never optional: rounding either to ``valid`` or
@@ -119,7 +120,7 @@ class ClaimResult:
                     f"Limit: {self.limit}.")
         if self.status == "ambiguous":
             return (f"AMBIGUOUS — {self.claim_text!r} could not be soundly "
-                    f"translated ({self.detail}). No verdict on the agent's "
+                    f"checked ({self.detail}). No verdict on the agent's "
                     f"truthfulness is made. Limit: {self.limit}.")
         return (f"IMPOSSIBLE — the policy document itself is self-contradictory "
                 f"({self.detail}), so no verdict is reachable for "
@@ -151,6 +152,11 @@ class ClaimCheck:
 
     results: list[ClaimResult] = field(default_factory=list)
     out_of_scope: list[OutOfScope] = field(default_factory=list)
+    #: Translation never ran for this output — the extractor failed, so NOTHING
+    #: about it was checked. Kept apart from `results` on purpose: a case with
+    #: zero results and a failure here is unchecked, not clean, and the two must
+    #: never sum into the same denominator.
+    extraction_failures: list[str] = field(default_factory=list)
 
     def counts(self) -> dict[str, int]:
         return {k: sum(1 for r in self.results if r.status == k)
@@ -164,7 +170,9 @@ class ClaimCheck:
                 f" / {c['invalid']} invalid / {c['satisfiable']} satisfiable"
                 f" / {c['ambiguous']} ambiguous / {c['impossible']} impossible"
                 + (f"; {len(self.out_of_scope)} out of scope (not policy claims)"
-                   if self.out_of_scope else ""))
+                   if self.out_of_scope else "")
+                + (f"; {len(self.extraction_failures)} NOT CHECKED (extraction "
+                   f"failed)" if self.extraction_failures else ""))
 
 
 # --------------------------------------------------------------------------- #
@@ -200,19 +208,32 @@ def policy_conflicts(policy) -> dict[str, list[str]]:
 # validation — pure, deterministic, no model
 # --------------------------------------------------------------------------- #
 
-def _reachable(graph: PolicyGraph, max_states: int = 200_000) -> set[GuardState]:
+def _reachable(graph: PolicyGraph, max_states: int = DEFAULT_MAX_STATES
+               ) -> tuple[set[GuardState], bool]:
+    """The reachable states, and whether the search actually *completed*.
+
+    The second element is load-bearing. A truncated search returns a SUBSET of
+    the reachable states, and "enabled in every state we happened to reach" is
+    not "enabled in every reachable state" — reading a verdict off it is
+    exactly the false-confidence this module refuses everywhere else. Callers
+    must check it, the same way ``prove`` returns ``unbounded`` rather than
+    ``proven`` when it hits the cap.
+    """
     seen = {graph.initial}
     queue = deque([graph.initial])
-    while queue and len(seen) <= max_states:
+    while queue:
+        if len(seen) > max_states:
+            return seen, False
         for _edge, nxt in graph.successors(queue.popleft()):
             if nxt not in seen:
                 seen.add(nxt)
                 queue.append(nxt)
-    return seen
+    return seen, True
 
 
 def check_claim(graph: PolicyGraph, claim: PolicyClaim, *,
-                conflicts: dict[str, list[str]] | None = None) -> ClaimResult:
+                conflicts: dict[str, list[str]] | None = None,
+                max_states: int = DEFAULT_MAX_STATES) -> ClaimResult:
     """Validate one translated claim against the guard FSM.
 
     Entailment, not consistency: ``valid`` means the policy *requires* the claim
@@ -235,27 +256,47 @@ def check_claim(graph: PolicyGraph, claim: PolicyClaim, *,
             detail=f"{claim.tool!r} is not a tool the policy governs", **base)
 
     if claim.kind == "permitted":
-        states = _reachable(graph)
-        enabled = sum(1 for s in states if edge.enabled_in(s))
         if edge.denied:
+            # a rule on the edge, not a fact about reachability: sound even if
+            # the state space were never explored at all
             holds, why = False, f"the rule denying {claim.tool!r} outright"
-        elif enabled == 0:
-            holds, why = False, (f"the guards on {claim.tool!r}, which no "
-                                 f"reachable state can all satisfy")
-        elif enabled == len(states):
-            holds, why = True, (f"the policy, which enables {claim.tool!r} in "
-                                f"every reachable state")
-        else:
-            # permitted on some paths, not all — weaker than entailment
-            guards = [g for g, on in (("authentication", edge.requires_auth),
-                                      ("approval", edge.requires_confirmation),
-                                      ("a loaded entity", edge.requires_entity))
-                      if on]
+        elif graph.unbounded:
             return ClaimResult(
-                status="satisfiable",
-                detail=(f"{claim.tool!r} is enabled in {enabled} of {len(states)} "
-                        f"reachable states; it is gated on "
-                        + " and ".join(guards)), **base)
+                status="ambiguous",
+                detail=("the guard layer's state space is not finite, so no "
+                        "claim quantified over every reachable state is "
+                        "decidable here"), **base)
+        elif not (explored := _reachable(graph, max_states))[1]:
+            # An incomplete search yields no verdict — in EITHER direction. The
+            # old code read `enabled == len(states)` off a truncated set and
+            # returned VALID, and `enabled == 0` off the same set and returned
+            # a verdict too. Both are unsound, and VALID is the dangerous one:
+            # it is a clean row asserting something never checked.
+            return ClaimResult(
+                status="ambiguous",
+                detail=(f"exploration exceeded {max_states} states, so the "
+                        f"reachable set is incomplete and no verdict on "
+                        f"{claim.tool!r} is claimed"), **base)
+        else:
+            states = explored[0]
+            enabled = sum(1 for s in states if edge.enabled_in(s))
+            if enabled == 0:
+                holds, why = False, (f"the guards on {claim.tool!r}, which no "
+                                     f"reachable state can all satisfy")
+            elif enabled == len(states):
+                holds, why = True, (f"the policy, which enables {claim.tool!r} "
+                                    f"in every reachable state")
+            else:
+                # permitted on some paths, not all — weaker than entailment
+                guards = [g for g, on in
+                          (("authentication", edge.requires_auth),
+                           ("approval", edge.requires_confirmation),
+                           ("a loaded entity", edge.requires_entity)) if on]
+                return ClaimResult(
+                    status="satisfiable",
+                    detail=(f"{claim.tool!r} is enabled in {enabled} of "
+                            f"{len(states)} reachable states; it is gated on "
+                            + " and ".join(guards)), **base)
     else:
         attr = {"requires_approval": "requires_confirmation",
                 "requires_auth": "requires_auth",

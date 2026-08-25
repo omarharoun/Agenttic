@@ -1,5 +1,70 @@
 # Changelog
 
+## Unreleased — the agent's words, checked against the same policy as its actions
+
+M45–M46 (SPEC-13 Steps 63b–63d). §63 asks whether the agent's *actions* can
+violate policy. This asks whether its *words* are true about that same policy.
+An agent can stay entirely inside its authorized tools and still tell a customer
+"you don't need approval for that" when the policy requires it — nothing in the
+action graph is wrong, and the lie is in the sentence.
+
+`proof(claim)` is five-valued (valid / invalid / satisfiable / ambiguous /
+impossible) where `proof(authorization)` is four-valued, and the two never share
+a report row (**Hard Rule 72**): `1 counterexample · 1 invalid` on one line does
+not tell a reader whether the agent *did* something illegal or *said* something
+false, and those route to different owners. Output claims render as their own
+section, `3b · OUTPUT CLAIMS`.
+
+**Opt-in, and it says so.** `verify_op` runs on the normal path for every run and
+promises zero model calls. Claim extraction needs a model to read prose, so it
+runs only when the caller supplies both an extractor and the policy to check
+against; otherwise the leg reads `not_run` and renders as `not checked` — which
+is not the same as "no false claims found". A network-block test enforces the
+promise.
+
+**Report-only under gate v1**, following the scoreboard precedent. A verified
+false claim does not block sign-off today. Flipping that is a separate, announced
+change under a `gate_version` bump, so a sign-off issued under v1 keeps meaning
+what it meant when it was issued.
+
+### Soundness fix: a truncated search no longer returns a verdict
+
+`claims.check_claim` answered "is this tool permitted" by counting how many
+*reachable* states enable it, against a search capped at 200,000 states.
+`_reachable` returned a bare `set` that could not say whether it had finished, so
+the caller compared `enabled == len(states)` against the truncated set — both
+sides shrink together, which means truncation could never make the test fail,
+only make it confident. Measured on the shipped fixture: at every cap from 0
+upward the old code returned VALID, including where it had explored one of three
+reachable states.
+
+`_reachable` now returns `(states, complete)`, and `check_claim` returns
+AMBIGUOUS rather than a verdict when the search was cut short — in either
+direction, since `enabled == 0` was equally unsound on a partial set. `prove` has
+always done this (`unbounded`, never `proven`, at the cap) and both now share
+`DEFAULT_MAX_STATES`. Two adjacent holes closed with it: `graph.unbounded` was
+unchecked in the claim path, and the AMBIGUOUS sentence said "could not be
+soundly translated" for outcomes that were not translation failures.
+
+### `extraction_failures` — unchecked is not clean
+
+If extraction fails, that output was not checked. Returning an empty claim list
+would render as a clean row and silently shrink the denominator, so
+`ClaimExtractionError` propagates and is counted outside the five buckets and
+printed above them — the same shape as `unexercised`, `not_measurable`,
+`non_results` and `evaluation_failures`.
+
+### Also
+
+- `verification/claim_extract.py` is the only module in `verification` that may
+  touch a model, mirroring `stimulus/realize.py`. The client is injected, never
+  constructed, so the whole path is exercisable offline.
+- The extractor makes a fresh call per invocation and caches nothing. `translate`
+  samples it `n` times and treats unanimity as confidence; a memoized extractor
+  would return one opinion `n` times and manufacture that unanimity.
+- 49 new tests. Full suite 4325 passing; the four `test_release_ladder` failures
+  are clock-coupled and reproduce on unmodified `master`.
+
 ## Unreleased — closure stops counting what nobody measured (NUMBERS MOVE)
 
 > **Release note.** This changes published closure figures and both shipped
