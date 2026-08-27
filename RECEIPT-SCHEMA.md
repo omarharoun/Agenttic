@@ -387,8 +387,20 @@ verification order (§3 step 6) and the growth bound (§2.4) are concrete.
   gateway so `action_hash` matches.
 - Extend `verifier/sdk.py` + `verifier/js/sdk.js` with the type/expiry/action/
   bound-params/nonce steps their current `verify_receipt` lacks (§0.3).
-- Gateway issuance: on a Lane 1–3 **allow**, mint a Tool Access Receipt alongside the
-  existing audit `Receipt`, resolving `principal` from the delegation chain (net-new).
+- ~~Gateway issuance: on a Lane 1–3 **allow**, mint a Tool Access Receipt alongside the
+  existing audit `Receipt`, resolving `principal` from the delegation chain (net-new).~~
+  **Done** — `ReceiptIssuer.issue_tool_access`, returned from
+  `POST /api/enforce/tool-call` as an `Agent-Tool-Receipt` response header. Two
+  deviations from the line above, both deliberate:
+  *(a)* `principal` resolves from the **authenticated operator**, not the delegation
+  chain — `verify_chain` roots at `{passport_id, agent_id}`, an agent, so no walk can
+  reach a human today; `via` is the agent hop, depth one.
+  *(b)* The audit `Receipt` is **not** minted alongside — `ReceiptIssuer.issue_receipt`
+  still has no production caller. Separate gap.
+  The tool's `params_schema` comes from a per-tool catalog at
+  `enforcement.tool_access.tools` in `config.yaml`, holding the tool's MCP
+  `inputSchema` verbatim. That catalog is not optional: `Decision.action_class` is
+  `read|write|unknown` and cannot express `irreversible`.
 - `ToolReceiptNonceRow` + claim-by-insert (§7).
 
 None of that is in this deliverable. Schema only, as asked.
