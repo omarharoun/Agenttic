@@ -495,8 +495,9 @@ def verify_op(traces: list, *, cfg: dict | None = None,
     extractor supplied the claims leg stays ``not_run`` and this function makes
     no model calls at all. Both it and ``enforcement_policy`` are required —
     a claim is checked against a policy, so an extractor with no policy has
-    nothing to check against and is ignored rather than half-run. It is what lets a report lead with *what was never exercised* instead of
-    a pass rate that is silent about everything the suite never tried.
+    nothing to check against and is ignored rather than half-run. It is what
+    lets a report lead with *what was never exercised* instead of a pass rate
+    that is silent about everything the suite never tried.
 
     ``cfg`` is the loaded config, threaded through to the coverage model so the
     closure target comes from ``coverage.closure_target`` (Hard Rule 7) rather
@@ -688,8 +689,17 @@ def verify_op(traces: list, *, cfg: dict | None = None,
         from agenttic.verification.formal.graph import from_enforcement_policy
         try:
             graph = from_enforcement_policy(enforcement_policy)
-        except Exception:  # noqa: BLE001 — an uncompilable policy checks nothing
+        except Exception as exc:  # noqa: BLE001
+            # A policy that does not compile checks NOTHING — and that is not
+            # the same fact as claim checking never having been switched on.
+            # Recorded per trace so the leg reports NOT CHECKED instead of
+            # `not_run`, for the same reason `extraction_failures` exists: an
+            # unchecked output must never render as a clean one.
             graph = None
+            claim_checks = [
+                ClaimCheck(extraction_failures=[
+                    f"the enforcement policy did not compile: {exc}"])
+                for _ in ran]
         if graph is not None:
             claim_checks = []
             for t in ran:

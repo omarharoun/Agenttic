@@ -103,3 +103,26 @@ def test_the_leg_still_does_not_gate():
     assert s.claims.invalid == 1
     assert "claims" not in s.LEGS
     assert not any("claim" in w.lower() for w in s._scoreboard_refusals())
+
+
+def test_an_uncompilable_policy_is_recorded_not_silently_skipped():
+    """A policy that does not compile checks NOTHING, and that must not read
+    the same as claim checking never having been switched on.
+
+    The leg has exactly two ways to say "no false claims here": `not_run`,
+    meaning nobody asked, and a populated leg with zero invalid, meaning we
+    looked. A compile failure is neither — it is asked-for and unchecked, and
+    it belongs with the extraction failures for the same reason those exist.
+    """
+    class Uncompilable(EnforcementPolicy):
+        pass
+
+    bad = Uncompilable(policy_id="bad", agent_id="a1", rules=[])
+    # make graph compilation blow up the way a malformed policy would
+    object.__setattr__(bad, "rules", property(lambda self: 1 / 0))
+
+    leg = _leg(claim_extractor=static_extractor([LIE]), enforcement_policy=bad)
+    assert leg.status == "populated", "an asked-for check that failed is not `not_run`"
+    assert leg.extraction_failures == 1
+    assert leg.checked == 0
+    assert (leg.valid, leg.invalid) == (0, 0), "nothing was checked, so nothing is clean"

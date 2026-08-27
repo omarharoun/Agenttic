@@ -109,8 +109,9 @@ def render(signoff: VerificationSignoff,
         if cl.extraction_failures:
             # Loud, and above the counts it would otherwise silently shrink.
             lines.append(_bar("    NOT CHECKED",
-                              f"{cl.extraction_failures} output(s) — extraction "
-                              f"failed, so these are unchecked, not clean"))
+                              f"{cl.extraction_failures} output(s) — nothing "
+                              f"was checked for these, so they are unchecked, "
+                              f"not clean"))
         if cl.out_of_scope:
             lines.append(_bar("    out of scope",
                               f"{cl.out_of_scope} not policy claims (not counted)"))

@@ -152,8 +152,9 @@ class ClaimCheck:
 
     results: list[ClaimResult] = field(default_factory=list)
     out_of_scope: list[OutOfScope] = field(default_factory=list)
-    #: Translation never ran for this output — the extractor failed, so NOTHING
-    #: about it was checked. Kept apart from `results` on purpose: a case with
+    #: Nothing about this output was checked — the extractor failed, or the
+    #: policy it would have been checked against did not compile. Either way the
+    #: reason is carried here. Kept apart from `results` on purpose: a case with
     #: zero results and a failure here is unchecked, not clean, and the two must
     #: never sum into the same denominator.
     extraction_failures: list[str] = field(default_factory=list)
@@ -171,8 +172,8 @@ class ClaimCheck:
                 f" / {c['ambiguous']} ambiguous / {c['impossible']} impossible"
                 + (f"; {len(self.out_of_scope)} out of scope (not policy claims)"
                    if self.out_of_scope else "")
-                + (f"; {len(self.extraction_failures)} NOT CHECKED (extraction "
-                   f"failed)" if self.extraction_failures else ""))
+                + (f"; {len(self.extraction_failures)} NOT CHECKED"
+                   if self.extraction_failures else ""))
 
 
 # --------------------------------------------------------------------------- #
