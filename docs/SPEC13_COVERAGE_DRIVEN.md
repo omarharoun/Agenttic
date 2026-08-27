@@ -140,14 +140,22 @@ the 1990s, because the question that decides tape-out is not *"what passed?"* bu
 
 ## Verification
 
-M45–M46 add 49 tests (18 + 31); the full suite is 4325 passing. Four
-`test_release_ladder` failures reproduce on unmodified `master` and are
-clock-coupled, not caused by this work: the file hardcodes
-`NOW = datetime(2026, 7, 7)` and compares it against real-clock registry stamps,
-so it fails with negative observation hours on any day after that date.
-`tests/verification/test_cdv_cli.py` is coupled to `FORCE_COLOR` in the same
-family — Rich highlights bare integers, so `assert "4 · CONVERGENCE" in out`
-misses when colour is forced on. Neither was edited.
+M45–M46 add 50 tests (18 + 32); the full suite is 4457 passing, 8 skipped, and
+green. The four clock-coupled `test_release_ladder` failures recorded here in an
+earlier draft were fixed on `master` (`861df4e`) and no longer reproduce.
+
+The colour coupling has NOT been fixed and is not caused by this work: with
+`FORCE_COLOR` set in the environment, Rich emits ANSI escapes and eight CLI
+tests that assert on plain text fail — four in `test_cli_verify_traffic`, three
+in `test_subject_existence`, one in `test_cdv_cli`. They fail identically on
+unmodified `master` and pass with `NO_COLOR=1`. The suite is green in a
+colour-free environment, which is what CI provides. No existing test was edited.
+
+One soundness hole found during review and closed here: an enforcement policy
+that fails to compile left the leg `not_run`, which is the same reading as
+claim checking never having been switched on. A policy that does not compile
+checks nothing, so it is now recorded per trace in `extraction_failures` and
+renders as NOT CHECKED — idea 11 applied to the one path that had escaped it.
 
 M40–M44 added 139 new tests. Full suite green apart from 4 pre-existing `test_dist_quickstart`
 failures that reproduce identically on clean master (they subprocess

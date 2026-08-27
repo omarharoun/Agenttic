@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — the agent's words, checked against the same policy as its actions
+## [2.1.0.0] - 2026-08-27 — the agent's words, checked against the same policy as its actions
 
 M45–M46 (SPEC-13 Steps 63b–63d). §63 asks whether the agent's *actions* can
 violate policy. This asks whether its *words* are true about that same policy.
@@ -62,8 +62,27 @@ printed above them — the same shape as `unexercised`, `not_measurable`,
 - The extractor makes a fresh call per invocation and caches nothing. `translate`
   samples it `n` times and treats unanimity as confidence; a memoized extractor
   would return one opinion `n` times and manufacture that unanimity.
-- 49 new tests. Full suite 4325 passing; the four `test_release_ladder` failures
-  are clock-coupled and reproduce on unmodified `master`.
+- 50 new tests. Full suite 4457 passing, 8 skipped, green. The four
+  `test_release_ladder` failures previously recorded here as pre-existing were
+  fixed on `master` (`861df4e`) and no longer reproduce. Eight CLI tests remain
+  coupled to colour: with `FORCE_COLOR` set they fail on unmodified `master`
+  too, and pass with `NO_COLOR=1`.
+
+### Fixed at ship time
+
+- An enforcement policy that failed to compile left the claims leg `not_run` —
+  the same reading as claim checking never having been switched on. A policy
+  that does not compile checks nothing, so it is now recorded per trace in
+  `extraction_failures` and renders as NOT CHECKED. This was the one path that
+  had escaped the rule the rest of this entry is built on.
+- The `NOT CHECKED` line no longer says "extraction failed", since a failed
+  policy compile is not a failed extraction. The cause is carried per entry.
+
+### Added at ship time
+
+- `ui` now has the `verify` script `CLAUDE.md` has always documented
+  (`npm run lint && tsc --noEmit && vitest run`). It was referenced but never
+  defined, so the documented UI gate could not run.
 
 ## Unreleased — closure stops counting what nobody measured (NUMBERS MOVE)
 

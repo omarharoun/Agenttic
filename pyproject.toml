@@ -6,7 +6,7 @@
 # One distribution, one version, defined in agenttic/__init__.py and kept in
 # lock-step with the `version` below (asserted by a test).
 name = "agenttic"
-version = "2.0.0"
+version = "2.1.0"
 description = "Agenttic — certify, trace and enforce AI agents. One install, one import, a signed safety grade."
 # A dedicated, concise package landing page — NOT the internal repo README, which
 # is a full dev/architecture doc unsuitable for a PyPI project page.
