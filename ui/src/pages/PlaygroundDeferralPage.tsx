@@ -97,7 +97,7 @@ export function PlaygroundDeferralPage() {
         </div>
 
         <aside className="pg-cta">
-          <p>We score this skill on real agents — deferral is safety.</p>
+          <p>We score this skill on real agents — deferral is measured, not assumed.</p>
           <Link className="btn-primary" to="/scan">Grade your agent →</Link>
           <Link className="pg-cta-alt" to="/playground">More simulations</Link>
         </aside>

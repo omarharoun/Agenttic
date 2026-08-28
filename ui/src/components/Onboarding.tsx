@@ -64,6 +64,17 @@ const STEPS: Step[] = [
   },
 ];
 
+/** `localStorage` is absent under server-side rendering and can throw outright
+ *  when a browser blocks site data. `readDone` below has always guarded it; the
+ *  two flag reads did not, so the whole panel threw on any render without it. */
+function readFlag(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
 function readDone(): Set<string> {
   try {
     const raw = localStorage.getItem(DONE_KEY);
@@ -74,10 +85,8 @@ function readDone(): Set<string> {
 }
 
 export function Onboarding() {
-  const [dismissed, setDismissed] = useState(
-    () => localStorage.getItem(DISMISS_KEY) === "1");
-  const [collapsed, setCollapsed] = useState(
-    () => localStorage.getItem(COLLAPSE_KEY) === "1");
+  const [dismissed, setDismissed] = useState(() => readFlag(DISMISS_KEY));
+  const [collapsed, setCollapsed] = useState(() => readFlag(COLLAPSE_KEY));
   const [done, setDone] = useState<Set<string>>(readDone);
   // steps auto-detected as complete from real account state (merged, read-only)
   const [auto, setAuto] = useState<Set<string>>(new Set());

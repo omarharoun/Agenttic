@@ -75,6 +75,12 @@
   --wait: #C9A34E; --wait-soft: rgba(201, 163, 78, 0.14); --wait-border: rgba(201, 163, 78, 0.5);
   --fail: #C8503F; --fail-soft: rgba(200, 80, 63, 0.14);  --fail-border: rgba(200, 80, 63, 0.5);
   --info: #7D96B8; --info-soft: rgba(125, 150, 184, 0.14); --info-border: rgba(125, 150, 184, 0.5);
+  /* The critical-severity fill. Deliberately NOT `--fail`: this is the one red
+     that holds white ink at 5.63:1 in BOTH themes, so it is theme-invariant by
+     design and must not be re-tuned per theme like the status ramp above.
+     `--on-status-solid` is the ink for any SOLID status fill (this chip, the
+     playground verdict badge), following the `--on-wait` convention above. */
+  --sev-critical: #c0392b; --on-status-solid: #fff;
   --neutral: #A9AFB6; --neutral-soft: rgba(169, 175, 182, 0.12);
 
   /* ===== semantic SCORE vocabulary (SPEC-11 Step 50) — the shared product
@@ -179,6 +185,12 @@ html[data-theme="light"] {
   --wait: #98671B; --wait-soft: #F7ECD6; --wait-border: #ECD8AE;
   --fail: #A8412A; --fail-soft: #F6E1D9; --fail-border: #E8C4B5;
   --info: #3E6486; --info-soft: #E5EDF3; --info-border: #C6D9E7;
+  /* The critical-severity fill. Deliberately NOT `--fail`: this is the one red
+     that holds white ink at 5.63:1 in BOTH themes, so it is theme-invariant by
+     design and must not be re-tuned per theme like the status ramp above.
+     `--on-status-solid` is the ink for any SOLID status fill (this chip, the
+     playground verdict badge), following the `--on-wait` convention above. */
+  --sev-critical: #c0392b; --on-status-solid: #fff;
   --neutral: #565B60; --neutral-soft: #E9EBE6;
 
   /* score vocabulary re-points to the light-tuned status ramp automatically

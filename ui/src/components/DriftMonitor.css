@@ -19,7 +19,7 @@
   padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border);
 }
 .dm-flag.is-ok { color: var(--ok); border-color: var(--ok); }
-.dm-flag.is-fired { color: #fff; background: #c0392b; border-color: #c0392b; }
+.dm-flag.is-fired { color: var(--on-status-solid); background: var(--sev-critical); border-color: var(--sev-critical); }
 
 .dm-svg { width: 100%; height: auto; display: block; }
 .dm-band { fill: var(--ok); opacity: 0.12; }

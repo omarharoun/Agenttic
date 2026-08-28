@@ -27,6 +27,8 @@ const LoginPage = lazy(() =>
   import("./pages/AuthPages").then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() =>
   import("./pages/AuthPages").then((m) => ({ default: m.SignupPage })));
+const EnginePage = lazy(() =>
+  import("./pages/EnginePage").then((m) => ({ default: m.EnginePage })));
 const VerifyPage = lazy(() =>
   import("./pages/AuthPages").then((m) => ({ default: m.VerifyPage })));
 

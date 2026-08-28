@@ -6,6 +6,8 @@ import { money, ms } from "../stats";
 import { PASS_MEANING, PASS_THRESHOLD } from "../workflow/templates";
 import { Markdown } from "../components/Markdown";
 import { IconRefresh, IconWarning, IconCheck, IconHalf, IconClose, IconArrowRight, IconDownload } from "../icons";
+import { CoverageWheelFor, VerificationStrip, cov, scopeNote, scopeTag, verdictScope } from "../verification";
+import { ProvenanceBadge, VerdictWithScope, criterionStatus } from "../components/ds/Scorecard";
 
 /** Post-run scoreboard: scorecard summary + one row per test case showing
  * the agent's prediction vs expected, expandable to per-criterion scores
@@ -37,9 +39,9 @@ export function ResultsPanel({ results }: { results: ExecutionResults }) {
   // the payload ⇒ provisional). Real today; the rest of the fence needs §7's
   // /results enrichment.
   const provCount = new Set(
-    scored.flatMap((c: any) => (c.criteria || [])
-      .filter((cr: any) => criterionStatus({ scorer: cr.scorer, alpha: cr.alpha }) === "provisional")
-      .map((cr: any) => cr.criterion_id)),
+    scored.flatMap((c) => (c.criteria || [])
+      .filter((cr) => criterionStatus({ scorer: cr.scorer }) === "provisional")
+      .map((cr) => cr.criterion_id)),
   ).size;
 
   return (
@@ -229,7 +231,21 @@ export function ResultsPanel({ results }: { results: ExecutionResults }) {
  *  `dimsFromCoverage` uses to decide whether to hatch a sector — the wheel sits
  *  directly above this table on the same screen, and a table reading 0% beside a
  *  hatched sector would be the two halves of one panel disagreeing. */
-function ClosureCell({ v }: { v: any }) {
+/** A violated property as the assertions rollup reports it. */
+interface BrokenProperty { assertion_id: string; traces: number; detail: string }
+
+/** One `coverage.per_coverpoint` entry, mirroring the payload `ops.py` builds:
+ *  `closure` is null for a coverpoint nothing can feed, and the two
+ *  `not_measurable*` keys say which one and why. */
+interface PerCoverpoint {
+  closure?: number | null;
+  unhit?: string[];
+  other_hits?: number;
+  not_measurable?: boolean;
+  not_measurable_reason?: string;
+}
+
+function ClosureCell({ v }: { v: PerCoverpoint }) {
   if (v.not_measurable) return <span className="muted-sm">not measurable</span>;
   return typeof v.closure === "number"
     ? <>{Math.round(v.closure * 100)}%</>
@@ -239,17 +255,17 @@ function ClosureCell({ v }: { v: any }) {
 /* Exported for ui/src/results-not-measurable.test.tsx: the not-measurable state
    is the one this table renders least often and must never get wrong, so it is
    pinned directly rather than through a whole results payload. */
-export function NeverExercised({ sc }: { sc: any }) {
+export function NeverExercised({ sc }: { sc: unknown }) {
   const c = cov(sc);
-  const per = c.per_coverpoint || {};
+  const per = (c.per_coverpoint || {}) as Record<string, PerCoverpoint>;
   const a = c.assertions;
   // A not-measurable coverpoint has an EMPTY `unhit` (you cannot have failed to
   // exercise what nothing can observe), so filtering on unhit alone hid the
   // single most important thing this panel exists to say. It is listed on its
   // own terms, with the reason, instead.
   const rows = Object.entries(per).filter(
-    ([, v]: any) => (v.unhit || []).length || v.not_measurable);
-  const brokenProps = (a?.violated_properties || []) as any[];
+    ([, v]) => (v.unhit || []).length || v.not_measurable);
+  const brokenProps = (a?.violated_properties || []) as BrokenProperty[];
   if (!rows.length && !brokenProps.length) return null;
   return (
     <div className="never-exercised">
@@ -274,7 +290,7 @@ export function NeverExercised({ sc }: { sc: any }) {
           </div>
           <table className="ne-table">
             <tbody>
-              {rows.map(([id, v]: any) => (
+              {rows.map(([id, v]) => (
                 <tr key={id}>
                   <td className="ne-cp">{id}</td>
                   <td className="ne-closure"><ClosureCell v={v} /></td>

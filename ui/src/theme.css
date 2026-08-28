@@ -2547,7 +2547,7 @@ table.data tbody tr { transition: background 0.1s; }
 }
 /* dedicated darker red so white text clears WCAG AA (var(--fail) at 4.06 fails);
    #c0392b gives white 5.63:1 in both themes. */
-.sev-chip.sev-critical { color: #fff; background: #c0392b; border-color: #c0392b; }
+.sev-chip.sev-critical { color: var(--on-status-solid); background: var(--sev-critical); border-color: var(--sev-critical); }
 .sev-chip.sev-high { color: var(--fail); background: var(--fail-soft); border-color: var(--fail-border); }
 .sev-chip.sev-medium { color: var(--wait); background: var(--wait-soft); border-color: var(--wait-border); }
 .sev-chip.sev-low { color: var(--muted); background: var(--panel-2); border-color: var(--border); }

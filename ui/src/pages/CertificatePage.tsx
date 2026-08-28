@@ -2,15 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { SiteNav } from "../components/SiteNav";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError } from "../api";
-import {
-  badgeUrl, bandForIndex, type Certification, type CertScore, embedSnippets,
-  gradeColor, indexFromCert, normalizeScores, siteOrigin, statusView,
-  testsForCert,
-} from "../cert";
+import { badgeUrl, bandForIndex, type Certification, type CertScore, embedSnippets, gradeColor, indexFromCert, normalizeScores, siteOrigin, statusView, testsForCert, isCertificate } from "../cert";
 import { Seal, SealMark } from "../components/Seal";
 import { Skeleton } from "../components/ui";
 import { ErrorPanel } from "../components/PageData";
 import { StatusIcon, IconCheck, IconExternal } from "../icons";
+import { CertScopeStrip, CertScopeDetail } from "../verification";
 
 /* ============================================================================
    Public certificate verification page — /certified/:id (unauthenticated).

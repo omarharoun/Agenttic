@@ -60,6 +60,10 @@ function reachable(path: string): boolean {
   const matches = matchRoutes(routes as never, path);
   if (!matches || matches.length === 0) return false;
   const matched = matches[matches.length - 1].route as { path?: string };
+  // The public 404. It matches everything by design, so answering `true` here
+  // would make the whole substring-defect family below pass vacuously — the
+  // same trap `/app/*` is guarded against just underneath.
+  if (matched.path === "*") return false;
   if (matched.path !== "/app/*") return true;
   // "/app/scenarios" -> "scenarios"; "/app" -> ""
   const rest = path.replace(/^\/app\/?/, "").replace(/[?#].*$/, "");
