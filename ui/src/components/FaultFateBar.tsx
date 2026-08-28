@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import "./FaultFateBar.css";
 
 /**
  * Fault fates across scenario runs — a stacked bar, one row per run.

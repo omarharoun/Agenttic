@@ -356,7 +356,11 @@
    must scroll away with it rather than hang over the run list above. */
 .scn-detail {
   display: grid; grid-template-columns: 260px minmax(0, 1fr);
-  gap: var(--sp-7); align-items: start; margin-top: var(--sp-6);
+  /* --sp-7 (28px) is not a rung on the scale — it is 4px-based and skips 7,
+     so this grid rendered with NO gap at all. --sp-6 keeps the gutter equal to
+     this rule's own margin-top and one step above the --sp-5 its stacked
+     variant uses at <=780px. */
+  gap: var(--sp-6); align-items: start; margin-top: var(--sp-6);
 }
 .scn-detail__main { min-width: 0; }
 

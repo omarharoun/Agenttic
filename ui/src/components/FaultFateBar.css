@@ -1,0 +1,87 @@
+/* FaultFateBar — the stylesheet this component shipped without.
+ *
+ * Every class it emits (ffb, ffb__legend, ffb__key, ffb__swatch, ffb__rowlab,
+ * ffb__val, ffb__none, ffb__mark) was unstyled, so the browser defaults stood
+ * in for the design and two of its own stated guarantees were quietly broken:
+ *
+ *   - the legend rendered as "firedskippednever reached", because nothing
+ *     separated the keys and the swatches had no box to paint;
+ *   - the row labels fell back to 16px proportional text, so 26 characters
+ *     overran the 232px LABEL_W the component budgets for them and ran under
+ *     the bars — the exact failure its own comment says the width was measured
+ *     to avoid.
+ *
+ * SVG text takes `fill`, not `color`, which is why the labels also drew in the
+ * default black and all but vanished in the dark theme.
+ */
+
+.ffb {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.ffb__cap {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.ffb__sub {
+  color: var(--muted);
+}
+
+/* The keys are laid out, not run together. `gap` is the whole fix for the
+   concatenation; wrapping keeps them readable when the plot is narrow. */
+.ffb__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-4);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.ffb__key {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+/* The swatch carries the series colour, so it needs a box to carry it in — an
+   empty inline span has no size and painted nothing. */
+.ffb__swatch {
+  display: inline-block;
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.ffb__plot {
+  overflow-x: auto;
+}
+
+/* 12px mono is what LABEL_W = 232 was measured against. */
+.ffb__rowlab {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  fill: var(--muted);
+}
+
+/* Direct labels sit ON the segment, so they take the ink that reads against a
+   saturated categorical fill rather than the page's own foreground. */
+.ffb__val {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--on-status-solid);
+}
+
+/* "no fault staged" is an absence, and is styled as one — it must not read as
+   a zero-valued bar. */
+.ffb__none,
+.ffb__mark {
+  font-size: 11px;
+  fill: var(--muted);
+}
