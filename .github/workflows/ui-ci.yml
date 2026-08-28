@@ -18,6 +18,10 @@ name: UI CI (production bar)
 # backend / docker jobs there.
 
 on:
+  # Manual, because a push made by a workflow using the default GITHUB_TOKEN does
+  # NOT trigger other workflows — so the baseline-refresh job's own commit lands
+  # without this gate ever checking it. This is how you re-run it on demand.
+  workflow_dispatch:
   push:
     branches: [master, main]
     paths:
