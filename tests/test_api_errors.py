@@ -204,3 +204,45 @@ def test_scoring_halts_on_terminal_judge_error(monkeypatch, tmp_path):
     assert scored["n"] == 1                          # ONE attempt, then halt
     assert "terminal upstream error" in runs[0].scoring_error
     assert all("scoring halted" in r.scoring_error for r in runs[1:])
+
+
+def test_the_halt_holds_when_the_batch_is_larger_than_the_parallelism(
+        monkeypatch, tmp_path):
+    """One doomed call, whatever the batch size.
+
+    The test above uses four cases against a default `scoring.max_parallel` of
+    five, so nothing is ever queued behind the semaphore — it exercises only
+    the head of the batch. This one runs twelve, so most cases DO queue, and it
+    pins the other half of the guarantee: the latch stops the queued ones, and
+    serialising the first stops the ones that would otherwise start alongside
+    it. Before the first attempt was serialised this returned five, one per
+    concurrency slot.
+    """
+    from agenttic import ops
+    from agenttic.registry.sqlite_store import Registry
+    from agenttic.schema.rubric import Criterion, Rubric
+
+    reg = Registry(tmp_path / "t.db")
+    reg.save_rubric(Rubric(rubric_id="rb", version=1, weights={"j": 1.0}, criteria=[
+        Criterion(criterion_id="j", description="d", scorer="judge",
+                  scale="binary", anchors={"pass": "p", "fail": "f"})]))
+    cases = [TestCase(test_id=f"c{i}", suite_id="s", task_description="t",
+                      rubric_id="rb") for i in range(12)]
+    traces = [Trace(trace_id=uuid.uuid4().hex, agent_id="a", agent_config_hash="h",
+                    test_case_id=c.test_id, spans=[], visibility="black_box",
+                    final_output="out", schema_version=SCHEMA_VERSION)
+              for c in cases]
+
+    scored = {"n": 0}
+
+    def dying_score_run(*a, **k):
+        scored["n"] += 1
+        raise TerminalAPIError("credit balance is too low", status=400)
+
+    monkeypatch.setattr(ops, "score_run", dying_score_run)
+    monkeypatch.setattr(ops, "make_judge", lambda *a, **k: None)
+    runs = asyncio.run(ops.score_op({"scoring": {}}, reg, traces, cases, "model"))
+
+    assert len(runs) == 12
+    assert scored["n"] == 1, "a dead API key must cost exactly one round-trip"
+    assert all("scoring halted" in r.scoring_error for r in runs[1:])

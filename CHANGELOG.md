@@ -1,5 +1,43 @@
 # Changelog
 
+## Unreleased — the gates that were never running
+
+Post-3.0.0 fixes. CI's lint step had failed on every run since 11 August, and
+because it gates the job, `pytest -q`, both self-red-team gates and the
+dependency scan were SKIPPED for seventeen days. Nothing on `master` was
+actually being tested in that window. Unblocking it surfaced the rest.
+
+### Fixed
+
+- **The migration ledger was rolled back on Postgres.** `run_migrations` created
+  `schema_migrations` inside `engine.connect()`, which is commit-as-you-go in
+  SQLAlchemy 2.0 and rolls back on exit; Postgres runs DDL in that transaction,
+  so the table was gone before the next `INSERT`. pysqlite autocommits DDL, so
+  SQLite never showed it and every local run passed.
+- **A dead API key cost one doomed call per concurrency slot, not one.**
+  `score_op` checks its halt latch inside the semaphore, which only stops cases
+  still *queued* — with `scoring.max_parallel` at or above the batch size
+  nothing is queued, so every case made its own round-trip to be told the same
+  thing. The first attempt is now serialised, which makes "one attempt, then
+  halt" a guarantee instead of a race the scheduler happened to win on 3.14 and
+  lose on 3.12.
+- **`--fg` was declared nowhere**, so `.limit-cap` rendered with no colour of
+  its own. Now `--text`.
+- **Three `F821`s** from annotations resolved against imports made inside the
+  method body.
+
+### Changed
+
+- The two M45 acceptance gates now run. `visual.spec.ts` and `tokens.spec.ts`
+  matched neither runner's glob — vitest only scans `src/`, playwright only
+  `*.e2e.ts` — so both had been inert since the day they landed, and the token
+  gate found `--fg` on its first execution.
+- Visual baselines pin `timezoneId` and `locale`. They are photographs of
+  rendered text, and the committed set read 1:00:00 PM where CI read 10:00:00 AM
+  for the same fixture, so a refresh taken anywhere but the runner could never
+  match. `ui-snapshots.yml` regenerates them on the runner, by hand, with a
+  stated reason.
+
 ## [3.0.0.0] - 2026-08-28 — the agent's words, checked against the same policy as its actions
 
 > **Why a major.** Two breaking changes landed on `master` after the `v2.0.0`

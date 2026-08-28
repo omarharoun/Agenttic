@@ -470,10 +470,28 @@ async def score_op(
                 })
             return rs
 
+    if not prepared:
+        return []
+
+    # The FIRST case is scored alone, and the rest only start once it has
+    # returned. Whether the upstream is terminally broken is knowable only by
+    # making one call, and the `halted` latch above cannot stop a call that has
+    # already begun — it can only stop one still queued behind the semaphore.
+    # With `scoring.max_parallel` (5) at or above the batch size there is
+    # nothing queued: every case enters together, all of them check an empty
+    # `halted`, and a dead API key buys one doomed round-trip per case instead
+    # of one. Serialising exactly one attempt is what makes the halt a
+    # guarantee rather than a race the scheduler happens to win — it failed on
+    # 3.12 and passed on 3.14 for precisely that reason.
+    #
+    # The cost is one judge call's latency at the head of the batch, paid once
+    # per scoring step; everything after it still runs concurrently.
+    first = await score_one(0, *prepared[0])
     # gather preserves argument order, so RunScores still line up with traces
     # even though they finish out of order.
-    return list(await asyncio.gather(
-        *(score_one(i, *p) for i, p in enumerate(prepared))))
+    rest = await asyncio.gather(
+        *(score_one(i, *p) for i, p in enumerate(prepared[1:], start=1)))
+    return [first, *rest]
 
 
 def _round4(x: float | None) -> float | None:
