@@ -3,6 +3,7 @@
  * schemas). We re-export them here so existing `import { … } from "../api"`
  * call sites keep working unchanged. */
 export * from "./api/types";
+import type { GamingReport } from "./components/GamingCard";
 import type {
   // core schemas
   Scorecard, Trace, TestSuite, Rubric,
@@ -36,6 +37,10 @@ import type {
   // billing / status
   PricingCatalog, BillingOverview, LedgerEntry, Invoice, BillingProviderConfig,
   CheckoutResult, ServiceStatus,
+  // capabilities
+  Capabilities,
+  // stored scenario runs
+  ScenarioRunRow, ScenarioRunDetail,
   // uploads
   UploadResult, ExtractResult,
   // copilot streaming
@@ -203,7 +208,7 @@ async function json<T>(res: Response): Promise<T> {
 export const api = {
   /** The verification surface — what this platform tests, enumerated from the
    *  live registries so the page can never overstate what is implemented. */
-  capabilities: () => afetch("/api/capabilities").then((r) => json<any>(r)),
+  capabilities: () => afetch("/api/capabilities").then((r) => json<Capabilities>(r)),
 
   // --- auth / session ---
   me: () => afetch("/api/me").then((r) => json<Me>(r)),
@@ -595,6 +600,21 @@ export const api = {
 
   listTraces: () => afetch("/api/traces").then((r) => json<Trace[]>(r)),
   getTrace: (id: string) => afetch(`/api/traces/${id}`).then((r) => json<Trace>(r)),
+  // --- stored scenario runs --------------------------------------------
+  listScenarioRuns: (q: { scenario_id?: string; agent_id?: string; limit?: number } = {}) => {
+    const p = new URLSearchParams();
+    if (q.scenario_id) p.set("scenario_id", q.scenario_id);
+    if (q.agent_id) p.set("agent_id", q.agent_id);
+    if (q.limit != null) p.set("limit", String(q.limit));
+    const qs = p.toString();
+    return afetch(`/api/scenario-runs${qs ? `?${qs}` : ""}`).then(
+      (r) => json<{ count: number; runs: ScenarioRunRow[] }>(r));
+  },
+  /** One stored run in full. The body is the registry's view over the wire —
+   *  the route computes nothing of its own. 404 carries a JSON `detail`. */
+  getScenarioRun: (runId: string) =>
+    afetch(`/api/scenario-runs/${encodeURIComponent(runId)}`).then(
+      (r) => json<ScenarioRunDetail>(r)),
   upload: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
