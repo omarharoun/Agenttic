@@ -87,6 +87,21 @@ printed above them — the same shape as `unexercised`, `not_measurable`,
 - The `NOT CHECKED` line no longer says "extraction failed", since a failed
   policy compile is not a failed extraction. The cause is carried per entry.
 
+### Fixed — a clipped extraction no longer blames its own JSON
+
+`model_extractor` capped the response at 2000 tokens. The input is an agent's
+whole final message and the output is one object per policy claim in it, so a
+chatty agent produces both a long prompt and a long answer — and 2000 clipped
+it. The clipped JSON then failed to parse and was reported as "no parseable
+claim list", which named the wrong cause: nothing was malformed, the reply
+never finished. It failed safe (NOT CHECKED, never clean) but it failed
+silently, on exactly the outputs most likely to carry a claim worth catching.
+
+The ceiling is now 16000, and `stop_reason` is read BEFORE the content: a
+`max_tokens` stop reports the ceiling it hit and says the output is unchecked;
+a `refusal` says the extractor declined. A response carrying no `stop_reason`
+at all still reads normally.
+
 ### Fixed — the frontend builds again
 
 `npm run build` had not worked: it calls `lint:tokens`, which was referenced
