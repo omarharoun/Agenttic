@@ -470,9 +470,20 @@ MIGRATIONS: list[tuple[int, str, callable]] = [
 
 
 def _ensure_table(conn) -> None:
+    """Create the ledger table, and COMMIT it.
+
+    The commit is load-bearing and was the difference between SQLite and
+    Postgres. `engine.connect()` is commit-as-you-go in SQLAlchemy 2.0, so a
+    connection closed without one rolls back — and Postgres runs DDL inside
+    that transaction, which quietly undid this CREATE. The very next statement
+    was `INSERT INTO schema_migrations`, against a table that no longer
+    existed. pysqlite autocommits DDL out of legacy behaviour, so SQLite never
+    showed it and every local run passed.
+    """
     conn.execute(text(
         "CREATE TABLE IF NOT EXISTS schema_migrations ("
         "version INTEGER PRIMARY KEY, name TEXT, applied_at TEXT)"))
+    conn.commit()
 
 
 def applied_versions(conn) -> set[int]:
