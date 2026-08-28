@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import type { Capabilities } from "../api";
 import { EmptyState, PageHeader, Skeleton } from "../components/ui";
 
 /* ============================================================================
@@ -34,7 +35,7 @@ function Section({ title, sub, children }: {
 }
 
 export function CapabilitiesPage() {
-  const [c, setC] = useState<any>(null);
+  const [c, setC] = useState<Capabilities | null>(null);
   const [err, setErr] = useState("");
 
   useEffect(() => {
@@ -70,7 +71,7 @@ export function CapabilitiesPage() {
         <table className="cap-table">
           <thead><tr><th>Dimension</th><th>Detects</th></tr></thead>
           <tbody>
-            {cov.baseline.coverpoints.map((cp: any) => (
+            {cov.baseline.coverpoints.map((cp) => (
               <tr key={cp.id}>
                 <td className="cap-k">{cp.id}</td>
                 <td>{cp.bins.map((b: string) => <code key={b}>{b}</code>)}</td>
@@ -95,7 +96,7 @@ export function CapabilitiesPage() {
         sub="Checked throughout the run, including runs that score perfectly. A violation is a failure regardless of the score; a property whose situation never arose is reported unexercised, never passed.">
         <table className="cap-table">
           <tbody>
-            {c.assertions.items.map((a: any) => (
+            {c.assertions.items.map((a) => (
               <tr key={a.id}>
                 <td className="cap-k"><code>{a.id}</code></td>
                 <td><span className={`cap-sev cap-sev--${a.severity}`}>{a.severity}</span></td>
@@ -109,7 +110,7 @@ export function CapabilitiesPage() {
       <Section title="What we can prove, not sample"
         sub={`Scope: ${formal.scope}. ${formal.limit}`}>
         <ul className="cap-list">
-          {formal.items.map((f: any) => <li key={f.id}>{f.description}</li>)}
+          {formal.items.map((f) => <li key={f.id}>{f.description}</li>)}
         </ul>
         <div className="cap-note">
           Results are four-valued — {formal.result_values.map((v: string) => (
@@ -149,7 +150,7 @@ export function CapabilitiesPage() {
         sub={`${c.deterministic_checks.total} code checks — no model in the loop, same input, same result.`}>
         <table className="cap-table">
           <tbody>
-            {Object.entries(c.deterministic_checks.groups).map(([g, names]: any) => (
+            {Object.entries(c.deterministic_checks.groups).map(([g, names]) => (
               <tr key={g}>
                 <td className="cap-k">{g} <span className="cap-dim">({names.length})</span></td>
                 <td>{names.map((n: string) => <code key={n}>{n}</code>)}</td>
