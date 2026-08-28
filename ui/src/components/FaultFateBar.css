@@ -85,3 +85,42 @@
   font-size: 11px;
   fill: var(--muted);
 }
+
+/* The toggle and the table were unstyled too. `.ffb` is a column flex
+   container, so without `align-self` the button stretched the full width of
+   the figure and read as a banner rather than a control. */
+.ffb__toggle {
+  align-self: flex-start;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill, 999px);
+  padding: var(--sp-1) var(--sp-3);
+  font: 500 var(--t-xs) / 1.4 var(--font-ui);
+  cursor: pointer;
+}
+
+.ffb__toggle:hover {
+  color: var(--text);
+}
+
+/* The numbers behind the bars: same three facts, for assistive tech, for print
+   and for anyone who would rather read them than measure a rectangle. */
+.ffb__table {
+  border-collapse: collapse;
+  font: 500 var(--t-xs) / 1.5 var(--font-mono);
+  color: var(--text);
+}
+
+.ffb__table th,
+.ffb__table td {
+  padding: var(--sp-1) var(--sp-3) var(--sp-1) 0;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ffb__table th {
+  color: var(--muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
