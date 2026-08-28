@@ -164,10 +164,16 @@ describe("RunDetailPage — the live run view", () => {
       const push = useFlowStore.getState().pushEvent;
       push({ seq: 1, type: "execution_started", node_id: null, data: {} });
       push({ seq: 2, type: "node_started", node_id: "run", data: {} });
+      // Both cases finish before the node completes. Progress is COUNTED, not
+      // read off `index` (cases run concurrently, so index 1 landing first
+      // does not mean two are done) — so a run that ends at 2 / 2 has to
+      // deliver two unit events, which is also what really happens.
       push({ seq: 3, type: "node_progress", node_id: "run",
         data: { event: "case_finished", index: 1, total: 2, ok: true, test_id: "t2" } });
-      push({ seq: 4, type: "node_completed", node_id: "run", data: {} });
-      push({ seq: 5, type: "execution_succeeded", node_id: null, data: {} });
+      push({ seq: 4, type: "node_progress", node_id: "run",
+        data: { event: "case_finished", index: 0, total: 2, ok: true, test_id: "t1" } });
+      push({ seq: 5, type: "node_completed", node_id: "run", data: {} });
+      push({ seq: 6, type: "execution_succeeded", node_id: null, data: {} });
     };
 
     apiMock.getExecution.mockResolvedValue({ ...EXEC });
