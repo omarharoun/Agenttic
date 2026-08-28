@@ -1,0 +1,78 @@
+name: UI snapshots (refresh baselines)
+
+# Visual baselines are photographs of rendered text, so they are only valid
+# from the machine that took them: fonts, hinting and the timezone all land in
+# the pixels. Refreshing them on a laptop produces images CI can never match —
+# the committed set read 1:00:00 PM where CI read 10:00:00 AM for the same
+# fixture, which is why timezoneId is pinned in playwright.config.ts and why
+# this job exists at all.
+#
+# Manual only. Regenerating a baseline ACCEPTS whatever the app currently
+# renders, so it must be a decision someone takes and then reviews in the diff,
+# never something that happens on a push.
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why the baselines are being accepted (goes in the commit message)"
+        required: true
+        type: string
+
+jobs:
+  refresh:
+    name: regenerate and commit visual baselines
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (the baselines must come from the shipped artifact)
+        run: npm run build
+
+      - name: Install Playwright chromium (+ system deps)
+        run: npx playwright install --with-deps chromium
+
+      # --update-snapshots rewrites every baseline it can produce. Failures are
+      # not swallowed: a spec that cannot reach its screen writes no image, and
+      # the diff below is what shows whether that happened.
+      - name: Regenerate baselines
+        run: npx playwright test --update-snapshots
+
+      - name: Show what moved
+        run: git -C .. status --porcelain ui/e2e/__screenshots__
+
+      - name: Commit the accepted baselines
+        run: |
+          cd ..
+          if git diff --quiet -- ui/e2e/__screenshots__; then
+            echo "No baseline changed — nothing to accept."
+            exit 0
+          fi
+          git config user.name  "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git add ui/e2e/__screenshots__
+          git commit -m "test(ui): accept refreshed visual baselines
+
+          ${{ inputs.reason }}
+
+          Regenerated on the CI runner via the ui-snapshots workflow, because a
+          baseline refreshed anywhere else cannot match this platform's font
+          rendering. Review the image diff before merging: this commit ACCEPTS
+          whatever the app currently draws."
+          git push
