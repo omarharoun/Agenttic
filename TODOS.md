@@ -1,37 +1,5 @@
 # TODOS
 
-## UI
-
-### The frontend does not build on master
-
-**What:** Repair the `ui` build: two unclosed JSX tags, a build script that
-calls an undefined `lint:tokens`, 16 eslint errors, and 21 failing vitest tests.
-
-**Why:** `npm run build` fails before it reaches the typechecker, so the UI
-cannot be built or deployed from `master` at all. Anyone touching the frontend
-is blocked on this, and it hides any new breakage behind existing breakage.
-
-**Context:** Found during `/ship` of `spec13/m46-claim-leg` on 2026-08-27. None
-of it is caused by that branch, which changes zero `ui/` files. Verified against
-a clean `master` at `6256f79`. Start with the two parse errors — everything in
-`tsc` cascades from them:
-
-- `ui/src/pages/CertifiedDirectoryPage.tsx:90` — `JSX element 'main' has no
-  corresponding closing tag` (TS17008)
-- `ui/src/pages/MethodologyPage.tsx:457` — `JSX element 'section' has no
-  corresponding closing tag` (TS17008)
-
-Those two account for all 38 `tsc --noEmit` errors across exactly two files.
-Then define `lint:tokens` (referenced by `build`, never written) so
-`npm run build` can proceed. Then the 21 vitest failures across 12 files — 5 of
-those files fail to collect at all, so fix collection before counting real
-assertion failures. `ui/package.json` gained a `verify` script in 2.1.0.0
-(`npm run lint && tsc --noEmit && vitest run`) — that is the gate to get green.
-
-**Effort:** L
-**Priority:** P0
-**Depends on:** None
-
 ## Verification
 
 ### Claim extraction may truncate on long agent outputs
@@ -76,3 +44,40 @@ earlier tags or roll into the next major.
 **Depends on:** None
 
 ## Completed
+
+### The frontend does not build on master
+
+**What:** Repair the `ui` build: two unclosed JSX tags, a build script that
+calls an undefined `lint:tokens`, 16 eslint errors, and 21 failing vitest tests.
+
+**Why:** `npm run build` fails before it reaches the typechecker, so the UI
+cannot be built or deployed from `master` at all. Anyone touching the frontend
+is blocked on this, and it hides any new breakage behind existing breakage.
+
+**Context:** Found during `/ship` of `spec13/m46-claim-leg` on 2026-08-27. None
+of it is caused by that branch, which changes zero `ui/` files. Verified against
+a clean `master` at `6256f79`. Start with the two parse errors — everything in
+`tsc` cascades from them:
+
+- `ui/src/pages/CertifiedDirectoryPage.tsx:90` — `JSX element 'main' has no
+  corresponding closing tag` (TS17008)
+- `ui/src/pages/MethodologyPage.tsx:457` — `JSX element 'section' has no
+  corresponding closing tag` (TS17008)
+
+Those two account for all 38 `tsc --noEmit` errors across exactly two files.
+Then define `lint:tokens` (referenced by `build`, never written) so
+`npm run build` can proceed. Then the 21 vitest failures across 12 files — 5 of
+those files fail to collect at all, so fix collection before counting real
+assertion failures. `ui/package.json` gained a `verify` script in 2.1.0.0
+(`npm run lint && tsc --noEmit && vitest run`) — that is the gate to get green.
+
+**Effort:** L
+**Priority:** P0
+**Depends on:** None
+
+**Completed:** v2.1.0.0 (2026-08-28) — branch `fix/ui-build`. Both unclosed JSX
+tags closed; `lint:tokens` restored and the four raw hex values tokenised; the
+scenario-run types and API that Step 17.2 dropped restored; imports repaired
+across six files; `verdictScope` written; 14 `no-explicit-any` gate violations
+typed. `npm run build`, `tsc --noEmit`, `npm run lint` and 512/512 vitest all
+green. Landing bundle 134.5 -> 113.5 KB gz.

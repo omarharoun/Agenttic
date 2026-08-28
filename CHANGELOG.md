@@ -78,6 +78,30 @@ printed above them — the same shape as `unexercised`, `not_measurable`,
 - The `NOT CHECKED` line no longer says "extraction failed", since a failed
   policy compile is not a failed extraction. The cause is carried per entry.
 
+### Fixed — the frontend builds again
+
+`npm run build` had not worked: it calls `lint:tokens`, which was referenced
+but never defined, and behind that two pages carried orphan JSX closing tags
+that produced all 38 `tsc` errors. A file that cannot parse cannot be
+typechecked, so those two also hid 87 further type errors across the project —
+including a whole block of scenario-run types and API methods that the Step
+17.2 typed-layer move deleted from `api.ts` without adding to `api/types.ts`,
+while the page using them kept importing them.
+
+Repaired end to end: the tags, the missing script, the lost types and methods,
+dropped imports across six files, a `verdictScope` helper that was called but
+never written, and the 14 remaining `no-explicit-any` violations of the Step
+17.2 gate. `/engine` is lazy-loaded as its route comment always said it must
+be, which takes the landing bundle from 134.5 to 113.5 KB gz.
+
+Four defects the newly-running tests then exposed: `Onboarding` threw wherever
+`localStorage` is absent, the `existing-suite` template still ended with the
+removed live-monitor step, one page made an unbounded "is safe" claim, and both
+route checkers let the 404 catch-all answer for every path — which had made the
+dead-link guard incapable of failing.
+
+`npm run verify` is green: 512 tests, clean lint, clean typecheck.
+
 ### Added at ship time
 
 - `ui` now has the `verify` script `CLAUDE.md` has always documented
