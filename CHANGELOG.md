@@ -1,6 +1,15 @@
 # Changelog
 
-## [2.1.0.0] - 2026-08-27 — the agent's words, checked against the same policy as its actions
+## [3.0.0.0] - 2026-08-28 — the agent's words, checked against the same policy as its actions
+
+> **Why a major.** Two breaking changes landed on `master` after the `v2.0.0`
+> tag and were never released, so they go out here: the signing gate (`a932448`
+> — a certificate can no longer outrun its evidence) and the closure correction
+> (`53ea688` — published closure figures and both shipped models'
+> `bins_fingerprint` move). Either alone forces the major; shipping them under a
+> minor would tell anyone pinned `>=2.0,<3` that this was a safe upgrade. Their
+> full release notes follow below, and the claim leg described here is simply
+> the largest feature in the same release.
 
 M45–M46 (SPEC-13 Steps 63b–63d). §63 asks whether the agent's *actions* can
 violate policy. This asks whether its *words* are true about that same policy.
