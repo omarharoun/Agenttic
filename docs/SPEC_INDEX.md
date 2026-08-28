@@ -49,6 +49,8 @@ Cross-links and status for the platform spec surfaces.
 | M42 | SPEC-13 Steps 60–61 — stimulus + CDV loop | ✅ done | — |
 | M43 | SPEC-13 Step 63 — formal (authorization layer) | ✅ done | — |
 | M44 | SPEC-13 Step 64 — sign-off + vPlan | ✅ done | — |
+| M45 | SPEC-13 Step 63b — formal (claim layer) | ✅ done | — |
+| M46 | SPEC-13 Steps 63b–d — claim leg, soundness, extraction | ✅ done | — |
 
 See [docs/SPEC9_RUBRIC_ENGINE.md](SPEC9_RUBRIC_ENGINE.md),
 [docs/SPEC11_DESIGN_SYSTEM.md](SPEC11_DESIGN_SYSTEM.md) and
@@ -61,4 +63,5 @@ See [docs/SPEC9_RUBRIC_ENGINE.md](SPEC9_RUBRIC_ENGINE.md),
 - Dossiers: `agenttic dossier verify|revoke|show` · `src/agenttic/certification/dossier.py`
 - Incidents: `agenttic incidents …` · `src/agenttic/live/incidents.py`
 - Public verify: `GET /certification/{dossier_id}` · `src/agenttic/server/routes/dossiers.py`
+- Claim checking: `agenttic.verification.formal.claims.check_output` + `verification/claim_extract.py` (opt-in via `verify_op(claim_extractor=…, enforcement_policy=…)`)
 - Rubric engine: `agenttic evaluate <inputs>` · `src/agenttic/rubric_engine/` (classify → synthesize → discrimination gate → library)

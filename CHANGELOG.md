@@ -1,5 +1,98 @@
 # Changelog
 
+## [3.0.0.0] - 2026-08-28 — the agent's words, checked against the same policy as its actions
+
+> **Why a major.** Two breaking changes landed on `master` after the `v2.0.0`
+> tag and were never released, so they go out here: the signing gate (`a932448`
+> — a certificate can no longer outrun its evidence) and the closure correction
+> (`53ea688` — published closure figures and both shipped models'
+> `bins_fingerprint` move). Either alone forces the major; shipping them under a
+> minor would tell anyone pinned `>=2.0,<3` that this was a safe upgrade. Their
+> full release notes follow below, and the claim leg described here is simply
+> the largest feature in the same release.
+
+M45–M46 (SPEC-13 Steps 63b–63d). §63 asks whether the agent's *actions* can
+violate policy. This asks whether its *words* are true about that same policy.
+An agent can stay entirely inside its authorized tools and still tell a customer
+"you don't need approval for that" when the policy requires it — nothing in the
+action graph is wrong, and the lie is in the sentence.
+
+`proof(claim)` is five-valued (valid / invalid / satisfiable / ambiguous /
+impossible) where `proof(authorization)` is four-valued, and the two never share
+a report row (**Hard Rule 72**): `1 counterexample · 1 invalid` on one line does
+not tell a reader whether the agent *did* something illegal or *said* something
+false, and those route to different owners. Output claims render as their own
+section, `3b · OUTPUT CLAIMS`.
+
+**Opt-in, and it says so.** `verify_op` runs on the normal path for every run and
+promises zero model calls. Claim extraction needs a model to read prose, so it
+runs only when the caller supplies both an extractor and the policy to check
+against; otherwise the leg reads `not_run` and renders as `not checked` — which
+is not the same as "no false claims found". A network-block test enforces the
+promise.
+
+**Report-only under gate v1**, following the scoreboard precedent. A verified
+false claim does not block sign-off today. Flipping that is a separate, announced
+change under a `gate_version` bump, so a sign-off issued under v1 keeps meaning
+what it meant when it was issued.
+
+### Soundness fix: a truncated search no longer returns a verdict
+
+`claims.check_claim` answered "is this tool permitted" by counting how many
+*reachable* states enable it, against a search capped at 200,000 states.
+`_reachable` returned a bare `set` that could not say whether it had finished, so
+the caller compared `enabled == len(states)` against the truncated set — both
+sides shrink together, which means truncation could never make the test fail,
+only make it confident. Measured on the shipped fixture: at every cap from 0
+upward the old code returned VALID, including where it had explored one of three
+reachable states.
+
+`_reachable` now returns `(states, complete)`, and `check_claim` returns
+AMBIGUOUS rather than a verdict when the search was cut short — in either
+direction, since `enabled == 0` was equally unsound on a partial set. `prove` has
+always done this (`unbounded`, never `proven`, at the cap) and both now share
+`DEFAULT_MAX_STATES`. Two adjacent holes closed with it: `graph.unbounded` was
+unchecked in the claim path, and the AMBIGUOUS sentence said "could not be
+soundly translated" for outcomes that were not translation failures.
+
+### `extraction_failures` — unchecked is not clean
+
+If extraction fails, that output was not checked. Returning an empty claim list
+would render as a clean row and silently shrink the denominator, so
+`ClaimExtractionError` propagates and is counted outside the five buckets and
+printed above them — the same shape as `unexercised`, `not_measurable`,
+`non_results` and `evaluation_failures`.
+
+### Also
+
+- `verification/claim_extract.py` is the only module in `verification` that may
+  touch a model, mirroring `stimulus/realize.py`. The client is injected, never
+  constructed, so the whole path is exercisable offline.
+- The extractor makes a fresh call per invocation and caches nothing. `translate`
+  samples it `n` times and treats unanimity as confidence; a memoized extractor
+  would return one opinion `n` times and manufacture that unanimity.
+- 50 new tests. Full suite 4457 passing, 8 skipped, green. The four
+  `test_release_ladder` failures previously recorded here as pre-existing were
+  fixed on `master` (`861df4e`) and no longer reproduce. Eight CLI tests remain
+  coupled to colour: with `FORCE_COLOR` set they fail on unmodified `master`
+  too, and pass with `NO_COLOR=1`.
+
+### Fixed at ship time
+
+- An enforcement policy that failed to compile left the claims leg `not_run` —
+  the same reading as claim checking never having been switched on. A policy
+  that does not compile checks nothing, so it is now recorded per trace in
+  `extraction_failures` and renders as NOT CHECKED. This was the one path that
+  had escaped the rule the rest of this entry is built on.
+- The `NOT CHECKED` line no longer says "extraction failed", since a failed
+  policy compile is not a failed extraction. The cause is carried per entry.
+
+### Added at ship time
+
+- `ui` now has the `verify` script `CLAUDE.md` has always documented
+  (`npm run lint && tsc --noEmit && vitest run`). It was referenced but never
+  defined, so the documented UI gate could not run.
+
 ## Unreleased — closure stops counting what nobody measured (NUMBERS MOVE)
 
 > **Release note.** This changes published closure figures and both shipped
