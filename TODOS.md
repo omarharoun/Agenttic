@@ -1,26 +1,5 @@
 # TODOS
 
-## Verification
-
-### Claim extraction may truncate on long agent outputs
-
-**What:** `model_extractor` defaults to `max_tokens=2000` for structured claim
-extraction over an arbitrary-length agent message.
-
-**Why:** A verbose agent output can exceed the budget, truncating the JSON. That
-raises `ClaimExtractionError`, which fails safe (the output renders as NOT
-CHECKED rather than clean), but it silently reduces claim coverage on exactly
-the long, chatty outputs most likely to contain a policy claim.
-
-**Context:** `src/agenttic/verification/claim_extract.py:99`. Flagged during the
-`/ship` review of 2.1.0.0 and consciously not fixed there — the failure mode is
-safe, just lossy. Consider raising the default, or surfacing truncation
-distinctly from other extraction failures so the loss is visible in the report.
-
-**Effort:** S
-**Priority:** P2
-**Depends on:** None
-
 ## Release
 
 ### Three unreleased CHANGELOG sections predate 2.1.0.0
@@ -81,3 +60,27 @@ scenario-run types and API that Step 17.2 dropped restored; imports repaired
 across six files; `verdictScope` written; 14 `no-explicit-any` gate violations
 typed. `npm run build`, `tsc --noEmit`, `npm run lint` and 512/512 vitest all
 green. Landing bundle 134.5 -> 113.5 KB gz.
+
+### Claim extraction may truncate on long agent outputs
+
+**What:** `model_extractor` defaults to `max_tokens=2000` for structured claim
+extraction over an arbitrary-length agent message.
+
+**Why:** A verbose agent output can exceed the budget, truncating the JSON. That
+raises `ClaimExtractionError`, which fails safe (the output renders as NOT
+CHECKED rather than clean), but it silently reduces claim coverage on exactly
+the long, chatty outputs most likely to contain a policy claim.
+
+**Context:** `src/agenttic/verification/claim_extract.py:99`. Flagged during the
+`/ship` review of 2.1.0.0 and consciously not fixed there — the failure mode is
+safe, just lossy. Consider raising the default, or surfacing truncation
+distinctly from other extraction failures so the loss is visible in the report.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** None
+
+**Completed:** v2.1.0.0 (2026-08-28) — branch `fix/claim-truncation`. Ceiling
+raised 2000 -> 16000, and `stop_reason` is now read before the content so a
+truncated or declined response is named as such instead of being reported as
+an unparseable claim list.
