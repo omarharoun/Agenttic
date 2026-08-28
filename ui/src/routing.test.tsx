@@ -108,7 +108,13 @@ export function resolves(path: string): boolean {
      to AppShell's own table, so a /app/… link has to be found THERE. Letting the
      wildcard answer would make every /app/… link resolve — including
      /app/scenarios, for the whole time it rendered the 404. */
-  return ROUTES.some((r) => r !== "/app/*" && matches(r, path));
+  /* The top-level `*` is the public 404 and is excluded for exactly the same
+     reason as `/app/*` above: it is where an unrouted path LANDS, not proof
+     that the path resolves. Without this it matched first and returned true
+     for every string ever passed here, which made every assertion below
+     vacuous — including "resolves every one of them against a declared
+     route", the one that is supposed to catch a dead link. */
+  return ROUTES.some((r) => r !== "/app/*" && r !== "*" && matches(r, path));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -239,7 +245,14 @@ describe("react-router agrees, on the real exported table", () => {
      AppShell without mounting a console. This block hands the actual exported
      `routes` to react-router's own matcher, so the top-level half of the claim
      is the router's answer and not this file's regex. */
-  const match = (path: string) => matchRoutes(routes as RouteObject[], path);
+  const match = (path: string) => {
+    const m = matchRoutes(routes as RouteObject[], path);
+    // Landing on the public 404 is not a match for these purposes — see
+    // `resolves` above. Without this the control below ("nothing at all for a
+    // path that is not a route") could never fail, because `*` answers for
+    // every string and it is a real entry in the exported table.
+    return m && m[m.length - 1].route.path !== "*" ? m : null;
+  };
   // `.at(-1)` needs lib es2022; the tsconfig targets ES2020. The LAST match is
   // the leaf the router would render.
   const matchedPath = (path: string) => {
