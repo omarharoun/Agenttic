@@ -33,6 +33,7 @@ from sqlmodel import Field, Session, SQLModel, create_engine, select
 from agenttic.schema.abc import ABCReport
 from agenttic.schema.agent import DeclaredAgent
 from agenttic.schema.environment import Environment
+from agenttic.schema.feedback import HumanFeedback
 from agenttic.schema.integrity import IntegrityReport
 from agenttic.schema.scorecard import Scorecard
 from agenttic.schema.testcase import TestCase, TestSuite
@@ -2100,7 +2101,6 @@ class Registry:
 
     def feedback_for(self, agent_id: str) -> list["HumanFeedback"]:
         """All feedback for an agent, oldest-first."""
-        from agenttic.schema.feedback import HumanFeedback
         with Session(self.engine) as s:
             rows = s.exec(select(FeedbackRow).where(
                 FeedbackRow.tenant_id == self.tenant,
@@ -2110,7 +2110,6 @@ class Registry:
 
     def feedback_for_trace(self, trace_id: str) -> list["HumanFeedback"]:
         """All feedback attached to a single trace, oldest-first."""
-        from agenttic.schema.feedback import HumanFeedback
         with Session(self.engine) as s:
             rows = s.exec(select(FeedbackRow).where(
                 FeedbackRow.tenant_id == self.tenant,
@@ -2121,7 +2120,6 @@ class Registry:
     def unprocessed_feedback(self, agent_id: str | None = None
                              ) -> list["HumanFeedback"]:
         """Feedback not yet mined into tests/labels (Step 13), oldest-first."""
-        from agenttic.schema.feedback import HumanFeedback
         with Session(self.engine) as s:
             q = select(FeedbackRow).where(
                 FeedbackRow.tenant_id == self.tenant,
