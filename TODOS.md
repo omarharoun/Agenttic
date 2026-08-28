@@ -1,27 +1,5 @@
 # TODOS
 
-## Release
-
-### Three unreleased CHANGELOG sections predate 3.0.0.0
-
-**What:** `CHANGELOG.md` carries three `## Unreleased` sections besides the one
-cut as 3.0.0.0, one of them marked BREAKING.
-
-**Why:** Work that shipped to `master` has no version attached, so there is no
-way to tell a consumer which release contains it. The BREAKING one in particular
-needs a major version before anyone depends on the current behaviour.
-
-**Context:** Found during `/ship` on 2026-08-27. The three are: "closure stops
-counting what nobody measured (NUMBERS MOVE)", "the signing gate: a certificate
-can no longer outrun its evidence (BREAKING)", and "Coverage-driven verification
-(SPEC-13)". They arrived on `master` via merges without a version bump — the
-repo had no VERSION file until 3.0.0.0. Decide whether they retro-fit into
-earlier tags or roll into the next major.
-
-**Effort:** M
-**Priority:** P1
-**Depends on:** None
-
 ## Completed
 
 ### The frontend does not build on master
@@ -84,3 +62,32 @@ distinctly from other extraction failures so the loss is visible in the report.
 raised 2000 -> 16000, and `stop_reason` is now read before the content so a
 truncated or declined response is named as such instead of being reported as
 an unparseable claim list.
+
+### Three unreleased CHANGELOG sections predate 3.0.0.0
+
+**What:** `CHANGELOG.md` carries three `## Unreleased` sections besides the one
+cut as 3.0.0.0, one of them marked BREAKING.
+
+**Why:** Work that shipped to `master` has no version attached, so there is no
+way to tell a consumer which release contains it. The BREAKING one in particular
+needs a major version before anyone depends on the current behaviour.
+
+**Context:** Found during `/ship` on 2026-08-27. The three are: "closure stops
+counting what nobody measured (NUMBERS MOVE)", "the signing gate: a certificate
+can no longer outrun its evidence (BREAKING)", and "Coverage-driven verification
+(SPEC-13)". They arrived on `master` via merges without a version bump — the
+repo had no VERSION file until 3.0.0.0. Decide whether they retro-fit into
+earlier tags or roll into the next major.
+
+**Effort:** M
+**Priority:** P1
+**Depends on:** None
+
+**Completed:** v3.0.0.0 (2026-08-28) — branch `docs/release-history`. Resolved
+by checking each against the tags rather than by assigning numbers: `fa955f4`
+(Coverage-driven verification) is an ancestor of `v2.0.0`, so it shipped in
+2.0.0 and was only ever mislabelled. `a932448` (the signing gate) and `53ea688`
+(closure stops counting) are genuinely unreleased and both breaking, which is
+why the release they go out in was renumbered 2.1.0.0 -> 3.0.0.0. All three are
+now filed under the version that carries them; no `## Unreleased` heading
+remains.
