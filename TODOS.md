@@ -1,11 +1,35 @@
 # TODOS
 
+<<<<<<< HEAD
+=======
+## Verification
+
+### Claim extraction may truncate on long agent outputs
+
+**What:** `model_extractor` defaults to `max_tokens=2000` for structured claim
+extraction over an arbitrary-length agent message.
+
+**Why:** A verbose agent output can exceed the budget, truncating the JSON. That
+raises `ClaimExtractionError`, which fails safe (the output renders as NOT
+CHECKED rather than clean), but it silently reduces claim coverage on exactly
+the long, chatty outputs most likely to contain a policy claim.
+
+**Context:** `src/agenttic/verification/claim_extract.py:99`. Flagged during the
+`/ship` review of 3.0.0.0 and consciously not fixed there — the failure mode is
+safe, just lossy. Consider raising the default, or surfacing truncation
+distinctly from other extraction failures so the loss is visible in the report.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** None
+
+>>>>>>> fix/ui-build
 ## Release
 
-### Three unreleased CHANGELOG sections predate 2.1.0.0
+### Three unreleased CHANGELOG sections predate 3.0.0.0
 
 **What:** `CHANGELOG.md` carries three `## Unreleased` sections besides the one
-cut as 2.1.0.0, one of them marked BREAKING.
+cut as 3.0.0.0, one of them marked BREAKING.
 
 **Why:** Work that shipped to `master` has no version attached, so there is no
 way to tell a consumer which release contains it. The BREAKING one in particular
@@ -15,7 +39,7 @@ needs a major version before anyone depends on the current behaviour.
 counting what nobody measured (NUMBERS MOVE)", "the signing gate: a certificate
 can no longer outrun its evidence (BREAKING)", and "Coverage-driven verification
 (SPEC-13)". They arrived on `master` via merges without a version bump — the
-repo had no VERSION file until 2.1.0.0. Decide whether they retro-fit into
+repo had no VERSION file until 3.0.0.0. Decide whether they retro-fit into
 earlier tags or roll into the next major.
 
 **Effort:** M
@@ -47,14 +71,14 @@ Those two account for all 38 `tsc --noEmit` errors across exactly two files.
 Then define `lint:tokens` (referenced by `build`, never written) so
 `npm run build` can proceed. Then the 21 vitest failures across 12 files — 5 of
 those files fail to collect at all, so fix collection before counting real
-assertion failures. `ui/package.json` gained a `verify` script in 2.1.0.0
+assertion failures. `ui/package.json` gained a `verify` script in 3.0.0.0
 (`npm run lint && tsc --noEmit && vitest run`) — that is the gate to get green.
 
 **Effort:** L
 **Priority:** P0
 **Depends on:** None
 
-**Completed:** v2.1.0.0 (2026-08-28) — branch `fix/ui-build`. Both unclosed JSX
+**Completed:** v3.0.0.0 (2026-08-28) — branch `fix/ui-build`. Both unclosed JSX
 tags closed; `lint:tokens` restored and the four raw hex values tokenised; the
 scenario-run types and API that Step 17.2 dropped restored; imports repaired
 across six files; `verdictScope` written; 14 `no-explicit-any` gate violations
@@ -72,7 +96,7 @@ CHECKED rather than clean), but it silently reduces claim coverage on exactly
 the long, chatty outputs most likely to contain a policy claim.
 
 **Context:** `src/agenttic/verification/claim_extract.py:99`. Flagged during the
-`/ship` review of 2.1.0.0 and consciously not fixed there — the failure mode is
+`/ship` review of 3.0.0.0 and consciously not fixed there — the failure mode is
 safe, just lossy. Consider raising the default, or surfacing truncation
 distinctly from other extraction failures so the loss is visible in the report.
 
@@ -80,7 +104,7 @@ distinctly from other extraction failures so the loss is visible in the report.
 **Priority:** P2
 **Depends on:** None
 
-**Completed:** v2.1.0.0 (2026-08-28) — branch `fix/claim-truncation`. Ceiling
+**Completed:** v3.0.0.0 (2026-08-28) — branch `fix/claim-truncation`. Ceiling
 raised 2000 -> 16000, and `stop_reason` is now read before the content so a
 truncated or declined response is named as such instead of being reported as
 an unparseable claim list.
