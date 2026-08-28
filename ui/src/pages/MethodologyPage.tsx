@@ -7,6 +7,7 @@ import { GRADE_BANDS, gradeColor } from "../cert";
 import { Seal } from "../components/Seal";
 import "../landing/landing.css";
 import "./MethodologyPage.css";
+import { Button, SectionHeading } from "../components/ds/primitives";
 
 /* SPEC-4 17.3 — EXEMPT from the state trio: a static explainer. It reads the
    canonical catalog live where it can but ships complete static fallbacks, so
@@ -490,8 +491,6 @@ export function MethodologyPage() {
               datasets and the signing scheme.
             </p>
           </nav>
-        </div>
-      </header>
 
       {/* ---- THE PROGRAMME ----------------------------------------------- */}
       <section id="programme">
@@ -640,7 +639,6 @@ export function MethodologyPage() {
             the opposite. A mark here is a careful, repeatable signal you can
             rely on, with its limits stated up front.
           </p>
-        </div>
       </section>
 
       {/* ================================================================
