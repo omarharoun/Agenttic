@@ -1,29 +1,5 @@
 # TODOS
 
-<<<<<<< HEAD
-=======
-## Verification
-
-### Claim extraction may truncate on long agent outputs
-
-**What:** `model_extractor` defaults to `max_tokens=2000` for structured claim
-extraction over an arbitrary-length agent message.
-
-**Why:** A verbose agent output can exceed the budget, truncating the JSON. That
-raises `ClaimExtractionError`, which fails safe (the output renders as NOT
-CHECKED rather than clean), but it silently reduces claim coverage on exactly
-the long, chatty outputs most likely to contain a policy claim.
-
-**Context:** `src/agenttic/verification/claim_extract.py:99`. Flagged during the
-`/ship` review of 3.0.0.0 and consciously not fixed there — the failure mode is
-safe, just lossy. Consider raising the default, or surfacing truncation
-distinctly from other extraction failures so the loss is visible in the report.
-
-**Effort:** S
-**Priority:** P2
-**Depends on:** None
-
->>>>>>> fix/ui-build
 ## Release
 
 ### Three unreleased CHANGELOG sections predate 3.0.0.0
