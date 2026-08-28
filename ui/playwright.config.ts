@@ -48,10 +48,22 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
+    // Pinned, because a baseline is a photograph of rendered TEXT. Without
+    // these the console's timestamps render in whatever zone the machine is
+    // in — the committed baselines read 1:00:00 PM where CI reads 10:00:00 AM
+    // for the same fixture — so a snapshot refreshed on a laptop can never
+    // match CI again. UTC is what CI has; en-US is what the date formatting
+    // in the fixtures assumes.
+    timezoneId: "UTC",
+    locale: "en-US",
   },
   projects: [
     {
       name: "chromium-dark",
+      // visual-tokens drives BOTH themes itself, so running it here too would
+      // photograph each screen twice and file the light shot under the dark
+      // project.
+      testIgnore: "**/visual-tokens.e2e.ts",
       use: {
         ...devices["Desktop Chrome"],
         colorScheme: "dark",
@@ -61,11 +73,23 @@ export default defineConfig({
     },
     {
       name: "chromium-light",
+      // visual-tokens drives BOTH themes itself, so running it here too would
+      // photograph each screen twice and file the light shot under the dark
+      // project.
+      testIgnore: "**/visual-tokens.e2e.ts",
       use: {
         ...devices["Desktop Chrome"],
         colorScheme: "light",
       },
       metadata: { themeInit: themeInit("light") },
+    },
+    {
+      // The M45 token gate. It calls chooseTheme() per test rather than taking
+      // the theme from the project, so it gets one project and produces
+      // exactly one baseline per screen per theme.
+      name: "visual-tokens",
+      testMatch: "**/visual-tokens.e2e.ts",
+      use: { ...devices["Desktop Chrome"] },
     },
   ],
   webServer: {
