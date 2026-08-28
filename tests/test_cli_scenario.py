@@ -37,7 +37,7 @@ from typer.testing import CliRunner
 
 from agenttic.cli import app
 from agenttic.registry.sqlite_store import Registry
-from tests.conftest import plain
+from tests.conftest import flat, plain
 
 runner = CliRunner()
 
@@ -1105,7 +1105,9 @@ class TestItFailsCleanly:
         assert r.exit_code != 0
         out = plain(r.output)
         assert "Traceback" not in out
-        assert "surface save" in out
+        # flat(), not plain(): plain() removes the styling but leaves the panel
+        # wrap, and this hint lands mid-sentence at a narrow width.
+        assert "surface save" in flat(r.output)
 
 
 # --------------------------------------------------------------------------- #

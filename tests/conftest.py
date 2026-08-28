@@ -27,9 +27,20 @@ import pytest
 # Pinned here, before anything imports agenttic.cli (its module-level `Console()`
 # reads the environment once), so these assertions no longer depend on collection
 # order or on how wide the terminal happens to be.
-os.environ.setdefault("NO_COLOR", "1")
-os.environ.setdefault("TERM", "dumb")
-os.environ.setdefault("COLUMNS", "200")
+# ASSIGNED, not setdefault. setdefault yields to whatever the environment
+# already holds, which is the variable this block exists to remove — it pinned
+# nothing on a machine that had these set. FORCE_COLOR is listed because it
+# OVERRIDES NO_COLOR in rich, so a developer who exports it fails eight CLI
+# tests that pass everywhere else.
+#
+# COLUMNS is pinned too, but do NOT rely on it for width: click's CliRunner
+# renders at its own width regardless (measured: COLUMNS=200 in the process,
+# panel drawn at 80). Assert through `flat()` rather than assuming a line
+# length — see below.
+os.environ["NO_COLOR"] = "1"
+os.environ["FORCE_COLOR"] = "0"
+os.environ["TERM"] = "dumb"
+os.environ["COLUMNS"] = "200"
 
 
 #: Strip terminal styling from CLI output before asserting on it. Rich styles
@@ -41,6 +52,27 @@ _ANSI = re.compile(r"\x1b\[[0-9;]*m")
 def plain(text: str) -> str:
     """CLI output as a human reads it, with the styling removed."""
     return _ANSI.sub("", text)
+
+
+#: Panel borders and the padding rich uses to reach them.
+_FRAME = re.compile(r"[│┃|]|[─━╭╮╰╯┌┐└┘┏┓┗┛]+")
+
+
+def flat(text: str) -> str:
+    """CLI output as one line, for asserting on a SENTENCE.
+
+    Rich wraps an error into a bordered panel at whatever width it is given,
+    and click's CliRunner picks that width itself — so "…looks like a file path
+    but does not exist" arrives as "…but does" + border + newline + border +
+    "not exist". The words are all present and correct; only a substring search
+    can fail on it, which is how two of these assertions passed locally and
+    failed in CI on the same commit.
+
+    Strips styling and panel frame, then collapses every run of whitespace to a
+    single space. What is left is what a reader sees, independent of how wide
+    the terminal was — which is the thing the assertion actually means.
+    """
+    return " ".join(_FRAME.sub(" ", _ANSI.sub("", text)).split())
 
 
 @pytest.fixture(autouse=True)

@@ -20,6 +20,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
+from tests.conftest import flat
 from typer.testing import CliRunner
 
 from agenttic.cli import app
@@ -68,9 +70,10 @@ class TestAbomRefusesAnUnknownSubject:
         assert declare("real-agent").exit_code == 0
         r = runner.invoke(app, ["abom", "real-agent"])
         assert r.exit_code == 0, r.output
-        assert "0 components" in r.output
-        assert "EMPTY supply chain" in r.output
-        assert "WARNING" in r.output
+        out = flat(r.output)
+        assert "0 components" in out
+        assert "EMPTY supply chain" in out
+        assert "WARNING" in out
 
 
 class TestAgentsAddDoesNotSilentlyClobber:
@@ -111,7 +114,10 @@ class TestEvaluateDistinguishesAPathFromProse:
 
     def test_a_path_shaped_argument_that_does_not_exist_is_refused(self, ws):
         r = runner.invoke(app, ["evaluate", "./nope-does-not-exist.txt"])
-        assert "looks like a file path but does not exist" in r.output
+        # flat(): rich wraps this sentence across a panel border at the width
+        # click's CliRunner happens to pick, so a raw substring search on it
+        # passes or fails by terminal width rather than by behaviour.
+        assert "looks like a file path but does not exist" in flat(r.output)
         assert "needs_generation" not in r.output   # never silently classified
 
     def test_inline_prose_still_works(self, ws):
