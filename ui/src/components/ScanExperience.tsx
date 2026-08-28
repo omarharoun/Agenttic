@@ -142,7 +142,7 @@ export function ScanExperience({ compact = false }: { compact?: boolean }) {
     if (target === "demo") {
       // No account, no key: live run on the server's key, fresh every time.
       setPhase("scanning");
-      api.startPublicDemo(agentName.trim())
+      api.startPublicDemo()
         .then((r) => poll(r.scan_id, true))
         .catch((e) => { setErr(explainError(e)); setPhase("error"); });
       return;

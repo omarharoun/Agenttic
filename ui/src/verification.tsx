@@ -1,6 +1,7 @@
 import {
   CoverageWheel, CoverageWheelLegend, DECLARED_COVERPOINTS, dimsFromCoverage,
 } from "./components/ds";
+import type { VerdictScope } from "./components/ds";
 
 /* ============================================================================
    The verification vocabulary — one implementation, used everywhere.
@@ -81,6 +82,41 @@ export function closurePct(sc: any): number | null {
 }
 
 /** Inline scope badge for a table cell sitting next to a percentage. */
+
+/** The scope fence for a verdict, read off one record.
+ *
+ *  Every field here is READ, never inferred, because each one is the thing that
+ *  stops a verdict colour from being taken as a broader claim than it is:
+ *
+ *    status   — the record's own `verification_status`. Anything the vocabulary
+ *               does not name becomes null, which renders as NOT RECORDED. A
+ *               missing verdict must never arrive as a pass.
+ *    scoped   — the presence of a coverage model, so a record without one can
+ *               only ever render "unscoped" (see `scopeNote`).
+ *    the rest — counts of what was NOT covered. They are zero only when the
+ *               record says zero; an absent block reads as zero holes because
+ *               `scoped: false` is already carrying the "nobody measured" fact,
+ *               and doubling it up would read as two findings instead of one.
+ */
+export function verdictScope(sc: any, provisionalCriteria = 0): VerdictScope {
+  const c = cov(sc);
+  const raw = sc?.verification_status;
+  const status = raw === "PASS" || raw === "FAIL" || raw === "INCOMPLETE"
+    ? raw : null;
+  const holes = (c as any).holes;
+  const target = c.closure_target;
+  return {
+    status,
+    scoped: Boolean(c.model_ref),
+    coverageHoles: Array.isArray(holes) ? holes.length : 0,
+    notMeasured: Object.keys((c as any).not_measurable || {}).length,
+    assertionsUnexercised: c.assertions?.unexercised ?? 0,
+    provisionalCriteria,
+    closurePct: closurePct(sc),
+    closureTarget: target == null ? null : Math.round(target * 100),
+  };
+}
+
 export function ScopeChip({ sc }: { sc: any }) {
   const c = cov(sc);
   const kind = !c.model_ref ? "unscoped" : c.baseline ? "baseline" : "fitted";
