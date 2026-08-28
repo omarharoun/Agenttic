@@ -3,9 +3,10 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { ResultsPanel } from "../panels/ResultsPanel";
 import { useFlowStore } from "../store";
-import { HexMark, IconWarning, IconHand } from "../icons";
+import { IconWarning, IconHand } from "../icons";
 import { STEPS, type Template, TEMPLATES, isConfigurable, stepById } from "./templates";
 import { HexMark } from "../components/Icons";
+import { StepActivity } from "./StepActivity";
 
 const AGENT_FIELDS = ["agent_id", "variant", "model", "system_prompt", "url",
   "managed_agent_id", "environment_id", "cost_per_call_usd",

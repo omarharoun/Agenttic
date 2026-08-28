@@ -1,6 +1,6 @@
 # TODOS
 
-## UI
+## Completed
 
 ### The frontend does not build on master
 
@@ -25,14 +25,19 @@ Those two account for all 38 `tsc --noEmit` errors across exactly two files.
 Then define `lint:tokens` (referenced by `build`, never written) so
 `npm run build` can proceed. Then the 21 vitest failures across 12 files — 5 of
 those files fail to collect at all, so fix collection before counting real
-assertion failures. `ui/package.json` gained a `verify` script in 2.1.0.0
+assertion failures. `ui/package.json` gained a `verify` script in 3.0.0.0
 (`npm run lint && tsc --noEmit && vitest run`) — that is the gate to get green.
 
 **Effort:** L
 **Priority:** P0
 **Depends on:** None
 
-## Verification
+**Completed:** v3.0.0.0 (2026-08-28) — branch `fix/ui-build`. Both unclosed JSX
+tags closed; `lint:tokens` restored and the four raw hex values tokenised; the
+scenario-run types and API that Step 17.2 dropped restored; imports repaired
+across six files; `verdictScope` written; 14 `no-explicit-any` gate violations
+typed. `npm run build`, `tsc --noEmit`, `npm run lint` and 512/512 vitest all
+green. Landing bundle 134.5 -> 113.5 KB gz.
 
 ### Claim extraction may truncate on long agent outputs
 
@@ -45,7 +50,7 @@ CHECKED rather than clean), but it silently reduces claim coverage on exactly
 the long, chatty outputs most likely to contain a policy claim.
 
 **Context:** `src/agenttic/verification/claim_extract.py:99`. Flagged during the
-`/ship` review of 2.1.0.0 and consciously not fixed there — the failure mode is
+`/ship` review of 3.0.0.0 and consciously not fixed there — the failure mode is
 safe, just lossy. Consider raising the default, or surfacing truncation
 distinctly from other extraction failures so the loss is visible in the report.
 
@@ -53,12 +58,15 @@ distinctly from other extraction failures so the loss is visible in the report.
 **Priority:** P2
 **Depends on:** None
 
-## Release
+**Completed:** v3.0.0.0 (2026-08-28) — branch `fix/claim-truncation`. Ceiling
+raised 2000 -> 16000, and `stop_reason` is now read before the content so a
+truncated or declined response is named as such instead of being reported as
+an unparseable claim list.
 
-### Three unreleased CHANGELOG sections predate 2.1.0.0
+### Three unreleased CHANGELOG sections predate 3.0.0.0
 
 **What:** `CHANGELOG.md` carries three `## Unreleased` sections besides the one
-cut as 2.1.0.0, one of them marked BREAKING.
+cut as 3.0.0.0, one of them marked BREAKING.
 
 **Why:** Work that shipped to `master` has no version attached, so there is no
 way to tell a consumer which release contains it. The BREAKING one in particular
@@ -68,11 +76,18 @@ needs a major version before anyone depends on the current behaviour.
 counting what nobody measured (NUMBERS MOVE)", "the signing gate: a certificate
 can no longer outrun its evidence (BREAKING)", and "Coverage-driven verification
 (SPEC-13)". They arrived on `master` via merges without a version bump — the
-repo had no VERSION file until 2.1.0.0. Decide whether they retro-fit into
+repo had no VERSION file until 3.0.0.0. Decide whether they retro-fit into
 earlier tags or roll into the next major.
 
 **Effort:** M
 **Priority:** P1
 **Depends on:** None
 
-## Completed
+**Completed:** v3.0.0.0 (2026-08-28) — branch `docs/release-history`. Resolved
+by checking each against the tags rather than by assigning numbers: `fa955f4`
+(Coverage-driven verification) is an ancestor of `v2.0.0`, so it shipped in
+2.0.0 and was only ever mislabelled. `a932448` (the signing gate) and `53ea688`
+(closure stops counting) are genuinely unreleased and both breaking, which is
+why the release they go out in was renumbered 2.1.0.0 -> 3.0.0.0. All three are
+now filed under the version that carries them; no `## Unreleased` heading
+remains.

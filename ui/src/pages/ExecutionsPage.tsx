@@ -101,7 +101,7 @@ export function ExecutionsPage() {
                 {/* SPEC-13: verification is not a disclosure-triangle detail. What
                     was reached and whether the properties held leads the run,
                     above the issues and above the case-by-case scoreboard. */}
-                {(results.scorecards ?? []).map((sc: any) => (
+                {(results.scorecards ?? []).map((sc) => (
                   <VerificationStrip key={sc.scorecard_id} sc={sc} />
                 ))}
                 <IssuesReport executionId={detail.execution_id} />

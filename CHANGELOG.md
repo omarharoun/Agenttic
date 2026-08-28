@@ -87,13 +87,55 @@ printed above them — the same shape as `unexercised`, `not_measurable`,
 - The `NOT CHECKED` line no longer says "extraction failed", since a failed
   policy compile is not a failed extraction. The cause is carried per entry.
 
+### Fixed — a clipped extraction no longer blames its own JSON
+
+`model_extractor` capped the response at 2000 tokens. The input is an agent's
+whole final message and the output is one object per policy claim in it, so a
+chatty agent produces both a long prompt and a long answer — and 2000 clipped
+it. The clipped JSON then failed to parse and was reported as "no parseable
+claim list", which named the wrong cause: nothing was malformed, the reply
+never finished. It failed safe (NOT CHECKED, never clean) but it failed
+silently, on exactly the outputs most likely to carry a claim worth catching.
+
+The ceiling is now 16000, and `stop_reason` is read BEFORE the content: a
+`max_tokens` stop reports the ceiling it hit and says the output is unchecked;
+a `refusal` says the extractor declined. A response carrying no `stop_reason`
+at all still reads normally.
+
+### Fixed — the frontend builds again
+
+`npm run build` had not worked: it calls `lint:tokens`, which was referenced
+but never defined, and behind that two pages carried orphan JSX closing tags
+that produced all 38 `tsc` errors. A file that cannot parse cannot be
+typechecked, so those two also hid 87 further type errors across the project —
+including a whole block of scenario-run types and API methods that the Step
+17.2 typed-layer move deleted from `api.ts` without adding to `api/types.ts`,
+while the page using them kept importing them.
+
+Repaired end to end: the tags, the missing script, the lost types and methods,
+dropped imports across six files, a `verdictScope` helper that was called but
+never written, and the 14 remaining `no-explicit-any` violations of the Step
+17.2 gate. `/engine` is lazy-loaded as its route comment always said it must
+be, which takes the landing bundle from 134.5 to 113.5 KB gz.
+
+Four defects the newly-running tests then exposed: `Onboarding` threw wherever
+`localStorage` is absent, the `existing-suite` template still ended with the
+removed live-monitor step, one page made an unbounded "is safe" claim, and both
+route checkers let the 404 catch-all answer for every path — which had made the
+dead-link guard incapable of failing.
+
+`npm run verify` is green: 512 tests, clean lint, clean typecheck.
+
 ### Added at ship time
 
 - `ui` now has the `verify` script `CLAUDE.md` has always documented
   (`npm run lint && tsc --noEmit && vitest run`). It was referenced but never
   defined, so the documented UI gate could not run.
 
-## Unreleased — closure stops counting what nobody measured (NUMBERS MOVE)
+### closure stops counting what nobody measured (NUMBERS MOVE)
+
+*Landed on `master` in `53ea688` after the `v2.0.0` tag and never released under
+any number; it is one of the two breaking changes that make this release a major.*
 
 > **Release note.** This changes published closure figures and both shipped
 > models' `bins_fingerprint`. It ships alone, and it is announced, because a
@@ -196,7 +238,10 @@ starts, an adapter it cannot instrument is logged as a fact about harness covera
 rather than raised, and the failure handlers read the scorecard id defensively so
 the handler cannot raise the exception it exists to contain.
 
-## Unreleased — the signing gate: a certificate can no longer outrun its evidence (BREAKING)
+### the signing gate: a certificate can no longer outrun its evidence (BREAKING)
+
+*Landed on `master` in `a932448` after the `v2.0.0` tag and never released under
+any number; the other of the two breaking changes behind this major.*
 
 > **Release note.** This is a breaking change (`sign_manifest`/`build_manifest`
 > signatures and issuance behaviour), so it warrants a **major** bump to 3.0.0 —
@@ -440,7 +485,10 @@ prevents orphaning an existing registry.
 lock-step, because they pin `agenttic` exactly. Upgrade all three together.
 
 
-## Unreleased — Coverage-driven verification (SPEC-13)
+### Coverage-driven verification (SPEC-13)
+
+*Shipped in 2.0.0 — `fa955f4` is an ancestor of the `v2.0.0` tag. It carried an
+`Unreleased` heading from the day it was written and was never relabelled.*
 
 ### M44 — Sign-off + vPlan (Step 64)
 

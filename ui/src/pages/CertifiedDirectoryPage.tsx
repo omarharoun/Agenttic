@@ -7,6 +7,7 @@ import { Seal, SealMark } from "../components/Seal";
 import { EmptyState, Skeleton } from "../components/ui";
 import { PageData } from "../components/PageData";
 import { IconArrowRight, StatusIcon } from "../icons";
+import { Button, Eyebrow, SectionHeading } from "../components/ds/primitives";
 
 /* ============================================================================
    Public Certified Agents directory — /certified (unauthenticated).
@@ -155,8 +156,6 @@ export function CertifiedDirectoryPage() {
               </span>
             </figcaption>
           </figure>
-        </div>
-      </header>
 
       {/* ---- THE REGISTER ---- */}
       <section id="register">
@@ -211,7 +210,7 @@ export function CertifiedDirectoryPage() {
                           {typeof c.index === "number" && (
                             <span className="cd-card__index">Index {c.index}</span>
                           )}
-                          <span className={`cd-card__status ${sv.tone}`}>{sv.icon} {sv.label}</span>
+                          <span className={`cd-card__status ${sv.tone}`}><StatusIcon tone={sv.tone} size={13} /> {sv.label}</span>
                         </div>
                       </div>
                       <span className="cd-card__go" aria-hidden="true">→</span>
@@ -279,6 +278,8 @@ export function CertifiedDirectoryPage() {
           </div>
         </div>
       </section>
+
+      </main>
 
       <footer>
         <div className="wrap">

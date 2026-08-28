@@ -108,10 +108,10 @@
   display: inline-block;
   font-family: var(--font-mono, monospace);
   font-weight: 700; letter-spacing: 0.1em;
-  padding: 4px 12px; border-radius: 6px; color: #fff;
+  padding: 4px 12px; border-radius: 6px; color: var(--on-status-solid);
 }
 .pg-verdict.is-promote .pg-verdict-badge { background: var(--ok); }
-.pg-verdict.is-reject .pg-verdict-badge { background: #c0392b; }
+.pg-verdict.is-reject .pg-verdict-badge { background: var(--sev-critical); }
 .pg-receipt {
   font-family: var(--font-mono, monospace);
   font-size: 0.9em; line-height: 1.5;
@@ -126,7 +126,7 @@
 }
 .pg-delta.is-up { color: var(--ok); border-color: var(--ok); }
 .pg-delta.is-down { color: var(--fail); border-color: var(--fail); }
-.pg-delta.is-missing { color: #fff; background: #c0392b; border-color: #c0392b; }
+.pg-delta.is-missing { color: var(--on-status-solid); background: var(--sev-critical); border-color: var(--sev-critical); }
 
 .pg-cta {
   margin-top: var(--sp-6, 28px);

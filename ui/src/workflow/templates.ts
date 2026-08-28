@@ -205,7 +205,7 @@ export const TEMPLATES: Template[] = [
     name: "Run an existing test suite",
     tagline: "Already have an approved suite? Point an agent at it and get a scorecard — no generation step.",
     icon: IconAgent,
-    stepIds: ["agent", "run_suite", "score", "scorecard", "report", "monitor"],
+    stepIds: ["agent", "run_suite", "score", "scorecard", "report"],
     configs: {
       agent: { variant: "reference", agent_id: "agent-under-test", system_prompt: TRIAGE_PROMPT },
       run_suite: { suite_id: "pilot-support-triage" },

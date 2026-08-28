@@ -19,7 +19,10 @@ describe("pipelineStages (SPEC-5 23.1)", () => {
     expect(stages.map((x) => x.nodeId)).toEqual(["run", "score"]); // execution order, not alphabetical
     const run = stages.find((x) => x.nodeId === "run")!;
     expect(run.state).toBe("running");
-    expect(run.done).toBe(5);       // index 4 -> 5 done (reducer semantics)
+    // One unit event is ONE completion, whatever index it carries: cases run
+    // concurrently (see `daec209`), so case 5 landing first does not mean five
+    // are done. This asserted `5` from `index: 4` back when runs were serial.
+    expect(run.done).toBe(1);
     expect(run.total).toBe(20);
     expect(stages.find((x) => x.nodeId === "score")!.total).toBe(0);
   });

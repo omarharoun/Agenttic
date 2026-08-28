@@ -96,12 +96,21 @@ class ClaimExtractionError(RuntimeError):
 
 
 def model_extractor(client, known_tools: Sequence[str], *,
-                    model: str = "claude-opus-5", max_tokens: int = 2000):
+                    model: str = "claude-opus-5", max_tokens: int = 16000):
     """Build an :data:`claims.Extractor` backed by ``client``.
 
     ``client`` is an ``anthropic.Anthropic``. It is injected, never constructed
     here, so a caller with no key — CI, every offline test — simply supplies a
     stub and the whole path stays exercisable without a network.
+
+    ``max_tokens`` is the response ceiling, and it is deliberately generous. The
+    input is an agent's whole final message and the output is one object per
+    policy claim in it, so a chatty agent is exactly the case that produces both
+    a long prompt and a long answer — and the old 2000 clipped it. A clipped
+    response is not a wrong answer, it is NO answer: the JSON stops mid-object
+    and nothing can be read from it. That failed safe (the case renders NOT
+    CHECKED rather than clean) but it failed silently and it failed on the
+    outputs most likely to contain a claim worth catching.
     """
     tools = ", ".join(sorted(known_tools)) or "(none declared)"
 
@@ -115,6 +124,22 @@ def model_extractor(client, known_tools: Sequence[str], *,
                                           "schema": _SCHEMA}})
         except Exception as exc:  # noqa: BLE001 — re-raised as our own type below
             raise ClaimExtractionError(f"the extractor call failed: {exc}") from exc
+
+        # Why an answer is missing is part of the answer, so `stop_reason` is
+        # read BEFORE the content. A truncated or declined response usually
+        # still carries a text block, and parsing that block would report "no
+        # parseable claim list" — blaming the shape of a reply that was never
+        # finished, and hiding a ceiling the caller can actually raise.
+        stop = getattr(resp, "stop_reason", None)
+        if stop == "max_tokens":
+            raise ClaimExtractionError(
+                f"the extractor hit its {max_tokens}-token ceiling before "
+                f"finishing, so no claim list was returned; this output is "
+                f"unchecked, not clean")
+        if stop == "refusal":
+            raise ClaimExtractionError(
+                "the extractor declined to answer, so nothing about this "
+                "output was checked")
 
         try:
             text = next(b.text for b in resp.content if b.type == "text")

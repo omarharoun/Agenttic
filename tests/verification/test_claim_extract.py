@@ -38,13 +38,17 @@ class StubClient:
         self.calls: list[dict] = []
         self.messages = types.SimpleNamespace(create=self._create)
 
+    def __init_stop__(self, stop):          # set by the stop_reason tests
+        self.stop = stop
+
     def _create(self, **kw):
         self.calls.append(kw)
         body = self.bodies[min(len(self.calls) - 1, len(self.bodies) - 1)]
         if isinstance(body, Exception):
             raise body
         block = types.SimpleNamespace(type="text", text=body)
-        return types.SimpleNamespace(content=[block])
+        return types.SimpleNamespace(content=[block],
+                                     stop_reason=getattr(self, "stop", "end_turn"))
 
 
 def _body(*claims):
@@ -93,6 +97,44 @@ def test_out_of_scope_dicts_are_passed_through_not_filtered_here():
         StubClient(_body({"text": "Happy to help!", "kind": "", "tool": "",
                           "asserted": True})), TOOLS)("out")
     assert len(raw) == 1
+
+
+
+def test_a_truncated_response_says_so_rather_than_blaming_the_json():
+    """A clipped reply is NO answer, not a malformed one. Reporting it as an
+    unparseable claim list blames the shape of a reply that never finished and
+    hides a ceiling the caller can raise."""
+    c = StubClient(_body(LIE)[:40])      # valid JSON, cut off mid-object
+    c.stop = "max_tokens"
+    with pytest.raises(ClaimExtractionError) as e:
+        model_extractor(c, TOOLS, max_tokens=123)("out")
+    assert "123-token ceiling" in str(e.value)
+    assert "unchecked, not clean" in str(e.value)
+
+
+def test_a_refusal_is_named_as_one():
+    c = StubClient(_body())
+    c.stop = "refusal"
+    with pytest.raises(ClaimExtractionError) as e:
+        model_extractor(c, TOOLS)("out")
+    assert "declined" in str(e.value)
+
+
+def test_the_ceiling_is_generous_enough_for_a_chatty_agent():
+    """The default is the regression this guards: at 2000 a long final message
+    produced a long claim list, clipped it, and the case went silently
+    unchecked — on exactly the outputs most likely to carry a real claim."""
+    c = StubClient(_body(LIE))
+    model_extractor(c, TOOLS)("out")
+    assert c.calls[0]["max_tokens"] >= 16000
+
+
+def test_a_stop_reason_the_stub_never_sets_still_reads_normally():
+    """Backwards compatibility: a response object with no stop_reason at all
+    (an older client, or a stub) must not be treated as a failure."""
+    c = StubClient(_body(LIE))
+    c.stop = None
+    assert len(model_extractor(c, TOOLS)("out")) == 1
 
 
 # --- end to end, still offline ---------------------------------------------- #

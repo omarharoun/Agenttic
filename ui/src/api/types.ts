@@ -440,7 +440,9 @@ export interface ExecutionCaseRow {
   criteria: {
     criterion_id: string;
     score: number;
-    scorer: string;
+    // the same three scorers as CriterionScore above — widening this to `string`
+    // put every consumer one cast away from the shared ProvenanceBadge
+    scorer: "code" | "judge" | "fi";
     calibrated: boolean;
     rationale: string | null;
   }[];
@@ -1739,3 +1741,152 @@ export interface LiveWindows {
   drift_threshold: number;
   criteria: LiveWindowCriterion[];
 }
+
+/* ---------------------------------------------------------------------------
+   Stored scenario runs.
+
+   These moved here late: Step 17.2 relocated every response type out of
+   api.ts into this file, and this block was dropped on the way rather than
+   migrated. api.ts re-exports it, so the `from "../api"` call sites that
+   have been importing these names all along resolve again.
+   --------------------------------------------------------------------------- */
+
+export interface ScenarioFault {
+  tool: string;
+  call_index: number;
+  kind: string;                 // timeout|error_5xx|rate_limited|stale_data|malformed_response
+  once: boolean;
+  truncate_pct?: number;        // malformed_response only
+  step?: number;                // once it is an event (fired or skipped)
+  observable?: boolean;         // fired only
+  reason?: string;              // skipped only — why it could not happen
+}
+export interface ScenarioFaultCounts {
+  planned: number; fired: number; skipped: number; never_reached: number;
+}
+/** A recorded fault report, or the ABSENCE of one. The four lists are four
+ *  different facts; only `fired` is a thing that happened to the run. */
+export interface ScenarioFaults {
+  recorded: boolean;
+  source: string | null;        // scenario_plan|requested_tool_condition|explicit|none
+  planned: ScenarioFault[] | null;
+  fired: ScenarioFault[] | null;
+  skipped: ScenarioFault[] | null;
+  never_reached: ScenarioFault[] | null;
+  counts: ScenarioFaultCounts | null;
+  /** present when a stored report could not be reconstructed on read */
+  problem?: string;
+}
+/** One transcript line. `kind`/`discloses`/`revealed_fact`/`delivered` are facts
+ *  about a COUNTERPARTY turn and are absent on an agent reply — hence optional
+ *  rather than a union, which is also how the backend emits them. */
+export interface TranscriptEntry {
+  speaker: string;              // "user" | "agent"
+  text: string;                 // may be "" — the agent said nothing
+  kind?: string;                // open|reveal|pushback|reply|close
+  discloses?: string;           // hidden_facts key, "" when none
+  revealed_fact?: boolean;      // derived: discloses !== ""
+  delivered?: boolean;          // derived: false exactly for the closing turn
+}
+/** One row of `CoverageReport.divergence()`, stored VERBATIM by
+ *  `Registry.save_scenario_run` and served back under the coverage block. It is
+ *  the OPPOSITE of an exhibited bin: the stimulus point asked for this corner
+ *  and the run never produced it.
+ *
+ *  `exhibited` is 0 by construction — the row exists because it is 0 — and is
+ *  carried rather than assumed, so a payload that ever says otherwise shows what
+ *  it says. These rows are a fact about the GENERATOR's reach and are never
+ *  summed into a coverage number. */
+export interface CoverageDivergence {
+  coverpoint_id: string;
+  bin_id: string;
+  requested: number;            // how many samples asked for this corner
+  exhibited: number;            // 0 — that is why the row is here
+}
+export interface ScenarioRunRow {
+  run_id: string; scenario_id: string; agent_id: string; trace_id: string;
+  space_ref: string; space_fingerprint: string; seed: number;
+  created_at: string;           // ISO-8601 UTC; no offset suffix on SQLite
+  ended: string;                // "" for a single-shot run
+  conversational: boolean; world_changed: boolean; n_blocked: number;
+  faults: { recorded: boolean; counts: ScenarioFaultCounts | null };
+}
+export interface ScenarioRunDetail {
+  run_id: string; scenario_id: string; agent_id: string; trace_id: string;
+  space_ref: string; space_fingerprint: string; seed: number;
+  created_at: string;
+  point: Record<string, string>;
+  ticket: string;
+  session_id: string;           // "" for a single-shot run
+  ended: string;
+  transcript: TranscriptEntry[];
+  state_diff: Record<string, { before: unknown; after: unknown }>;
+  blocked: string[];            // tool NAMES the gateway refused
+  interactions: Record<string, unknown>[];
+  faults: ScenarioFaults;
+  elicitation: { disclosed: string[]; withheld: string[] };
+  /** `measured` speaks for `bins` and for NOTHING else — the registry collects
+   *  the two halves at different moments, so `{measured: true, bins: [...],
+   *  divergence: null}` is a real row: the bins were counted and nobody computed
+   *  divergence. `divergence` therefore answers its own presence question:
+   *    null      → NOT RECORDED. Nobody computed it for this run.
+   *    []        → computed, and every requested corner appeared. A measurement.
+   *    [...]     → the point asked for these corners and the run did not produce
+   *                them.
+   *  The key is optional because a row written before the field existed carries
+   *  no key at all; that reads as not recorded, like `null`. */
+  coverage: { measured: boolean; bins: string[] | null;
+              divergence?: CoverageDivergence[] | null };
+  user_provenance: Record<string, unknown>;
+  disclosures: Record<string, unknown>[];
+  derived: {
+    conversational: boolean;
+    n_user_turns: number | null;
+    world_changed: boolean;
+    n_changed_fields: number;
+    n_blocked: number;
+    elicitation_complete: boolean | null;
+    content_sha256: string;
+  };
+}
+
+/** `GET /api/capabilities` — what the platform tests, enumerated from the live
+ *  registries at request time (server/routes/capabilities.py). Typed here so
+ *  the page that renders it cannot quietly read a field the server stopped
+ *  sending: this is the surface whose whole point is that it never drifts from
+ *  the product. */
+export interface Capabilities {
+  deterministic_checks: { total: number; groups: Record<string, string[]> };
+  assertions: {
+    total: number;
+    items: { id: string; severity: string; property: string }[];
+  };
+  coverage: {
+    baseline: {
+      applies_to: string;
+      limits: string;
+      coverpoints: { id: string; bins: string[] }[];
+    };
+    fitted_example: {
+      coverpoints: { id: string; bins: string[] }[];
+      provisional: string[];
+    };
+  };
+  formal: {
+    scope: string;
+    limit: string;
+    total: number;
+    solver_available: boolean;
+    result_values: string[];
+    items: { id: string; description: string }[];
+  };
+  supply_chain: {
+    mcp_server: { transports: string[]; checks: string[] };
+    tools: { sources: string[]; checks: string[] };
+  };
+  archetypes: { total: number };
+  methodologies: { total: number; items: string[] };
+  attestation: { governing_rule: string; properties: string[] };
+  not_covered: string[];
+}
+
